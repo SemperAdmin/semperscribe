@@ -85,6 +85,15 @@ export function ModernAppShell({
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-sans overflow-hidden">
+      {/* Persistent compliance banner. Maps to COMPLIANCE_REMEDIATION_PLAN.md Phase 4 P4-1. */}
+      <div
+        role="alert"
+        aria-live="polite"
+        className="bg-yellow-400 text-black border-b-2 border-yellow-600 px-4 py-1.5 text-xs sm:text-sm shrink-0 z-30 text-center"
+      >
+        <strong className="font-bold uppercase mr-2">Warning</strong>
+        Non-official Proof of Concept. Do not enter CUI, PII, or other sensitive information. Outputs constitute Federal records under 44 USC 3301 when used in official business. Route through your CDRM.
+      </div>
       {/* Top Header / Toolbar */}
       <header className="h-16 bg-secondary text-primary-foreground border-b border-secondary-foreground/10 flex items-center justify-between px-4 z-20 shrink-0 shadow-md">
         <div className="flex items-center space-x-4">

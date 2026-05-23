@@ -159,7 +159,7 @@ Goal. Add the markers a Marine reviewing the tool will look for. Maps to DoDI 52
 P4-1. Add a persistent CUI banner.
 
 - Edit src\components\layout\ModernAppShell.tsx.
-- Insert a top banner reading: "CUI Pending. This is a non-official Proof of Concept. Outputs constitute Federal records under 44 USC 3301 when used in official business. Route through your CDRM."
+- Insert a top banner reading: "Warning. Non-official Proof of Concept. Do not enter CUI, PII, or other sensitive information. Outputs constitute Federal records under 44 USC 3301 when used in official business. Route through your CDRM." Framing emphasizes user responsibility, not system CUI handling capability.
 - Banner must be visible on every route.
 - Acceptance. Visual test on every page shows the banner.
 
