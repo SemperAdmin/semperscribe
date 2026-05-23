@@ -1,6 +1,8 @@
 # Semper Scribe
 
-A professional-grade, local-first web application for creating, formatting, and exporting USMC correspondence and administrative documents. Built with Next.js, Semper Scribe helps Marines produce properly formatted documents compliant with SECNAV M-5216.5 and MCO 5215.1K — entirely in the browser with no server-side processing.
+> **Not Official USMC Software.** Semper Scribe is a non-official Proof of Concept maintained on a personal basis. It is not USMC, DON, or DoD software. It does not carry an Authority to Operate. Use is at the user's discretion and risk. Users must not enter CUI, PII, or sensitive information. See the [Privacy and Security Notice](https://furby203824.github.io/SemperScribe/privacy) and [SECURITY.md](SECURITY.md) for full details.
+
+A professional-grade, local-first web application for creating, formatting, and exporting USMC correspondence and administrative documents. Built with Next.js, Semper Scribe helps users produce properly formatted documents aligned with SECNAV M-5216.5 and MCO 5215.1K — entirely in the browser with no server-side processing.
 
 **Live App:** [https://furby203824.github.io/SemperScribe](https://furby203824.github.io/SemperScribe)
 
@@ -201,6 +203,30 @@ src/
 - **UNCLASSIFIED Use Only** — This tool is strictly for processing UNCLASSIFIED information. Do not input, process, or store Classified, CUI, or PII data.
 - **Verification Required** — While Semper Scribe automates formatting, the final content is the responsibility of the originator. Always verify references and administrative details against current directives.
 
+## Compliance Posture
+
+Semper Scribe undergoes voluntary alignment with DoD adoption-readiness standards. This is not an authorized DoD system and carries no Authority to Operate. The current posture covers the categories below.
+
+### What the alignment covers
+
+- **Software Supply Chain (SCRM)**. SBOM generated on every deploy via CycloneDX. Zero known vulnerabilities in production dependencies as of the last audit pass. Maps to Executive Order 14028 SBOM requirements and the DoD CIO SWFT Initiative memo.
+- **Secure Software Development Framework (SSDF)**. Aligned with NIST SP 800-218 practices PO.3.3 (toolchain configuration), PW.4.1 and PW.4.4 (third-party component management), PW.7 (review and analyze code), and PS.1 (source protection). CodeQL static analysis runs on every push and weekly.
+- **Open Source Software**. Project license is MIT. Dual-license elections documented in `LICENSES.md`. All transitive licenses are approved per DoD CIO OSS Guidance dated 24 January 2022, Attachment 2 paragraph 3G.
+- **Privacy**. No PII collection, no telemetry, no backend at runtime. User responsibility framing applied throughout the UI. See the in-app Privacy and Security Notice and `SECURITY.md`.
+- **Records Management**. Tool outputs become Federal records under 44 USC 3301 when used in official business. Routing through a Command Designated Records Manager per MCO 5210.11F is the user's responsibility, not the application's.
+
+### What the alignment does not cover
+
+- This is not under the Risk Management Framework. DoDI 8510.01 does not apply to a personal PoC.
+- This is not registered as an Electronic Information System under MCO 5210.11F. Tool outputs are records; the tool itself is not an EIS.
+- This is not authorized for CUI processing. Users must not enter CUI, PII, PHI, or sensitive information.
+
+See `docs/COMPLIANCE_REMEDIATION_PLAN.md` for the full audit trail of the alignment work.
+
+### Reporting Security Issues
+
+Vulnerabilities should be reported through GitHub's Private Vulnerability Reporting. See `SECURITY.md` for the disclosure channel and response expectations.
+
 ## Tech Stack
 
 | Category | Technology |
@@ -221,7 +247,7 @@ Contributions are welcome. Please submit issues and pull requests on GitHub.
 
 ## License
 
-This project is provided as-is for educational and official use within the USMC community.
+MIT License. See [LICENSE](LICENSE) for the legal text and [LICENSES.md](LICENSES.md) for the third-party license inventory, dual-license elections, and LGPL transitive documentation. The license election is recorded per DoD CIO OSS Guidance paragraph 3G.
 
 ---
 
