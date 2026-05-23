@@ -31,9 +31,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${bebasNeue.variable} ${roboto.variable}`}>
-      <head>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-      </head>
       <body className="font-body antialiased flex flex-col min-h-screen">
         <ThemeProvider>
           <main className="flex-1">
