@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Document, Packer, Paragraph, TextRun, AlignmentType, TabStopType, Header, ImageRun, convertInchesToTwip, VerticalPositionAlign, HorizontalPositionAlign } from 'docx';
+import { getDoDSealBuffer } from './dod-seal';
 // Removed saveAs import - using manual download method for better Next.js compatibility
 
 interface ParagraphData {
@@ -315,8 +316,7 @@ export default function NavalLetterGenerator() {
   const generateDocument = async () => {
     setIsGenerating(true);
     try {
-      const sealResponse = await fetch("https://placehold.co/150x150.png");
-      const sealBuffer = await sealResponse.arrayBuffer();
+      const sealBuffer = await getDoDSealBuffer();
 
 
       // Validate structure before generating
