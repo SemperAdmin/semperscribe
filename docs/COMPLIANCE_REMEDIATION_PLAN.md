@@ -169,11 +169,11 @@ P4-2. Add a Privacy and Security Notice route.
 - Content. Disclaim collection of PII, document the absence of telemetry after Phase 1, cite SECNAVINST 5211.5F paragraph 5b.
 - Link from the persistent banner.
 
-P4-3. Enforce distribution-statement selection on export.
+P4-3. Enforce distribution-statement selection on export. **Deliberately not implemented.**
 
-- Edit src\app\Step7Distribution.tsx.
-- Block the export action until a distribution statement is chosen.
-- Acceptance. Cypress or Vitest UI test confirms export button stays disabled with no selection.
+- Original target src\app\Step7Distribution.tsx was deleted as orphan in P2-2. Active distribution-statement UI lives in src\components\letter\DistributionStatementSection.tsx.
+- Decision recorded 2026-05-23: skipped per consistent user-responsibility framing established for CUI. Distribution-statement selection is a marking decision the user makes about their own content. Blocking export is paternalistic and inconsistent with the rest of the compliance posture.
+- The app continues to support selecting a distribution statement. The user is responsible for setting one before treating the output as an official document.
 
 P4-4. Update README.md.
 
