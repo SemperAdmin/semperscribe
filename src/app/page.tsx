@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { ParagraphData, SavedLetter, ValidationState, FormData, AdminSubsections } from '@/types';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
-import { useEDMSContext, isEditMode } from '@/hooks/useEDMSContext';
 import { UNITS } from '@/lib/units';
 import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
@@ -122,11 +121,9 @@ function NavalLetterGeneratorInner() {
   const [signaturePdfBlob, setSignaturePdfBlob] = useState<Blob | null>(null);
   const [signaturePdfPageCount, setSignaturePdfPageCount] = useState(1);
 
-  // EDMS Integration
-  const edmsContext = useEDMSContext();
+  // Unit header state (sourced from user profile)
   const [currentUnitCode, setCurrentUnitCode] = useState<string | undefined>(undefined);
   const [currentUnitName, setCurrentUnitName] = useState<string | undefined>(undefined);
-  const [isLoadingFromEDMS, setIsLoadingFromEDMS] = useState(false);
 
   // Import/Export/Share via hook
   const {
@@ -190,67 +187,6 @@ function NavalLetterGeneratorInner() {
     }
     setFormKey(prev => prev + 1);
   }, [getFormDefaults, profile.unitRuc]);
-
-  // Auto-select unit from EDMS
-  useEffect(() => {
-    if (edmsContext.isLinked && edmsContext.unitCode) {
-      const matchedUnit = UNITS.find(u => u.ruc === edmsContext.unitCode);
-      if (matchedUnit) {
-        setFormData(prev => ({
-          ...prev,
-          line1: matchedUnit.unitName.toUpperCase(),
-          line2: matchedUnit.streetAddress.toUpperCase(),
-          line3: `${matchedUnit.cityState} ${matchedUnit.zip}`.toUpperCase(),
-        }));
-        setCurrentUnitCode(matchedUnit.ruc);
-        setCurrentUnitName(matchedUnit.unitName.toUpperCase());
-      }
-    }
-  }, [edmsContext.isLinked, edmsContext.unitCode]);
-
-  // Load existing letter from EDMS
-  useEffect(() => {
-    if (isEditMode(edmsContext)) {
-      setIsLoadingFromEDMS(true);
-      fetch(edmsContext.fileUrl)
-        .then(res => {
-          if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
-          return res.json();
-        })
-        .then(letterData => {
-          setFormData(prev => ({
-            ...prev,
-            ssic: letterData.ssic || '',
-            subj: letterData.subject || '',
-            from: letterData.from || '',
-            to: letterData.to || '',
-            date: letterData.date || prev.date,
-            sig: letterData.signature || '',
-            originatorCode: letterData.originatorCode || '',
-            documentType: letterData.letterType || 'basic',
-            headerType: letterData.headerType || 'USMC',
-            line1: letterData.unit?.line1 || prev.line1,
-            line2: letterData.unit?.line2 || prev.line2,
-            line3: letterData.unit?.line3 || prev.line3,
-          }));
-
-          if (letterData.via?.length) setVias(letterData.via);
-          if (letterData.references?.length) setReferences(letterData.references);
-          if (letterData.enclosures?.length) setEnclosures(letterData.enclosures);
-          if (letterData.copyTos?.length) setCopyTos(letterData.copyTos);
-          if (letterData.paragraphs?.length) setParagraphs(letterData.paragraphs);
-
-          if (letterData.ssic) handleValidateSSIC(letterData.ssic);
-          if (letterData.subject) handleValidateSubject(letterData.subject);
-          if (letterData.from) handleValidateFromTo(letterData.from, 'from');
-          if (letterData.to) handleValidateFromTo(letterData.to, 'to');
-
-          setFormKey(prev => prev + 1);
-        })
-        .catch(err => console.error('Failed to load letter from EDMS:', err))
-        .finally(() => setIsLoadingFromEDMS(false));
-    }
-  }, [edmsContext.mode, edmsContext.fileUrl]);
 
   // Handle Cancellation Contingency for MCBul
   useEffect(() => {

@@ -119,9 +119,7 @@ Three master templates to cover the majority of formatting logic:
 - [x] Directive title line
 
 ### Integration
-- [x] EDMS context detection and integration
-- [x] Supabase Edge Function support
-- [x] Return to EDMS dialog
+- EDMS context detection and Supabase Edge Function support were removed in the 2026-05 compliance remediation pass. See docs/COMPLIANCE_REMEDIATION_PLAN.md, Phase 1.
 
 ### UX
 - [x] Responsive design (mobile, tablet, desktop)

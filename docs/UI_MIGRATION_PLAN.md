@@ -17,7 +17,8 @@ This document outlines the strategy to transition the **Naval Letter Formatter**
 | **Paragraph Editor** | `paragraphs` state, `ParagraphSection.tsx` | High (Complex drag-drop/validation) |
 | **Preview** | `NavalLetterPDF.tsx`, `pdf-generator.ts` | Medium |
 | **Save/Load** | `localStorage`, `NLDPFileManager` | Medium |
-| **EDMS Integration** | `useEDMSContext`, `edms-service` | High (External dependency) |
+
+> EDMS Integration row removed in the 2026-05 compliance remediation pass. The Supabase backend, EDMS context hook, and related components were deleted. See docs/COMPLIANCE_REMEDIATION_PLAN.md, Phase 1.
 
 ### 2.3 Gap Analysis
 | Feature | Current Implementation | New Concept (Target) | Action Required |
@@ -64,7 +65,6 @@ To avoid rewriting `page.tsx` logic immediately, we will pass the existing state
 4.  **Refactor Editor**: Move the `ParagraphSection` into the center pane and style it as cards.
 
 ## 6. Phase 5: Testing & Verification
-*   **Regression**: Verify EDMS loading still works.
 *   **Visual**: Check responsiveness on smaller screens (Sidebar should collapse).
 *   **Functional**: Ensure PDF generation matches the inputs.
 
