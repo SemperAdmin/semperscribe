@@ -1,11 +1,13 @@
 import React from 'react';
 import Link from 'next/link';
+import { Menu } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { LivePreview } from './LivePreview';
 import { HeaderActions } from './HeaderActions';
 import { PreviewModal } from './PreviewModal';
 import { ParagraphData, SavedLetter, FormData } from '@/types';
 import { getBasePath } from '@/lib/path-utils';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 interface ModernAppShellProps {
   children: React.ReactNode;
@@ -76,6 +78,7 @@ export function ModernAppShell({
 }: ModernAppShellProps) {
   const [showPreview, setShowPreview] = React.useState(true);
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = React.useState(false);
   const [logoSrc, setLogoSrc] = React.useState('/logo.png');
 
   React.useEffect(() => {
@@ -99,6 +102,15 @@ export function ModernAppShell({
       {/* Top Header / Toolbar */}
       <header className="h-16 bg-secondary text-primary-foreground border-b border-secondary-foreground/10 flex items-center justify-between px-4 z-20 shrink-0 shadow-md">
         <div className="flex items-center space-x-4">
+          {/* Mobile-only hamburger. Opens the Sidebar as a slide-out drawer below the md breakpoint. */}
+          <button
+            type="button"
+            onClick={() => setShowMobileSidebar(true)}
+            className="md:hidden inline-flex items-center justify-center h-10 w-10 -ml-2 rounded-md text-primary-foreground hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            aria-label="Open document menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
           <div className="flex items-center gap-3">
             <div className="relative h-10 w-10 overflow-hidden rounded-full border-2 border-primary/50 shadow-sm bg-white/10">
               <img
@@ -172,13 +184,29 @@ export function ModernAppShell({
 
       {/* Main Content Area (3-Pane Grid) */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Pane: Sidebar */}
+        {/* Left Pane: Sidebar - desktop only. Hidden below md to free horizontal space on phones. */}
         <Sidebar
           documentType={documentType}
           onDocumentTypeChange={onDocumentTypeChange}
           paragraphs={paragraphs}
           formData={formData as Record<string, any>}
         />
+
+        {/* Mobile slide-out drawer hosting the same Sidebar. Closes automatically on selection. */}
+        <Sheet open={showMobileSidebar} onOpenChange={setShowMobileSidebar}>
+          <SheetContent side="left" className="p-0 w-80 max-w-[85vw] md:hidden">
+            <div className="h-full overflow-hidden">
+              <Sidebar
+                className="!flex w-full border-r-0"
+                documentType={documentType}
+                onDocumentTypeChange={onDocumentTypeChange}
+                paragraphs={paragraphs}
+                formData={formData as Record<string, any>}
+                onItemSelect={() => setShowMobileSidebar(false)}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {/* Center Pane: Editor */}
         <main className="flex-1 overflow-y-auto bg-muted/10 p-4 md:p-6 lg:p-8 relative scroll-smooth">

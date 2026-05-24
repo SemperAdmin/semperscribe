@@ -29,6 +29,12 @@ interface SidebarProps {
   onDocumentTypeChange: (type: string) => void;
   paragraphs?: ParagraphData[];
   formData?: Record<string, any>;
+  /**
+   * Optional callback fired after the user selects a document type.
+   * Used by the mobile slide-out drawer to auto-close on selection.
+   * Desktop callers omit this prop and behavior remains unchanged.
+   */
+  onItemSelect?: () => void;
 }
 
 interface SearchResult {
@@ -174,8 +180,15 @@ function scrollToResult(result: SearchResult, query: string) {
   }
 }
 
-export function Sidebar({ className, documentType, onDocumentTypeChange, paragraphs = [], formData }: SidebarProps) {
+export function Sidebar({ className, documentType, onDocumentTypeChange, paragraphs = [], formData, onItemSelect }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Wrap the document-type handler so the mobile drawer auto-closes on selection.
+  // When onItemSelect is undefined (desktop), behavior is identical to a direct call.
+  const handleSelect = (type: string) => {
+    onDocumentTypeChange(type);
+    onItemSelect?.();
+  };
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -229,17 +242,17 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                 <div className="space-y-1 pl-2">
                   <DocumentTypeButton
                     active={documentType === 'basic'}
-                    onClick={() => onDocumentTypeChange('basic')}
+                    onClick={() => handleSelect('basic')}
                     label="Basic Letter"
                   />
                   <DocumentTypeButton
                     active={documentType === 'multiple-address'}
-                    onClick={() => onDocumentTypeChange('multiple-address')}
+                    onClick={() => handleSelect('multiple-address')}
                     label="Multiple-Address Letter"
                   />
                   <DocumentTypeButton
                     active={documentType === 'endorsement'}
-                    onClick={() => onDocumentTypeChange('endorsement')}
+                    onClick={() => handleSelect('endorsement')}
                     label="Endorsement"
                   />
                 </div>
@@ -258,27 +271,27 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                 <div className="space-y-1 pl-2">
                   <DocumentTypeButton
                     active={documentType === 'mfr'}
-                    onClick={() => onDocumentTypeChange('mfr')}
+                    onClick={() => handleSelect('mfr')}
                     label="Memorandum for the Record"
                   />
                   <DocumentTypeButton
                     active={documentType === 'from-to-memo'}
-                    onClick={() => onDocumentTypeChange('from-to-memo')}
+                    onClick={() => handleSelect('from-to-memo')}
                     label="From-To Memorandum"
                   />
                   <DocumentTypeButton
                     active={documentType === 'letterhead-memo'}
-                    onClick={() => onDocumentTypeChange('letterhead-memo')}
+                    onClick={() => handleSelect('letterhead-memo')}
                     label="Letterhead Memorandum"
                   />
                   <DocumentTypeButton
                     active={documentType === 'moa'}
-                    onClick={() => onDocumentTypeChange('moa')}
+                    onClick={() => handleSelect('moa')}
                     label="Memorandum of Agreement"
                   />
                   <DocumentTypeButton
                     active={documentType === 'mou'}
-                    onClick={() => onDocumentTypeChange('mou')}
+                    onClick={() => handleSelect('mou')}
                     label="Memorandum of Understanding"
                   />
                 </div>
@@ -297,22 +310,22 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                 <div className="space-y-1 pl-2">
                   <DocumentTypeButton
                     active={documentType === 'information-paper'}
-                    onClick={() => onDocumentTypeChange('information-paper')}
+                    onClick={() => handleSelect('information-paper')}
                     label="Information Paper"
                   />
                   <DocumentTypeButton
                     active={documentType === 'position-paper'}
-                    onClick={() => onDocumentTypeChange('position-paper')}
+                    onClick={() => handleSelect('position-paper')}
                     label="Position Paper"
                   />
                   <DocumentTypeButton
                     active={documentType === 'decision-paper'}
-                    onClick={() => onDocumentTypeChange('decision-paper')}
+                    onClick={() => handleSelect('decision-paper')}
                     label="Decision Paper"
                   />
                   <DocumentTypeButton
                     active={documentType === 'coordination-page'}
-                    onClick={() => onDocumentTypeChange('coordination-page')}
+                    onClick={() => handleSelect('coordination-page')}
                     label="Coordination Page"
                   />
                 </div>
@@ -331,12 +344,12 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                 <div className="space-y-1 pl-2">
                   <DocumentTypeButton
                     active={documentType === 'business-letter'}
-                    onClick={() => onDocumentTypeChange('business-letter')}
+                    onClick={() => handleSelect('business-letter')}
                     label="Business Letter"
                   />
                   <DocumentTypeButton
                     active={documentType === 'executive-correspondence'}
-                    onClick={() => onDocumentTypeChange('executive-correspondence')}
+                    onClick={() => handleSelect('executive-correspondence')}
                     label="Executive Correspondence"
                   />
                 </div>
@@ -355,12 +368,12 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                 <div className="space-y-1 pl-2">
                   <DocumentTypeButton
                     active={documentType === 'dla-memorandum'}
-                    onClick={() => onDocumentTypeChange('dla-memorandum')}
+                    onClick={() => handleSelect('dla-memorandum')}
                     label="Standard Memorandum"
                   />
                   <DocumentTypeButton
                     active={documentType === 'dla-business-letter'}
-                    onClick={() => onDocumentTypeChange('dla-business-letter')}
+                    onClick={() => handleSelect('dla-business-letter')}
                     label="Business Letter (DLA)"
                   />
                 </div>
@@ -379,12 +392,12 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                 <div className="space-y-1 pl-2">
                   <DocumentTypeButton
                     active={documentType === 'mco'}
-                    onClick={() => onDocumentTypeChange('mco')}
+                    onClick={() => handleSelect('mco')}
                     label="Marine Corps Order"
                   />
                   <DocumentTypeButton
                     active={documentType === 'bulletin'}
-                    onClick={() => onDocumentTypeChange('bulletin')}
+                    onClick={() => handleSelect('bulletin')}
                     label="Marine Corps Bulletin"
                   />
                 </div>
@@ -403,12 +416,12 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                 <div className="space-y-1 pl-2">
                   <DocumentTypeButton
                     active={documentType === 'aa-form'}
-                    onClick={() => onDocumentTypeChange('aa-form')}
+                    onClick={() => handleSelect('aa-form')}
                     label="AA Form (NAVMC 10274)"
                   />
                   <DocumentTypeButton
                     active={documentType === 'page11'}
-                    onClick={() => onDocumentTypeChange('page11')}
+                    onClick={() => handleSelect('page11')}
                     label="Pg. 11 (NAVMC 118(11))"
                   />
                 </div>
@@ -419,7 +432,7 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
           {/* AMHS - Single Item Group */}
           <div className="border-none mt-1">
             <button
-              onClick={() => onDocumentTypeChange('amhs')}
+              onClick={() => handleSelect('amhs')}
               className={cn(
                 "w-full flex items-center py-2 text-sm font-semibold hover:no-underline transition-all text-left",
                 documentType === 'amhs' ? "text-primary" : "text-foreground hover:text-primary/80"
