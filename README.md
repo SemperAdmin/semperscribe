@@ -252,3 +252,5 @@ MIT License. See [LICENSE](LICENSE) for the legal text and [LICENSES.md](LICENSE
 ---
 
 *Semper Fidelis*
+#   s e m p e r s c r i b e  
+ 
