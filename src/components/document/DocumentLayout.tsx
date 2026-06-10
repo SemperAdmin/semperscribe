@@ -22,6 +22,7 @@ import { EndorsementDetailsSection } from './EndorsementDetailsSection';
 import { SignatureFieldSection } from './SignatureFieldSection';
 import { DecisionGridSection } from '@/components/letter/DecisionGridSection';
 import { CoordinationPageForm } from '@/components/letter/CoordinationPageForm';
+import { ITypeFormSections } from '@/components/itype/ITypeFormSections';
 
 interface DocumentLayoutProps {
   formData: FormData;
@@ -122,8 +123,13 @@ export function DocumentLayout({
         </div>
       </div>
 
-      {/* AMHS Editor - Exclusive View */}
-      {features.isAMHS ? (
+      {/* I-Type Form - Exclusive View */}
+      {formData.documentType === 'i-type' ? (
+        <ITypeFormSections
+          formData={formData}
+          setFormData={setFormData}
+        />
+      ) : features.isAMHS ? (
         <AMHSEditor
           formData={formData}
           onUpdate={(data) => setFormData(prev => ({ ...prev, ...data }))}

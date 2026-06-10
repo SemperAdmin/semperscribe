@@ -12,6 +12,7 @@ import { FromToMemoTemplate, LetterheadMemoTemplate, MOATemplate, MOUTemplate } 
 import { MCOTemplate, BulletinTemplate, ChangeTransmittalTemplate, AssumptionOfCommandTemplate } from './orders';
 import { DLAMemorandumTemplate } from './dla-memorandum';
 import { DLABusinessLetterTemplate } from './dla-business-letter';
+import { ITypeTemplate } from '@/lib/i-type/template';
 
 // Re-export all templates
 export * from './types';
@@ -59,6 +60,9 @@ export const DOCUMENT_TEMPLATES: Record<string, DocumentTemplate> = {
   // DLA Correspondence
   'dla-memorandum': DLAMemorandumTemplate,
   'dla-business-letter': DLABusinessLetterTemplate,
+
+  // I-Type
+  'i-type': ITypeTemplate,
 };
 
 /**

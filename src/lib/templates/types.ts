@@ -43,6 +43,6 @@ export interface DocumentTemplate {
   formatting?: {
     dateStyle?: 'standard' | 'military' | 'civilian'; // e.g. "10 Feb 26", "20260210", "February 10, 2026"
     subjectCase?: 'uppercase' | 'titlecase';
-    font?: 'Times New Roman' | 'Courier New';
+    font?: 'Times New Roman' | 'Courier New' | 'Arial';
   };
 }

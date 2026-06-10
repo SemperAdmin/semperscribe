@@ -1,0 +1,42 @@
+{
+  "data": {
+    "formData": {
+      "documentType": "i-type",
+      "date": "2026-06-09",
+      "shortTitle": "TM-5305-15-14",
+      "volume": "1 OF 3",
+      "service": "U.S. MARINE CORPS",
+      "entity": "Marine Corps Systems Command",
+      "publicationType": "TECHNICAL MANUAL",
+      "longTitle": "MAINTENANCE AND OPERATION OF TACTICAL VEHICLE SYSTEM",
+      "category": "export controlled",
+      "timeCompliance": "NORMAL",
+      "nomenclature": "HMMWV, ARMORED, FULL DRESS",
+      "address": "2200 Lester Street, Quantico, VA 22134-5050",
+      "signingAuthority": "Program Manager",
+      "controllingOffice": "Ground Weapons Systems",
+      "cuiCategory": "CTI",
+      "distributionControl": "NOFORN",
+      "supersedureNotice": "SUPERSEDURE NOTICE",
+      "supersedureStatement": "This publication supersedes TM 5305-15-13, dated June 2020.",
+      "destructionNotice": "DESTRUCTION NOTICE",
+      "classificationDestructionProcedure": "For unclassified, limited documents, destroy by any method that will prevent disclosure of contents or reconstruction of the document.",
+      "poc": "(703) 432-5000",
+      "pcn": "123 456789 01",
+      "componentsAffected": [
+        { "nsn": "5820-01-523-2007", "tamcn": "A19357G", "id": "11252A", "model": "AN/PRC-152(V)1(C)" },
+        { "nsn": "1005-01-548-7941", "tamcn": "E01957M", "id": "01957M", "model": "M27 IAR" },
+        { "nsn": "2320-01-515-5154", "tamcn": "D11587G", "id": "10200A", "model": "AMK23 (MTVR)" },
+        { "nsn": "7010-01-665-2124", "tamcn": "A21257G", "id": "12560A", "model": "NOTM (Networking On-The-Move)" },
+        { "nsn": "5855-01-582-9642", "tamcn": "E11307G", "id": "11440A", "model": "AN/PVS-31A" },
+        { "nsn": "1005-01-648-5226", "tamcn": "E00167M", "id": "12053A", "model": "M18 (Modular Handgun System)" }
+      ],
+      "materialRequired": [],
+      "materialDiscarded": [],
+      "materialRetained": [],
+      "bulkMaterial": [],
+      "specialTools": [],
+      "jigsFixtures": []
+    }
+  }
+}

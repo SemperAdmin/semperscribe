@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ITypeDefinition } from '@/lib/i-type/definition';
 
 // --- UI Schema Definitions ---
 
@@ -2291,4 +2292,5 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   'executive-correspondence': ExecutiveCorrespondenceDefinition,
   'dla-memorandum': DLAMemorandumDefinition,
   'dla-business-letter': DLABusinessLetterDefinition,
+  'i-type': ITypeDefinition,
 };

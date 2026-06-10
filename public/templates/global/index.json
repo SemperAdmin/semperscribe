@@ -215,5 +215,12 @@
     "description": "Comprehensive DLA business letter with all fields: suspense date, FOUO, recipient address, references, enclosures, and cc.",
     "documentType": "dla-business-letter",
     "url": "/templates/global/dla-business-letter-full-test.nldp"
+  },
+  {
+    "id": "i-type-test-template",
+    "title": "I-Type Technical Publication - Test Template",
+    "description": "USMC technical publication template with sample data for all elements.",
+    "documentType": "i-type",
+    "url": "/templates/global/i-type-test-template.nldp"
   }
 ]

@@ -427,6 +427,25 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                 </div>
               </AccordionContent>
             </AccordionItem>
+
+            {/* Technical Publication Group */}
+            <AccordionItem value="technical-publication" className="border-none">
+              <AccordionTrigger className="py-2 text-sm font-semibold text-foreground hover:no-underline">
+                <span className="flex items-center">
+                  <FileText className="w-4 h-4 mr-2 text-primary" />
+                  Technical Publication
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-2">
+                <div className="space-y-1 pl-2">
+                  <DocumentTypeButton
+                    active={documentType === 'i-type'}
+                    onClick={() => handleSelect('i-type')}
+                    label="I-Type"
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
 
           {/* AMHS - Single Item Group */}

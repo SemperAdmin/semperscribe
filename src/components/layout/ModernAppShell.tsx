@@ -218,7 +218,14 @@ export function ModernAppShell({
         {/* Right Pane: Live Preview or Custom Panel */}
         {showPreview && documentType && (
           customRightPanel ? (
-            customRightPanel
+            <aside className="w-[45%] max-w-[900px] min-w-[500px] bg-muted/20 border-l border-border hidden xl:flex flex-col h-full overflow-hidden">
+              <div className="h-12 bg-card border-b border-border flex items-center justify-between px-4 shrink-0">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Live Preview</h3>
+              </div>
+              <div className="flex-1 overflow-y-auto relative bg-muted/40">
+                {customRightPanel}
+              </div>
+            </aside>
           ) : (
             <LivePreview
               previewUrl={previewUrl}

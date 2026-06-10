@@ -16,6 +16,7 @@ import { configureConsole, debugUserAction, debugFormChange } from '@/lib/consol
 import { DOCUMENT_TYPES } from '@/lib/schemas';
 import { AMHSPreview } from '@/components/amhs/AMHSPreview';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
+import { downloadDocument } from '@/services/export/index';
 import { useToast } from '@/hooks/use-toast';
 import { getStateFromUrl, clearShareParam } from '@/lib/url-state';
 import { useParagraphs } from '@/hooks/useParagraphs';
@@ -25,6 +26,8 @@ import { ProofreadModal } from '@/components/ProofreadModal';
 import { BatchGenerateModal } from '@/components/BatchGenerateModal';
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { ITypePreview } from '@/components/itype/ITypePreview';
+import { useITypeStore } from '@/store/iTypeStore';
 
 // Inner component that uses useSearchParams (requires Suspense boundary)
 function NavalLetterGeneratorInner() {
@@ -106,6 +109,9 @@ function NavalLetterGeneratorInner() {
 
   // Voice recognition via hook
   const { activeVoiceInput, toggleVoiceInput } = useVoiceInput(paragraphs, updateParagraphContent);
+
+  // I-Type store for real-time preview
+  const { setFormData: setITypeFormData } = useITypeStore();
 
   // Key to force form remount on import
   const [formKey, setFormKey] = useState(0);
@@ -239,6 +245,13 @@ function NavalLetterGeneratorInner() {
       }
     }
   }, [formData.reports, formData.documentType]);
+
+  // Sync I-Type form data to store for real-time preview
+  useEffect(() => {
+    if (formData.documentType === 'i-type') {
+      setITypeFormData(formData);
+    }
+  }, [formData, setITypeFormData]);
 
   // Manual Preview Generation
   const handleUpdatePreview = useCallback(async () => {
@@ -423,6 +436,13 @@ function NavalLetterGeneratorInner() {
 
   const generateDocument = async (format: 'docx' | 'pdf') => {
     try {
+      // Route I-Type documents through unified export
+      if (formData.documentType === 'i-type') {
+        await downloadDocument(formData.documentType, formData, format);
+        return;
+      }
+
+      // Route other document types through existing pipeline
       let blob: Blob;
 
       if (format === 'pdf') {
@@ -550,7 +570,9 @@ function NavalLetterGeneratorInner() {
       onBatchGenerate={() => setShowBatchModal(true)}
       onSettings={() => setShowSettings(true)}
       customRightPanel={
-        formData.documentType === 'amhs' ? (
+        formData.documentType === 'i-type' ? (
+          <ITypePreview formData={formData} />
+        ) : formData.documentType === 'amhs' ? (
           <AMHSPreview
             formData={formData}
             references={formData.amhsReferences || []}
