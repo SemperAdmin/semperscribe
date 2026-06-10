@@ -338,6 +338,155 @@ export function validateDirectiveTypography(
   return issues;
 }
 
+/**
+ * P3.5 — mandatory paragraph schemas (MCO 5215.1K; audit lines 139-140).
+ * MCO (SMEAC): Situation, [Cancellation always second], Mission,
+ * Execution, Administration and Logistics, Command and Signal.
+ * MCBul: Purpose always first, [Cancellation second], Background,
+ * Action, Reserve Applicability, [Cancellation Contingency last].
+ * Order is checked on level-1 paragraph titles; content is the
+ * author's responsibility (Signal effectiveness sentence is a manual
+ * check, not automated).
+ */
+const MCO_MANDATORY = ['situation', 'mission', 'execution', 'administration and logistics', 'command and signal'];
+const MCBUL_MANDATORY = ['purpose'];
+
+export function validateDirectiveSchema(
+  formData: FormData,
+  paragraphs: ParagraphData[],
+): ValidationIssue[] {
+  const t = formData.documentType;
+  if (t !== 'mco' && t !== 'bulletin') return [];
+  const issues: ValidationIssue[] = [];
+  const titles = paragraphs
+    .filter((p) => p.level <= 1 && p.title && p.title.trim())
+    .map((p) => p.title!.trim().toLowerCase());
+
+  const mandatory = t === 'mco' ? MCO_MANDATORY : MCBUL_MANDATORY;
+  for (const m of mandatory) {
+    if (!titles.includes(m)) {
+      issues.push({
+        id: `directive-missing-${m.replace(/\s+/g, '-')}`,
+        severity: 'fail',
+        rule: `${t === 'mco' ? 'MCO' : 'MCBul'} requires a "${m.replace(/(^|\s)\S/g, (c) => c.toUpperCase())}" paragraph`,
+        citation: 'MCO 5215.1K (mandatory paragraphs)',
+        detail: 'Mandatory level-1 paragraph title not found.',
+      });
+    }
+  }
+
+  // Relative order of the mandatory titles must hold.
+  const positions = mandatory
+    .map((m) => titles.indexOf(m))
+    .filter((i) => i >= 0);
+  if ([...positions].sort((a, b) => a - b).join() !== positions.join()) {
+    issues.push({
+      id: 'directive-paragraph-order',
+      severity: 'fail',
+      rule: 'Mandatory paragraphs are out of order',
+      citation: 'MCO 5215.1K (mandatory paragraph sequence)',
+      detail: `Required sequence: ${mandatory.join(', ')}.`,
+    });
+  }
+
+  // Cancellation, when present, is always second (MCO) / second (MCBul).
+  const cancIdx = titles.indexOf('cancellation');
+  if (cancIdx >= 0 && cancIdx !== 1) {
+    issues.push({
+      id: 'directive-cancellation-position',
+      severity: 'fail',
+      rule: 'Cancellation paragraph must be second when present',
+      citation: 'MCO 5215.1K (audit lines 139-140)',
+      detail: `Found at position ${cancIdx + 1}.`,
+    });
+  }
+
+  // MCBul: Purpose must be FIRST, Cancellation Contingency LAST.
+  if (t === 'bulletin') {
+    if (titles.length > 0 && titles[0] !== 'purpose') {
+      issues.push({
+        id: 'bulletin-purpose-first',
+        severity: 'fail',
+        rule: 'Bulletin Purpose paragraph must come first',
+        citation: 'MCO 5215.1K (audit line 140)',
+        detail: `First titled paragraph is "${titles[0]}".`,
+      });
+    }
+    const ccIdx = titles.indexOf('cancellation contingency');
+    if (ccIdx >= 0 && ccIdx !== titles.length - 1) {
+      issues.push({
+        id: 'bulletin-canc-contingency-last',
+        severity: 'fail',
+        rule: 'Cancellation Contingency must be the last paragraph',
+        citation: 'MCO 5215.1K (audit line 140)',
+        detail: `Found at position ${ccIdx + 1} of ${titles.length}.`,
+      });
+    }
+  }
+  return issues;
+}
+
+/**
+ * P3.5 — bulletin cancellation date rules (MCO 5215.1K; audit:
+ * bulletins self-cancel, "Canc frp: Mmm yyyy", last day of month,
+ * 12-month hard ceiling from the bulletin date).
+ */
+export function validateBulletinCancellation(
+  formData: FormData,
+): ValidationIssue[] {
+  if (formData.documentType !== 'bulletin') return [];
+  const issues: ValidationIssue[] = [];
+  const raw = (formData as { cancellationDate?: string }).cancellationDate;
+  if (!raw) {
+    issues.push({
+      id: 'bulletin-canc-missing',
+      severity: 'fail',
+      rule: 'Bulletins must carry a cancellation date',
+      citation: 'MCO 5215.1K (bulletins self-cancel)',
+      detail: 'Set the Canc/Canc frp date.',
+    });
+    return issues;
+  }
+  const canc = new Date(raw);
+  if (isNaN(canc.getTime())) {
+    issues.push({
+      id: 'bulletin-canc-invalid',
+      severity: 'fail',
+      rule: 'Cancellation date is not a valid date',
+      citation: 'MCO 5215.1K',
+      detail: `Could not parse "${raw}".`,
+    });
+    return issues;
+  }
+  // Last day of its month (cancellation is expressed as Mmm yyyy and
+  // takes effect at month end).
+  const lastDay = new Date(canc.getFullYear(), canc.getMonth() + 1, 0).getDate();
+  if (canc.getDate() !== lastDay) {
+    issues.push({
+      id: 'bulletin-canc-month-end',
+      severity: 'fail',
+      rule: 'Cancellation date must be the last day of the month',
+      citation: 'MCO 5215.1K (Canc expressed as Mmm yyyy)',
+      detail: `${raw} is not the last day of its month (${lastDay}).`,
+    });
+  }
+  // 12-month hard ceiling from the bulletin's own date.
+  const base = new Date(formData.date || '');
+  if (!isNaN(base.getTime())) {
+    const ceiling = new Date(base.getFullYear() + 1, base.getMonth(), base.getDate());
+    if (canc.getTime() > ceiling.getTime()) {
+      issues.push({
+        id: 'bulletin-canc-ceiling',
+        severity: 'fail',
+        rule: 'Bulletins may not remain in effect longer than 12 months',
+        citation: 'MCO 5215.1K (12-month ceiling)',
+        detail: `Cancellation ${raw} exceeds 12 months from the bulletin date.`,
+      });
+    }
+  }
+  return issues;
+}
+
 export function runLetterValidators(
   formData: FormData,
   vias: string[],
@@ -351,6 +500,8 @@ export function runLetterValidators(
     ...validateActionAddressees(formData),
     ...validateDateSlots(formData, paragraphs),
     ...validateDirectiveTypography(formData, paragraphs),
+    ...validateDirectiveSchema(formData, paragraphs),
+    ...validateBulletinCancellation(formData),
   ];
 }
 

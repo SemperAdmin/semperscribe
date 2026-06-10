@@ -82,6 +82,25 @@ right anchoring, underlined title fallback, continuation header
 content (no ARDB, no Subj), Canc alignment, PDF flush-right edge at
 540pt +/- rounding, page-2 designation without code.
 
+## P3.5 — Mandatory paragraph schemas (MCO 5215.1K; audit 139-140)
+
+validateDirectiveSchema (fail severity): MCO requires Situation,
+Mission, Execution, Administration and Logistics, Command and Signal
+as level-1 titles in that relative order; Cancellation, when present,
+must be second. MCBul requires Purpose first; Cancellation
+Contingency, when present, must be last. validateBulletinCancellation
+(fail): cancellation date present, last day of its month, within the
+12-month ceiling measured from the bulletin date.
+NOT automated (manual proofread items): Signal paragraph
+effectiveness sentence ("This Order is effective the date signed."),
+Execution sub-paragraph structure (CI/CONOPS, SEM, Coordinating
+Instructions) — title matching below level 1 is too brittle to fail
+a document on.
+The existing scaffolds (getMCOParagraphs, getMCBulParagraphs) pass
+the validators as generated.
+Proof: 14 validator tests incl. order violations, slot rules,
+month-end and ceiling boundaries.
+
 ## Open items for Gate 3
 
 1. C5/C9 rulings (plan "OPEN RULINGS"): notice designation-line
@@ -92,5 +111,5 @@ content (no ARDB, no Subj), Canc alignment, PDF flush-right edge at
    carries both, emitters fixed at 12. Decide at Gate 3 whether a
    selector is wanted (functional addition needing approval).
 
-Suite after P3.4: 909 green (897 + 6 golden/components), tsc clean,
+Suite after P3.5: 923 green (897 + 6 golden/components), tsc clean,
 parity green, goldens byte-stable (correspondence untouched).

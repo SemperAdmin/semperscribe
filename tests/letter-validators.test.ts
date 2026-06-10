@@ -10,7 +10,8 @@ import {
   validateActionAddressees,
   getExportBlockers,
   indexToRefLetter,
-  validateDirectiveTypography } from '@/lib/letter-validators';
+  validateDirectiveTypography,
+  validateDirectiveSchema, validateBulletinCancellation } from '@/lib/letter-validators';
 import type { ParagraphData, FormData } from '@/types';
 
 const p = (id: number, level: number, content: string): ParagraphData => ({ id, level, content });
@@ -209,5 +210,87 @@ describe('P3.2 directive typewriter spacing (warn only)', () => {
 
   it('never fires for correspondence', () => {
     expect(validateDirectiveTypography({ documentType: 'basic' } as never, paras('One. Two.'))).toHaveLength(0);
+  });
+});
+
+describe('P3.5 directive paragraph schemas (MCO 5215.1K)', () => {
+  const titled = (titles: string[]) =>
+    titles.map((t, i) => ({ id: i + 1, level: 1, content: 'x', title: t })) as never[];
+  const SMEAC = ['Situation', 'Mission', 'Execution', 'Administration and Logistics', 'Command and Signal'];
+
+  it('passes a complete SMEAC order', () => {
+    expect(validateDirectiveSchema({ documentType: 'mco' } as never, titled(SMEAC))).toHaveLength(0);
+  });
+
+  it('passes SMEAC with Cancellation second', () => {
+    expect(validateDirectiveSchema({ documentType: 'mco' } as never,
+      titled(['Situation', 'Cancellation', 'Mission', 'Execution', 'Administration and Logistics', 'Command and Signal']))).toHaveLength(0);
+  });
+
+  it('fails a missing Mission paragraph', () => {
+    const issues = validateDirectiveSchema({ documentType: 'mco' } as never,
+      titled(['Situation', 'Execution', 'Administration and Logistics', 'Command and Signal']));
+    expect(issues.map((i) => i.id)).toContain('directive-missing-mission');
+  });
+
+  it('fails out-of-order mandatory paragraphs', () => {
+    const issues = validateDirectiveSchema({ documentType: 'mco' } as never,
+      titled(['Mission', 'Situation', 'Execution', 'Administration and Logistics', 'Command and Signal']));
+    expect(issues.map((i) => i.id)).toContain('directive-paragraph-order');
+  });
+
+  it('fails Cancellation in any slot but second', () => {
+    const issues = validateDirectiveSchema({ documentType: 'mco' } as never,
+      titled(['Situation', 'Mission', 'Cancellation', 'Execution', 'Administration and Logistics', 'Command and Signal']));
+    expect(issues.map((i) => i.id)).toContain('directive-cancellation-position');
+  });
+
+  it('fails a bulletin whose first paragraph is not Purpose', () => {
+    const issues = validateDirectiveSchema({ documentType: 'bulletin' } as never,
+      titled(['Background', 'Purpose']));
+    expect(issues.map((i) => i.id)).toContain('bulletin-purpose-first');
+  });
+
+  it('fails Cancellation Contingency anywhere but last', () => {
+    const issues = validateDirectiveSchema({ documentType: 'bulletin' } as never,
+      titled(['Purpose', 'Cancellation Contingency', 'Action']));
+    expect(issues.map((i) => i.id)).toContain('bulletin-canc-contingency-last');
+  });
+
+  it('ignores correspondence', () => {
+    expect(validateDirectiveSchema({ documentType: 'basic' } as never, titled(['Anything']))).toHaveLength(0);
+  });
+});
+
+describe('P3.5 bulletin cancellation date rules', () => {
+  const bul = (canc: string, date = '2026-06-10') =>
+    ({ documentType: 'bulletin', cancellationDate: canc, date } as never);
+
+  it('passes a month-end date within 12 months', () => {
+    expect(validateBulletinCancellation(bul('2026-12-31'))).toHaveLength(0);
+  });
+
+  it('fails a missing cancellation date', () => {
+    expect(validateBulletinCancellation({ documentType: 'bulletin' } as never)
+      .map((i) => i.id)).toContain('bulletin-canc-missing');
+  });
+
+  it('fails a mid-month date', () => {
+    expect(validateBulletinCancellation(bul('2026-12-15')).map((i) => i.id))
+      .toContain('bulletin-canc-month-end');
+  });
+
+  it('fails a date past the 12-month ceiling', () => {
+    expect(validateBulletinCancellation(bul('2027-08-31')).map((i) => i.id))
+      .toContain('bulletin-canc-ceiling');
+  });
+
+  it('accepts exactly 12 months out (boundary)', () => {
+    expect(validateBulletinCancellation(bul('2027-05-31', '2026-06-10'))
+      .map((i) => i.id)).not.toContain('bulletin-canc-ceiling');
+  });
+
+  it('never fires for non-bulletins', () => {
+    expect(validateBulletinCancellation({ documentType: 'mco' } as never)).toHaveLength(0);
   });
 });
