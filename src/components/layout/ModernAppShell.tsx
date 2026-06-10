@@ -14,6 +14,7 @@ interface ModernAppShellProps {
   documentType: string;
   onDocumentTypeChange: (type: string) => void;
   previewUrl?: string;
+  validationIssues?: import('./LivePreview').PreviewIssue[];
   isGeneratingPreview?: boolean;
   onExportDocx: () => void;
   onGeneratePdf: () => void;
@@ -50,6 +51,7 @@ export function ModernAppShell({
   documentType,
   onDocumentTypeChange,
   previewUrl,
+  validationIssues,
   isGeneratingPreview,
   onExportDocx,
   onGeneratePdf,
@@ -228,6 +230,7 @@ export function ModernAppShell({
             </aside>
           ) : (
             <LivePreview
+              issues={validationIssues}
               previewUrl={previewUrl}
               isLoading={isGeneratingPreview}
               onUpdatePreview={onUpdatePreview}

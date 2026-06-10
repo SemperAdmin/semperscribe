@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { ParagraphData, SavedLetter, ValidationState, FormData, AdminSubsections, ReportData } from '@/types';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
@@ -11,6 +11,7 @@ import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-
 import { loadSavedLetters, saveLetterToStorage } from '@/lib/storage-utils';
 import { getPDFPageCount, addMultipleSignaturesToBlob, ManualSignaturePosition } from '@/lib/pdf-generator';
 import { generateDocxBlob } from '@/lib/docx-generator';
+import { getExportBlockers, runLetterValidators } from '@/lib/letter-validators';
 import { SignaturePosition } from '@/types';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
@@ -435,6 +436,16 @@ function NavalLetterGeneratorInner() {
   };
 
   const generateDocument = async (format: 'docx' | 'pdf') => {
+    // HARD EXPORT GATE (M-5216.5 Fig 7-3; audit line 69): window
+    // envelope violations refuse export — a validator, not a warning.
+    const blockers = getExportBlockers(formData, vias, references, paragraphs);
+    if (blockers.length > 0) {
+      alert(
+        'Export blocked:\n\n' +
+        blockers.map((b) => `- ${b.rule}\n  ${b.detail}\n  [${b.citation}]`).join('\n'),
+      );
+      return;
+    }
     try {
       // Route I-Type documents through unified export
       if (formData.documentType === 'i-type') {
@@ -544,8 +555,15 @@ function NavalLetterGeneratorInner() {
     }
   }, []);
 
+  // Phase 2: inline compliance issues for the live preview banner.
+  const validationIssues = useMemo(
+    () => runLetterValidators(formData, vias, references, paragraphs),
+    [formData, vias, references, paragraphs],
+  );
+
   return (
     <ModernAppShell
+      validationIssues={validationIssues}
       documentType={formData.documentType}
       onDocumentTypeChange={handleDocumentTypeChange}
       previewUrl={previewUrl}

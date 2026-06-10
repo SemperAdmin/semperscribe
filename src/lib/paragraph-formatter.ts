@@ -175,7 +175,10 @@ export function createFormattedParagraph(
                children,
                alignment: AlignmentType.LEFT,
                indent: { firstLine: indentSize },
-               spacing: isShortLetter ? { line: 480 } : undefined // Double space for short letter
+               spacing: isShortLetter ? { line: 480 } : undefined, // Double space for short letter
+               // S6/P2 keep rules apply to business paragraphs too.
+               widowControl: true,
+               keepNext: keepWithNext || undefined,
            });
        }
 

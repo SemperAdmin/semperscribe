@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getBodyFont,
+  getComplimentaryClose,
   getFromToSpacing,
   getViaSpacing,
   getSubjSpacing,
@@ -39,6 +40,23 @@ describe('getFromToSpacing', () => {
   it('uses fixed spaces for Courier', () => {
     expect(getFromToSpacing('From', 'courier')).toBe('From:  ');
     expect(getFromToSpacing('To', 'courier')).toBe('To:    ');
+  });
+});
+
+describe('getViaSpacing — single via unnumbered (M-5216.5, Phase 2 item 1)', () => {
+  it('omits the "(1)" when there is exactly one via (times)', () => {
+    expect(getViaSpacing(0, 'times', 1)).toBe('Via:\t');
+  });
+  it('omits the "(1)" when there is exactly one via (courier)', () => {
+    expect(getViaSpacing(0, 'courier', 1)).toBe('Via:\u00A0\u00A0\u00A0');
+  });
+  it('numbers vias when two or more (times)', () => {
+    expect(getViaSpacing(0, 'times', 2)).toContain('(1)');
+    expect(getViaSpacing(1, 'times', 2)).toContain('(2)');
+  });
+  it('numbers vias when two or more (courier)', () => {
+    expect(getViaSpacing(0, 'courier', 3)).toContain('(1)');
+    expect(getViaSpacing(2, 'courier', 3)).toContain('(3)');
   });
 });
 
@@ -362,5 +380,20 @@ describe('mergeAdminSubsections', () => {
       reportsRequired: { show: false, content: '', order: 3 },
     };
     expect(mergeAdminSubsections(noParagraphs, admin)).toEqual(noParagraphs);
+  });
+});
+
+describe('getComplimentaryClose (MCO 5216.20B Sec 12; Phase 2 item 7)', () => {
+  it('defaults to "Sincerely,"', () => {
+    expect(getComplimentaryClose({})).toBe('Sincerely,');
+  });
+  it('VIP mode yields "Very respectfully,"', () => {
+    expect(getComplimentaryClose({ isVipMode: true })).toBe('Very respectfully,');
+  });
+  it('explicit close wins over VIP mode and gains exactly one comma', () => {
+    expect(getComplimentaryClose({ complimentaryClose: 'Respectfully', isVipMode: true }))
+      .toBe('Respectfully,');
+    expect(getComplimentaryClose({ complimentaryClose: 'Sincerely,' })).toBe('Sincerely,');
+    expect(getComplimentaryClose({ complimentaryClose: 'Sincerely,,' })).toBe('Sincerely,');
   });
 });

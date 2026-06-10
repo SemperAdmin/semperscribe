@@ -5,7 +5,16 @@ import { cn } from '@/lib/utils';
 
 import { PageCountIndicator } from './PageCountIndicator';
 
+export interface PreviewIssue {
+  severity: 'block' | 'fail' | 'warn';
+  rule: string;
+  detail: string;
+  citation: string;
+}
+
 interface LivePreviewProps {
+  /** Phase 2 validator issues rendered inline above the preview. */
+  issues?: PreviewIssue[];
   className?: string;
   previewUrl?: string; // If we have a blob URL
   isLoading?: boolean;
@@ -13,7 +22,9 @@ interface LivePreviewProps {
   documentType?: string;
 }
 
-export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview, documentType = 'standard' }: LivePreviewProps) {
+export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview, documentType = 'standard', issues = [] }: LivePreviewProps) {
+  const blocking = issues.filter((i) => i.severity === 'block');
+  const failing = issues.filter((i) => i.severity === 'fail');
   return (
     <aside className={cn("w-[45%] max-w-[900px] min-w-[500px] bg-muted/20 border-l border-border hidden xl:flex flex-col h-full", className)}>
       <div className="h-12 bg-card border-b border-border flex items-center justify-between px-4 shrink-0">
@@ -39,7 +50,27 @@ export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview,
            </Button>
         </div>
       </div>
-      
+
+      {(blocking.length > 0 || failing.length > 0) && (
+        <div
+          role="alert"
+          className={cn(
+            "px-4 py-1.5 text-xs text-white shrink-0",
+            blocking.length > 0 ? "bg-red-900" : "bg-amber-900",
+          )}
+          title={[...blocking, ...failing].map((i) => `${i.rule} — ${i.detail} [${i.citation}]`).join('\n')}
+        >
+          <span className="font-semibold">
+            {blocking.length > 0 ? 'EXPORT BLOCKED: ' : 'Compliance: '}
+          </span>
+          {[...new Set([...blocking, ...failing].map((i) => i.rule))].slice(0, 2).join(' | ')}
+          {(() => {
+            const rules = [...new Set([...blocking, ...failing].map((i) => i.rule))];
+            return rules.length > 2 ? ` (+${rules.length - 2} more — see Proofread)` : '';
+          })()}
+        </div>
+      )}
+
       <div className="flex-1 overflow-hidden relative bg-muted/40">
         <PageCountIndicator url={previewUrl || null} documentType={documentType} />
         {isLoading ? (

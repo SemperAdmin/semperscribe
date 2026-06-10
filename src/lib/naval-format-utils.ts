@@ -37,7 +37,14 @@ export function getFromToSpacing(label: string, bodyFont: 'times' | 'courier'): 
  * @param bodyFont - The font type
  * @returns Formatted via label with spacing
  */
-export function getViaSpacing(index: number, bodyFont: 'times' | 'courier'): string {
+export function getViaSpacing(index: number, bodyFont: 'times' | 'courier', total: number = 2): string {
+  // M-5216.5: number via addressees ONLY when there are two or more.
+  // A single via is unnumbered ("Via:  Commanding Officer..." with no
+  // "(1)"). Phase 2 item 1; default total=2 preserves the numbered
+  // form for legacy callers that do not pass a total.
+  if (total === 1) {
+    return bodyFont === 'courier' ? 'Via:\u00A0\u00A0\u00A0' : 'Via:\t';
+  }
   if (bodyFont === 'courier') {
     return index === 0
       ? `Via:\u00A0\u00A0\u00A0(${index + 1})\u00A0` // 3 spaces before, 1 space after
@@ -616,4 +623,22 @@ export function getInformationPaperParagraphs(): ParagraphData[] {
     { id: 1, level: 1, content: 'State the reason for the paper.', title: 'Purpose', isMandatory: true },
     { id: 2, level: 1, content: 'Present the main points in a logical sequence.', title: 'Key Points', isMandatory: true },
   ];
+}
+
+/**
+ * Single source for the complimentary close (MCO 5216.20B Sec 12):
+ * "Sincerely" standard; "Very respectfully" in VIP mode; always one
+ * trailing comma. Feeds both emitters (Phase 2 item 7). DLA paths are
+ * out of scope per user ruling 2026-06-10 and keep their own default.
+ */
+export function getComplimentaryClose(formData: {
+  complimentaryClose?: string;
+  isVipMode?: boolean;
+  [key: string]: unknown;
+}): string {
+  const base = (
+    formData.complimentaryClose?.trim() ||
+    (formData.isVipMode ? 'Very respectfully' : 'Sincerely')
+  ).replace(/,+$/, '');
+  return base + ',';
 }

@@ -7,6 +7,7 @@
  */
 
 import { FormData, ParagraphData } from '@/types';
+import { runLetterValidators } from './letter-validators';
 
 export type CheckStatus = 'pass' | 'fail' | 'warn' | 'manual' | 'info';
 export type CheckCategory = 'format' | 'framework' | 'typography' | 'content';
@@ -34,6 +35,23 @@ export function runProofreadChecks(
 ): ProofreadCheck[] {
   const checks: ProofreadCheck[] = [];
   const docType = formData.documentType;
+
+  // Phase 2 conditional-logic validators (letter-validators.ts).
+  // Severity map: block/fail -> fail, warn -> warn. Vias are not in
+  // this signature; window-envelope via blocking runs at the export
+  // gate (getExportBlockers), which does receive them.
+  for (const issue of runLetterValidators(formData, [], references, paragraphs)) {
+    checks.push({
+      id: issue.id,
+      category: 'framework',
+      reference: issue.citation,
+      label: issue.rule,
+      description: issue.rule,
+      status: issue.severity === 'warn' ? 'warn' : 'fail',
+      detail: issue.detail,
+      isAutomatic: true,
+    });
+  }
 
   // Skip checks entirely for non-letter types
   const isForm = ['page11', 'aa-form', 'coordination-page', 'decision-paper'].includes(docType);

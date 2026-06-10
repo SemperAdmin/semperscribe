@@ -36,7 +36,7 @@ const CONTINUATION_SPACER_NAVAL = 84 - PDF_MARGINS.top;
 const CONTINUATION_HEADER_HEIGHT = 48; // directive/civilian legacy, retuned in Phases 3-4
 import { getPDFSealDataUrl } from '@/lib/pdf-seal';
 import { parseAndFormatDate, formatBusinessDate } from '@/lib/date-utils';
-import { splitSubject, formatCancellationDate, formatDirectiveSSICBlock, buildDirectiveTitle } from '@/lib/naval-format-utils';
+import { splitSubject, formatCancellationDate, formatDirectiveSSICBlock, buildDirectiveTitle, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose } from '@/lib/naval-format-utils';
 import { DISTRIBUTION_STATEMENTS } from '@/lib/constants';
 import { parseFormattedText } from '@/lib/pdf-text-parser';
 import { relativeIndentEngine, isCorrespondenceType } from '@/lib/indent-engine';
@@ -753,12 +753,14 @@ export function NavalLetterPDF({
     return `${label}:`;
   };
 
+  // Via numbering rule shared with the DOCX emitter (M-5216.5: number
+  // only when 2+ vias; single via unnumbered). The Times PDF renders
+  // the label and the "(n)" in separate flex columns, so this local
+  // helper only emits the label/number prefix; the single source of
+  // truth for the numbering CONDITION is sharedGetViaSpacing.
   const getViaSpacing = (index: number, total: number): string => {
     if (formData.bodyFont === 'courier') {
-      if (total === 1) return 'Via:\u00A0\u00A0\u00A0';
-      return index === 0
-        ? `Via:\u00A0\u00A0\u00A0(${index + 1})\u00A0`
-        : `\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0(${index + 1})\u00A0`;
+      return sharedGetViaSpacing(index, 'courier', total);
     }
     if (total === 1) return 'Via:';
     return index === 0 ? 'Via:' : '';
@@ -1721,12 +1723,15 @@ export function NavalLetterPDF({
 
         {/* Business/Executive Letter Closing Block */}
         {isCivilianStyle && !isDLAType && (
-            <View>
+            // wrap=false: the close and signature block never split
+            // across a page break (M-5216.5 7-2.16 discipline applied
+            // to the business closing; user-reported split 2026-06-10).
+            <View wrap={false}>
                 {/* Complimentary Close (Centered) */}
                 <View style={{ marginBottom: PDF_SPACING.sectionGap * 3, marginLeft: PDF_INDENTS.signature }}>
                     <View style={styles.emptyLine} />
                     <Text style={styles.addressLine}>
-                        {formData.complimentaryClose || (formData.isVipMode ? 'Very respectfully,' : 'Sincerely,')}
+                        {getComplimentaryClose(formData)}
                     </Text>
                 </View>
 

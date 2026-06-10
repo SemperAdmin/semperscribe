@@ -30,7 +30,8 @@ import {
   getSubjSpacing, 
   getRefSpacing, 
   getEnclSpacing, 
-  getCopyToSpacing 
+  getCopyToSpacing, 
+  getComplimentaryClose 
 } from "./naval-format-utils";
 import { createFormattedParagraph, generateCitation } from "./paragraph-formatter";
 import { relativeIndentEngine, isCorrespondenceType } from "./indent-engine";
@@ -826,7 +827,7 @@ export async function generateDocxBlob(
         const viasWithContent = vias.filter(v => v.trim());
         if (viasWithContent.length > 0) {
           viasWithContent.forEach((via, index) => {
-              const viaLabel = getViaSpacing(index, formData.bodyFont);
+              const viaLabel = getViaSpacing(index, formData.bodyFont, viasWithContent.length);
               const children = [
                   new TextRun({ text: viaLabel, font, size: FONT_SIZE_BODY }),
                   new TextRun({ text: via, font, size: FONT_SIZE_BODY }),
@@ -1151,7 +1152,10 @@ export async function generateDocxBlob(
     const shouldUppercaseTitle = !['moa', 'mou', 'information-paper', 'position-paper'].includes(formData.documentType);
     const hasNavalSignature = !!formData.sig && !isStaffingPaper &&
         !isDLAMemo && !isDLABusinessLetter && !isCivilianStyle;
-    const keepWithSignature = hasNavalSignature && !!relativeSpecs &&
+    // Business/exec closings also bind to the last body paragraph so
+    // the signature page carries text (DLA out of scope per ruling).
+    const hasCivilianClosing = isCivilianStyle && !isDLAMemo && !isDLABusinessLetter;
+    const keepWithSignature = (hasNavalSignature || hasCivilianClosing) && !!relativeSpecs &&
         index === paragraphsWithContent.length - 1;
     bodyParagraphs.push(createFormattedParagraph(p, index, paragraphsWithContent, font, "000000", isDirective, shouldBoldTitle, shouldUppercaseTitle, isCivilianStyle, formData.isShortLetter, relativeSpecs?.[index], keepWithSignature));
 
@@ -1551,24 +1555,28 @@ export async function generateDocxBlob(
       }
   } else if (isCivilianStyle) {
       // Business/Executive Letter Closing Block
-      // Own separation from body (see DLA note above).
-      signatureParagraphs.push(createEmptyLine(font));
-      let close = formData.complimentaryClose;
-      if (!close) {
-          close = formData.isVipMode ? "Very respectfully" : "Sincerely";
-      }
+      // keepNext chains the separation blank, the close, and the three
+      // signature blanks so the closing never splits from the signature
+      // across a page break (user-reported split, 2026-06-10).
+      const closeSpacer = () => new Paragraph({
+          children: [new TextRun({ text: "", font, size: FONT_SIZE_BODY })],
+          keepNext: true,
+      });
+      signatureParagraphs.push(closeSpacer());
+      const close = getComplimentaryClose(formData);
 
       signatureParagraphs.push(new Paragraph({
-          children: [new TextRun({ text: close.endsWith(',') ? close : close + ",", font, size: FONT_SIZE_BODY })],
+          keepNext: true,
+          children: [new TextRun({ text: close, font, size: FONT_SIZE_BODY })],
           indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
           spacing: { after: 0 }
       }));
 
       // Signature on the 4th line below the close: three blank lines
       // (M-5216.5 11-2.9; MCO 5216.20B Sec 12 2.f; audit G4).
-      signatureParagraphs.push(createEmptyLine(font));
-      signatureParagraphs.push(createEmptyLine(font));
-      signatureParagraphs.push(createEmptyLine(font));
+      signatureParagraphs.push(closeSpacer());
+      signatureParagraphs.push(closeSpacer());
+      signatureParagraphs.push(closeSpacer());
 
       if (!formData.omitSignatureBlock) {
           // Signer Name

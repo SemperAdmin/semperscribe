@@ -57,6 +57,37 @@ describe('business letter closing block (G4)', () => {
   });
 });
 
+describe('business closing keep-together (user-reported split, 2026-06-10)', () => {
+  it('close, blanks, and separation spacer are keepNext; signature line is not', async () => {
+    const xml = await xmlFor({
+      documentType: 'business-letter',
+      complimentaryClose: 'Sincerely',
+      sig: 'I. M. MARINE',
+    });
+    const paras = paragraphsOf(xml);
+    const closeIdx = paras.findIndex((p) => p.includes('Sincerely'));
+    const sigIdx = paras.findIndex((p) => p.includes('I. M. MARINE'));
+    expect(paras[closeIdx].includes('<w:keepNext/>'), 'close keepNext').toBe(true);
+    for (let k = closeIdx + 1; k < sigIdx; k++) {
+      expect(paras[k].includes('<w:keepNext/>'), `blank ${k} keepNext`).toBe(true);
+    }
+    expect(paras[closeIdx - 1].includes('<w:keepNext/>'), 'separation spacer keepNext').toBe(true);
+    expect(paras[sigIdx].includes('<w:keepNext/>'), 'signature line not keepNext').toBe(false);
+  });
+
+  it('last body paragraph binds to the closing (keepNext)', async () => {
+    const xml = await xmlFor({
+      documentType: 'business-letter',
+      complimentaryClose: 'Sincerely',
+      sig: 'I. M. MARINE',
+    });
+    const paras = paragraphsOf(xml);
+    const bodyParas = paras.filter((p) => /level (one|two|three|four|five|six|seven|eight)|paragraph/.test(p) || p.includes('This is'));
+    const last = bodyParas[bodyParas.length - 1];
+    expect(last.includes('<w:keepNext/>'), 'last body paragraph keepNext').toBe(true);
+  });
+});
+
 describe('DLA closing blocks (G4)', () => {
   it('DLA memorandum signature block starts at page center', async () => {
     const xml = await xmlFor({
