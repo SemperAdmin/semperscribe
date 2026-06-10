@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "export": "next export",
+    "test": "vitest run",
+    "test:golden": "vitest run tests/golden",
     "deploy": "next build && gh-pages -d out",
     "sbom": "cyclonedx-npm --output-format JSON --output-file sbom.cdx.json --omit dev"
   },

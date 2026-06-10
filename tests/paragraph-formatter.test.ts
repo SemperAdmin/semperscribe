@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { generateCitation, NAVAL_TAB_STOPS } from '@/lib/paragraph-formatter';
+import { generateCitation } from '@/lib/paragraph-formatter';
+import { FIXED_LADDER } from '@/lib/indent-engine';
 import { ParagraphData } from '@/types';
 
 // Helper to create paragraph data
@@ -7,17 +8,17 @@ function p(id: number, level: number, content: string = 'text'): ParagraphData {
   return { id, level, content };
 }
 
-describe('NAVAL_TAB_STOPS', () => {
+describe('FIXED_LADDER (pre-Phase-1 cascade, directive fallback)', () => {
   it('defines positions for levels 1-8', () => {
     for (let level = 1; level <= 8; level++) {
-      expect(NAVAL_TAB_STOPS[level as keyof typeof NAVAL_TAB_STOPS]).toBeDefined();
+      expect(FIXED_LADDER[level]).toBeDefined();
     }
   });
 
   it('cascades in 0.25" (360 twip) increments', () => {
     for (let level = 1; level <= 7; level++) {
-      const current = NAVAL_TAB_STOPS[level as keyof typeof NAVAL_TAB_STOPS];
-      const next = NAVAL_TAB_STOPS[(level + 1) as keyof typeof NAVAL_TAB_STOPS];
+      const current = FIXED_LADDER[level];
+      const next = FIXED_LADDER[level + 1];
       expect(next.citation - current.citation).toBe(360);
       expect(next.text - current.text).toBe(360);
     }
@@ -25,7 +26,7 @@ describe('NAVAL_TAB_STOPS', () => {
 
   it('has text position 0.25" past citation for each level', () => {
     for (let level = 1; level <= 8; level++) {
-      const spec = NAVAL_TAB_STOPS[level as keyof typeof NAVAL_TAB_STOPS];
+      const spec = FIXED_LADDER[level];
       expect(spec.text - spec.citation).toBe(360);
     }
   });

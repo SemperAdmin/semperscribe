@@ -1,0 +1,977 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" xmlns:cx="http://schemas.microsoft.com/office/drawing/2014/chartex" xmlns:cx1="http://schemas.microsoft.com/office/drawing/2015/9/8/chartex" xmlns:cx2="http://schemas.microsoft.com/office/drawing/2015/10/21/chartex" xmlns:cx3="http://schemas.microsoft.com/office/drawing/2016/5/9/chartex" xmlns:cx4="http://schemas.microsoft.com/office/drawing/2016/5/10/chartex" xmlns:cx5="http://schemas.microsoft.com/office/drawing/2016/5/11/chartex" xmlns:cx6="http://schemas.microsoft.com/office/drawing/2016/5/12/chartex" xmlns:cx7="http://schemas.microsoft.com/office/drawing/2016/5/13/chartex" xmlns:cx8="http://schemas.microsoft.com/office/drawing/2016/5/14/chartex" xmlns:aink="http://schemas.microsoft.com/office/drawing/2016/ink" xmlns:am3d="http://schemas.microsoft.com/office/drawing/2017/model3d" xmlns:w16cex="http://schemas.microsoft.com/office/word/2018/wordml/cex" xmlns:w16cid="http://schemas.microsoft.com/office/word/2016/wordml/cid" xmlns:w16="http://schemas.microsoft.com/office/word/2018/wordml" xmlns:w16sdtdh="http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash" xmlns:w16se="http://schemas.microsoft.com/office/word/2015/wordml/symex" mc:Ignorable="w14 w15 wp14">
+<w:body>
+<w:p>
+<w:pPr>
+<w:spacing w:after="0"/>
+<w:jc w:val="center"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:color w:val="000000"/>
+<w:sz w:val="20"/>
+<w:szCs w:val="20"/>
+<w:rFonts w:ascii="Arial" w:cs="Arial" w:eastAsia="Arial" w:hAnsi="Arial"/>
+</w:rPr>
+<w:t xml:space="preserve">UNITED STATES MARINE CORPS</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:tbl>
+<w:tblPr>
+<w:tblW w:type="auto" w:w="0"/>
+<w:jc w:val="right"/>
+<w:tblBorders>
+<w:top w:val="none" w:color="auto" w:sz="0"/>
+<w:left w:val="none" w:color="auto" w:sz="0"/>
+<w:bottom w:val="none" w:color="auto" w:sz="0"/>
+<w:right w:val="none" w:color="auto" w:sz="0"/>
+<w:insideH w:val="none" w:color="auto" w:sz="0"/>
+<w:insideV w:val="none" w:color="auto" w:sz="0"/>
+</w:tblBorders>
+</w:tblPr>
+<w:tblGrid>
+<w:gridCol w:w="100"/>
+</w:tblGrid>
+<w:tr>
+<w:tc>
+<w:tcPr>
+<w:tcW w:type="auto" w:w="0"/>
+<w:tcBorders>
+<w:top w:val="none" w:color="auto" w:sz="0"/>
+<w:left w:val="none" w:color="auto" w:sz="0"/>
+<w:bottom w:val="none" w:color="auto" w:sz="0"/>
+<w:right w:val="none" w:color="auto" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:pPr>
+<w:spacing w:after="0"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">1000</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:spacing w:after="0"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">CODE</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:spacing w:after="0"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">10 Feb 26</w:t>
+</w:r>
+</w:p>
+</w:tc>
+</w:tr>
+</w:tbl>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:tabs>
+<w:tab w:val="left" w:pos="720"/>
+</w:tabs>
+<w:spacing w:after="0"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">From:	</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Commanding Officer, Unit Name, City, State Zip</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:tabs>
+<w:tab w:val="left" w:pos="720"/>
+</w:tabs>
+<w:spacing w:after="0"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">To:	</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Commanding Officer, Destination Unit, City, State Zip</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:tabs>
+<w:tab w:val="left" w:pos="720"/>
+</w:tabs>
+<w:spacing w:after="0"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Via:	(1)	</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Commanding Officer, Intermediate Unit, Camp Pendleton, CA 92055</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:tabs>
+<w:tab w:val="left" w:pos="720"/>
+</w:tabs>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Subj:	</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">GOLDEN FILE FIXTURE LETTER</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:tabs>
+<w:tab w:val="left" w:pos="720"/>
+</w:tabs>
+<w:ind w:left="1080" w:hanging="1080"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Ref:	(a) </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">(a) MCO 5216.20B</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:tabs>
+<w:tab w:val="left" w:pos="720"/>
+</w:tabs>
+<w:ind w:left="1080" w:hanging="1080"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">	(b) </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">(b) SECNAVINST 5216.5E</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:tabs>
+<w:tab w:val="left" w:pos="720"/>
+</w:tabs>
+<w:ind w:left="1080" w:hanging="1080"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Encl:	(1) </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">(1) Supporting Document A</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:tabs>
+<w:tab w:val="left" w:pos="720"/>
+</w:tabs>
+<w:ind w:left="1080" w:hanging="1080"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">	(2) </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">(2) Supporting Document B</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:widowControl/>
+<w:ind w:firstLine="0"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">1.</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">  </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">This is the first paragraph. Paragraphs are numbered 1, 2, 3, and so on.</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:widowControl/>
+<w:ind w:firstLine="0"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">2.</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">  </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">This is the second paragraph. It introduces sub-paragraphs.</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:widowControl/>
+<w:ind w:firstLine="300"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">a.</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">  </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">This is a sub-paragraph (a).</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:widowControl/>
+<w:ind w:firstLine="587"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">(1)</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve"> </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">This is a sub-sub-paragraph (1).</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:widowControl/>
+<w:ind w:firstLine="926"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">(a)</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve"> </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">This is a sub-sub-sub-paragraph (a).</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:widowControl/>
+<w:ind w:firstLine="1253"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:u w:val="single" w:color="000000"/>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">1</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">.</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">  </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">This is the fifth level </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:u w:val="single" w:color="000000"/>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">1</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">. The designator is underlined.</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:widowControl/>
+<w:ind w:firstLine="1553"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:u w:val="single" w:color="000000"/>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">a</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">.</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">  </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">This is the sixth level </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:u w:val="single" w:color="000000"/>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">a</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">. The designator is underlined.</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:widowControl/>
+<w:ind w:firstLine="1839"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">(</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:u w:val="single" w:color="000000"/>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">1</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">)</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve"> </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">This is the seventh level (</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:u w:val="single" w:color="000000"/>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">1</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">). Parenthesized, designator underlined.</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:keepNext/>
+<w:widowControl/>
+<w:ind w:firstLine="2179"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">(</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:u w:val="single" w:color="000000"/>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">a</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">)</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve"> </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">This is the eighth level (</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:u w:val="single" w:color="000000"/>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">a</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:color w:val="000000"/>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">). Parenthesized, designator underlined.</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:keepNext/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:keepNext/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:keepNext/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:spacing w:after="0"/>
+<w:ind w:left="4680"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">I. M. MARINE</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:ind w:left="4680"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">By direction</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:spacing w:after="0"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Copy to:</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:spacing w:after="0"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Commanding General, I MEF</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:spacing w:after="0"/>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="24"/>
+<w:szCs w:val="24"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Inspector General of the Marine Corps</w:t>
+</w:r>
+</w:p>
+<w:sectPr>
+<w:headerReference w:type="default" r:id="rId6"/>
+<w:headerReference w:type="first" r:id="rId7"/>
+<w:footerReference w:type="default" r:id="rId8"/>
+<w:footerReference w:type="first" r:id="rId9"/>
+<w:pgSz w:w="11906" w:h="16838" w:orient="portrait"/>
+<w:pgMar w:top="720" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="708" w:gutter="0"/>
+<w:pgNumType w:start="1" w:fmt="decimal"/>
+<w:titlePg/>
+<w:docGrid w:linePitch="360"/>
+</w:sectPr>
+</w:body>
+</w:document>

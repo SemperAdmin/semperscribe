@@ -9,9 +9,10 @@ export const DOC_SETTINGS = {
     left: 1440,     // 1" left
     right: 1440,    // 1" right
   },
-  spacing: {
-    after: 120      // 6pt spacing after paragraphs
-  },
+  // spacing.after removed (Phase 1 S2). The 6pt value was dead code -
+  // no call site consumed it - and conflicted with SECNAV M-5216.5
+  // 7-2.13: separation between paragraphs is one full blank line at
+  // body size, emitted as an explicit empty paragraph (createEmptyLine).
   pageSize: {
       width: 12240,  // 8.5 inches in twips
       height: 15840, // 11 inches in twips

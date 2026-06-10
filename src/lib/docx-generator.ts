@@ -33,6 +33,7 @@ import {
   getCopyToSpacing 
 } from "./naval-format-utils";
 import { createFormattedParagraph, generateCitation } from "./paragraph-formatter";
+import { relativeIndentEngine, isCorrespondenceType } from "./indent-engine";
 import { parseAndFormatDate, formatBusinessDate } from "./date-utils";
 import { DISTRIBUTION_STATEMENTS } from "@/lib/constants";
 import { DOC_SETTINGS, TAB_STOPS, INDENTS } from "./doc-settings";
@@ -56,9 +57,16 @@ const getHeaderColor = (colorName?: string) => {
   return colorName === 'blue' ? "000080" : "000000"; // Navy blue (#000080 per reference) or black
 };
 
-// Helper to create empty lines - Matches legacy app behavior
+// Empty line = one full blank line at body type size.
+// SECNAV M-5216.5 7-2.13: the next paragraph "begins on the second line
+// below" - the blank line must be a 12pt line, so the paragraph mark
+// carries an explicit run with the body font and size. The previous
+// implementation ignored both arguments, leaving blank-line height to
+// Word's default style (audit gap G2).
 const createEmptyLine = (font?: string, size?: number) => {
-  return new Paragraph({ text: "" });
+  return new Paragraph({
+    children: [new TextRun({ text: "", font: font ?? DOC_SETTINGS.font, size: size ?? FONT_SIZE_BODY })],
+  });
 };
 
 export async function generateDocxBlob(
@@ -990,6 +998,16 @@ export async function generateDocxBlob(
   const bodyParagraphs: (Paragraph | Table)[] = [];
   const paragraphsWithContent = paragraphs.filter(p => p.content.trim() || p.title);
 
+  // Correspondence: paragraph indents come from the relative engine
+  // (SECNAV M-5216.5 Fig 7-8, content-relative). Directives and message
+  // formats keep their dedicated paths until Phase 3/4.
+  const relativeSpecs = isCorrespondenceType(formData.documentType)
+    ? relativeIndentEngine.computeSpecs(
+        paragraphsWithContent,
+        formData.bodyFont === 'courier' ? 'courier' : 'times'
+      )
+    : undefined;
+
   paragraphsWithContent.forEach((p, index) => {
     // Custom handling for Position/Decision Paper Multiple Recs - Paragraph 4
     if ((isPositionPaper || isDecisionPaper) &&
@@ -1120,10 +1138,10 @@ export async function generateDocxBlob(
             }));
         }
 
-        bodyParagraphs.push(new Paragraph({
-            children: [],
-            spacing: { after: 0, before: 0 },
-        }));
+        // Same last-paragraph suppression as the standard branch below.
+        if (index !== paragraphsWithContent.length - 1) {
+            bodyParagraphs.push(createEmptyLine(font));
+        }
     } else {
     // Use the shared formatter logic which correctly handles:
     // 1. Citation generation (1., a., (1), etc.)
@@ -1131,13 +1149,22 @@ export async function generateDocxBlob(
     // 3. Bold/Italic parsing
     const shouldBoldTitle = !['mco', 'moa', 'mou', 'information-paper', 'position-paper'].includes(formData.documentType);
     const shouldUppercaseTitle = !['moa', 'mou', 'information-paper', 'position-paper'].includes(formData.documentType);
-    bodyParagraphs.push(createFormattedParagraph(p, index, paragraphsWithContent, font, "000000", isDirective, shouldBoldTitle, shouldUppercaseTitle, isCivilianStyle, formData.isShortLetter));
+    const hasNavalSignature = !!formData.sig && !isStaffingPaper &&
+        !isDLAMemo && !isDLABusinessLetter && !isCivilianStyle;
+    const keepWithSignature = hasNavalSignature && !!relativeSpecs &&
+        index === paragraphsWithContent.length - 1;
+    bodyParagraphs.push(createFormattedParagraph(p, index, paragraphsWithContent, font, "000000", isDirective, shouldBoldTitle, shouldUppercaseTitle, isCivilianStyle, formData.isShortLetter, relativeSpecs?.[index], keepWithSignature));
 
-    // Add spacing after paragraph
-    bodyParagraphs.push(new Paragraph({
-        children: [],
-        spacing: { after: 0, before: 0 }, // Minimal spacing, rely on the empty line height
-    }));
+    // Full blank line between body paragraphs (M-5216.5 7-2.13).
+    // Suppressed after the LAST paragraph for correspondence: the
+    // signature block owns its own three blank lines, so a trailing
+    // spacer here would push the signature to the 5th line below the
+    // text instead of the 4th (M-5216.5 7-2.16). Directives keep it
+    // (5th-line signature, MCO 5215.1K para 37) until Phase 3.
+    const isLastParagraph = index === paragraphsWithContent.length - 1;
+    if (!(relativeSpecs && isLastParagraph)) {
+        bodyParagraphs.push(createEmptyLine(font));
+    }
     }
   });
 
@@ -1466,58 +1493,66 @@ export async function generateDocxBlob(
       if (formData.signerFullName) {
           signatureParagraphs.push(new Paragraph({
               children: [new TextRun({ text: formData.signerFullName, font, size: FONT_SIZE_BODY })],
-              alignment: AlignmentType.CENTER,
+              indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
               spacing: { after: 0 }
           }));
       }
       if (formData.signerRank) {
           signatureParagraphs.push(new Paragraph({
               children: [new TextRun({ text: formData.signerRank, font, size: FONT_SIZE_BODY })],
-              alignment: AlignmentType.CENTER,
+              indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
               spacing: { after: 0 }
           }));
       }
       if (formData.signerTitle) {
           signatureParagraphs.push(new Paragraph({
               children: [new TextRun({ text: formData.signerTitle, font, size: FONT_SIZE_BODY })],
-              alignment: AlignmentType.CENTER,
+              indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
               spacing: { after: 0 }
           }));
       }
       if (formData.delegationText) {
           signatureParagraphs.push(new Paragraph({
               children: [new TextRun({ text: formData.delegationText, font, size: FONT_SIZE_BODY })],
-              alignment: AlignmentType.CENTER,
+              indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
               spacing: { after: 0 }
           }));
       }
   } else if (isDLABusinessLetter) {
       // DLA Business Letter Closing Block
+      // Own separation from body: close begins on the 2nd line below
+      // the text (MCO 5216.20B Sec 12; trailing body spacer removed).
+      signatureParagraphs.push(createEmptyLine(font));
       const close = formData.complimentaryClose || 'Sincerely';
       signatureParagraphs.push(new Paragraph({
           children: [new TextRun({ text: close.endsWith(',') ? close : close + ',', font, size: FONT_SIZE_BODY })],
-          alignment: AlignmentType.CENTER,
+          indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
           spacing: { after: 0 }
       }));
+      // Signature on the 4th line below the close: three blank lines
+      // (MCO 5216.20B Sec 12 2.f; audit G4).
+      signatureParagraphs.push(createEmptyLine(font));
       signatureParagraphs.push(createEmptyLine(font));
       signatureParagraphs.push(createEmptyLine(font));
 
       if (formData.signerFullName) {
           signatureParagraphs.push(new Paragraph({
               children: [new TextRun({ text: formData.signerFullName, font, size: FONT_SIZE_BODY })],
-              alignment: AlignmentType.CENTER,
+              indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
               spacing: { after: 0 }
           }));
       }
       if (formData.delegationText) {
           signatureParagraphs.push(new Paragraph({
               children: [new TextRun({ text: formData.delegationText, font, size: FONT_SIZE_BODY })],
-              alignment: AlignmentType.CENTER,
+              indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
               spacing: { after: 0 }
           }));
       }
   } else if (isCivilianStyle) {
       // Business/Executive Letter Closing Block
+      // Own separation from body (see DLA note above).
+      signatureParagraphs.push(createEmptyLine(font));
       let close = formData.complimentaryClose;
       if (!close) {
           close = formData.isVipMode ? "Very respectfully" : "Sincerely";
@@ -1525,11 +1560,13 @@ export async function generateDocxBlob(
 
       signatureParagraphs.push(new Paragraph({
           children: [new TextRun({ text: close.endsWith(',') ? close : close + ",", font, size: FONT_SIZE_BODY })],
-          alignment: AlignmentType.CENTER,
+          indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
           spacing: { after: 0 }
       }));
 
-      // Space for signature (2 lines)
+      // Signature on the 4th line below the close: three blank lines
+      // (M-5216.5 11-2.9; MCO 5216.20B Sec 12 2.f; audit G4).
+      signatureParagraphs.push(createEmptyLine(font));
       signatureParagraphs.push(createEmptyLine(font));
       signatureParagraphs.push(createEmptyLine(font));
 
@@ -1538,7 +1575,7 @@ export async function generateDocxBlob(
           if (formData.sig) {
               signatureParagraphs.push(new Paragraph({
                   children: [new TextRun({ text: formData.sig.toUpperCase(), font, size: FONT_SIZE_BODY })],
-                  alignment: AlignmentType.CENTER,
+                  indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
                   spacing: { after: 0 }
               }));
           }
@@ -1547,7 +1584,7 @@ export async function generateDocxBlob(
           if (isBusinessLetter && formData.signerRank) {
               signatureParagraphs.push(new Paragraph({
                   children: [new TextRun({ text: formData.signerRank, font, size: FONT_SIZE_BODY })],
-                  alignment: AlignmentType.CENTER,
+                  indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
                   spacing: { after: 0 }
               }));
           }
@@ -1556,7 +1593,7 @@ export async function generateDocxBlob(
           if (formData.signerTitle) {
               signatureParagraphs.push(new Paragraph({
                   children: [new TextRun({ text: formData.signerTitle, font, size: FONT_SIZE_BODY })],
-                  alignment: AlignmentType.CENTER,
+                  indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
                   spacing: { after: 0 }
               }));
           }
@@ -1577,10 +1614,18 @@ export async function generateDocxBlob(
           }));
       }
   } else if (formData.sig && !isStaffingPaper) {
-    // Three empty lines before signature per reference app (matches SECNAV M-5216.5)
-    signatureParagraphs.push(createEmptyLine(font));
-    signatureParagraphs.push(createEmptyLine(font));
-    signatureParagraphs.push(createEmptyLine(font));
+    // Three empty lines, signature on the 4th line below the text
+    // (M-5216.5 7-2.16). keepNext chains the blanks to the signature
+    // line so the block never splits across a page boundary; combined
+    // with keepNext on the last body paragraph, the signature page
+    // always carries at least two lines of text (S6).
+    const sigSpacer = () => new Paragraph({
+      children: [new TextRun({ text: "", font, size: FONT_SIZE_BODY })],
+      keepNext: true,
+    });
+    signatureParagraphs.push(sigSpacer());
+    signatureParagraphs.push(sigSpacer());
+    signatureParagraphs.push(sigSpacer());
 
     signatureParagraphs.push(new Paragraph({
       children: [
@@ -1849,8 +1894,13 @@ export async function generateDocxBlob(
   }
 
   // --- Header for First Page (Seal) ---
+  // USER RULING 2026-06-10: seal anchor stays in the first-page header
+  // so Word keeps its long-validated letterhead position (~0.67in, the
+  // anchor paragraph pushes the body). This deviates from M-5216.5
+  // 2-2.12b (first letterhead line on the 4th line = 0.5in). Deferred:
+  // see docs/PHASE1_GOLDEN_DIFFS.md S3.3.
   let firstPageHeader: Header;
-  
+
   if (sealBuffer && !isFromToMemo && !isMfr && !isStaffingPaper) {
       firstPageHeader = new Header({
           children: [
@@ -1945,6 +1995,15 @@ export async function generateDocxBlob(
       
       subsequentHeaderParagraphs.push(createEmptyLine(font));
   } else {
+      // Continuation pages: Subj starts on the 6th line from the page
+      // top and text resumes on the 2nd line below it (M-5216.5; audit
+      // line 46, implementation per audit line 62). Header zone begins
+      // at 720 twips (line 4); two full blank lines place Subj at
+      // 1200 twips = lines 6. The trailing blank line after Subj pushes
+      // body text to line 8 (1680 twips = 1.166in), i.e. 2nd line below.
+      subsequentHeaderParagraphs.push(createEmptyLine(font));
+      subsequentHeaderParagraphs.push(createEmptyLine(font));
+
       const headerSubjLines = splitSubject((formData.subj || '').toUpperCase(), 57);
       const headerSubjPrefix = getSubjSpacing(formData.bodyFont);
       
@@ -2046,6 +2105,10 @@ export async function generateDocxBlob(
               right: formData.isShortLetter ? 2880 : MARGIN_RIGHT,
               bottom: MARGIN_BOTTOM,
               left: formData.isShortLetter ? 2880 : MARGIN_LEFT,
+              // Header zone starts at 0.5in so continuation-header line
+              // positions compute on the 6-lines-per-inch grid
+              // (M-5216.5 7-2.14; audit line 46).
+              header: 720,
             },
             pageNumbers: {
               start: startPage,

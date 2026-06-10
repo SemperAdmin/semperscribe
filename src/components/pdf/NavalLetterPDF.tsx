@@ -25,12 +25,22 @@ import {
 // Height reserved for continuation page header (Subj line + spacing)
 // This creates top margin space on pages 2+ so content doesn't overlap the header
 // Needs to accommodate 2 lines of subject text + spacing
-const CONTINUATION_HEADER_HEIGHT = 48;
+// Continuation-page geometry (M-5216.5; audit lines 46, 62), 6 lines/inch:
+// Subj line top = line 6 = 5/6 in = 60pt from page top.
+// Body text resumes line 8 = 7/6 in = 84pt from page top.
+// Page padding is PDF_MARGINS.top (44pt), so the naval spacer is 84-44=40pt
+// and the naval Subj block is nudged 60-44=16pt below the shared
+// absolute-positioned header origin.
+const CONTINUATION_SUBJ_OFFSET = 60 - PDF_MARGINS.top;
+const CONTINUATION_SPACER_NAVAL = 84 - PDF_MARGINS.top;
+const CONTINUATION_HEADER_HEIGHT = 48; // directive/civilian legacy, retuned in Phases 3-4
 import { getPDFSealDataUrl } from '@/lib/pdf-seal';
 import { parseAndFormatDate, formatBusinessDate } from '@/lib/date-utils';
 import { splitSubject, formatCancellationDate, formatDirectiveSSICBlock, buildDirectiveTitle } from '@/lib/naval-format-utils';
 import { DISTRIBUTION_STATEMENTS } from '@/lib/constants';
 import { parseFormattedText } from '@/lib/pdf-text-parser';
+import { relativeIndentEngine, isCorrespondenceType } from '@/lib/indent-engine';
+import type { ParagraphIndentSpec } from '@/lib/indent-engine';
 
 interface NavalLetterPDFProps {
   formData: FormData;
@@ -431,6 +441,8 @@ function ParagraphItem({
   isShortLetter,
   fourDigitNumbering,
   chapterNumber,
+  spec,
+  isLast,
 }: {
   paragraph: ParagraphData;
   index: number;
@@ -442,6 +454,8 @@ function ParagraphItem({
   isShortLetter?: boolean;
   fourDigitNumbering?: boolean;
   chapterNumber?: number;
+  spec?: ParagraphIndentSpec;
+  isLast?: boolean;
 }) {
   const citation = generateCitation(paragraph, index, allParagraphs, documentType, fourDigitNumbering, chapterNumber);
   const level = paragraph.level;
@@ -460,7 +474,7 @@ function ParagraphItem({
         const indent = isShortLetter ? 72 : 18; 
         
         return (
-          <View style={{ marginLeft: 0, marginBottom: PDF_SPACING.paragraph, textIndent: indent }}>
+          <View style={{ marginLeft: 0, marginBottom: isLast ? 0 : PDF_SPACING.paragraph, textIndent: indent }}>
              <Text style={isShortLetter ? { lineHeight: 2.0 } : {}}>
                 {paragraph.title && (
                     <Text style={{ fontWeight: shouldBoldTitle ? 'bold' : 'normal' }}>
@@ -485,7 +499,7 @@ function ParagraphItem({
         const totalLeftMargin = baseIndent + textOffset; // Where text starts
         
         return (
-          <View style={{ flexDirection: 'row', marginLeft: baseIndent, marginBottom: PDF_SPACING.paragraph }}>
+          <View style={{ flexDirection: 'row', marginLeft: baseIndent, marginBottom: isLast ? 0 : PDF_SPACING.paragraph }}>
              <View style={{ width: textOffset }}>
                 <Text style={isShortLetter ? { lineHeight: 2.0 } : {}}>{citation}</Text>
              </View>
@@ -516,7 +530,7 @@ function ParagraphItem({
     if (effectiveLevel === 1) {
       // Level 1: No number, first-line indent of one tab, text wraps to left margin
       return (
-        <View style={{ marginLeft: 0, marginBottom: PDF_SPACING.paragraph, textIndent: dlaIndent }}>
+        <View style={{ marginLeft: 0, marginBottom: isLast ? 0 : PDF_SPACING.paragraph, textIndent: dlaIndent }}>
           <Text>
             {paragraph.title && (
               <Text style={{ fontWeight: shouldBoldTitle ? 'bold' : 'normal' }}>
@@ -533,7 +547,7 @@ function ParagraphItem({
     // Each sub-level indents an additional tab from left margin
     const leftMarginDLA = (effectiveLevel - 1) * dlaIndent;
     return (
-      <View style={{ flexDirection: 'row', marginLeft: leftMarginDLA, marginBottom: PDF_SPACING.paragraph }}>
+      <View style={{ flexDirection: 'row', marginLeft: leftMarginDLA, marginBottom: isLast ? 0 : PDF_SPACING.paragraph }}>
         <View style={{ width: citationWidth }}>
           <Text>{citation}</Text>
         </View>
@@ -552,15 +566,20 @@ function ParagraphItem({
   if (bodyFont === 'courier') {
     // Courier uses character-based spacing: 4 non-breaking spaces per indent level
     // This matches DOCX which uses '\u00A0'.repeat((level - 1) * 4)
-    const leadingSpaces = '\u00A0'.repeat((level - 1) * 4);
-    const spacesAfterCitation = (citation.endsWith('.') || documentType === 'information-paper') ? '\u00A0\u00A0' : '\u00A0';
+    // With an engine spec (correspondence): measured character columns per
+    // M-5216.5 Fig 7-8. Without (directives): pre-Phase-1 fixed 4-char ladder.
+    const leadingSpaces = '\u00A0'.repeat(spec ? spec.prefixChars : (level - 1) * 4);
+    const spacesAfterCitation = spec
+      ? '\u00A0'.repeat(spec.spacesAfter)
+      : ((citation.endsWith('.') || documentType === 'information-paper') ? '\u00A0\u00A0' : '\u00A0');
 
     return (
-      <View style={{ marginBottom: PDF_SPACING.paragraph }}>
+      <View style={{ marginBottom: isLast ? 0 : PDF_SPACING.paragraph }}>
         <Text>
           {leadingSpaces}
           {isUnderlined ? (
             <>
+              {citation.includes('(') && '('}
               <Text style={{ textDecoration: 'underline' }}>
                 {citation.replace(/[().]/g, '')}
               </Text>
@@ -579,11 +598,50 @@ function ParagraphItem({
     );
   }
 
+  // CORRESPONDENCE MODE (relative indent engine).
+  // SECNAV M-5216.5 Fig 7-8: designator at measured content-relative
+  // position via text-indent; runover lines return to the left margin
+  // (M-5216.5 7-2.13; POLICY_COMPLIANCE_AUDIT.md line 43).
+  if (spec) {
+    return (
+      <View style={{ marginBottom: isLast ? 0 : PDF_SPACING.paragraph }}>
+        {/* S6: orphan/widow floor of two lines per paragraph fragment */}
+        <Text style={{ textIndent: spec.firstLinePoints }} orphans={2} widows={2}>
+          {/* react-pdf quirk: textIndent only engages when the first
+              child is a non-empty string. Levels 5-8 start with a nested
+              underlined <Text>, so lead with a zero-width space (U+200B).
+              It occupies no width and does not appear in the PDF text
+              layer (verified by extraction test). */}
+          {isUnderlined && '\u200B'}
+          {isUnderlined ? (
+            <>
+              {citation.includes('(') && '('}
+              <Text style={{ textDecoration: 'underline' }}>
+                {citation.replace(/[().]/g, '')}
+              </Text>
+              {citation.includes(')') ? ')' : '.'}
+            </>
+          ) : (
+            citation
+          )}
+          {'\u00A0'.repeat(spec.spacesAfter)}
+          {paragraph.title && (
+            <Text style={{
+              fontWeight: shouldBoldTitle ? 'bold' : 'normal',
+              textDecoration: 'none'
+            }}>{titleText}{paragraph.content ? '.' : ''}{paragraph.content ? '\u00A0\u00A0' : ''}</Text>
+          )}
+          {parseFormattedText(paragraph.content)}
+        </Text>
+      </View>
+    );
+  }
+
   // Times New Roman - row layout: citation in fixed-width column, text in flex column
   // This matches DOCX tab-stop behavior where text starts at an exact position
   const hangingIndent = tabs.text - tabs.citation;
   return (
-    <View style={{ flexDirection: 'row', marginLeft: tabs.citation, marginBottom: PDF_SPACING.paragraph }}>
+    <View style={{ flexDirection: 'row', marginLeft: tabs.citation, marginBottom: isLast ? 0 : PDF_SPACING.paragraph }}>
       <View style={{ width: hangingIndent }}>
         <Text>
           {isUnderlined ? (
@@ -646,6 +704,16 @@ export function NavalLetterPDF({
   const distListWithContent = distList.filter((d) => d.trim());
   const isDirective = formData.documentType === 'mco' || formData.documentType === 'bulletin' || formData.documentType === 'change-transmittal';
   const paragraphsWithContent = paragraphs.filter((p) => p.content.trim() || (isDirective && p.title && p.title.trim()));
+
+  // Correspondence: paragraph indents from the relative engine
+  // (SECNAV M-5216.5 Fig 7-8, content-relative). Directive/message
+  // formats keep their dedicated paths until Phase 3/4.
+  const relativeSpecs = isCorrespondenceType(formData.documentType)
+    ? relativeIndentEngine.computeSpecs(
+        paragraphsWithContent,
+        formData.bodyFont === 'courier' ? 'courier' : 'times'
+      )
+    : undefined;
 
   const formattedSubjLines = splitSubject((formData.subj || '').toUpperCase(), PDF_SUBJECT.maxLineLength);
   const isFromToMemo = formData.documentType === 'from-to-memo';
@@ -791,7 +859,7 @@ export function NavalLetterPDF({
                    </View>
                 )}
                 {!isCivilianStyle && !isDirective && (
-                  <>
+                  <View style={{ marginTop: CONTINUATION_SUBJ_OFFSET }}>
                     <View style={styles.continuationSubjLine}>
                       <Text style={styles.continuationSubjLabel}>Subj:</Text>
                       <Text style={styles.continuationSubjText}>{formattedSubjLines[0]}</Text>
@@ -799,7 +867,7 @@ export function NavalLetterPDF({
                     {formattedSubjLines.slice(1).map((line, i) => (
                       <Text key={i} style={{ marginLeft: PDF_INDENTS.tabStop1 }}>{line}</Text>
                     ))}
-                  </>
+                  </View>
                 )}
               </View>
             ) : null
@@ -811,7 +879,11 @@ export function NavalLetterPDF({
           fixed
           render={({ pageNumber }) => (
             pageNumber > 1 ? (
-              <View style={{ height: CONTINUATION_HEADER_HEIGHT + (isCivilianStyle ? 48 : 0) }} />
+              <View style={{ height: isDirective
+                ? CONTINUATION_HEADER_HEIGHT
+                : isCivilianStyle
+                  ? CONTINUATION_HEADER_HEIGHT + 48
+                  : CONTINUATION_SPACER_NAVAL }} />
             ) : null
           )}
         />
@@ -1414,7 +1486,9 @@ export function NavalLetterPDF({
         })()}
 
         {/* Body paragraphs - text wraps to left margin */}
-        <View style={styles.bodySection}>
+        <View style={[styles.bodySection,
+          (relativeSpecs && !isMoaOrMou && !isStaffingPaper && !isCivilianStyle && formData.sig)
+            ? { marginBottom: 0 } : {}]}>
           {paragraphsWithContent.map((p, i) => {
              // Custom handling for Position/Decision Paper - Paragraph 4 (Recommendation)
              // We wrap this paragraph AND the Decision Grid together to prevent orphans
@@ -1583,6 +1657,8 @@ export function NavalLetterPDF({
               isShortLetter={formData.isShortLetter}
               fourDigitNumbering={formData.fourDigitNumbering}
               chapterNumber={formData.chapterNumber}
+              spec={relativeSpecs?.[i]}
+              isLast={!!relativeSpecs && i === paragraphsWithContent.length - 1}
             />
           );
           })}
@@ -1592,7 +1668,7 @@ export function NavalLetterPDF({
 
         {/* Signature block - Standard (Hide for MOA/MOU, Staffing Papers, Business/Exec Letter) */}
         {!isMoaOrMou && !isStaffingPaper && !isCivilianStyle && formData.sig && (
-          <View style={styles.signatureBlock}>
+          <View style={styles.signatureBlock} wrap={false}>
             <View style={styles.emptyLine} />
             <View style={styles.emptyLine} />
             <View style={styles.emptyLine} />
@@ -1605,7 +1681,7 @@ export function NavalLetterPDF({
 
         {/* DLA Memorandum Signature Block — 4 blank lines, centered, with rank/title per Ch.3-2 Para 16-17 */}
         {isDLAMemo && (
-          <View style={styles.signatureBlock}>
+          <View style={styles.signatureBlock} wrap={false}>
             <View style={styles.emptyLine} />
             <View style={styles.emptyLine} />
             <View style={styles.emptyLine} />
@@ -1628,7 +1704,7 @@ export function NavalLetterPDF({
         {/* DLA Business Letter Closing Block — with complimentary close */}
         {isDLABusinessLetter && (
           <View>
-            <View style={{ marginBottom: PDF_SPACING.sectionGap * 2, marginLeft: PDF_INDENTS.signature }}>
+            <View style={{ marginBottom: PDF_SPACING.sectionGap * 3, marginLeft: PDF_INDENTS.signature }}>
               <View style={styles.emptyLine} />
               <Text style={styles.addressLine}>
                 {formData.complimentaryClose || 'Sincerely,'}
@@ -1647,7 +1723,7 @@ export function NavalLetterPDF({
         {isCivilianStyle && !isDLAType && (
             <View>
                 {/* Complimentary Close (Centered) */}
-                <View style={{ marginBottom: PDF_SPACING.sectionGap * 2, marginLeft: PDF_INDENTS.signature }}>
+                <View style={{ marginBottom: PDF_SPACING.sectionGap * 3, marginLeft: PDF_INDENTS.signature }}>
                     <View style={styles.emptyLine} />
                     <Text style={styles.addressLine}>
                         {formData.complimentaryClose || (formData.isVipMode ? 'Very respectfully,' : 'Sincerely,')}

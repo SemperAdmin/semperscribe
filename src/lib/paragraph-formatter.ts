@@ -1,5 +1,6 @@
 import { Paragraph, TextRun, TabStopType, AlignmentType, UnderlineType } from 'docx';
 import { ParagraphData } from '@/types';
+import type { ParagraphIndentSpec } from './indent-engine';
 
 // Helper to parse markdown-like formatting to TextRuns
 // Supports nested formatting: ***bold italic***, **<u>bold underline</u>**, *<u>italic underline</u>*, etc.
@@ -50,9 +51,12 @@ function numberToLetter(num: number): string {
 }
 
 // 1 inch = 1440 TWIPs. All values are in TWIPs.
-// These specs define the tab stop positions for each level's citation
-// and where the text following the citation should begin.
-export const NAVAL_TAB_STOPS = {
+// PRE-PHASE-1 fixed cascade, retained only as the fallback when no
+// ParagraphIndentSpec is supplied (legacy/directive call sites).
+// Correspondence paths receive engine-computed specs instead.
+// No longer exported: the shared constant moved into indent-engine.ts
+// (FIXED_LADDER) per the Phase 1 plan, item 1.
+const NAVAL_TAB_STOPS = {
     // Level 1: "1." at 0", text at 0.25"
     1: { citation: 0, text: 360 },
     // Level 2: "a." at 0.25", text at 0.5"
@@ -134,7 +138,9 @@ export function createFormattedParagraph(
   shouldBoldTitle: boolean = true,
   shouldUppercaseTitle: boolean = true,
   isBusinessLetter: boolean = false,
-  isShortLetter: boolean = false
+  isShortLetter: boolean = false,
+  relativeSpec?: ParagraphIndentSpec,
+  keepWithNext: boolean = false
 ): Paragraph {
     const { content, level } = paragraph;
     const { citation } = generateCitation(paragraph, index, allParagraphs);
@@ -221,12 +227,16 @@ export function createFormattedParagraph(
 
     // For Courier New, use non-breaking spaces instead of tabs
     if (isCourier) {
-        // Calculate leading spaces based on level using non-breaking spaces
-        // Level 1: 0, Level 2: 4, Level 3: 8, Level 4: 12, Level 5: 16, Level 6: 20, Level 7: 24, Level 8: 28
-        const indentSpaces = '\u00A0'.repeat((level - 1) * 4); // 4 non-breaking spaces per level
+        // With an engine spec (correspondence): designator column comes from
+        // measured character positions per M-5216.5 Fig 7-8: content-relative,
+        // so "10." shifts children one column further than "1.".
+        // Without a spec (legacy/directive): pre-Phase-1 fixed 4-char ladder.
+        const indentSpaces = '\u00A0'.repeat(relativeSpec ? relativeSpec.prefixChars : (level - 1) * 4);
 
-        // Determine spacing after citation: 2 spaces for periods, 1 space for parentheses
-        const spacesAfterCitation = citation.endsWith('.') ? '\u00A0\u00A0' : '\u00A0';
+        // Spacing after citation: 2 spaces for periods, 1 for parentheses
+        const spacesAfterCitation = relativeSpec
+            ? '\u00A0'.repeat(relativeSpec.spacesAfter)
+            : (citation.endsWith('.') ? '\u00A0\u00A0' : '\u00A0');
 
         const children = [
             new TextRun({ text: indentSpaces, font: font, size: 24, color }),
@@ -296,6 +306,35 @@ export function createFormattedParagraph(
             ],
             alignment: AlignmentType.LEFT,
             indent: { left: 1440, hanging: level === 1 ? 1440 : 720 }, // Wrap aligns with text at 1.0"
+        });
+    }
+
+    // CORRESPONDENCE MODE (relative indent engine).
+    // SECNAV M-5216.5 Fig 7-8: designator starts under the first letter of
+    // the parent paragraph's text, at a measured (content-relative) position
+    // implemented as a first-line indent. Runover lines return to the left
+    // margin, never indented (M-5216.5 7-2.13; POLICY_COMPLIANCE_AUDIT.md
+    // line 43). Replaces the fixed 0.25-inch cascade for correspondence.
+    if (relativeSpec) {
+        const children = [...citationRuns];
+        children.push(new TextRun({ text: '\u00A0'.repeat(relativeSpec.spacesAfter), font, size: 24, color }));
+        if (paragraph.title) {
+            const suffix = content ? '.' : '';
+            children.push(new TextRun({ text: processTitle(paragraph.title) + suffix, font: font, size: 24, bold: shouldBoldTitle, color }));
+            if (content) children.push(new TextRun({ text: '\u00A0\u00A0', font, size: 24, color }));
+        }
+        children.push(...parseContentToRuns(content, font, 24, color));
+
+        return new Paragraph({
+            children,
+            alignment: AlignmentType.LEFT,
+            indent: { firstLine: relativeSpec.firstLineTwips },
+            // S6: no paragraph orphaned at a page bottom; with keepNext
+            // (last paragraph before the signature) Word carries at
+            // least two lines onto the signature page (M-5216.5 7-2.16
+            // two-line rule; widow/orphan minimum is two lines).
+            widowControl: true,
+            keepNext: keepWithNext || undefined,
         });
     }
 

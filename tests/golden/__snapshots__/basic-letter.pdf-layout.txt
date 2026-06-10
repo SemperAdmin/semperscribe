@@ -1,0 +1,93 @@
+p1 x=226.6 y=739.1 | UNITED STATES MARINE CORPS
+p1 x=492.0 y=712.0 | 1000
+p1 x=492.0 y=698.2 | CODE
+p1 x=492.0 y=684.4 | 10
+p1 x=504.0 y=684.4 |  
+p1 x=507.0 y=684.4 | Feb 26
+p1 x=72.0 y=656.8 | From:
+p1 x=101.3 y=656.8 |  
+p1 x=108.0 y=656.8 | Commanding Officer, Unit Name, City, State Zip
+p1 x=72.0 y=643.0 | To:
+p1 x=87.8 y=643.0 |  
+p1 x=108.0 y=643.0 | Commanding Officer, Destination Unit, City, State Zip
+p1 x=72.0 y=629.2 | Via:
+p1 x=91.9 y=629.2 |  
+p1 x=108.0 y=629.2 | Commanding Officer, Intermediate Unit, Camp Pendleton, CA 92055
+p1 x=72.0 y=601.6 | Subj:
+p1 x=97.3 y=601.6 |  
+p1 x=108.0 y=601.6 | GOLDEN FILE FIXTURE LETTER
+p1 x=72.0 y=574.0 | Ref:
+p1 x=92.7 y=574.0 |  
+p1 x=108.0 y=574.0 | (
+p1 x=112.0 y=574.0 | a
+p1 x=117.3 y=574.0 | )
+p1 x=121.3 y=574.0 |  
+p1 x=126.0 y=574.0 | (
+p1 x=130.0 y=574.0 | a) MCO 5216.20B
+p1 x=108.0 y=560.2 | (
+p1 x=112.0 y=560.2 | b
+p1 x=118.0 y=560.2 | )
+p1 x=122.0 y=560.2 |  
+p1 x=126.0 y=560.2 | (
+p1 x=130.0 y=560.2 | b) SECNAVINST 5216.5E
+p1 x=72.0 y=532.6 | Encl:
+p1 x=97.3 y=532.6 |  
+p1 x=108.0 y=532.6 | (1)
+p1 x=122.0 y=532.6 |  
+p1 x=126.0 y=532.6 | (1)
+p1 x=140.0 y=532.6 |  
+p1 x=143.0 y=532.6 | Supporting Document A
+p1 x=108.0 y=518.8 | (2)
+p1 x=122.0 y=518.8 |  
+p1 x=126.0 y=518.8 | (2)
+p1 x=140.0 y=518.8 |  
+p1 x=143.0 y=518.8 | Supporting Document B
+p1 x=72.0 y=491.2 | 1.
+p1 x=81.0 y=491.2 |  
+p1 x=87.0 y=491.2 | This is the first paragraph. Paragraphs are numbered 1, 2, 3, and so on.
+p1 x=72.0 y=463.6 | 2.
+p1 x=81.0 y=463.6 |  
+p1 x=87.0 y=463.6 | This is the second paragraph. It introduces sub-paragraphs.
+p1 x=87.0 y=436.0 | a.
+p1 x=95.3 y=436.0 |  
+p1 x=101.3 y=436.0 | This is a sub-paragraph (a).
+p1 x=101.3 y=408.4 | (1)
+p1 x=115.3 y=408.4 |  
+p1 x=118.3 y=408.4 | This is a sub-sub-paragraph (1).
+p1 x=118.3 y=380.8 | (
+p1 x=122.3 y=380.8 | a)
+p1 x=131.6 y=380.8 |  
+p1 x=134.6 y=380.8 | This is a sub-sub-sub-paragraph (a).
+p1 x=134.6 y=353.2 | 1
+p1 x=140.6 y=353.2 | .
+p1 x=143.6 y=353.2 |  
+p1 x=149.6 y=353.2 | This is the fifth level
+p1 x=249.6 y=353.2 |  
+p1 x=252.6 y=353.2 | 1
+p1 x=258.6 y=353.2 | . The designator is underlined.
+p1 x=149.6 y=325.6 | a
+p1 x=155.0 y=325.6 | .
+p1 x=158.0 y=325.6 |  
+p1 x=164.0 y=325.6 | This is the sixth level
+p1 x=266.6 y=325.6 |  
+p1 x=269.6 y=325.6 | a
+p1 x=274.9 y=325.6 | . The designator is underlined.
+p1 x=164.0 y=298.0 | (
+p1 x=168.0 y=298.0 | 1
+p1 x=174.0 y=298.0 | )
+p1 x=178.0 y=298.0 |  
+p1 x=181.0 y=298.0 | This is the seventh level (
+p1 x=303.9 y=298.0 | 1
+p1 x=309.9 y=298.0 | ). Parenthesized, designator underlined.
+p1 x=181.0 y=270.4 | (
+p1 x=185.0 y=270.4 | a
+p1 x=190.3 y=270.4 | )
+p1 x=194.3 y=270.4 |  
+p1 x=197.3 y=270.4 | This is the eighth level (
+p1 x=313.6 y=270.4 | a
+p1 x=318.9 y=270.4 | ). Parenthesized, designator underlined.
+p1 x=306.0 y=215.2 | I. M. MARINE
+p1 x=306.0 y=201.4 | By direction
+p1 x=72.0 y=187.6 | Copy to:
+p1 x=72.0 y=173.8 | Commanding General, I MEF
+p1 x=72.0 y=160.0 | Inspector General of the Marine Corps
