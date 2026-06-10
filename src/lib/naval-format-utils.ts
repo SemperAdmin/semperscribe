@@ -655,3 +655,16 @@ export function getComplimentaryClose(formData: {
 export function getSignatureBlankLines(documentType: string): number {
   return ['mco', 'bulletin', 'change-transmittal'].includes(documentType) ? 4 : 3;
 }
+
+/**
+ * P3.4 — directive identification block designation line
+ * (POLICY_COMPLIANCE_AUDIT.md line 138: "MCO + SSIC.point + revision";
+ * MCO 5215.1K para 38). First line of the upper-right ID stack and of
+ * the continuation-page header. Bulletins carry the MCBul abbreviation
+ * (no point number). The SSIC field is used as entered.
+ */
+export function getDirectiveDesignation(formData: FormData): string {
+  const prefix = formData.orderPrefix
+    || (formData.documentType === 'bulletin' ? 'MCBul' : 'MCO');
+  return formData.ssic ? `${prefix} ${formData.ssic}` : '';
+}

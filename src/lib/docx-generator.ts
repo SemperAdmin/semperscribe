@@ -31,7 +31,7 @@ import {
   getRefSpacing, 
   getEnclSpacing, 
   getCopyToSpacing, 
-  getComplimentaryClose, getSignatureBlankLines } from './naval-format-utils';
+  getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle } from './naval-format-utils';
 import { createFormattedParagraph, generateCitation } from "./paragraph-formatter";
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from "./indent-engine";
 import { resolveBodyFont } from "./font-policy";
@@ -189,17 +189,22 @@ export async function generateDocxBlob(
       // Bulletin cancellation date — indented at ~3.25" (signature indent), above SSIC block
       if (formData.documentType === 'bulletin' && formData.cancellationDate) {
         const cancPrefix = formData.cancellationType === 'contingent' ? 'Canc frp:' : 'Canc:';
+        // P3.4: right-aligned, 2nd line above the SSIC position (one
+        // blank between) — audit lines 144/170; MCO 5215.1K.
         ssicParagraphs.push(new Paragraph({
           children: [new TextRun({ text: `${cancPrefix} ${formatCancellationDate(formData.cancellationDate)}`, font, size: FONT_SIZE_BODY })],
-          alignment: AlignmentType.LEFT,
-          indent: { left: formData.cancellationType === 'contingent' ? 6300 : 7020 },
+          alignment: AlignmentType.RIGHT,
           spacing: { after: 240 } // blank line before SSIC
         }));
       }
 
       const ssicBlock = [];
-      if (formData.documentType === 'mco' && formData.orderPrefix) {
-        ssicBlock.push(`${formData.orderPrefix} ${formData.ssic}`);
+      if (isDirective) {
+        // P3.4: designation line = abbreviation + SSIC (audit line 138;
+        // MCO 5215.1K para 38) — "MCO 5215.1K" / "MCBul 1500", never
+        // the bare SSIC.
+        const designation = getDirectiveDesignation(formData);
+        if (designation) ssicBlock.push(designation);
       } else {
         if (formData.ssic) ssicBlock.push(formData.ssic);
       }
@@ -612,10 +617,10 @@ export async function generateDocxBlob(
 
   // --- Directive Title Line (between date and From for MCO/Bulletin) ---
   const directiveTitleParagraphs: Paragraph[] = [];
-  if (isDirective && formData.directiveTitle) {
+  if (isDirective && (formData.directiveTitle || formData.ssic)) {
     directiveTitleParagraphs.push(new Paragraph({
       children: [new TextRun({
-        text: formData.directiveTitle.toUpperCase(),
+        text: (formData.directiveTitle || buildDirectiveTitle(formData)).toUpperCase(),
         font,
         size: FONT_SIZE_BODY,
         underline: { type: UnderlineType.SINGLE }
@@ -1986,6 +1991,7 @@ export async function generateDocxBlob(
 
   // --- Header for Subsequent Pages (Subject Line) ---
   const subsequentHeaderParagraphs: Paragraph[] = [];
+  const subsequentHeaderTables: Table[] = [];
   
   if (isCivilianStyle) {
       // Business/Executive Letter Continuation Header: SSIC, Originator, Date
@@ -2010,6 +2016,44 @@ export async function generateDocxBlob(
           spacing: { after: 0 }
       }));
       
+      subsequentHeaderParagraphs.push(createEmptyLine(font));
+  } else if (isDirective) {
+      // P3.4 — directive continuation header (audit lines 98, 160;
+      // MCO 5215.1K para 38): the ID symbols repeat flush right, 1 inch
+      // from the top, ORIGINATOR CODE OMITTED past page 1 (divergence
+      // hot spot, audit line 126). Designation on line 1, date on the
+      // next line; blocked left inside a right-anchored borderless
+      // table so the longest line touches the right margin.
+      const contStack = [getDirectiveDesignation(formData), parseAndFormatDate(formData.date || 'Date Placeholder')]
+        .filter(Boolean);
+      subsequentHeaderTables.push(new Table({
+          width: { size: 0, type: WidthType.AUTO },
+          alignment: AlignmentType.RIGHT,
+          borders: {
+              top: { style: BorderStyle.NONE, size: 0, color: "auto" },
+              bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
+              left: { style: BorderStyle.NONE, size: 0, color: "auto" },
+              right: { style: BorderStyle.NONE, size: 0, color: "auto" },
+              insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" },
+              insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" },
+          },
+          rows: [new TableRow({
+              children: [new TableCell({
+                  width: { size: 0, type: WidthType.AUTO },
+                  borders: {
+                      top: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                      bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                      left: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                      right: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                  },
+                  children: contStack.map((line) => new Paragraph({
+                      children: [new TextRun({ text: line, font, size: FONT_SIZE_BODY })],
+                      alignment: AlignmentType.LEFT,
+                      spacing: { after: 0 },
+                  })),
+              })],
+          })],
+      }));
       subsequentHeaderParagraphs.push(createEmptyLine(font));
   } else {
       // Continuation pages: Subj starts on the 6th line from the page
@@ -2078,7 +2122,7 @@ export async function generateDocxBlob(
   }
 
   const defaultHeader = new Header({
-      children: [...dlaFouoHeaderParagraphs, ...subsequentHeaderParagraphs]
+      children: [...dlaFouoHeaderParagraphs, ...subsequentHeaderTables, ...subsequentHeaderParagraphs]
   });
 
   // --- Footer (Page Numbers) ---

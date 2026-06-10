@@ -49,6 +49,39 @@ is now explicit and the trailing-spacer suppression is uniform.
 Proof: tests/directive-ladder.test.ts — MCO sig at lastBody+5, all
 gap paragraphs blank; correspondence 4th-line regression held.
 
+## P3.4 — Identification block (MCO 5215.1K para 38)
+
+Designation line unified: getDirectiveDesignation = abbreviation +
+SSIC ("MCO 5215.1K", "MCBul 1500"; audit line 138). Previously the
+PDF showed the BARE SSIC in the ID stack and the DOCX showed the
+prefixed form only when orderPrefix was set (never for bulletins) —
+emitter divergence, now closed. formatDirectiveSSICBlock is dead
+code, retained pending a deletion ruling.
+
+DOCX continuation header: directives previously repeated the
+correspondence "Subj:" header on pages 2+. Replaced with the ID
+stack flush right — designation + date, originator code OMITTED
+(audit lines 98/126/160), via the same right-anchored borderless
+table as page 1. PDF already complied.
+
+Bulletin Canc line: was approximated with fixed left indents
+(DOCX 7020/6300 twips, PDF marginLeft 351/315). Now right-aligned
+per audit lines 144/170, one blank above the SSIC position
+(spacing preserved).
+
+DOCX designation title line now falls back to prefix+SSIC when
+directiveTitle is empty (parity with PDF); caps + underline held.
+
+Geometry already compliant and left untouched: page-1 right-anchored
+blocked-left stack in both emitters (PDF fixture math: left edge
+475.2 = 540 - 9 chars x 7.2pt), dd Mmm yy date via
+parseAndFormatDate, title 2nd line below date.
+
+Proof: tests/directive-id-block.test.ts (6) — DOCX stack content and
+right anchoring, underlined title fallback, continuation header
+content (no ARDB, no Subj), Canc alignment, PDF flush-right edge at
+540pt +/- rounding, page-2 designation without code.
+
 ## Open items for Gate 3
 
 1. C5/C9 rulings (plan "OPEN RULINGS"): notice designation-line
@@ -59,5 +92,5 @@ gap paragraphs blank; correspondence 4th-line regression held.
    carries both, emitters fixed at 12. Decide at Gate 3 whether a
    selector is wanted (functional addition needing approval).
 
-Suite after P3.3: 903 green (897 + 6 golden/components), tsc clean,
+Suite after P3.4: 909 green (897 + 6 golden/components), tsc clean,
 parity green, goldens byte-stable (correspondence untouched).

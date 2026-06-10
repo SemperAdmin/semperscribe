@@ -36,7 +36,7 @@ const CONTINUATION_SPACER_NAVAL = 84 - PDF_MARGINS.top;
 const CONTINUATION_HEADER_HEIGHT = 48; // directive/civilian legacy, retuned in Phases 3-4
 import { getPDFSealDataUrl } from '@/lib/pdf-seal';
 import { parseAndFormatDate, formatBusinessDate } from '@/lib/date-utils';
-import { splitSubject, formatCancellationDate, formatDirectiveSSICBlock, buildDirectiveTitle, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose, getSignatureBlankLines } from '@/lib/naval-format-utils';
+import { splitSubject, formatCancellationDate, getDirectiveDesignation, buildDirectiveTitle, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose, getSignatureBlankLines } from '@/lib/naval-format-utils';
 import { DISTRIBUTION_STATEMENTS } from '@/lib/constants';
 import { parseFormattedText } from '@/lib/pdf-text-parser';
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from '@/lib/indent-engine';
@@ -856,10 +856,12 @@ export function NavalLetterPDF({
                    </View>
                 )}
                 {isDirective && (
+                   /* P3.4 (audit lines 98, 160): ID symbols flush right,
+                      designation + date, originator code omitted. */
                    <View style={{ alignItems: 'flex-end' }}>
                       <View style={{ alignItems: 'flex-start' }}>
                         <Text style={styles.addressLine}>
-                          {formatDirectiveSSICBlock(formData)}
+                          {getDirectiveDesignation(formData)}
                         </Text>
                         <Text style={styles.addressLine}>{formattedDate}</Text>
                       </View>
@@ -937,7 +939,9 @@ export function NavalLetterPDF({
         {/* Bulletin cancellation date — centered in right half, two lines above SSIC */}
         {!isFromToMemo && !isMfr && !isMoaOrMou && !isStaffingPaper &&
           formData.documentType === 'bulletin' && formData.cancellationDate && (
-          <View style={{ marginBottom: PDF_SPACING.emptyLine, marginLeft: formData.cancellationType === 'contingent' ? 315 : 351 }}>
+          /* P3.4: right-aligned, one blank above the SSIC position
+             (audit lines 144/170). */
+          <View style={{ marginBottom: PDF_SPACING.emptyLine, alignItems: 'flex-end' }}>
             <Text style={styles.addressLine}>
               {formData.cancellationType === 'contingent' ? 'Canc frp: ' : 'Canc: '}{formatCancellationDate(formData.cancellationDate)}
             </Text>
@@ -950,7 +954,8 @@ export function NavalLetterPDF({
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: PDF_SPACING.sectionGap }}>
              <View style={{ alignItems: 'flex-start' }}>
                 <Text style={styles.addressLine}>
-                  {isDirective ? formatDirectiveSSICBlock(formData) : (formData.ssic || '')}
+                  {/* P3.4: designation = abbreviation + SSIC (audit line 138) */}
+                  {isDirective ? getDirectiveDesignation(formData) : (formData.ssic || '')}
                 </Text>
                 <Text style={styles.addressLine}>{formData.originatorCode || ''}</Text>
                 <Text style={styles.addressLine}>{formattedDate}</Text>
