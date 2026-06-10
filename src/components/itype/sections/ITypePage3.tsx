@@ -1,57 +1,16 @@
 import React from 'react';
 import styles from '@/styles/itype-preview.module.css';
+import {
+  deriveService,
+  deriveEntity,
+  splitAddress,
+  deriveAppropriatePublication,
+  formatLongDate,
+} from '@/lib/i-type/page3-derivations';
 
 interface ITypePage3Props {
   formData?: any;
 }
-
-// "U.S. MARINE CORPS" -> "UNITED STATES MARINE CORPS"
-const deriveService = (service?: string) =>
-  service ? service.replace(/^U\.S\./, 'UNITED STATES') : '';
-
-// Page 3 header renders the entity in caps.
-const deriveEntity = (entity?: string) => (entity ? entity.toUpperCase() : '');
-
-// Letterhead address: caps, no abbreviations punctuation per DON standard.
-const sanitize = (s: string) =>
-  s.replace(/[.,]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
-
-// Split a one-line address into street line and city/state/zip line.
-const splitAddress = (address?: string): [string, string] => {
-  if (!address) return ['', ''];
-  const idx = address.indexOf(',');
-  if (idx === -1) return [sanitize(address), ''];
-  return [sanitize(address.slice(0, idx)), sanitize(address.slice(idx + 1))];
-};
-
-// "TECHNICAL MANUAL" -> "Technical Manual"
-const titleCase = (text?: string) =>
-  text
-    ? text
-        .toLowerCase()
-        .split(' ')
-        .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
-        .join(' ')
-    : '';
-
-// "Technical Manual, TM-#####X-##/#,"
-const deriveAppropriatePublication = (publicationType?: string, shortTitle?: string) => {
-  const type = titleCase(publicationType);
-  if (!type && !shortTitle) return '';
-  return `${type}, ${shortTitle || ''},`;
-};
-
-// Military long date: "9 June 2026"
-const formatLongDate = (dateString?: string) => {
-  if (!dateString) return '';
-  try {
-    const d = new Date(dateString);
-    const month = d.toLocaleString('en-US', { month: 'long' });
-    return `${d.getUTCDate()} ${month} ${d.getUTCFullYear()}`;
-  } catch {
-    return dateString;
-  }
-};
 
 export const ITypePage3: React.FC<ITypePage3Props> = ({ formData }) => {
   const serviceDisplay = deriveService(formData?.service);
@@ -98,13 +57,10 @@ export const ITypePage3: React.FC<ITypePage3Props> = ({ formData }) => {
           Individuals may report potential hazards to Marine Corps Systems Command System Safety at{' '}
           <span className={styles.page3Link}>smb_mcsc_safety@usmc.mil</span> and/or to Commandant of
           the Marine Corps Safety Division (CMC SD) at{' '}
-          <span className={styles.page3Link}>hqmc_safety_division@usmc.mil</span>.
+          <span className={styles.page3Link}>hqmc_safety_division@usmc.mil</span>. All significant
+          hazards that have the potential to affect other commands and require widespread
+          dissemination shall be reported via a Hazard Report per MCO 5100.29_.
         </span>
-      </div>
-
-      <div className={styles.page3ParaPlain}>
-        All significant hazards that have the potential to affect other commands and require
-        widespread dissemination shall be reported via a Hazard Report per MCO 5100.29_.
       </div>
 
       {/* 3 */}

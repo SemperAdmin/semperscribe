@@ -8,6 +8,14 @@ import {
   StyleSheet,
 } from '@react-pdf/renderer';
 import { FormData } from '@/types';
+import {
+  deriveService,
+  deriveEntity,
+  splitAddress,
+  deriveAppropriatePublication,
+  formatLongDate,
+  PAGE3_LINKS,
+} from '@/lib/i-type/page3-derivations';
 
 interface ITypePDFProps {
   formData: FormData & {
@@ -32,6 +40,7 @@ interface ITypePDFProps {
     supersedureStatement?: string;
     destructionNotice?: string;
     classificationDestructionProcedure?: string;
+    miStatement?: string;
     pcn?: string;
     componentsAffected?: Array<{ nsn: string; tamcn: string; id: string; model: string }>;
   };
@@ -49,6 +58,16 @@ const styles = StyleSheet.create({
     paddingBottom: MARGIN,
     paddingLeft: MARGIN,
     paddingRight: MARGIN,
+    fontFamily: 'Helvetica',
+    fontSize: 11,
+    lineHeight: 1.15,
+    color: '#000000',
+  },
+  page3Sheet: {
+    paddingTop: MARGIN,
+    paddingBottom: MARGIN,
+    paddingLeft: 72, // 1in
+    paddingRight: 72, // 1in
     fontFamily: 'Helvetica',
     fontSize: 11,
     lineHeight: 1.15,
@@ -131,6 +150,15 @@ const styles = StyleSheet.create({
   colTAMCN: { width: '25%' },
   colID: { width: '20%' },
   colMODEL: { width: '30%' },
+  p3HeaderLine: { textAlign: 'center', fontSize: 8 },
+  p3Service: { textAlign: 'center', fontSize: 8, fontFamily: 'Helvetica-Bold' },
+  p3Date: { textAlign: 'right', marginTop: 12, marginBottom: 12 },
+  p3Para: { marginBottom: 12, textAlign: 'left' },
+  p3Sub: { marginBottom: 12, textAlign: 'left', textIndent: 29 },
+  p3Link: { color: '#0563c1', textDecoration: 'underline' },
+  p3Official: { textDecoration: 'underline', marginTop: 14, marginBottom: 14 },
+  p3SigSpace: { height: 43 },
+  p3Distribution: { marginTop: 29 },
 });
 
 const formatDateAsMonthYear = (dateString?: string) => {
@@ -189,6 +217,12 @@ export function ITypePDF({ formData, sealImageUrl }: ITypePDFProps) {
     chunks.push(components.slice(i, i + ROWS_PER_PAGE));
   }
   if (chunks.length === 0) chunks.push([]);
+
+  const p3Service = deriveService(formData.service);
+  const p3Entity = deriveEntity(formData.entity);
+  const [p3Addr1, p3Addr2] = splitAddress(formData.address);
+  const p3Date = formatLongDate(formData.date);
+  const p3Pub = deriveAppropriatePublication(formData.publicationType, formData.shortTitle);
 
   return (
     <Document>
@@ -251,6 +285,72 @@ export function ITypePDF({ formData, sealImageUrl }: ITypePDFProps) {
           <ComponentsTable rows={rows} />
         </Page>
       ))}
+
+      {/* PAGE 3 - AUTHENTICATION LETTER */}
+      <Page size="LETTER" style={styles.page3Sheet}>
+        <View>
+          <Text style={styles.p3Service}>{p3Service}</Text>
+          <Text style={styles.p3HeaderLine}>{p3Entity}</Text>
+          <Text style={styles.p3HeaderLine}>{p3Addr1}</Text>
+          {p3Addr2 ? <Text style={styles.p3HeaderLine}>{p3Addr2}</Text> : null}
+        </View>
+
+        <Text style={styles.p3Date}>{p3Date}</Text>
+
+        <Text style={styles.p3Para}>
+          {'1.  '}This {p3Pub} is authenticated for Marine Corps use and is effective upon receipt.
+        </Text>
+
+        <Text style={styles.p3Para}>
+          {'2.  '}Per MCO 5100.34_, Commanders, Commanding Officers, and Officers-In-Charge shall
+          identify and report situations that negatively affect safety of operation via the
+          Automated Message Handling System to: COMMARCORSYSCOM DCSEAL QUANTICO VA, PEO LS QUANTICO
+          VA, CMC PPO WASHINGTON DC, CMC I WASHINGTON DC, CMC L WASHINGTON DC, and CMC DCI WASHINGTON
+          DC. Individuals may report potential hazards to Marine Corps Systems Command System Safety
+          at <Text style={styles.p3Link}>{PAGE3_LINKS.safetyEmail1}</Text> and/or to Commandant of
+          the Marine Corps Safety Division (CMC SD) at{' '}
+          <Text style={styles.p3Link}>{PAGE3_LINKS.safetyEmail2}</Text>. All significant hazards
+          that have the potential to affect other commands and require widespread dissemination
+          shall be reported via a Hazard Report per MCO 5100.29_.
+        </Text>
+
+        <Text style={styles.p3Para}>
+          {'3.  '}Use TDM-Publications portal, at{' '}
+          <Text style={styles.p3Link}>{PAGE3_LINKS.portal}</Text>, as your central resource for all
+          publication feedback and support. Please use this single portal to:
+        </Text>
+
+        <Text style={styles.p3Sub}>
+          {'a.  '}Submit a Change Request to report discrepancies or suggest changes.
+        </Text>
+        <Text style={styles.p3Sub}>
+          {'b.  '}Access Knowledge Base Articles (KBA) for self-help and guidance (including the
+          Change Request Process).
+        </Text>
+        <Text style={styles.p3Sub}>
+          {'c.  '}Open a Support Case for any further questions not addressed by the KBA.
+        </Text>
+
+        <Text style={styles.p3Para}>
+          {'4.  '}For concerns/issues with the content/procedures contact Equipment Specialist or
+          designated Program Office representative (Insert Name, Email, Phone, or Team/PM).
+        </Text>
+
+        {formData.miStatement ? (
+          <Text style={styles.p3Para}>
+            {'5.  '}
+            {formData.miStatement}
+          </Text>
+        ) : null}
+
+        <Text style={styles.p3Official}>OFFICIAL</Text>
+        <View style={styles.p3SigSpace} />
+        <Text>NAME OF SIGNING OFFICIAL</Text>
+        <Text>{formData.signingAuthority || ''}</Text>
+        <Text>{formData.controllingOffice || ''}</Text>
+
+        <Text style={styles.p3Distribution}>DISTRIBUTION: EDO</Text>
+      </Page>
     </Document>
   );
 }

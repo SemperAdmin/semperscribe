@@ -16,6 +16,14 @@ import {
   LineRuleType,
 } from 'docx';
 import { FormData } from '@/types';
+import {
+  deriveService,
+  deriveEntity,
+  splitAddress,
+  deriveAppropriatePublication,
+  formatLongDate,
+  PAGE3_LINKS,
+} from '@/lib/i-type/page3-derivations';
 
 interface ITypeDocxData extends FormData {
   service?: string;
@@ -39,6 +47,7 @@ interface ITypeDocxData extends FormData {
   supersedureStatement?: string;
   destructionNotice?: string;
   classificationDestructionProcedure?: string;
+  miStatement?: string;
   pcn?: string;
   componentsAffected?: Array<{ nsn: string; tamcn: string; id: string; model: string }>;
 }
@@ -89,6 +98,17 @@ const labelBodyParagraph = (label: string, body: string) =>
       new TextRun({ text: label, bold: true, underline: {}, font: FONT, size: SIZE }),
       new TextRun({ text: body, font: FONT, size: SIZE }),
     ],
+  });
+
+const textRun = (text: string) => new TextRun({ text, font: FONT, size: SIZE });
+const linkRun = (text: string) =>
+  new TextRun({ text, color: '0563C1', underline: {}, font: FONT, size: SIZE });
+
+// Page-3 letterhead line at Arial 8 (size 16 half-points), centered.
+const p3HeaderLine = (text: string, bold = false) =>
+  new Paragraph({
+    alignment: AlignmentType.CENTER,
+    children: [new TextRun({ text, bold, font: FONT, size: 16 })],
   });
 
 const plainCenter = (text: string, bold = false, underline = false) =>
@@ -287,6 +307,116 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
       })
     );
 
+    // --- PAGE 3 AUTHENTICATION LETTER ---
+    const p3Service = deriveService(formData.service);
+    const p3Entity = deriveEntity(formData.entity);
+    const [p3Addr1, p3Addr2] = splitAddress(formData.address);
+    const p3Date = formatLongDate(formData.date);
+    const p3Pub = deriveAppropriatePublication(formData.publicationType, formData.shortTitle);
+
+    // Page 3 starts here. It becomes its own section (1in margins) below,
+    // so the section break provides the page break.
+    const page3StartIndex = children.length;
+
+    // Letterhead, Arial 8, centered.
+    children.push(p3HeaderLine(p3Service, true));
+    children.push(p3HeaderLine(p3Entity));
+    children.push(p3HeaderLine(p3Addr1));
+    if (p3Addr2) children.push(p3HeaderLine(p3Addr2));
+
+    // One blank line, date, one blank line.
+    children.push(blankLine());
+    children.push(new Paragraph({ alignment: AlignmentType.RIGHT, children: [textRun(p3Date)] }));
+    children.push(blankLine());
+
+    // 1
+    children.push(
+      new Paragraph({
+        children: [
+          textRun(
+            `1.  This ${p3Pub} is authenticated for Marine Corps use and is effective upon receipt.`
+          ),
+        ],
+      })
+    );
+    children.push(blankLine());
+
+    // 2
+    children.push(
+      new Paragraph({
+        children: [
+          textRun(
+            '2.  Per MCO 5100.34_, Commanders, Commanding Officers, and Officers-In-Charge shall identify and report situations that negatively affect safety of operation via the Automated Message Handling System to: COMMARCORSYSCOM DCSEAL QUANTICO VA, PEO LS QUANTICO VA, CMC PPO WASHINGTON DC, CMC I WASHINGTON DC, CMC L WASHINGTON DC, and CMC DCI WASHINGTON DC. Individuals may report potential hazards to Marine Corps Systems Command System Safety at '
+          ),
+          linkRun(PAGE3_LINKS.safetyEmail1),
+          textRun(' and/or to Commandant of the Marine Corps Safety Division (CMC SD) at '),
+          linkRun(PAGE3_LINKS.safetyEmail2),
+          textRun(
+            '. All significant hazards that have the potential to affect other commands and require widespread dissemination shall be reported via a Hazard Report per MCO 5100.29_.'
+          ),
+        ],
+      })
+    );
+    children.push(blankLine());
+
+    // 3
+    children.push(
+      new Paragraph({
+        children: [
+          textRun('3.  Use TDM-Publications portal, at '),
+          linkRun(PAGE3_LINKS.portal),
+          textRun(
+            ', as your central resource for all publication feedback and support. Please use this single portal to:'
+          ),
+        ],
+      })
+    );
+    children.push(blankLine());
+
+    const sub = (text: string) =>
+      new Paragraph({ indent: { firstLine: 576 }, children: [textRun(text)] });
+    children.push(sub('a.  Submit a Change Request to report discrepancies or suggest changes.'));
+    children.push(blankLine());
+    children.push(
+      sub(
+        'b.  Access Knowledge Base Articles (KBA) for self-help and guidance (including the Change Request Process).'
+      )
+    );
+    children.push(blankLine());
+    children.push(sub('c.  Open a Support Case for any further questions not addressed by the KBA.'));
+    children.push(blankLine());
+
+    // 4
+    children.push(
+      new Paragraph({
+        children: [
+          textRun(
+            '4.  For concerns/issues with the content/procedures contact Equipment Specialist or designated Program Office representative (Insert Name, Email, Phone, or Team/PM).'
+          ),
+        ],
+      })
+    );
+
+    // 5 conditional
+    if (formData.miStatement) {
+      children.push(blankLine());
+      children.push(new Paragraph({ children: [textRun(`5.  ${formData.miStatement}`)] }));
+    }
+
+    // Authentication block
+    children.push(blankLine());
+    children.push(
+      new Paragraph({ children: [new TextRun({ text: 'OFFICIAL', underline: {}, font: FONT, size: SIZE })] })
+    );
+    children.push(blankLine());
+    children.push(blankLine());
+    children.push(blankLine());
+    children.push(new Paragraph({ children: [textRun('NAME OF SIGNING OFFICIAL')] }));
+    children.push(new Paragraph({ children: [textRun(formData.signingAuthority || '')] }));
+    children.push(new Paragraph({ children: [textRun(formData.controllingOffice || '')] }));
+    children.push(blankLine());
+    children.push(new Paragraph({ children: [textRun('DISTRIBUTION: EDO')] }));
+
     // --- PAGE 1 BOTTOM BLOCK (first-page footer, bottom-anchored, grows upward) ---
     const controlledBy = join(
       [formData.entity, formData.signingAuthority, formData.controllingOffice],
@@ -360,6 +490,7 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
       },
       sections: [
         {
+          // Section 1: cover (page 1) + components table (page 2). 0.5in margins.
           properties: {
             titlePage: true,
             page: {
@@ -370,7 +501,19 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
             first: new Footer({ children: footerChildren }),
             default: new Footer({ children: [new Paragraph({ children: [] })] }),
           },
-          children,
+          children: children.slice(0, page3StartIndex),
+        },
+        {
+          // Section 2: page 3 authentication letter. 1in left/right margins.
+          properties: {
+            page: {
+              margin: { top: 720, right: 1440, bottom: 720, left: 1440 },
+            },
+          },
+          footers: {
+            default: new Footer({ children: [new Paragraph({ children: [] })] }),
+          },
+          children: children.slice(page3StartIndex),
         },
       ],
     });
