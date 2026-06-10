@@ -35,6 +35,7 @@ import {
 } from "./naval-format-utils";
 import { createFormattedParagraph, generateCitation } from "./paragraph-formatter";
 import { relativeIndentEngine, isCorrespondenceType } from "./indent-engine";
+import { resolveBodyFont } from "./font-policy";
 import { parseAndFormatDate, formatBusinessDate } from "./date-utils";
 import { DISTRIBUTION_STATEMENTS } from "@/lib/constants";
 import { DOC_SETTINGS, TAB_STOPS, INDENTS } from "./doc-settings";
@@ -79,6 +80,9 @@ export async function generateDocxBlob(
   paragraphs: ParagraphData[],
   distList: string[] = []
 ): Promise<Blob> {
+  // P3.1 (G7): archetype font policy. Directives coerce to Courier at
+  // generation time; correspondence passes through unchanged.
+  formData = { ...formData, bodyFont: resolveBodyFont(formData.documentType, formData.bodyFont) };
   const font = getFont(formData.bodyFont);
   const headerColor = getHeaderColor(formData.accentColor);
   const sealBuffer = await getDoDSealBuffer(formData.headerType === 'DON' ? 'navy' : 'marine-corps'); // DLA uses marine-corps (DoD) seal

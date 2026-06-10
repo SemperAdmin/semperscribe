@@ -40,6 +40,7 @@ import { splitSubject, formatCancellationDate, formatDirectiveSSICBlock, buildDi
 import { DISTRIBUTION_STATEMENTS } from '@/lib/constants';
 import { parseFormattedText } from '@/lib/pdf-text-parser';
 import { relativeIndentEngine, isCorrespondenceType } from '@/lib/indent-engine';
+import { resolveBodyFont } from '@/lib/font-policy';
 import type { ParagraphIndentSpec } from '@/lib/indent-engine';
 
 interface NavalLetterPDFProps {
@@ -679,6 +680,8 @@ export function NavalLetterPDF({
   paragraphs,
   distList = [],
 }: NavalLetterPDFProps) {
+  // P3.1 (G7): archetype font policy — directives coerce to Courier.
+  formData = { ...formData, bodyFont: resolveBodyFont(formData.documentType, formData.bodyFont) };
   const styles = createStyles(
     formData.bodyFont || 'times',
     formData.accentColor
