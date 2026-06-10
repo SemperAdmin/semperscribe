@@ -8,26 +8,26 @@ function p(id: number, level: number, content: string = 'text'): ParagraphData {
   return { id, level, content };
 }
 
-describe('FIXED_LADDER (pre-Phase-1 cascade, directive fallback)', () => {
-  it('defines positions for levels 1-8', () => {
+describe('FIXED_LADDER (P3.2 — USMC directive 4-space ladder, MCO 5215.1K para 33)', () => {
+  it('defines character columns for levels 1-8', () => {
     for (let level = 1; level <= 8; level++) {
       expect(FIXED_LADDER[level]).toBeDefined();
     }
   });
 
-  it('cascades in 0.25" (360 twip) increments', () => {
+  it('cascades 4 character columns per level', () => {
     for (let level = 1; level <= 7; level++) {
       const current = FIXED_LADDER[level];
       const next = FIXED_LADDER[level + 1];
-      expect(next.citation - current.citation).toBe(360);
-      expect(next.text - current.text).toBe(360);
+      expect(next.citationChars - current.citationChars).toBe(4);
+      expect(next.textChars - current.textChars).toBe(4);
     }
   });
 
-  it('has text position 0.25" past citation for each level', () => {
+  it('text column sits 4 characters past the designator column', () => {
     for (let level = 1; level <= 8; level++) {
       const spec = FIXED_LADDER[level];
-      expect(spec.text - spec.citation).toBe(360);
+      expect(spec.textChars - spec.citationChars).toBe(4);
     }
   });
 });

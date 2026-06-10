@@ -31,10 +31,9 @@ import {
   getRefSpacing, 
   getEnclSpacing, 
   getCopyToSpacing, 
-  getComplimentaryClose 
-} from "./naval-format-utils";
+  getComplimentaryClose, getSignatureBlankLines } from './naval-format-utils';
 import { createFormattedParagraph, generateCitation } from "./paragraph-formatter";
-import { relativeIndentEngine, isCorrespondenceType } from "./indent-engine";
+import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from "./indent-engine";
 import { resolveBodyFont } from "./font-policy";
 import { parseAndFormatDate, formatBusinessDate } from "./date-utils";
 import { DISTRIBUTION_STATEMENTS } from "@/lib/constants";
@@ -1004,14 +1003,18 @@ export async function generateDocxBlob(
   const paragraphsWithContent = paragraphs.filter(p => p.content.trim() || p.title);
 
   // Correspondence: paragraph indents come from the relative engine
-  // (SECNAV M-5216.5 Fig 7-8, content-relative). Directives and message
-  // formats keep their dedicated paths until Phase 3/4.
+  // (SECNAV M-5216.5 Fig 7-8, content-relative). Directives (P3.2):
+  // fixed 4-space Courier ladder from FixedLadderEngine (MCO 5215.1K
+  // para 33) — same character columns the Courier render path emits,
+  // now sourced from the engine. Message formats keep dedicated paths.
   const relativeSpecs = isCorrespondenceType(formData.documentType)
     ? relativeIndentEngine.computeSpecs(
         paragraphsWithContent,
         formData.bodyFont === 'courier' ? 'courier' : 'times'
       )
-    : undefined;
+    : isDirectiveType(formData.documentType)
+      ? fixedLadderEngine.computeSpecs(paragraphsWithContent, 'courier')
+      : undefined;
 
   paragraphsWithContent.forEach((p, index) => {
     // Custom handling for Position/Decision Paper Multiple Recs - Paragraph 4
@@ -1635,9 +1638,11 @@ export async function generateDocxBlob(
       children: [new TextRun({ text: "", font, size: FONT_SIZE_BODY })],
       keepNext: true,
     });
-    signatureParagraphs.push(sigSpacer());
-    signatureParagraphs.push(sigSpacer());
-    signatureParagraphs.push(sigSpacer());
+    // P3.3 (G5): 3 blanks = 4th line for correspondence; 4 blanks =
+    // 5th line for USMC directives (MCO 5215.1K para 37).
+    for (let k = 0; k < getSignatureBlankLines(formData.documentType); k++) {
+      signatureParagraphs.push(sigSpacer());
+    }
 
     signatureParagraphs.push(new Paragraph({
       children: [

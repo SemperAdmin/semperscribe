@@ -10,7 +10,7 @@ import {
   validateActionAddressees,
   getExportBlockers,
   indexToRefLetter,
-} from '@/lib/letter-validators';
+  validateDirectiveTypography } from '@/lib/letter-validators';
 import type { ParagraphData, FormData } from '@/types';
 
 const p = (id: number, level: number, content: string): ParagraphData => ({ id, level, content });
@@ -186,5 +186,28 @@ describe('validateDateSlots (M-5216.5 2-2; plan item 6)', () => {
       [p(1, 1, 'Effective May 23, 2014.')],
     );
     expect(issues).toEqual([]);
+  });
+});
+
+describe('P3.2 directive typewriter spacing (warn only)', () => {
+  const base = { documentType: 'mco' } as never;
+  const paras = (content: string) => [{ id: 1, level: 1, content }] as never[];
+
+  it('warns on single space after a sentence period in a directive', () => {
+    const issues = validateDirectiveTypography(base, paras('First sentence. Second sentence.'));
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warn');
+  });
+
+  it('does not flag two-space sentences', () => {
+    expect(validateDirectiveTypography(base, paras('First sentence.  Second sentence.'))).toHaveLength(0);
+  });
+
+  it('does not flag abbreviations like U.S. or e.g.', () => {
+    expect(validateDirectiveTypography(base, paras('Per U.S. Code and e.g. Title 10.'))).toHaveLength(0);
+  });
+
+  it('never fires for correspondence', () => {
+    expect(validateDirectiveTypography({ documentType: 'basic' } as never, paras('One. Two.'))).toHaveLength(0);
   });
 });

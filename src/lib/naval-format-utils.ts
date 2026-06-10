@@ -642,3 +642,16 @@ export function getComplimentaryClose(formData: {
   ).replace(/,+$/, '');
   return base + ',';
 }
+
+/**
+ * P3.3 (audit gap G5): blank lines between the last body line (or
+ * complimentary close) and the typed signature name.
+ *
+ * Naval correspondence and SECNAV directives: signature on the 4th
+ * line below = 3 blanks (SECNAV M-5216.5 7-2.16).
+ * USMC directives (MCO, MCBul, change transmittal): signature on the
+ * 5th line below = 4 blanks (MCO 5215.1K para 37, source line 1466).
+ */
+export function getSignatureBlankLines(documentType: string): number {
+  return ['mco', 'bulletin', 'change-transmittal'].includes(documentType) ? 4 : 3;
+}

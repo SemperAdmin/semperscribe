@@ -125,16 +125,35 @@ describe('RelativeIndentEngine — Courier (character columns)', () => {
   });
 });
 
-describe('FixedLadderEngine (pre-Phase-1 behavior, directive fallback)', () => {
-  it('reproduces the legacy 0.25-inch cascade exactly', () => {
+describe('FixedLadderEngine (P3.2 — USMC directive ladder, MCO 5215.1K para 33)', () => {
+  it('steps 576 twips per level at Courier 12 (4 chars x 144 twips)', () => {
     const chain = Array.from({ length: 8 }, (_, i) => p(i + 1, i + 1));
-    const specs = fixed.computeSpecs(chain, 'times');
+    const specs = fixed.computeSpecs(chain, 'courier', 12);
     specs.forEach((spec, i) => {
       const level = i + 1;
-      expect(spec.firstLineTwips).toBe(FIXED_LADDER[level].citation);
-      expect(spec.textStartTwips).toBe(FIXED_LADDER[level].text);
+      expect(spec.firstLineTwips).toBe((level - 1) * 576);
+      expect(spec.textStartTwips).toBe(level * 576);
       expect(spec.prefixChars).toBe((level - 1) * 4);
+      expect(spec.textStartChars).toBe(level * 4);
     });
+  });
+
+  it('steps 480 twips per level at Courier 10', () => {
+    const chain = [p(1, 1), p(2, 2), p(3, 3)];
+    const specs = fixed.computeSpecs(chain, 'courier', 10);
+    expect(specs.map((s) => s.firstLineTwips)).toEqual([0, 480, 960]);
+  });
+
+  it('two spaces after period designators, one after parenthesized', () => {
+    const chain = [p(1, 1), p(2, 2), p(3, 3), p(4, 4)];
+    const specs = fixed.computeSpecs(chain, 'courier', 12);
+    // 1. and a. -> 2 spaces; (1) and (a) -> 1 space.
+    expect(specs.map((s) => s.spacesAfter)).toEqual([2, 2, 1, 1]);
+  });
+
+  it('clamps out-of-range levels instead of crashing (level-0 templates)', () => {
+    const specs = fixed.computeSpecs([p(1, 0 as never)], 'courier', 12);
+    expect(specs[0].prefixChars).toBe(0);
   });
 });
 

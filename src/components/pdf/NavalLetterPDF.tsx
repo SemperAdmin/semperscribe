@@ -36,10 +36,10 @@ const CONTINUATION_SPACER_NAVAL = 84 - PDF_MARGINS.top;
 const CONTINUATION_HEADER_HEIGHT = 48; // directive/civilian legacy, retuned in Phases 3-4
 import { getPDFSealDataUrl } from '@/lib/pdf-seal';
 import { parseAndFormatDate, formatBusinessDate } from '@/lib/date-utils';
-import { splitSubject, formatCancellationDate, formatDirectiveSSICBlock, buildDirectiveTitle, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose } from '@/lib/naval-format-utils';
+import { splitSubject, formatCancellationDate, formatDirectiveSSICBlock, buildDirectiveTitle, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose, getSignatureBlankLines } from '@/lib/naval-format-utils';
 import { DISTRIBUTION_STATEMENTS } from '@/lib/constants';
 import { parseFormattedText } from '@/lib/pdf-text-parser';
-import { relativeIndentEngine, isCorrespondenceType } from '@/lib/indent-engine';
+import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from '@/lib/indent-engine';
 import { resolveBodyFont } from '@/lib/font-policy';
 import type { ParagraphIndentSpec } from '@/lib/indent-engine';
 
@@ -716,7 +716,9 @@ export function NavalLetterPDF({
         paragraphsWithContent,
         formData.bodyFont === 'courier' ? 'courier' : 'times'
       )
-    : undefined;
+    : isDirectiveType(formData.documentType)
+      ? fixedLadderEngine.computeSpecs(paragraphsWithContent, 'courier')
+      : undefined;
 
   const formattedSubjLines = splitSubject((formData.subj || '').toUpperCase(), PDF_SUBJECT.maxLineLength);
   const isFromToMemo = formData.documentType === 'from-to-memo';
@@ -1674,9 +1676,11 @@ export function NavalLetterPDF({
         {/* Signature block - Standard (Hide for MOA/MOU, Staffing Papers, Business/Exec Letter) */}
         {!isMoaOrMou && !isStaffingPaper && !isCivilianStyle && formData.sig && (
           <View style={styles.signatureBlock} wrap={false}>
-            <View style={styles.emptyLine} />
-            <View style={styles.emptyLine} />
-            <View style={styles.emptyLine} />
+            {/* P3.3 (G5): 3 blanks = 4th line (M-5216.5 7-2.16); USMC
+                directives 4 blanks = 5th line (MCO 5215.1K para 37). */}
+            {Array.from({ length: getSignatureBlankLines(formData.documentType) }, (_, k) => (
+              <View key={k} style={styles.emptyLine} />
+            ))}
             <Text style={[styles.signatureLine, { textAlign: 'left' }]}>{formData.sig.toUpperCase()}</Text>
             {!isFromToMemo && formData.delegationText && (
               <Text style={[styles.signatureLine, { textAlign: 'left' }]}>{formData.delegationText}</Text>

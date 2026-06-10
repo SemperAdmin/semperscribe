@@ -151,44 +151,70 @@ export class RelativeIndentEngine implements IndentEngine {
 }
 
 /**
- * Pre-Phase-1 fixed cascade (0.25 inch per level), preserved verbatim
- * for directive paths until Phase 3 retunes them. This table was
- * previously exported from paragraph-formatter as NAVAL_TAB_STOPS; it
- * is now engine-internal per the Phase 1 plan.
+ * USMC directive ladder (Phase 3 P3.2; MCO 5215.1K para 33).
+ * Fixed 4-space typewriter ladder in Courier: the designator starts
+ * at character column (level-1)*4; at Courier 12 one character
+ * advances 7.2pt = 144 twips, so each level steps 576 twips
+ * (480 twips at Courier 10). Runover (wrapped) lines return to the
+ * LEFT MARGIN — consumers must not emit a hanging indent.
+ *
+ * Two spaces follow period designators (1. / a.), one space follows
+ * parenthesized designators ((1) / (a)) — spacesAfterCitation.
+ *
+ * Pre-Phase-1 this table held a 0.25-inch (360-twip) cascade; the
+ * Phase 3 retune replaced it per the plan (CORE_CONCEPTS_UPDATE_PLAN
+ * Phase 3 item 2). Columns are character-defined, so the char fields
+ * are authoritative and size-independent; twip fields derive from
+ * the font size.
  */
-export const FIXED_LADDER: Record<number, { citation: number; text: number }> = {
-  1: { citation: 0, text: 360 },
-  2: { citation: 360, text: 720 },
-  3: { citation: 720, text: 1080 },
-  4: { citation: 1080, text: 1440 },
-  5: { citation: 1440, text: 1800 },
-  6: { citation: 1800, text: 2160 },
-  7: { citation: 2160, text: 2520 },
-  8: { citation: 2520, text: 2880 },
+export const COURIER_TWIPS_PER_CHAR: Record<number, number> = {
+  10: 120, // 10pt * 0.6em advance * 20 twips/pt
+  12: 144, // 12pt * 0.6em advance * 20 twips/pt
+};
+
+export const FIXED_LADDER: Record<number, { citationChars: number; textChars: number }> = {
+  1: { citationChars: 0, textChars: 4 },
+  2: { citationChars: 4, textChars: 8 },
+  3: { citationChars: 8, textChars: 12 },
+  4: { citationChars: 12, textChars: 16 },
+  5: { citationChars: 16, textChars: 20 },
+  6: { citationChars: 20, textChars: 24 },
+  7: { citationChars: 24, textChars: 28 },
+  8: { citationChars: 28, textChars: 32 },
 };
 
 export class FixedLadderEngine implements IndentEngine {
   computeSpecs(
     paragraphs: ParagraphData[],
     _font: 'times' | 'courier',
-    _fontSizePt: number = 12,
+    fontSizePt: number = 12,
   ): ParagraphIndentSpec[] {
+    // Directives are Courier-only (font-policy, G7); the ladder is
+    // defined in character columns and scaled by the Courier advance.
+    const tpc = COURIER_TWIPS_PER_CHAR[fontSizePt] ?? fontSizePt * 0.6 * 20;
     return paragraphs.map((p, index) => {
       const level = Math.min(Math.max(p.level, 1), 8);
       const { citation } = generateCitation(p, index, paragraphs);
       const ladder = FIXED_LADDER[level];
+      const firstLineTwips = ladder.citationChars * tpc;
+      const textStartTwips = ladder.textChars * tpc;
       return {
         citation,
         spacesAfter: spacesAfterCitation(citation),
-        firstLineTwips: ladder.citation,
-        textStartTwips: ladder.text,
-        firstLinePoints: ladder.citation / TWIPS_PER_POINT,
-        textStartPoints: ladder.text / TWIPS_PER_POINT,
-        prefixChars: (level - 1) * 4,
-        textStartChars: level * 4,
+        firstLineTwips,
+        textStartTwips,
+        firstLinePoints: firstLineTwips / TWIPS_PER_POINT,
+        textStartPoints: textStartTwips / TWIPS_PER_POINT,
+        prefixChars: ladder.citationChars,
+        textStartChars: ladder.textChars,
       };
     });
   }
+}
+
+/** USMC directive types using the fixed ladder (MCO 5215.1K). */
+export function isDirectiveType(documentType: string): boolean {
+  return ['mco', 'bulletin', 'change-transmittal'].includes(documentType);
 }
 
 export const relativeIndentEngine = new RelativeIndentEngine();

@@ -306,6 +306,38 @@ export function validateDateSlots(
 }
 
 /** Aggregate run used by the proofread engine and the export gate. */
+/**
+ * P3.2 — directive typewriter spacing (MCO 5215.1K; USMC directives
+ * follow typewriter conventions: two spaces after a sentence period).
+ * WARN only and deliberately conservative: flags ". X" only when the
+ * period ends a word of two or more lowercase letters, so "U.S.",
+ * "e.g.", and initialisms do not trip it. The tool never rewrites
+ * user text (user-responsibility posture); the author fixes it.
+ */
+export function validateDirectiveTypography(
+  formData: FormData,
+  paragraphs: ParagraphData[],
+): ValidationIssue[] {
+  const isUsmcDirective = ['mco', 'bulletin', 'change-transmittal']
+    .includes(formData.documentType);
+  if (!isUsmcDirective) return [];
+  const issues: ValidationIssue[] = [];
+  const singleSpaced = /[a-z]{2}[.!?] (?=[A-Z])/;
+  for (const p of paragraphs) {
+    if (singleSpaced.test(p.content)) {
+      issues.push({
+        id: `directive-sentence-spacing-${p.id}`,
+        severity: 'warn',
+        rule: 'Directives use two spaces after a sentence period',
+        citation: 'MCO 5215.1K (typewriter conventions)',
+        detail: 'A sentence in this paragraph is followed by a single space. USMC directives use two.',
+      });
+      break; // one warning per document is enough signal
+    }
+  }
+  return issues;
+}
+
 export function runLetterValidators(
   formData: FormData,
   vias: string[],
@@ -318,6 +350,7 @@ export function runLetterValidators(
     ...validateWindowEnvelope(formData, vias),
     ...validateActionAddressees(formData),
     ...validateDateSlots(formData, paragraphs),
+    ...validateDirectiveTypography(formData, paragraphs),
   ];
 }
 
