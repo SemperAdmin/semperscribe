@@ -101,6 +101,30 @@ the validators as generated.
 Proof: 14 validator tests incl. order violations, slot rules,
 month-end and ceiling boundaries.
 
+## P3.6 — Distribution statements: verbatim + placement
+
+VERBATIM VERIFIED against the primary source: MCO 5215.1K W/ ADMIN
+CH-2 (10 May 2007), encl (1) statements block (pages 1-8/1-9),
+fetched 2026-06-10 from
+https://www.mcieast.marines.mil/Portals/33/MCO%205215_1K%20W%20ADMIN%20CH-2_1.pdf
+All seven statements (A-F, X) in constants.ts match character for
+character. tests/distribution-statements.test.ts embeds the source
+transcription as a verbatim guard. The same source page also
+confirms the P3.1 font policy verbatim ("Use Courier or Courier New
+typeface; 10 or 12 point") and the 1in/0.5in margin-footer rule.
+
+Placement (audit lines 149/172): the DOCX previously emitted the
+statement IN THE BODY FLOW after the signature — wrong page, wrong
+anchor. Now a margin-anchored text frame (framePr, yAlign bottom)
+whose flow anchor sits directly after the letterhead, so it lands at
+the bottom of page 1. The PDF already rendered a fixed page-1-only
+bottom footer and is unchanged. Fill-in resolution unified in
+resolveDistributionStatement (shared by both emitters; the PDF and
+DOCX previously carried duplicate copies of the replace logic).
+DISTRIBUTION line: caps, PCN carried, one blank below the signature
+block. "Copy to" colon alignment has NO located source — left
+as-is, flagged for SME (same standard as the Gate 2 sep-cover drop).
+
 ## Open items for Gate 3
 
 1. C5/C9 rulings (plan "OPEN RULINGS"): notice designation-line
@@ -111,5 +135,5 @@ month-end and ceiling boundaries.
    carries both, emitters fixed at 12. Decide at Gate 3 whether a
    selector is wanted (functional addition needing approval).
 
-Suite after P3.5: 923 green (897 + 6 golden/components), tsc clean,
+Suite after P3.6: 934 green (897 + 6 golden/components), tsc clean,
 parity green, goldens byte-stable (correspondence untouched).

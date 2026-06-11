@@ -18,7 +18,12 @@ import {
   TableCell,
   WidthType,
   BorderStyle,
-  VerticalAlign
+  VerticalAlign,
+  HorizontalPositionAlign,
+  VerticalPositionAlign,
+  FrameAnchorType,
+  FrameWrap,
+  HeightRule
 } from "docx";
 import { FormData, ParagraphData } from "@/types";
 import { getDoDSealBuffer } from "./dod-seal";
@@ -31,7 +36,7 @@ import {
   getRefSpacing, 
   getEnclSpacing, 
   getCopyToSpacing, 
-  getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle } from './naval-format-utils';
+  getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle, resolveDistributionStatement } from './naval-format-utils';
 import { createFormattedParagraph, generateCitation } from "./paragraph-formatter";
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from "./indent-engine";
 import { resolveBodyFont } from "./font-policy";
@@ -1679,31 +1684,37 @@ export async function generateDocxBlob(
   // --- Distribution / Copy To ---
   const distributionParagraphs: Paragraph[] = [];
   
+  // P3.6 — Distribution Statement at the BOTTOM of the letterhead
+  // (first) page (MCO 5215.1K; audit lines 149/172), not in the body
+  // flow. Implemented as a margin-anchored text frame whose flow
+  // anchor sits early in the document, so it always lands on page 1.
+  const distStatementParagraphs: Paragraph[] = [];
   if (isDirective) {
-      // Distribution Statement
-      const dist = formData.distribution;
-      if (dist?.statementCode && DISTRIBUTION_STATEMENTS[dist.statementCode as keyof typeof DISTRIBUTION_STATEMENTS]) {
-          const stmt = DISTRIBUTION_STATEMENTS[dist.statementCode as keyof typeof DISTRIBUTION_STATEMENTS];
-          let stmtText = stmt.text;
-          
-          if (stmt.requiresFillIns) {
-            if (dist.statementReason) stmtText = stmtText.replace('(fill in reason)', dist.statementReason);
-            if (dist.statementDate) stmtText = stmtText.replace('(date of determination)', formatCancellationDate(dist.statementDate));
-            if (dist.statementAuthority) {
-                stmtText = stmtText.replace('(insert originating command)', dist.statementAuthority);
-                stmtText = stmtText.replace('(originating command)', dist.statementAuthority);
-            }
-          }
-          
-          distributionParagraphs.push(createEmptyLine(font));
-          distributionParagraphs.push(new Paragraph({
+      const stmtText = resolveDistributionStatement(formData);
+      if (stmtText) {
+          distStatementParagraphs.push(new Paragraph({
               children: [new TextRun({ text: stmtText, font, size: FONT_SIZE_BODY })],
-              spacing: { after: 240 }
+              frame: {
+                  type: 'alignment',
+                  alignment: { x: HorizontalPositionAlign.LEFT, y: VerticalPositionAlign.BOTTOM },
+                  anchor: { horizontal: FrameAnchorType.MARGIN, vertical: FrameAnchorType.MARGIN },
+                  width: 9360,  // 6.5in text width
+                  height: 240,
+                  rule: HeightRule.ATLEAST,
+                  wrap: FrameWrap.AROUND,
+              },
+              spacing: { after: 0 },
           }));
       }
+  }
 
+  if (isDirective) {
+      const dist = formData.distribution;
       // PCN and Copy To
       if (dist && (dist.type === 'pcn' || dist.type === 'pcn-with-copy')) {
+          // DISTRIBUTION on the 2nd line below the signature block
+          // (one blank between), caps, left margin (audit line 138).
+          distributionParagraphs.push(createEmptyLine(font));
           distributionParagraphs.push(new Paragraph({
               children: [
                   new TextRun({ text: "DISTRIBUTION: ", font, size: FONT_SIZE_BODY }),
@@ -2188,6 +2199,7 @@ export async function generateDocxBlob(
       },
       children: [
         ...letterheadParagraphs,
+        ...distStatementParagraphs,
         ...ssicParagraphs,
         ...businessHeaderParagraphs,
         ...(isMoaOrMou ? [] : [createEmptyLine(font)]),

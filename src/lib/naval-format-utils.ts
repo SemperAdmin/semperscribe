@@ -668,3 +668,35 @@ export function getDirectiveDesignation(formData: FormData): string {
     || (formData.documentType === 'bulletin' ? 'MCBul' : 'MCO');
   return formData.ssic ? `${prefix} ${formData.ssic}` : '';
 }
+
+/**
+ * P3.6 — distribution statement text with fill-ins resolved.
+ * Verbatim base text lives in DISTRIBUTION_STATEMENTS (constants.ts),
+ * verified character-for-character against MCO 5215.1K W/ ADMIN CH-2
+ * encl (1) pages 1-8/1-9 (10 May 2007), fetched 2026-06-10 from
+ * mcieast.marines.mil. Shared by both emitters so the resolved text
+ * can never diverge.
+ */
+import { DISTRIBUTION_STATEMENTS } from './constants';
+
+export function resolveDistributionStatement(formData: FormData): string {
+  const dist = (formData as { distribution?: {
+    statementCode?: string;
+    statementReason?: string;
+    statementDate?: string;
+    statementAuthority?: string;
+  } }).distribution;
+  const code = dist?.statementCode as keyof typeof DISTRIBUTION_STATEMENTS | undefined;
+  if (!code || !DISTRIBUTION_STATEMENTS[code]) return '';
+  const stmt = DISTRIBUTION_STATEMENTS[code];
+  let text: string = stmt.text;
+  if (stmt.requiresFillIns) {
+    if (dist!.statementReason) text = text.replace('(fill in reason)', dist!.statementReason);
+    if (dist!.statementDate) text = text.replace('(date of determination)', formatCancellationDate(dist!.statementDate));
+    if (dist!.statementAuthority) {
+      text = text.replace('(insert originating command)', dist!.statementAuthority);
+      text = text.replace('(originating command)', dist!.statementAuthority);
+    }
+  }
+  return text;
+}

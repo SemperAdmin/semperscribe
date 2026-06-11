@@ -36,7 +36,7 @@ const CONTINUATION_SPACER_NAVAL = 84 - PDF_MARGINS.top;
 const CONTINUATION_HEADER_HEIGHT = 48; // directive/civilian legacy, retuned in Phases 3-4
 import { getPDFSealDataUrl } from '@/lib/pdf-seal';
 import { parseAndFormatDate, formatBusinessDate } from '@/lib/date-utils';
-import { splitSubject, formatCancellationDate, getDirectiveDesignation, buildDirectiveTitle, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose, getSignatureBlankLines } from '@/lib/naval-format-utils';
+import { splitSubject, formatCancellationDate, getDirectiveDesignation, buildDirectiveTitle, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose, getSignatureBlankLines, resolveDistributionStatement } from '@/lib/naval-format-utils';
 import { DISTRIBUTION_STATEMENTS } from '@/lib/constants';
 import { parseFormattedText } from '@/lib/pdf-text-parser';
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from '@/lib/indent-engine';
@@ -816,22 +816,9 @@ export function NavalLetterPDF({
   const tocPageNum = formData.showStructuralPages ? romanNumerals[structuralPageIndex++] : '';
 
   // Pre-compute distribution statement text for use in fixed footer
-  const distributionStatementText = (() => {
-    const dist = formData.distribution;
-    if (!isDirective || !dist?.statementCode) return '';
-    const stmt = DISTRIBUTION_STATEMENTS[dist.statementCode as keyof typeof DISTRIBUTION_STATEMENTS];
-    if (!stmt) return '';
-    let text = stmt.text;
-    if (stmt.requiresFillIns) {
-      if (dist.statementReason) text = text.replace('(fill in reason)', dist.statementReason);
-      if (dist.statementDate) text = text.replace('(date of determination)', formatCancellationDate(dist.statementDate));
-      if (dist.statementAuthority) {
-        text = text.replace('(insert originating command)', dist.statementAuthority);
-        text = text.replace('(originating command)', dist.statementAuthority);
-      }
-    }
-    return text;
-  })();
+  // P3.6: shared resolver — both emitters resolve fill-ins through
+  // resolveDistributionStatement so the text can never diverge.
+  const distributionStatementText = isDirective ? resolveDistributionStatement(formData) : '';
 
   return (
     <Document
