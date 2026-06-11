@@ -40,3 +40,49 @@ Gate S1 OPEN ITEMS for Stephen:
    vanishes after signing, no ink in the signed artifact.
 2. Ruling: commit the CAC-signed fixture (with your EDIPI) to the
    public repo for S3 CI, or supply a sanitized/test-cert fixture.
+
+### S2 SHIPPED (2026-06-10) — guided ceremony, no backend
+
+Ruling (Stephen): DocuSign-style fully in-app CAC signing is barred
+by K1 on any architecture; ship the guided ceremony instead, no
+relay backend. Signed fixture NEVER goes to GitHub (ruling); S3
+PASS check against it stays local, FAIL fixtures synthetic.
+
+S2a (commit 16f3f9c):
+- url-state v2: optional SignatureRouting {requestedSigner, dueDate,
+  returnEmail, note}; v1 links decode unchanged.
+- signature-probe.ts: STRUCTURAL detection only (ByteRange/SubFilter/
+  /M time, signer + CA hints scraped from CMS printable strings,
+  bytes-after-signed-range flag). No digest, no chain, no trust
+  decision — every consumer labels it. Verified exact against the
+  real CAC-signed fixture (signer CN with 10-digit EDIPI cap, DOD
+  EMAIL CA-70, DoD Root CA 6; DER tag-byte bleed handled with the
+  2026 DoD PKI shape heuristic, superseded by S3 ASN.1).
+
+S2b:
+- RequestSignatureCard (drafter): routing fields -> v2 share link ->
+  clipboard, OPSEC rule stated on the card and in the toast.
+- SignatureCeremonyPanel (signer): 4-step stepper — save sign-ready
+  PDF (File System Access API, anchor-download fallback; same export
+  gate as generateDocument, then the S1 anchored field with the
+  requested signer's name) -> Acrobat instructions -> drop-zone
+  structural check (advisory card, "not cryptographic verification"
+  label, incremental-update warning) -> return via navigator.share
+  with the file attached (OS share sheet -> Outlook) or mailto
+  fallback.
+- page.tsx: routing slips detected on share-link import; ceremony
+  panel replaces the request card; i-type/amhs/page11 excluded.
+
+Proof: tests/signature-probe.test.ts (6) — v2 round-trip, v1
+back-compat, version stamping, probe shape/trailing-bytes/negative;
+tests/components/SignatureCeremony.test.tsx (3) — banner fields,
+save->sign->probe walk with advisory label, OPSEC text. Suite 1054
+green (29 files), tsc clean.
+
+Gate S2 open items:
+1. Stephen end-to-end walk: request link on one machine/profile,
+   ceremony on another, share-sheet return on Windows (navigator.share
+   file support rides Edge/Chrome on Win 10/11 — verify on your box).
+2. S3 next: real CMS verification with bundled DoD roots replaces the
+   probe card in-place (same panel slot, same advisory framing until
+   revocation is solved, which stays out of scope per ruling).

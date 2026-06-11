@@ -19,7 +19,10 @@ import { AMHSPreview } from '@/components/amhs/AMHSPreview';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { downloadDocument } from '@/services/export/index';
 import { useToast } from '@/hooks/use-toast';
-import { getStateFromUrl, clearShareParam } from '@/lib/url-state';
+import { getStateFromUrl, clearShareParam, SignatureRouting } from '@/lib/url-state';
+import { SignatureCeremonyPanel } from '@/components/signature/SignatureCeremonyPanel';
+import { RequestSignatureCard } from '@/components/signature/RequestSignatureCard';
+import { addSignatureField } from '@/lib/pdf-signature-field';
 import { useParagraphs } from '@/hooks/useParagraphs';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useImportExport } from '@/hooks/useImportExport';
@@ -561,18 +564,43 @@ function NavalLetterGeneratorInner() {
     setSavedLetters([]);
   };
 
+  // S2: routing slip arriving on a request-for-signature link
+  const [routingRequest, setRoutingRequest] = useState<SignatureRouting | null>(null);
+
   // Load shared state from URL on mount
   useEffect(() => {
     const sharedState = getStateFromUrl();
     if (sharedState) {
       handleImport(sharedState);
       clearShareParam();
-      toast({
-        title: "Document Loaded",
-        description: "Shared document has been loaded. You can view and edit it.",
-      });
+      if (sharedState.routing) {
+        setRoutingRequest(sharedState.routing);
+        toast({
+          title: "Signature requested",
+          description: `This link asks ${sharedState.routing.requestedSigner || 'you'} to sign. Follow the steps at the top of the page.`,
+        });
+      } else {
+        toast({
+          title: "Document Loaded",
+          description: "Shared document has been loaded. You can view and edit it.",
+        });
+      }
     }
   }, []);
+
+  // S2: sign-ready PDF for the ceremony — same export gate as
+  // generateDocument, then the S1 anchored signature field.
+  const generateSignReadyPdf = useCallback(async (): Promise<Blob> => {
+    const blockers = getExportBlockers(formData, vias, references, paragraphs);
+    if (blockers.length > 0) {
+      throw new Error('Export blocked: ' + blockers.map((b) => b.rule).join('; '));
+    }
+    const base = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+    const withField = await addSignatureField(await base.arrayBuffer(), {
+      signerName: routingRequest?.requestedSigner || formData.sig,
+    });
+    return new Blob([new Uint8Array(withField)], { type: 'application/pdf' });
+  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList, routingRequest]);
 
   // Phase 2: inline compliance issues for the live preview banner.
   const validationIssues = useMemo(
@@ -618,6 +646,19 @@ function NavalLetterGeneratorInner() {
       }
       formData={formData}
     >
+      {routingRequest ? (
+        <SignatureCeremonyPanel
+          routing={routingRequest}
+          fileName={getExportFilename(formData, 'pdf')}
+          generateSignReadyPdf={generateSignReadyPdf}
+          onDismiss={() => setRoutingRequest(null)}
+        />
+      ) : formData.documentType && formData.documentType !== 'i-type' && formData.documentType !== 'amhs' && formData.documentType !== 'page11' ? (
+        <RequestSignatureCard
+          defaultSigner={formData.sig}
+          buildState={() => ({ formData, paragraphs, references, enclosures, vias, copyTos, distList })}
+        />
+      ) : null}
       <DocumentLayout
         formData={formData}
         setFormData={setFormData}
