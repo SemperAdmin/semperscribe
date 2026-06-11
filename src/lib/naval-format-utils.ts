@@ -198,19 +198,6 @@ export function buildDirectiveTitle(formData: FormData): string {
 }
 
 /**
- * Formats the SSIC display in the identification block for directives.
- * The SSIC field now contains the full identifier (e.g., "C5216R.3K"),
- * so this extracts just the base SSIC portion for the identification block.
- */
-export function formatDirectiveSSICBlock(formData: FormData): string {
-  if (!formData.ssic) return '';
-  // Extract the base SSIC portion (digits, optional R, optional .digits, optional letter)
-  // Strip "w/ ch #" suffix if present
-  const ssic = formData.ssic.replace(/\s*w\/.*$/i, '').trim();
-  return ssic;
-}
-
-/**
  * Standard MCO 5-Paragraph Order (SMEAC) scaffold per MCO 5216.20B Ch2.
  * Includes mandatory sub-paragraphs for Execution and Command and Signal.
  * Cancellation (para 2) is included as optional — delete if not needed.

@@ -191,7 +191,19 @@ enforce the archetype lock.
 Proof: 3 new font-policy tests incl. DOCX letterhead-text assertion
 under stale DLA state.
 
-## Open items for Gate 3
+## GATE 3 CLOSED (2026-06-10, Stephen)
+
+1. C5: notice designation line sits on the 2ND LINE BELOW THE DATE
+   (Exhibit 1 reading). Exhibit 5 variant rejected.
+2. C9: MCO To line on the NEXT line below From (Chapter 2 reading).
+   Current rendering already complies — no code change.
+3. Font size selector: NOT exposed. Directives fixed at 12 pt; the
+   10 pt ladder stays in the engine, reversible later.
+4. formatDirectiveSSICBlock: DELETED (dead since P3.4).
+
+Phase 4 (directives pagination + SECNAV variants) authorized.
+
+## Former open items (superseded by the Gate 3 ruling above)
 
 1. C5/C9 rulings (plan "OPEN RULINGS"): notice designation-line
    position; MCO To-line spacing. Plan assumptions in effect.
