@@ -4,6 +4,24 @@ import { FormData, ParagraphData } from '@/types';
 /**
  * State that can be shared via URL
  */
+/**
+ * S2 (docs/SIGNATURE_COLLECTION_PLAN.md) — routing slip carried in the
+ * share URL, OUTBOUND ONLY. The URL carries the signature REQUEST;
+ * the signed artifact always travels as a file (constraint K3).
+ * OPSEC: the link embeds the full letter text — non-sensitive drafts
+ * only, user-owned, same posture as the no-CUI rule.
+ */
+export interface SignatureRouting {
+  /** Typed name of the requested signer (matches the signature block) */
+  requestedSigner: string;
+  /** ISO date the signature is needed by (optional) */
+  dueDate?: string;
+  /** Where the signed file returns to (e-mail address, free text) */
+  returnEmail?: string;
+  /** Short note from the drafter to the signer */
+  note?: string;
+}
+
 export interface ShareableState {
   formData: FormData;
   paragraphs?: ParagraphData[];
@@ -12,10 +30,12 @@ export interface ShareableState {
   vias?: string[];
   copyTos?: string[];
   distList?: string[];
+  /** S2: present only on request-for-signature links (v2) */
+  routing?: SignatureRouting;
   version: number; // For future compatibility
 }
 
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 const MAX_URL_LENGTH = 8000; // Safe limit for most browsers
 
 /**
