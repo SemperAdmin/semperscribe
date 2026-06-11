@@ -612,11 +612,9 @@ function NavalLetterGeneratorInner() {
       handleImport(sharedState);
       clearShareParam();
       if (sharedState.routing) {
+        // S2c follow-up (Stephen 2026-06-10): no toast — the ceremony
+        // panel at the top of the page is the whole message.
         setRoutingRequest(sharedState.routing);
-        toast({
-          title: "Signature requested",
-          description: `This link asks ${sharedState.routing.requestedSigner || 'you'} to sign. Follow the steps at the top of the page.`,
-        });
       } else {
         toast({
           title: "Document Loaded",

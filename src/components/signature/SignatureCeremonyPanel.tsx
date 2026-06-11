@@ -25,10 +25,21 @@ interface Props {
   onDismiss: () => void;
 }
 
-/** Save with the File System Access API when present, else download. */
-async function saveBlob(blob: Blob, fileName: string): Promise<void> {
+interface SavedHandle {
+  getFile: () => Promise<File>;
+  createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }>;
+}
+
+/**
+ * Save with the File System Access API when present, else download.
+ * Returns the file handle when the picker path was used — the
+ * ceremony re-reads it after Acrobat overwrites the file, removing
+ * the drag-back step (S2c follow-up, Stephen 2026-06-10: cut every
+ * removable step around the Acrobat floor).
+ */
+async function saveBlob(blob: Blob, fileName: string): Promise<SavedHandle | null> {
   const picker = (window as unknown as {
-    showSaveFilePicker?: (o: object) => Promise<{ createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }> }>;
+    showSaveFilePicker?: (o: object) => Promise<SavedHandle>;
   }).showSaveFilePicker;
   if (picker) {
     try {
@@ -39,7 +50,7 @@ async function saveBlob(blob: Blob, fileName: string): Promise<void> {
       const w = await handle.createWritable();
       await w.write(blob);
       await w.close();
-      return;
+      return handle;
     } catch (e) {
       if ((e as DOMException)?.name === 'AbortError') throw e;
       // fall through to anchor download on any other picker failure
@@ -53,6 +64,7 @@ async function saveBlob(blob: Blob, fileName: string): Promise<void> {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  return null;
 }
 
 export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf, onDismiss }: Props) {
@@ -63,6 +75,7 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
   const [probe, setProbe] = useState<SignatureProbeResult | null>(null);
   const [signedFile, setSignedFile] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const savedHandle = useRef<SavedHandle | null>(null);
 
   const signedName = fileName.replace(/\.pdf$/i, '') + '_SIGNED.pdf';
 
@@ -70,7 +83,7 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
     setBusy(true); setError(null);
     try {
       const blob = await generateSignReadyPdf();
-      await saveBlob(blob, fileName);
+      savedHandle.current = await saveBlob(blob, fileName);
       setStep(2);
     } catch (e) {
       if ((e as DOMException)?.name !== 'AbortError') {
@@ -91,6 +104,28 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
       setStep(4);
     } catch {
       setError('Could not read the file.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Re-read the SAME file the signer saved and Acrobat overwrote —
+  // no drag-back, no second file picker.
+  const handleCheckSaved = async () => {
+    if (!savedHandle.current) return;
+    setBusy(true); setError(null);
+    try {
+      const f = await savedHandle.current.getFile();
+      setSignedFile(f);
+      const r = await probeSignatureBlob(f);
+      setProbe(r);
+      if (r.hasSignature) {
+        setStep(4);
+      } else {
+        setError('No signature found yet. Sign the file in Acrobat and save it to the same location, then check again.');
+      }
+    } catch {
+      setError('Could not re-read the saved file. Use the drop zone below instead.');
     } finally {
       setBusy(false);
     }
@@ -146,7 +181,8 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
           </li>
           <li className={step === 2 ? '' : 'opacity-60'}>
             <span className="font-semibold">2. Sign it in Adobe Acrobat with your CAC.</span>{' '}
-            Open the saved file, click the dashed signature box, choose your certificate, save.
+            Open the saved file, click the dashed signature box, choose your certificate, and save to the
+            same location when Acrobat asks.
             {step === 2 && (
               <Button size="sm" variant="outline" className="ml-2" onClick={() => setStep(3)}>
                 I signed it
@@ -154,18 +190,27 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
             )}
           </li>
           <li className={step === 3 ? '' : 'opacity-60'}>
-            <span className="font-semibold">3. Drop the signed file here to check it.</span>
+            <span className="font-semibold">3. Check the signature.</span>
             {step === 3 && (
-              <div
-                className="mt-2 border-2 border-dashed rounded-md p-4 text-center cursor-pointer"
-                data-testid="ceremony-drop"
-                onClick={() => fileInput.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); void handleFiles(e.dataTransfer.files); }}
-              >
-                Drag the signed PDF here, or click to browse.
-                <input ref={fileInput} type="file" accept="application/pdf" className="hidden"
-                  onChange={(e) => void handleFiles(e.target.files)} />
+              <div className="mt-2 space-y-2">
+                {savedHandle.current && (
+                  <Button size="sm" disabled={busy} onClick={handleCheckSaved} data-testid="ceremony-check">
+                    {busy ? 'Checking…' : 'Check the signed file'}
+                  </Button>
+                )}
+                <div
+                  className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer"
+                  data-testid="ceremony-drop"
+                  onClick={() => fileInput.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); void handleFiles(e.dataTransfer.files); }}
+                >
+                  {savedHandle.current
+                    ? 'Saved it somewhere else? Drag the signed PDF here, or click to browse.'
+                    : 'Drag the signed PDF here, or click to browse.'}
+                  <input ref={fileInput} type="file" accept="application/pdf" className="hidden"
+                    onChange={(e) => void handleFiles(e.target.files)} />
+                </div>
               </div>
             )}
           </li>

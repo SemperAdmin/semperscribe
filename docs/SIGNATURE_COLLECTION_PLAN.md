@@ -119,3 +119,22 @@ Caveat on formData.signatureFields: FormData is the permissive type,
 so the field rides untyped; zod parse in dynamic-form submit paths
 would strip it. Acceptable for the PoC; flagged for the schema pass
 if signature fields ever become per-type validated structure.
+
+### S2d SHIPPED (2026-06-10) — friction pass on the signer loop
+
+Stephen's two corrections from the live walk:
+1. Routing toast removed — the ceremony panel is the whole message.
+2. Signer save step: cannot reach zero under the CAC-PKI-only ruling
+   (Acrobat signs files on disk; Acrobat is the only CAC-capable
+   signer present — K1). Everything around it is now removed: the
+   save picker's file handle is HELD, the signer overwrites the same
+   file when Acrobat prompts, and step 3 is a one-click "Check the
+   signed file" re-reading that handle. No drag-back, no second file
+   picker. Drop zone remains as the fallback (no FS Access API, or
+   saved elsewhere); "no signature yet" re-check message instead of
+   a dead end. Loop is now: Begin -> sign in Acrobat -> Check ->
+   Return.
+
+Proof: held-handle ceremony test (mocked showSaveFilePicker ->
+getFile -> probe card, no drop zone touched). Suite 1056 green
+(29 files), tsc clean.

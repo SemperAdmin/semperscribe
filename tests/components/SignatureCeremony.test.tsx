@@ -68,6 +68,37 @@ describe('SignatureCeremonyPanel', () => {
   });
 });
 
+describe('SignatureCeremonyPanel — held-handle check (no drag-back)', () => {
+  it('re-reads the saved file via the picker handle on one click', async () => {
+    const signedFile = syntheticSignedFile();
+    const handle = {
+      getFile: vi.fn().mockResolvedValue(signedFile),
+      createWritable: vi.fn().mockResolvedValue({ write: vi.fn(), close: vi.fn() }),
+    };
+    (window as unknown as Record<string, unknown>).showSaveFilePicker = vi.fn().mockResolvedValue(handle);
+
+    render(
+      <SignatureCeremonyPanel
+        routing={{ requestedSigner: 'I. M. MARINE' }}
+        fileName="letter.pdf"
+        generateSignReadyPdf={vi.fn().mockResolvedValue(new Blob(['%PDF'], { type: 'application/pdf' }))}
+        onDismiss={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText('Save PDF'));
+    await waitFor(() => expect(screen.getByText('I signed it')).toBeTruthy());
+    fireEvent.click(screen.getByText('I signed it'));
+
+    const check = await screen.findByTestId('ceremony-check');
+    fireEvent.click(check);
+    const card = await screen.findByTestId('probe-card');
+    expect(card.textContent).toContain('Signature structure detected');
+    expect(handle.getFile).toHaveBeenCalledOnce();
+    expect(screen.getByText('Return signed file')).toBeTruthy();
+    delete (window as unknown as Record<string, unknown>).showSaveFilePicker;
+  });
+});
+
 describe('SignatureFieldSection (S2c)', () => {
   const handlers = {
     onOpenSignaturePlacement: vi.fn(),
