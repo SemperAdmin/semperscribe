@@ -1,11 +1,22 @@
 /**
- * PDF Signature Field Utility
+ * PDF Signature Field Utility (S1, SIGNATURE_COLLECTION_PLAN.md)
  *
- * Adds an empty digital signature field to a PDF for CAC/PKI signing in Adobe Reader.
- * The field is positioned above the signature block, aligned with the signer's name.
+ * Adds empty AcroForm digital-signature fields for CAC/PKI signing in
+ * Adobe Acrobat/Reader. ANNOTATION-ONLY by design: the page content
+ * stream is never touched. The "sign here" cue lives in the widget's
+ * normal appearance stream (/AP /N), which Acrobat REPLACES with the
+ * signature appearance at signing time — so the placeholder vanishes
+ * from the signed artifact. The pre-S1 implementation drew the cue
+ * into the page content itself, leaving permanent ink on official
+ * correspondence (defect logged 2026-06-10; Stephen's first CAC-signed
+ * export carries it).
+ *
+ * Signature format expectation: CMS PKCS#7 detached over ByteRange
+ * (adbe.pkcs7.detached), per DoDI 8520.02 — verified against a real
+ * CAC-signed export (DOD EMAIL CA-70 -> DoD Root CA 6) 2026-06-10.
  */
 
-import { PDFDocument, rgb, PDFPage, PDFDict, PDFArray, PDFRawStream, decodePDFRawStream, PDFName, PDFString, PDFNumber, PDFRef } from 'pdf-lib';
+import { PDFDocument, PDFPage, PDFDict, PDFArray, PDFRawStream, decodePDFRawStream, PDFName, PDFString, PDFNumber, PDFRef, StandardFonts } from 'pdf-lib';
 import { PDF_INDENTS, PDF_MARGINS } from './pdf-settings';
 
 // Signature field dimensions in points (1 inch = 72 points)
@@ -14,15 +25,6 @@ const SIGNATURE_FIELD = {
   height: 36,          // ~0.5 inches (2 lines at ~18pt)
   xOffset: PDF_MARGINS.left + PDF_INDENTS.signature,  // Page margin + signature indent (aligned with signature block)
   yAboveName: 24,      // Points to shift up from the signature name position
-};
-
-// Text appearance constants for the placeholder
-const PLACEHOLDER_TEXT = {
-  content: 'SIGN HERE',
-  size: 10,
-  hPadding: 25,
-  vOffset: 4,
-  color: rgb(0.4, 0.4, 0.6),
 };
 
 // Default Y position as percentage from bottom if text search fails
@@ -61,9 +63,60 @@ export interface ManualSignaturePosition {
 }
 
 /**
- * Gets the decoded content stream from a PDF page.
- * Handles compressed streams (FlateDecode) used by React-PDF.
+ * S1 — deterministic per-signer field names so multi-signer routing
+ * (endorsement chains, by-direction) addresses fields by name.
+ * Format: Signature_<n>_<SIGNER_SLUG>, or Signature_<n> without a name.
  */
+export function buildSignatureFieldName(index: number, signerName?: string): string {
+  const slug = (signerName || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 40);
+  return slug ? `Signature_${index}_${slug}` : `Signature_${index}`;
+}
+
+/** Escape a string for a PDF literal string inside an appearance stream. */
+function escapePdfText(text: string): string {
+  return text.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+
+/**
+ * S1 — widget normal appearance (/AP /N): dashed box + gray cue text,
+ * rendered as a Form XObject on the ANNOTATION. Zero page-content
+ * writes. Acrobat substitutes the signature appearance when signed.
+ */
+function createWidgetAppearance(
+  pdfDoc: PDFDocument,
+  helveticaRef: PDFRef,
+  width: number,
+  height: number,
+  label: string,
+): PDFRef {
+  const ops = [
+    'q',
+    '[3 3] 0 d',
+    '0.45 0.45 0.65 RG',
+    '0.75 w',
+    `0.5 0.5 ${(width - 1).toFixed(2)} ${(height - 1).toFixed(2)} re`,
+    'S',
+    'BT',
+    '0.35 0.35 0.55 rg',
+    '/F0 7 Tf',
+    `3 ${(height - 11).toFixed(2)} Td`,
+    `(${escapePdfText(label)}) Tj`,
+    'ET',
+    'Q',
+  ].join('\n');
+  const stream = pdfDoc.context.stream(ops, {
+    Type: 'XObject',
+    Subtype: 'Form',
+    BBox: [0, 0, width, height],
+    Resources: { Font: { F0: helveticaRef } },
+  });
+  return pdfDoc.context.register(stream);
+}
+
 function getDecodedContent(page: PDFPage): string | undefined {
   try {
     const rawContent = page.node.Contents();
@@ -213,9 +266,9 @@ function findTextYPosition(page: PDFPage, searchText: string): number | undefine
 }
 
 /**
- * Adds a visual signature placeholder to the PDF on the page containing the signature.
- * Users can click this area in Adobe Reader and use Tools > Certificates > Digitally Sign
- * to add their CAC/PKI signature.
+ * Adds an empty signature field on the page containing the signature
+ * block. Users click the field in Adobe Acrobat/Reader and sign with
+ * their CAC. Annotation-only: no page content is drawn.
  *
  * @param pdfBytes - The PDF as a Uint8Array or ArrayBuffer
  * @param config - Optional configuration for field placement
@@ -225,12 +278,12 @@ export async function addSignatureField(
   pdfBytes: Uint8Array | ArrayBuffer,
   config: SignatureFieldConfig = {}
 ): Promise<Uint8Array> {
-  // Load the PDF
   const pdfDoc = await PDFDocument.load(pdfBytes);
   const pages = pdfDoc.getPages();
 
   // Find the page containing the signature and its Y position
   let targetPage = pages[pages.length - 1]; // Default to last page
+  let pageNumber = pages.length;
   let yPosition = config.yPosition;
 
   // Search all pages for signature (starting from last page, most likely location)
@@ -245,8 +298,8 @@ export async function addSignatureField(
       }
 
       if (textY !== undefined) {
-        // Found the signature on this page
         targetPage = pages[i];
+        pageNumber = i + 1;
         // Position the signature box directly above the signer's name
         yPosition = textY + SIGNATURE_FIELD.yAboveName;
         break;
@@ -255,53 +308,38 @@ export async function addSignatureField(
   }
 
   const { height } = targetPage.getSize();
-
-  // Fall back to default position if text search didn't work
   if (yPosition === undefined) {
     yPosition = height * DEFAULT_Y_RATIO;
   }
 
-  // Draw a visual indicator for the signature box (visible placeholder)
-  targetPage.drawRectangle({
+  await createSignatureField(pdfDoc, targetPage, {
+    page: pageNumber,
     x: SIGNATURE_FIELD.xOffset,
     y: yPosition,
     width: SIGNATURE_FIELD.width,
     height: SIGNATURE_FIELD.height,
-    borderColor: rgb(0.6, 0.6, 0.8),
-    borderWidth: 1,
-    color: rgb(0.95, 0.97, 1.0),
-    opacity: 0.5,
-  });
+    signerName: config.signerName,
+  }, buildSignatureFieldName(1, config.signerName));
 
-  // Add "SIGN HERE" text inside the box
-  targetPage.drawText(PLACEHOLDER_TEXT.content, {
-    x: SIGNATURE_FIELD.xOffset + PLACEHOLDER_TEXT.hPadding,
-    y: yPosition + SIGNATURE_FIELD.height / 2 - PLACEHOLDER_TEXT.vOffset,
-    size: PLACEHOLDER_TEXT.size,
-    color: PLACEHOLDER_TEXT.color,
-  });
-
-  // Save and return the modified PDF
   return pdfDoc.save();
 }
 
 /**
- * Creates a PDF AcroForm signature field that can be signed with PKI/CAC.
- * This creates an actual interactive signature field, not just a visual placeholder.
- *
- * @param pdfDoc - The PDF document
- * @param targetPage - The page to add the field to
- * @param position - Position and dimensions for the field
- * @param fieldName - Name for the signature field
- * @returns The signature field widget annotation reference
+ * Creates a PDF AcroForm signature field signable with PKI/CAC.
+ * Annotation + appearance stream only; the page content stream is
+ * never modified (S1 acceptance criterion).
  */
-function createSignatureField(
+async function createSignatureField(
   pdfDoc: PDFDocument,
   targetPage: PDFPage,
   position: ManualSignaturePosition,
-  fieldName: string = 'Signature1'
-): PDFRef {
+  fieldName: string
+): Promise<PDFRef> {
   const context = pdfDoc.context;
+
+  const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const label = position.signerName ? `Sign here: ${position.signerName}` : 'Sign here (CAC)';
+  const apRef = createWidgetAppearance(pdfDoc, helvetica.ref, position.width, position.height, label);
 
   // Create the signature field dictionary
   const sigFieldDict = context.obj({
@@ -317,18 +355,17 @@ function createSignatureField(
       PDFNumber.of(position.x + position.width),
       PDFNumber.of(position.y + position.height),
     ],
+    AP: { N: apRef },                // S1: cue lives on the widget, not the page
     F: PDFNumber.of(4),              // Print flag
     P: targetPage.ref,               // Page reference
   });
 
-  // Register the signature field
   const sigFieldRef = context.register(sigFieldDict);
 
   // Get or create the AcroForm - use get() to safely check existence
   const acroFormRef = pdfDoc.catalog.get(PDFName.of('AcroForm'));
 
   if (acroFormRef) {
-    // AcroForm exists - get it and add the field
     const acroForm = context.lookup(acroFormRef) as PDFDict;
     const fieldsRef = acroForm.get(PDFName.of('Fields'));
     if (fieldsRef) {
@@ -337,10 +374,9 @@ function createSignatureField(
     } else {
       acroForm.set(PDFName.of('Fields'), context.obj([sigFieldRef]));
     }
-    // Set SigFlags to indicate signature field exists (1 = SignaturesExist, 2 = AppendOnly)
+    // SigFlags 3 = SignaturesExist | AppendOnly
     acroForm.set(PDFName.of('SigFlags'), PDFNumber.of(3));
   } else {
-    // Create new AcroForm
     const newAcroForm = context.obj({
       Fields: [sigFieldRef],
       SigFlags: PDFNumber.of(3),
@@ -361,12 +397,8 @@ function createSignatureField(
 }
 
 /**
- * Adds a signature field at a user-specified position.
- * Creates both a visual placeholder and an interactive PKI signature field.
- *
- * @param pdfBytes - The PDF as a Uint8Array or ArrayBuffer
- * @param position - The user-specified position and dimensions
- * @returns The modified PDF as Uint8Array
+ * Adds a signature field at a user-specified position (placement
+ * modal path). Annotation-only.
  */
 export async function addSignatureFieldAtPosition(
   pdfBytes: Uint8Array | ArrayBuffer,
@@ -375,53 +407,17 @@ export async function addSignatureFieldAtPosition(
   const pdfDoc = await PDFDocument.load(pdfBytes);
   const pages = pdfDoc.getPages();
 
-  // Get the target page (1-indexed to 0-indexed)
   const pageIndex = Math.max(0, Math.min(position.page - 1, pages.length - 1));
   const targetPage = pages[pageIndex];
 
-  // Draw the visual signature box at the specified position
-  console.log('Drawing signature rectangle at:', { x: position.x, y: position.y, width: position.width, height: position.height });
-  targetPage.drawRectangle({
-    x: position.x,
-    y: position.y,
-    width: position.width,
-    height: position.height,
-    borderColor: rgb(0.3, 0.3, 0.8),
-    borderWidth: 1,
-    color: rgb(0.95, 0.97, 1.0),
-    opacity: 0.3,
-  });
-
-  // Draw signer name if available
-  if (position.signerName) {
-    targetPage.drawText(position.signerName, {
-      x: position.x + 2,
-      y: position.y + position.height - 10, // Top-left of box
-      size: 8,
-      color: rgb(0.2, 0.2, 0.6),
-    });
-  } else {
-     targetPage.drawText('Sign Here', {
-      x: position.x + 2,
-      y: position.y + position.height - 10,
-      size: 8,
-      color: rgb(0.2, 0.2, 0.6),
-    });
-  }
-
-  // Create the interactive PKI signature field
-  createSignatureField(pdfDoc, targetPage, position, 'Signature1');
+  await createSignatureField(pdfDoc, targetPage, position, buildSignatureFieldName(1, position.signerName));
 
   return pdfDoc.save();
 }
 
 /**
- * Adds multiple signature fields at user-specified positions.
- * Creates both visual placeholders and interactive PKI signature fields.
- *
- * @param pdfBytes - The PDF as a Uint8Array or ArrayBuffer
- * @param positions - Array of user-specified positions and dimensions
- * @returns The modified PDF as Uint8Array
+ * Adds multiple signature fields at user-specified positions, with
+ * unique deterministic names. Annotation-only.
  */
 export async function addMultipleSignatureFields(
   pdfBytes: Uint8Array | ArrayBuffer,
@@ -430,37 +426,12 @@ export async function addMultipleSignatureFields(
   const pdfDoc = await PDFDocument.load(pdfBytes);
   const pages = pdfDoc.getPages();
 
-  positions.forEach((position, index) => {
-    // Get the target page (1-indexed to 0-indexed)
+  for (let index = 0; index < positions.length; index++) {
+    const position = positions[index];
     const pageIndex = Math.max(0, Math.min(position.page - 1, pages.length - 1));
     const targetPage = pages[pageIndex];
-
-    // Draw the visual signature box at the specified position
-    console.log(`Drawing signature rectangle ${index + 1} at:`, { x: position.x, y: position.y, width: position.width, height: position.height });
-    targetPage.drawRectangle({
-      x: position.x,
-      y: position.y,
-      width: position.width,
-      height: position.height,
-      borderColor: rgb(0.3, 0.3, 0.8),
-      borderWidth: 1,
-      color: rgb(0.95, 0.97, 1.0),
-      opacity: 0.3,
-    });
-
-    // Draw signer name if available
-    if (position.signerName) {
-      targetPage.drawText(position.signerName, {
-        x: position.x + 2,
-        y: position.y + position.height - 10,
-        size: 8,
-        color: rgb(0.2, 0.2, 0.6),
-      });
-    }
-
-    // Create the interactive PKI signature field with unique name
-    createSignatureField(pdfDoc, targetPage, position, `Signature${index + 1}`);
-  });
+    await createSignatureField(pdfDoc, targetPage, position, buildSignatureFieldName(index + 1, position.signerName));
+  }
 
   return pdfDoc.save();
 }
