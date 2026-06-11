@@ -125,6 +125,21 @@ DISTRIBUTION line: caps, PCN carried, one blank below the signature
 block. "Copy to" colon alignment has NO located source — left
 as-is, flagged for SME (same standard as the Gate 2 sep-cover drop).
 
+## P3.7 — Reports Required (MCO 5216.20B par. 29b/29c; audit 142)
+
+The PDF was already the reference implementation (heading-block list
+for up to 4 reports with Report Control Symbol composition, referral
+line plus dedicated page for 5+). The DOCX lagged on both counts: it
+listed reports BETWEEN the body and the signature regardless of
+count and had no 5+ page. Now mirrored: heading-block list after the
+Encl line (singular/plural label, Roman numerals when plural,
+EXEMPT handling), referral line for 5+, and a page-break-delimited
+Reports Required page after the signature with REPORT TITLE /
+REPORT CONTROL SYMBOL / PARAGRAPH columns at 5040/7920 twip tabs.
+Proof: tests/reports-required.test.ts (4) — DOCX placement before
+paragraph 1, singular label, 5+ referral + page with all rows; PDF
+page-after-signature with full row content.
+
 ## Open items for Gate 3
 
 1. C5/C9 rulings (plan "OPEN RULINGS"): notice designation-line
@@ -135,5 +150,5 @@ as-is, flagged for SME (same standard as the Gate 2 sep-cover drop).
    carries both, emitters fixed at 12. Decide at Gate 3 whether a
    selector is wanted (functional addition needing approval).
 
-Suite after P3.6: 934 green (897 + 6 golden/components), tsc clean,
+Suite after P3.7 (PHASE 3 CODE COMPLETE): 938 green (932 + 6 golden/components) (897 + 6 golden/components), tsc clean,
 parity green, goldens byte-stable (correspondence untouched).

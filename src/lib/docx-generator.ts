@@ -1316,28 +1316,82 @@ export async function generateDocxBlob(
   }
 
   // --- Reports Required (Directives) ---
+  // P3.7 — Reports Required (MCO 5216.20B par. 29b/29c; audit line
+  // 142): up to 4 reports list in the heading block on the
+  // promulgation page; 5 or more move to a dedicated Reports Required
+  // page immediately after the signature page, with a referral line
+  // in the heading block. Mirrors the PDF implementation verbatim.
+  const toRomanNumeral = (n: number): string => {
+    const map: [number, string][] = [[10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']];
+    let result = '';
+    for (const [value, numeral] of map) {
+      while (n >= value) { result += numeral; n -= value; }
+    }
+    return result;
+  };
+
   const reportsParagraphs: Paragraph[] = [];
-  // Only add if not already present in paragraphs (avoid duplication with merged admin subsections)
+  const reportsPageParagraphs: Paragraph[] = [];
   const hasReportsParagraph = paragraphs.some(p => p.content.includes('Reports Required'));
-  
-  if (isDirective && formData.reports && formData.reports.length > 0 && !hasReportsParagraph) {
-    reportsParagraphs.push(createEmptyLine(font));
-    reportsParagraphs.push(new Paragraph({
-        children: [new TextRun({ text: "REPORTS REQUIRED:", font, size: FONT_SIZE_BODY })],
-        spacing: { after: 120 }
-    }));
-    
-    formData.reports.forEach((report: { title: string; controlSymbol?: string; exempt?: boolean }) => {
-        let reportText = report.title;
-        if (report.controlSymbol) reportText += ` (${report.controlSymbol})`;
-        if (report.exempt) reportText += " (Exempt)";
-        
+  const validReports = (formData.reports ?? []).filter((r: { title: string }) => r.title);
+
+  if (isDirective && validReports.length > 0 && !hasReportsParagraph) {
+    const plural = validReports.length > 1;
+    const label = `Report${plural ? 's' : ''} Required:`;
+
+    if (validReports.length <= 4) {
+      validReports.forEach((report: { title: string; controlSymbol?: string; paragraphRef?: string; exempt?: boolean }, idx: number) => {
+        const numeral = plural ? `${toRomanNumeral(idx + 1).toUpperCase()}. ` : '';
+        const controlText = report.exempt ? 'EXEMPT' : (report.controlSymbol ? `Report Control Symbol ${report.controlSymbol}` : '');
+        const parRef = report.paragraphRef ? `, par. ${report.paragraphRef}` : '';
+        const reportText = `${report.title}${controlText ? ` (${controlText})` : ''}${parRef}`;
         reportsParagraphs.push(new Paragraph({
-            children: [new TextRun({ text: reportText, font, size: FONT_SIZE_BODY })],
-            indent: { left: 720 }, // Indent report items
-            spacing: { after: 120 }
+          children: [
+            new TextRun({ text: idx === 0 ? `${label} ` : '', font, size: FONT_SIZE_BODY }),
+            new TextRun({ text: `${numeral}${reportText}`, font, size: FONT_SIZE_BODY }),
+          ],
+          indent: idx === 0 ? undefined : { left: 1440 },
+          spacing: { after: 0 },
         }));
-    });
+      });
+      reportsParagraphs.push(createEmptyLine(font));
+    } else {
+      // Referral in the heading block.
+      reportsParagraphs.push(new Paragraph({
+        children: [new TextRun({ text: 'Reports Required: See page following signature page.', font, size: FONT_SIZE_BODY })],
+        spacing: { after: 0 },
+      }));
+      reportsParagraphs.push(createEmptyLine(font));
+
+      // Dedicated page after the signature page.
+      reportsPageParagraphs.push(new Paragraph({
+        children: [new TextRun({ text: 'Reports Required', font, size: FONT_SIZE_BODY })],
+        alignment: AlignmentType.CENTER,
+        pageBreakBefore: true,
+        spacing: { after: 480 },
+      }));
+      reportsPageParagraphs.push(new Paragraph({
+        children: [new TextRun({ text: 'REPORT TITLE\tREPORT CONTROL SYMBOL\tPARAGRAPH', font, size: FONT_SIZE_BODY })],
+        tabStops: [
+          { type: TabStopType.LEFT, position: 5040 },
+          { type: TabStopType.LEFT, position: 7920 },
+        ],
+        spacing: { after: 240 },
+      }));
+      validReports.forEach((report: { title: string; controlSymbol?: string; paragraphRef?: string; exempt?: boolean }, idx: number) => {
+        reportsPageParagraphs.push(new Paragraph({
+          children: [new TextRun({
+            text: `${toRomanNumeral(idx + 1).toUpperCase()}. ${report.title}\t${report.exempt ? 'EXEMPT' : (report.controlSymbol || '')}\t${report.paragraphRef || ''}`,
+            font, size: FONT_SIZE_BODY,
+          })],
+          tabStops: [
+            { type: TabStopType.LEFT, position: 5040 },
+            { type: TabStopType.LEFT, position: 7920 },
+          ],
+          spacing: { after: 120 },
+        }));
+      });
+    }
   }
 
   // --- Decision Grid (Position Paper) ---
@@ -2210,11 +2264,12 @@ export async function generateDocxBlob(
         ...addressParagraphs,
         ...refParagraphs,
         ...enclParagraphs,
-        ...bodyParagraphs,
         ...reportsParagraphs,
+        ...bodyParagraphs,
         ...decisionGridParagraphs,
         ...signatureParagraphs,
         ...distributionParagraphs,
+        ...reportsPageParagraphs,
       ],
     }],
   });
