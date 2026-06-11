@@ -2234,6 +2234,120 @@ export async function generateDocxBlob(
   const startPage = formData.startingPageNumber || 1;
   const showPageNumberOnFirstPage = startPage > 1;
 
+  // --- P4.1: directive structural pages (MCO 5215.1K para 48) ---
+  // Locator Sheet, Record of Changes, and Table of Contents as
+  // separate DOCX sections with static roman-numeral footers,
+  // mirroring the PDF (which already had them — the DOCX export
+  // silently dropped structural pages before P4.1). Roman numbering
+  // cascades over the pages actually enabled.
+  const structuralSections: object[] = [];
+  if (isDirective && (formData.showLocatorSheet || formData.showRecordOfChanges || formData.showStructuralPages)) {
+    const romanNumerals = ['i', 'ii', 'iii', 'iv', 'v'];
+    let structuralPageIndex = 0;
+    const locatorNum = formData.showLocatorSheet ? romanNumerals[structuralPageIndex++] : '';
+    const rocNum = formData.showRecordOfChanges ? romanNumerals[structuralPageIndex++] : '';
+    const tocNum = formData.showStructuralPages ? romanNumerals[structuralPageIndex++] : '';
+
+    const structuralPageProps = {
+      page: {
+        margin: { top: 1440, right: 1440, bottom: 1440, left: 1440, header: 720, footer: 708 },
+      },
+    };
+    const emptyHeader = new Header({ children: [] });
+    const romanFooter = (label: string) => new Footer({
+      children: [new Paragraph({
+        children: [new TextRun({ text: label, font, size: FONT_SIZE_BODY })],
+        alignment: AlignmentType.CENTER,
+      })],
+    });
+    const structuralSection = (label: string, children: (Paragraph | Table)[]) => ({
+      properties: structuralPageProps,
+      headers: { first: emptyHeader, default: emptyHeader },
+      footers: { first: romanFooter(label), default: romanFooter(label) },
+      children,
+    });
+    const noBorder = {
+      top: { style: BorderStyle.NONE, size: 0, color: "auto" },
+      bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
+      left: { style: BorderStyle.NONE, size: 0, color: "auto" },
+      right: { style: BorderStyle.NONE, size: 0, color: "auto" },
+    };
+    void noBorder;
+    const solid = { style: BorderStyle.SINGLE, size: 4, color: "000000" };
+
+    if (formData.showLocatorSheet) {
+      const designation = (formData.directiveTitle || buildDirectiveTitle(formData)).toUpperCase();
+      structuralSections.push(structuralSection(locatorNum, [
+        new Paragraph({ children: [new TextRun({ text: designation, font, size: FONT_SIZE_BODY })], alignment: AlignmentType.RIGHT, spacing: { after: 0 } }),
+        new Paragraph({ children: [new TextRun({ text: formattedDate || '', font, size: FONT_SIZE_BODY })], alignment: AlignmentType.RIGHT, spacing: { after: 240 } }),
+        new Paragraph({ children: [new TextRun({ text: 'LOCATOR SHEET', font, size: FONT_SIZE_BODY })], alignment: AlignmentType.CENTER, spacing: { after: 480 } }),
+        new Paragraph({ children: [new TextRun({ text: `Subj:\u00A0\u00A0${(formData.subj || '').toUpperCase()}`, font, size: FONT_SIZE_BODY })], spacing: { after: 240 } }),
+        new Paragraph({ children: [new TextRun({ text: 'Location:\u00A0\u00A0_______________________________________________', font, size: FONT_SIZE_BODY })], spacing: { after: 60 } }),
+        new Paragraph({ children: [new TextRun({ text: '(Indicate the location(s) of the copy(ies) of this Order.)', font, size: FONT_SIZE_BODY })], spacing: { after: 0 } }),
+      ]));
+    }
+
+    if (formData.showRecordOfChanges) {
+      const headerCell = (text: string, pct: number) => new TableCell({
+        width: { size: pct, type: WidthType.PERCENTAGE },
+        borders: { top: solid, bottom: solid, left: solid, right: solid },
+        children: [new Paragraph({ children: [new TextRun({ text, font, size: FONT_SIZE_BODY, bold: true })], alignment: AlignmentType.CENTER })],
+      });
+      const bodyCell = (text: string, pct: number, center = true) => new TableCell({
+        width: { size: pct, type: WidthType.PERCENTAGE },
+        borders: { top: solid, bottom: solid, left: solid, right: solid },
+        children: [new Paragraph({ children: [new TextRun({ text, font, size: FONT_SIZE_BODY })], alignment: center ? AlignmentType.CENTER : AlignmentType.LEFT })],
+      });
+      const rows = [
+        new TableRow({ children: [
+          headerCell('Change Number', 15), headerCell('Date of Change', 20),
+          headerCell('Date Entered', 20), headerCell('Signature of Person Incorporating Change', 45),
+        ]}),
+        ...(formData.recordOfChanges || []).map((c: { changeNo: number; date: string; pagesAffected: string; enteredBy: string }) =>
+          new TableRow({ children: [
+            bodyCell(String(c.changeNo), 15), bodyCell(c.date, 20),
+            bodyCell(c.pagesAffected, 20), bodyCell(c.enteredBy, 45, false),
+          ]})),
+        ...Array.from({ length: Math.max(0, 20 - (formData.recordOfChanges?.length || 0)) }, () =>
+          new TableRow({ children: [bodyCell('', 15), bodyCell('', 20), bodyCell('', 20), bodyCell('', 45)] })),
+      ];
+      structuralSections.push(structuralSection(rocNum, [
+        new Paragraph({ children: [new TextRun({ text: 'RECORD OF CHANGES', font, size: 28, bold: true })], alignment: AlignmentType.CENTER, spacing: { after: 480 } }),
+        new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }),
+      ]));
+    }
+
+    if (formData.showStructuralPages) {
+      const tocEntries = paragraphsWithContent
+        .filter((p) => p.level === 1 && (p.title || p.content))
+        .map((p, i) => ({
+          number: formData.fourDigitNumbering
+            ? `${formData.chapterNumber || 1}${String(i + 1).padStart(3, '0')}`
+            : `${i + 1}`,
+          title: p.title || p.content.substring(0, 80),
+        }));
+      const enclsWithContent = enclosures.filter((e) => e.trim());
+      const tocChildren: (Paragraph | Table)[] = [
+        new Paragraph({ children: [new TextRun({ text: 'TABLE OF CONTENTS', font, size: 28, bold: true })], alignment: AlignmentType.CENTER, spacing: { after: 480 } }),
+        new Paragraph({ children: [new TextRun({ text: 'PARAGRAPH\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0TITLE', font, size: FONT_SIZE_BODY, bold: true })], spacing: { after: 240 } }),
+        ...tocEntries.map((e) => new Paragraph({
+          children: [new TextRun({ text: `${e.number}.\t${e.title}`, font, size: FONT_SIZE_BODY })],
+          tabStops: [{ type: TabStopType.LEFT, position: 900 }],
+          spacing: { after: 60 },
+        })),
+      ];
+      if (enclsWithContent.length > 0) {
+        tocChildren.push(new Paragraph({ children: [new TextRun({ text: 'ENCLOSURE\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0TITLE', font, size: FONT_SIZE_BODY, bold: true })], spacing: { before: 240, after: 240 } }));
+        tocChildren.push(...enclsWithContent.map((e, i) => new Paragraph({
+          children: [new TextRun({ text: `(${i + 1})\t${e}`, font, size: FONT_SIZE_BODY })],
+          tabStops: [{ type: TabStopType.LEFT, position: 900 }],
+          spacing: { after: 60 },
+        })));
+      }
+      structuralSections.push(structuralSection(tocNum, tocChildren));
+    }
+  }
+
   // --- Assemble Document ---
   const doc = new Document({
     sections: [{
@@ -2284,7 +2398,9 @@ export async function generateDocxBlob(
         ...distributionParagraphs,
         ...reportsPageParagraphs,
       ],
-    }],
+    },
+    ...(structuralSections as []),
+    ],
   });
 
   return Packer.toBlob(doc);
