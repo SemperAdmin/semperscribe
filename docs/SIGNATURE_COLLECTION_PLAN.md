@@ -153,3 +153,21 @@ Stephen's directives from the placement-modal walk:
    the originator's form stays out of sight.
 
 Suite 1056 green (29 files), tsc clean.
+
+### S2f SHIPPED (2026-06-10) — fields ride every PDF surface; section slimmed
+
+Stephen's walk corrections:
+1. Configured signature fields now ride EVERY PDF surface through one
+   shared applier: the live preview (originator AND signer see the
+   placed box rendered — browser viewers draw the widget /AP
+   appearance), the Export PDF download, the ceremony save, and the
+   request-link flow. The signer opening a request link sees the PDF
+   with the box ready, then saves and clicks the same box in Acrobat.
+2. The two brown buttons left the Configure Signature Fields section
+   (download + copy link): Export carries the fields automatically,
+   and the placement modal owns Save & Copy Request Link. The
+   section keeps Place/Edit + the configured-fields summary.
+
+Note: with NO fields configured, exported PDFs are unchanged (no
+auto-anchor injection on plain exports — auto-anchor remains the
+ceremony fallback only). Suite 1056 green (29 files), tsc clean.

@@ -257,6 +257,21 @@ function NavalLetterGeneratorInner() {
     }
   }, [formData, setITypeFormData]);
 
+  // S2f: configured signature fields ride EVERY PDF surface — preview,
+  // export, and the ceremony save all show the same boxes (Stephen's
+  // directive: the signer opens the link and sees the PDF with the
+  // box ready). Annotation-only (S1), so layout and pagination are
+  // untouched.
+  const applySignatureFields = useCallback(async (blob: Blob): Promise<Blob> => {
+    const fields = (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
+    if (fields.length === 0) return blob;
+    const bytes = await addMultipleSignatureFields(await blob.arrayBuffer(), fields.map(f => ({
+      page: f.page, x: f.x, y: f.y, width: f.width, height: f.height,
+      signerName: f.signerName, reason: f.reason, contactInfo: f.contactInfo,
+    })));
+    return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+  }, [formData.signatureFields]);
+
   // Manual Preview Generation
   const handleUpdatePreview = useCallback(async () => {
     setIsGeneratingPreview(true);
@@ -268,7 +283,9 @@ function NavalLetterGeneratorInner() {
         return;
       }
 
-      const blob = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+      const blob = await applySignatureFields(
+        await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
+      );
 
       const url = URL.createObjectURL(blob);
       setPreviewUrl(prev => {
@@ -280,7 +297,7 @@ function NavalLetterGeneratorInner() {
     } finally {
       setIsGeneratingPreview(false);
     }
-  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList]);
+  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList, applySignatureFields]);
 
   // Auto-refresh preview when form data changes (debounced)
   useEffect(() => {
@@ -434,31 +451,10 @@ function NavalLetterGeneratorInner() {
     }
     const base = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
     const fields = (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
-    const bytes = fields.length > 0
-      ? await addMultipleSignatureFields(await base.arrayBuffer(), fields.map(f => ({
-          page: f.page, x: f.x, y: f.y, width: f.width, height: f.height,
-          signerName: f.signerName, reason: f.reason, contactInfo: f.contactInfo,
-        })))
-      : await addSignatureField(await base.arrayBuffer(), { signerName: formData.sig });
+    if (fields.length > 0) return applySignatureFields(base);
+    const bytes = await addSignatureField(await base.arrayBuffer(), { signerName: formData.sig });
     return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
-  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList]);
-
-  const handleDownloadSignReady = async () => {
-    try {
-      const blob = await buildSignReadyBlob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = getExportFilename(formData, 'pdf');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error generating sign-ready PDF:', error);
-      alert(error instanceof Error ? error.message : 'Failed to generate the sign-ready PDF.');
-    }
-  };
+  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList, applySignatureFields]);
 
   // S2c: request link = share state v2; the e-mail carries the who/
   // when/where (ruling: no routing form fields). S2e: accepts fresh
@@ -528,7 +524,9 @@ function NavalLetterGeneratorInner() {
       let blob: Blob;
 
       if (format === 'pdf') {
-        blob = secnavCountedBlob ?? await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+        blob = await applySignatureFields(
+          secnavCountedBlob ?? await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
+        );
       } else {
         const features = DOCUMENT_TYPES[formData.documentType]?.features;
         const paragraphsToRender = features?.isDirective
@@ -718,8 +716,6 @@ function NavalLetterGeneratorInner() {
         addParagraph={addParagraph}
         removeParagraph={removeParagraph}
         handleOpenSignaturePlacement={handleOpenSignaturePlacement}
-        onDownloadSignReady={handleDownloadSignReady}
-        onCopySignatureRequest={() => handleCopySignatureRequest()}
         handleSignatureConfirmAndCopy={handleSignatureConfirmAndCopy}
         showSignatureModal={showSignatureModal}
         handleSignatureCancel={handleSignatureCancel}

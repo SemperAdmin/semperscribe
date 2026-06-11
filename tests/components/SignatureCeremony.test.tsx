@@ -99,24 +99,18 @@ describe('SignatureCeremonyPanel — held-handle check (no drag-back)', () => {
   });
 });
 
-describe('SignatureFieldSection (S2c)', () => {
-  const handlers = {
-    onOpenSignaturePlacement: vi.fn(),
-    onDownloadSignReady: vi.fn(),
-    onCopySignatureRequest: vi.fn(),
-  };
-
-  it('offers configure, download, and request actions with the no-fields fallback note', () => {
-    render(<SignatureFieldSection {...handlers} signatureFields={[]} />);
+describe('SignatureFieldSection (S2f)', () => {
+  it('offers configure only — download and request live elsewhere', () => {
+    render(<SignatureFieldSection onOpenSignaturePlacement={vi.fn()} signatureFields={[]} />);
     expect(screen.getByTestId('sig-configure').textContent).toContain('Place Signature Fields');
-    expect(screen.getByTestId('sig-download')).toBeTruthy();
-    expect(screen.getByTestId('sig-request')).toBeTruthy();
-    expect(screen.getByText(/auto-anchored above the typed signature name/)).toBeTruthy();
+    expect(screen.queryByTestId('sig-download')).toBeNull();
+    expect(screen.queryByTestId('sig-request')).toBeNull();
+    expect(screen.getByText(/exported PDFs are unchanged until you place one/)).toBeTruthy();
   });
 
   it('summarizes configured fields by signer name', () => {
     render(
-      <SignatureFieldSection {...handlers}
+      <SignatureFieldSection onOpenSignaturePlacement={vi.fn()}
         signatureFields={[{ signerName: 'I. M. MARINE' }, {}]} />,
     );
     expect(screen.getByTestId('sig-configure').textContent).toContain('Edit Signature Fields');
