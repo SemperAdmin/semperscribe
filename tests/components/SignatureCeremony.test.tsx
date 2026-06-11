@@ -6,7 +6,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SignatureCeremonyPanel } from '@/components/signature/SignatureCeremonyPanel';
-import { RequestSignatureCard } from '@/components/signature/RequestSignatureCard';
+import { SignatureFieldSection } from '@/components/document/SignatureFieldSection';
 
 const routing = {
   requestedSigner: 'I. M. MARINE',
@@ -68,12 +68,30 @@ describe('SignatureCeremonyPanel', () => {
   });
 });
 
-describe('RequestSignatureCard', () => {
-  it('opens and states the OPSEC rule', () => {
-    render(<RequestSignatureCard buildState={() => ({ formData: {} as never })} defaultSigner="I. M. MARINE" />);
-    fireEvent.click(screen.getByTestId('request-signature-open'));
-    expect(screen.getByTestId('request-signature-card')).toBeTruthy();
-    expect(screen.getByText(/The link embeds the full letter text/)).toBeTruthy();
-    expect(screen.getByTestId('request-signature-copy')).toBeTruthy();
+describe('SignatureFieldSection (S2c)', () => {
+  const handlers = {
+    onOpenSignaturePlacement: vi.fn(),
+    onDownloadSignReady: vi.fn(),
+    onCopySignatureRequest: vi.fn(),
+  };
+
+  it('offers configure, download, and request actions with the no-fields fallback note', () => {
+    render(<SignatureFieldSection {...handlers} signatureFields={[]} />);
+    expect(screen.getByTestId('sig-configure').textContent).toContain('Place Signature Fields');
+    expect(screen.getByTestId('sig-download')).toBeTruthy();
+    expect(screen.getByTestId('sig-request')).toBeTruthy();
+    expect(screen.getByText(/auto-anchored above the typed signature name/)).toBeTruthy();
+  });
+
+  it('summarizes configured fields by signer name', () => {
+    render(
+      <SignatureFieldSection {...handlers}
+        signatureFields={[{ signerName: 'I. M. MARINE' }, {}]} />,
+    );
+    expect(screen.getByTestId('sig-configure').textContent).toContain('Edit Signature Fields');
+    const summary = screen.getByTestId('sig-summary').textContent!;
+    expect(summary).toContain('2 fields configured');
+    expect(summary).toContain('I. M. MARINE');
+    expect(summary).toContain('Field 2');
   });
 });

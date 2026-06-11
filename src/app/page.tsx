@@ -21,8 +21,8 @@ import { downloadDocument } from '@/services/export/index';
 import { useToast } from '@/hooks/use-toast';
 import { getStateFromUrl, clearShareParam, SignatureRouting } from '@/lib/url-state';
 import { SignatureCeremonyPanel } from '@/components/signature/SignatureCeremonyPanel';
-import { RequestSignatureCard } from '@/components/signature/RequestSignatureCard';
-import { addSignatureField } from '@/lib/pdf-signature-field';
+import { addSignatureField, addMultipleSignatureFields } from '@/lib/pdf-signature-field';
+import { generateShareableUrl, copyToClipboard } from '@/lib/url-state';
 import { useParagraphs } from '@/hooks/useParagraphs';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useImportExport } from '@/hooks/useImportExport';
@@ -404,37 +404,75 @@ function NavalLetterGeneratorInner() {
     }
   };
 
-  const handleSignatureConfirm = async (positions: SignaturePosition[]) => {
+  // S2c (ruling 2026-06-10): the ORIGINATOR configures fields; confirm
+  // persists them on the document — no download here. They travel with
+  // the share link, drafts, and .nldp exports inside formData.
+  const handleSignatureConfirm = (positions: SignaturePosition[]) => {
+    setShowSignatureModal(false);
+    setSignaturePdfBlob(null);
+    setFormData(prev => ({ ...prev, signatureFields: positions }));
+    toast({
+      title: 'Signature fields saved',
+      description: `${positions.length} field${positions.length === 1 ? '' : 's'} configured. Download the sign-ready PDF or copy a signature request link from the Signature Fields section.`,
+    });
+  };
+
+  // S2c: sign-ready PDF using the configured fields (falls back to the
+  // auto-anchored S1 field when none are configured).
+  const buildSignReadyBlob = useCallback(async (): Promise<Blob> => {
+    const blockers = getExportBlockers(formData, vias, references, paragraphs);
+    if (blockers.length > 0) {
+      throw new Error('Export blocked: ' + blockers.map((b) => b.rule).join('; '));
+    }
+    const base = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+    const fields = (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
+    const bytes = fields.length > 0
+      ? await addMultipleSignatureFields(await base.arrayBuffer(), fields.map(f => ({
+          page: f.page, x: f.x, y: f.y, width: f.width, height: f.height,
+          signerName: f.signerName, reason: f.reason, contactInfo: f.contactInfo,
+        })))
+      : await addSignatureField(await base.arrayBuffer(), { signerName: formData.sig });
+    return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList]);
+
+  const handleDownloadSignReady = async () => {
     try {
-      setShowSignatureModal(false);
-
-      const baseBlob = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
-
-      const manualPositions: ManualSignaturePosition[] = positions.map(pos => ({
-        page: pos.page,
-        x: pos.x,
-        y: pos.y,
-        width: pos.width,
-        height: pos.height
-      }));
-
-      const signedBlob = await addMultipleSignaturesToBlob(baseBlob, manualPositions);
-      const filename = getExportFilename(formData, 'pdf');
-
-      const url = window.URL.createObjectURL(signedBlob);
+      const blob = await buildSignReadyBlob();
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = filename;
+      link.download = getExportFilename(formData, 'pdf');
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-
-      setSignaturePdfBlob(null);
     } catch (error) {
-      console.error('Error adding signature:', error);
-      alert('Failed to add signature fields to PDF.');
+      console.error('Error generating sign-ready PDF:', error);
+      alert(error instanceof Error ? error.message : 'Failed to generate the sign-ready PDF.');
     }
+  };
+
+  // S2c: request link = share state v2; the e-mail carries the who/
+  // when/where (ruling: no routing form fields).
+  const handleCopySignatureRequest = async () => {
+    const fields = (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
+    const { url, isLong, error } = generateShareableUrl({
+      formData, paragraphs, references, enclosures, vias, copyTos, distList,
+      routing: { requestedSigner: fields[0]?.signerName || formData.sig || '' },
+      version: 2,
+    });
+    if (error && !url) {
+      toast({ title: 'Failed to build link', description: error, variant: 'destructive' });
+      return;
+    }
+    const ok = await copyToClipboard(url);
+    toast(ok
+      ? {
+          title: 'Signature request link copied',
+          description: (isLong ? 'Link is very long and may not work everywhere. ' : '') +
+            'Paste it into your request e-mail. The link contains the full letter text — send it only through channels appropriate for the content.',
+        }
+      : { title: 'Copy failed', description: 'Could not copy to clipboard.', variant: 'destructive' });
   };
 
   const handleSignatureCancel = () => {
@@ -588,19 +626,7 @@ function NavalLetterGeneratorInner() {
     }
   }, []);
 
-  // S2: sign-ready PDF for the ceremony — same export gate as
-  // generateDocument, then the S1 anchored signature field.
-  const generateSignReadyPdf = useCallback(async (): Promise<Blob> => {
-    const blockers = getExportBlockers(formData, vias, references, paragraphs);
-    if (blockers.length > 0) {
-      throw new Error('Export blocked: ' + blockers.map((b) => b.rule).join('; '));
-    }
-    const base = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
-    const withField = await addSignatureField(await base.arrayBuffer(), {
-      signerName: routingRequest?.requestedSigner || formData.sig,
-    });
-    return new Blob([new Uint8Array(withField)], { type: 'application/pdf' });
-  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList, routingRequest]);
+
 
   // Phase 2: inline compliance issues for the live preview banner.
   const validationIssues = useMemo(
@@ -646,19 +672,14 @@ function NavalLetterGeneratorInner() {
       }
       formData={formData}
     >
-      {routingRequest ? (
+      {routingRequest && (
         <SignatureCeremonyPanel
           routing={routingRequest}
           fileName={getExportFilename(formData, 'pdf')}
-          generateSignReadyPdf={generateSignReadyPdf}
+          generateSignReadyPdf={buildSignReadyBlob}
           onDismiss={() => setRoutingRequest(null)}
         />
-      ) : formData.documentType && formData.documentType !== 'i-type' && formData.documentType !== 'amhs' && formData.documentType !== 'page11' ? (
-        <RequestSignatureCard
-          defaultSigner={formData.sig}
-          buildState={() => ({ formData, paragraphs, references, enclosures, vias, copyTos, distList })}
-        />
-      ) : null}
+      )}
       <DocumentLayout
         formData={formData}
         setFormData={setFormData}
@@ -686,6 +707,8 @@ function NavalLetterGeneratorInner() {
         addParagraph={addParagraph}
         removeParagraph={removeParagraph}
         handleOpenSignaturePlacement={handleOpenSignaturePlacement}
+        onDownloadSignReady={handleDownloadSignReady}
+        onCopySignatureRequest={handleCopySignatureRequest}
         showSignatureModal={showSignatureModal}
         handleSignatureCancel={handleSignatureCancel}
         handleSignatureConfirm={handleSignatureConfirm}

@@ -59,6 +59,7 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
   const [probe, setProbe] = useState<SignatureProbeResult | null>(null);
   const [signedFile, setSignedFile] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -115,7 +116,8 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
       const body = encodeURIComponent('Signed document attached. (Attach the signed PDF you saved before sending.)');
       window.location.href = `mailto:${routing.returnEmail}?subject=${subject}&body=${body}`;
     } else {
-      setError('No return address on the routing slip. Send the signed file through your normal channel.');
+      // S2c: the request arrives by e-mail (ruling) — reply to it.
+      setDone('Reply to the request e-mail with the signed file attached.');
     }
   };
 
@@ -191,6 +193,7 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
             </p>
           </div>
         )}
+        {done && <p className="text-sm font-medium">{done}</p>}
         {error && <p className="text-sm text-destructive">{error}</p>}
       </CardContent>
     </Card>

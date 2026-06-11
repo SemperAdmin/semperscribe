@@ -55,6 +55,8 @@ interface DocumentLayoutProps {
   removeParagraph: (id: number) => void;
   // Signature
   handleOpenSignaturePlacement: () => void;
+  onDownloadSignReady: () => void;
+  onCopySignatureRequest: () => void;
   showSignatureModal: boolean;
   handleSignatureCancel: () => void;
   handleSignatureConfirm: (positions: any) => void;
@@ -91,6 +93,8 @@ export function DocumentLayout({
   addParagraph,
   removeParagraph,
   handleOpenSignaturePlacement,
+  onDownloadSignReady,
+  onCopySignatureRequest,
   showSignatureModal,
   handleSignatureCancel,
   handleSignatureConfirm,
@@ -271,7 +275,12 @@ export function DocumentLayout({
 
           {features.showSignature && (
             <>
-              <SignatureFieldSection onOpenSignaturePlacement={handleOpenSignaturePlacement} />
+              <SignatureFieldSection
+                onOpenSignaturePlacement={handleOpenSignaturePlacement}
+                onDownloadSignReady={onDownloadSignReady}
+                onCopySignatureRequest={onCopySignatureRequest}
+                signatureFields={(formData.signatureFields as { signerName?: string }[] | undefined) ?? []}
+              />
               <SignaturePlacementModal
                 open={showSignatureModal}
                 onClose={handleSignatureCancel}

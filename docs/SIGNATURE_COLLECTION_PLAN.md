@@ -86,3 +86,36 @@ Gate S2 open items:
 2. S3 next: real CMS verification with bundled DoD roots replaces the
    probe card in-place (same panel slot, same advisory framing until
    revocation is solved, which stays out of scope per ruling).
+
+### S2c SHIPPED (2026-06-10) — workflow corrections (Stephen, 3 issues)
+
+Rulings:
+1. Signer tier: CAC PKI ONLY. The Acrobat step is the floor (K1);
+   the in-app /s/ electronic-signature tier (M-5216.5 Ch 2 class)
+   was offered and declined.
+2. The ORIGINATOR configures signature fields; request-signature
+   lives in the Configure Signature Fields section.
+3. No routing form — the request e-mail carries who/when/where. The
+   link keeps only requestedSigner (from the first configured
+   field's signer name, else the typed sig block).
+
+Changes:
+- Placement-modal confirm now PERSISTS fields to
+  formData.signatureFields (travels with share links, drafts, .nldp)
+  instead of downloading. SignatureFieldSection rebuilt: configure /
+  download sign-ready / copy request link, configured-fields summary,
+  auto-anchor fallback note.
+- buildSignReadyBlob shared by download, ceremony, and request paths:
+  export gate, then configured fields (S1 per-signer names) or the
+  auto-anchored field.
+- RequestSignatureCard deleted. Ceremony return step without a
+  return address now instructs "reply to the request e-mail" instead
+  of erroring.
+
+Proof: SignatureFieldSection render tests (2) added; ceremony walk
+test unchanged and green. Suite 1055 green (29 files), tsc clean.
+
+Caveat on formData.signatureFields: FormData is the permissive type,
+so the field rides untyped; zod parse in dynamic-form submit paths
+would strip it. Acceptable for the PoC; flagged for the schema pass
+if signature fields ever become per-type validated structure.
