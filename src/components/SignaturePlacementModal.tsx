@@ -39,6 +39,8 @@ interface SignaturePlacementModalProps {
   open: boolean;
   onClose: () => void;
   onConfirm: (positions: SignaturePosition[]) => void;
+  /** S2e: persist fields AND copy the signature request link in one step */
+  onConfirmAndCopyLink?: (positions: SignaturePosition[]) => void;
   pdfBlob: Blob | null;
   totalPages: number;
 }
@@ -50,6 +52,7 @@ export function SignaturePlacementModal({
   open,
   onClose,
   onConfirm,
+  onConfirmAndCopyLink,
   pdfBlob,
   totalPages,
 }: SignaturePlacementModalProps) {
@@ -292,9 +295,14 @@ export function SignaturePlacementModal({
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={() => onConfirm(signatureBoxes)} disabled={signatureBoxes.length === 0}>
-              Save & Export PDF
+            <Button variant="outline" onClick={() => onConfirm(signatureBoxes)} disabled={signatureBoxes.length === 0}>
+              Save Fields
             </Button>
+            {onConfirmAndCopyLink && (
+              <Button onClick={() => onConfirmAndCopyLink(signatureBoxes)} disabled={signatureBoxes.length === 0}>
+                Save &amp; Copy Request Link
+              </Button>
+            )}
           </div>
         </div>
 

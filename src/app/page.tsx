@@ -417,6 +417,14 @@ function NavalLetterGeneratorInner() {
     });
   };
 
+  // S2e: one-step persist + request link from the placement modal.
+  const handleSignatureConfirmAndCopy = async (positions: SignaturePosition[]) => {
+    setShowSignatureModal(false);
+    setSignaturePdfBlob(null);
+    setFormData(prev => ({ ...prev, signatureFields: positions }));
+    await handleCopySignatureRequest(positions);
+  };
+
   // S2c: sign-ready PDF using the configured fields (falls back to the
   // auto-anchored S1 field when none are configured).
   const buildSignReadyBlob = useCallback(async (): Promise<Blob> => {
@@ -453,11 +461,14 @@ function NavalLetterGeneratorInner() {
   };
 
   // S2c: request link = share state v2; the e-mail carries the who/
-  // when/where (ruling: no routing form fields).
-  const handleCopySignatureRequest = async () => {
-    const fields = (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
+  // when/where (ruling: no routing form fields). S2e: accepts fresh
+  // positions from the placement modal so the link never trails the
+  // async formData update.
+  const handleCopySignatureRequest = async (freshFields?: SignaturePosition[]) => {
+    const fields = freshFields ?? (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
     const { url, isLong, error } = generateShareableUrl({
-      formData, paragraphs, references, enclosures, vias, copyTos, distList,
+      formData: freshFields ? { ...formData, signatureFields: freshFields } : formData,
+      paragraphs, references, enclosures, vias, copyTos, distList,
       routing: { requestedSigner: fields[0]?.signerName || formData.sig || '' },
       version: 2,
     });
@@ -678,7 +689,9 @@ function NavalLetterGeneratorInner() {
           onDismiss={() => setRoutingRequest(null)}
         />
       )}
-      <DocumentLayout
+      {/* S2e: signing mode — the receiver sees the document and the
+          ceremony, not the form metadata. Dismiss opens the editor. */}
+      {!routingRequest && <DocumentLayout
         formData={formData}
         setFormData={setFormData}
         formKey={formKey}
@@ -706,14 +719,15 @@ function NavalLetterGeneratorInner() {
         removeParagraph={removeParagraph}
         handleOpenSignaturePlacement={handleOpenSignaturePlacement}
         onDownloadSignReady={handleDownloadSignReady}
-        onCopySignatureRequest={handleCopySignatureRequest}
+        onCopySignatureRequest={() => handleCopySignatureRequest()}
+        handleSignatureConfirmAndCopy={handleSignatureConfirmAndCopy}
         showSignatureModal={showSignatureModal}
         handleSignatureCancel={handleSignatureCancel}
         handleSignatureConfirm={handleSignatureConfirm}
         signaturePdfBlob={signaturePdfBlob}
         signaturePdfPageCount={signaturePdfPageCount}
         handleDynamicFormSubmit={handleDynamicFormSubmit}
-      />
+      />}
       <ProofreadModal
         open={showProofreadModal}
         onOpenChange={setShowProofreadModal}

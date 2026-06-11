@@ -138,3 +138,18 @@ Stephen's two corrections from the live walk:
 Proof: held-handle ceremony test (mocked showSaveFilePicker ->
 getFile -> probe card, no drop zone touched). Suite 1056 green
 (29 files), tsc clean.
+
+### S2e SHIPPED (2026-06-10) — request link in the placement modal + signing mode
+
+Stephen's directives from the placement-modal walk:
+1. The Configure Signature Fields MODAL now carries the request
+   action: Cancel | Save Fields | Save & Copy Request Link. The
+   copy path takes the FRESH positions from the modal (never the
+   trailing async formData) and stamps the first field's signer
+   name into the link routing.
+2. Signing mode: a receiver opening a request link sees the ceremony
+   panel and the live document preview ONLY — the form editor with
+   the document metadata is hidden until Dismiss. The signer signs;
+   the originator's form stays out of sight.
+
+Suite 1056 green (29 files), tsc clean.

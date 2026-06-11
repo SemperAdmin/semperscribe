@@ -57,6 +57,7 @@ interface DocumentLayoutProps {
   handleOpenSignaturePlacement: () => void;
   onDownloadSignReady: () => void;
   onCopySignatureRequest: () => void;
+  handleSignatureConfirmAndCopy: (positions: import('@/types').SignaturePosition[]) => void;
   showSignatureModal: boolean;
   handleSignatureCancel: () => void;
   handleSignatureConfirm: (positions: any) => void;
@@ -95,6 +96,7 @@ export function DocumentLayout({
   handleOpenSignaturePlacement,
   onDownloadSignReady,
   onCopySignatureRequest,
+  handleSignatureConfirmAndCopy,
   showSignatureModal,
   handleSignatureCancel,
   handleSignatureConfirm,
@@ -285,6 +287,7 @@ export function DocumentLayout({
                 open={showSignatureModal}
                 onClose={handleSignatureCancel}
                 onConfirm={handleSignatureConfirm}
+                onConfirmAndCopyLink={handleSignatureConfirmAndCopy}
                 pdfBlob={signaturePdfBlob}
                 totalPages={signaturePdfPageCount}
               />
