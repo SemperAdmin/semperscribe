@@ -48,9 +48,16 @@ interface ITypePDFProps {
 }
 
 const MARGIN = 36; // 0.5in
-const SEAL = 252; // 3.5in
+const SEAL = 144; // 2in x 2in (template Layout dialog, ruling 2026-06-10)
 const INDENT = 180; // 2.5in
-const ROWS_PER_PAGE = 6;
+// Ruling 2026-06-10 (hard stance from the template owner): the first
+// SIX NSN/TAMCN/ID/MODEL rows sit ON PAGE 1 — always six rows drawn,
+// data or not — and only rows 7+ overflow to page 2.
+const padToSix = (rows: Array<{ nsn: string; tamcn: string; id: string; model: string }>) => {
+  const out = rows.slice(0, 6);
+  while (out.length < 6) out.push({ nsn: '', tamcn: '', id: '', model: '' });
+  return out;
+};
 
 const styles = StyleSheet.create({
   page: {
@@ -212,11 +219,8 @@ export function ITypePDF({ formData, sealImageUrl }: ITypePDFProps) {
   const authScope = join([formData.category, formData.determinationDate], ' ');
 
   const components = formData.componentsAffected || [];
-  const chunks: Array<Array<any>> = [];
-  for (let i = 0; i < components.length; i += ROWS_PER_PAGE) {
-    chunks.push(components.slice(i, i + ROWS_PER_PAGE));
-  }
-  if (chunks.length === 0) chunks.push([]);
+  const firstSix = padToSix(components);
+  const overflow = components.slice(6);
 
   const p3Service = deriveService(formData.service);
   const p3Entity = deriveEntity(formData.entity);
@@ -247,6 +251,10 @@ export function ITypePDF({ formData, sealImageUrl }: ITypePDFProps) {
           <Image src={sealSrc} style={styles.seal} />
 
           <Text style={styles.nomenclature}>{formData.nomenclature || ''}</Text>
+
+          <View style={{ marginTop: 12 }}>
+            <ComponentsTable rows={firstSix} />
+          </View>
         </View>
 
         <View style={styles.spacer} />
@@ -279,12 +287,13 @@ export function ITypePDF({ formData, sealImageUrl }: ITypePDFProps) {
         </View>
       </Page>
 
-      {/* PAGE 2+ - COMPONENTS AFFECTED */}
-      {chunks.map((rows, idx) => (
-        <Page size="LETTER" style={styles.page} key={`components-${idx}`}>
-          <ComponentsTable rows={rows} />
+      {/* PAGE 2 - COMPONENTS AFFECTED OVERFLOW (rows 7+ only; react-pdf
+          wraps onto further pages if the overflow itself overruns) */}
+      {overflow.length > 0 && (
+        <Page size="LETTER" style={styles.page}>
+          <ComponentsTable rows={overflow} />
         </Page>
-      ))}
+      )}
 
       {/* PAGE 3 - AUTHENTICATION LETTER */}
       <Page size="LETTER" style={styles.page3Sheet}>

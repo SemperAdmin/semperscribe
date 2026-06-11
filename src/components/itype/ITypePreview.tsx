@@ -14,7 +14,6 @@ interface ITypePreviewProps {
   onUpdatePreview?: () => void;
 }
 
-const ROWS_PER_PAGE = 6;
 
 export const ITypePreview: React.FC<ITypePreviewProps> = ({ formData: externalFormData }) => {
   const { formData: storeFormData, sealImageBase64, isLoading } = useITypeStore();
@@ -23,15 +22,14 @@ export const ITypePreview: React.FC<ITypePreviewProps> = ({ formData: externalFo
   const componentsAffected = formData?.componentsAffected || [];
 
   // Components Affected always begins on page 2. Page 1 stays a cover.
-  const tablePages = useMemo(() => {
-    const chunks: any[][] = [];
-    for (let i = 0; i < componentsAffected.length; i += ROWS_PER_PAGE) {
-      chunks.push(componentsAffected.slice(i, i + ROWS_PER_PAGE));
-    }
-    // Show the header table on a blank page 2 even with no rows, matching the template.
-    if (chunks.length === 0) chunks.push([]);
-    return chunks;
+  // Ruling 2026-06-10 (hard stance): first SIX rows ON PAGE 1, always
+  // six drawn; rows 7+ overflow to page 2.
+  const firstSix = useMemo(() => {
+    const out = componentsAffected.slice(0, 6);
+    while (out.length < 6) out.push({ nsn: '', tamcn: '', id: '', model: '' });
+    return out;
   }, [componentsAffected]);
+  const overflowRows = useMemo(() => componentsAffected.slice(6), [componentsAffected]);
 
   // Material tables stay after Components Affected, outside the two-page scope.
   const materialBlocks = useMemo(() => {
@@ -110,6 +108,7 @@ export const ITypePreview: React.FC<ITypePreviewProps> = ({ formData: externalFo
           </div>
           <ITypeSealSection sealImageBase64={sealImageBase64} isLoading={isLoading} />
           <ITypeNomenclatureSection nomenclature={formData?.nomenclature || ''} />
+          {renderComponentsTable(firstSix)}
         </div>
         <div className={styles.coverBottom}>
           <ITypeFooterSection
@@ -131,12 +130,12 @@ export const ITypePreview: React.FC<ITypePreviewProps> = ({ formData: externalFo
         </div>
       </div>
 
-      {/* PAGE 2+ - COMPONENTS AFFECTED */}
-      {tablePages.map((rows, idx) => (
-        <div className={styles.page} key={`components-page-${idx}`}>
-          {renderComponentsTable(rows)}
+      {/* PAGE 2 - COMPONENTS AFFECTED OVERFLOW (rows 7+ only) */}
+      {overflowRows.length > 0 && (
+        <div className={styles.page}>
+          {renderComponentsTable(overflowRows)}
         </div>
-      ))}
+      )}
 
       {/* MATERIAL TABLES - retained, after Components Affected */}
       {materialBlocks.length > 0 && (

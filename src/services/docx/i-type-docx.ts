@@ -223,7 +223,8 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
     children.push(blankLine());
     children.push(plainCenter(formData.timeCompliance || ''));
 
-    // Two blank lines, then the seal at 3.5in (336px at 96dpi).
+    // Two blank lines, then the seal at 2in x 2in (192px at 96dpi —
+    // template Layout dialog, ruling 2026-06-10).
     children.push(blankLine());
     children.push(blankLine());
     const sealData = await loadSeal();
@@ -234,7 +235,7 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
           children: [
             new ImageRun({
               data: new Uint8Array(sealData),
-              transformation: { width: 336, height: 336 },
+              transformation: { width: 192, height: 192 },
               type: 'png',
             } as any),
           ],
@@ -247,11 +248,15 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
     children.push(blankLine());
     children.push(plainCenter(formData.nomenclature || '', true, true));
 
-    // Page break to page 2 (the bottom legal block lives in the first-page footer).
-    children.push(new Paragraph({ children: [new PageBreak()] }));
-
-    // --- PAGE 2 COMPONENTS AFFECTED ---
+    // Ruling 2026-06-10 (hard stance): first SIX component rows ON
+    // PAGE 1 — always six drawn, data or not; rows 7+ overflow to
+    // page 2. Bottom legal block stays in the first-page footer.
     const components = formData.componentsAffected || [];
+    const padToSix = (rows: typeof components) => {
+      const out = rows.slice(0, 6);
+      while (out.length < 6) out.push({ nsn: '', tamcn: '', id: '', model: '' });
+      return out;
+    };
     const widths = [2700, 2700, 2160, 3240]; // NSN 25, TAMCN 25, ID 20, MODEL 30 of 10800
 
     const headerCell = (text: string, width: number) =>
@@ -276,36 +281,44 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
         verticalAlign: VerticalAlign.TOP,
       });
 
-    const rows: TableRow[] = [
-      new TableRow({
-        children: [
-          headerCell('NSN', widths[0]),
-          headerCell('TAMCN', widths[1]),
-          headerCell('ID', widths[2]),
-          headerCell('MODEL', widths[3]),
-        ],
-      }),
-      ...components.map(
-        (row) =>
-          new TableRow({
-            children: [
-              bodyCell(row.nsn, widths[0]),
-              bodyCell(row.tamcn, widths[1]),
-              bodyCell(row.id, widths[2]),
-              bodyCell(row.model, widths[3]),
-            ],
-          })
-      ),
-    ];
-
-    children.push(
+    const componentsTable = (rows: typeof components) =>
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         borders: noTableBorders,
         columnWidths: widths,
-        rows,
-      })
-    );
+        rows: [
+          new TableRow({
+            children: [
+              headerCell('NSN', widths[0]),
+              headerCell('TAMCN', widths[1]),
+              headerCell('ID', widths[2]),
+              headerCell('MODEL', widths[3]),
+            ],
+          }),
+          ...rows.map(
+            (row) =>
+              new TableRow({
+                children: [
+                  bodyCell(row.nsn, widths[0]),
+                  bodyCell(row.tamcn, widths[1]),
+                  bodyCell(row.id, widths[2]),
+                  bodyCell(row.model, widths[3]),
+                ],
+              })
+          ),
+        ],
+      });
+
+    // Page 1: the fixed six-row table after nomenclature.
+    children.push(blankLine());
+    children.push(componentsTable(padToSix(components)));
+
+    // Page 2: overflow only when it exists; otherwise the page-3
+    // section break follows the cover directly.
+    if (components.length > 6) {
+      children.push(new Paragraph({ children: [new PageBreak()] }));
+      children.push(componentsTable(components.slice(6)));
+    }
 
     // --- PAGE 3 AUTHENTICATION LETTER ---
     const p3Service = deriveService(formData.service);
