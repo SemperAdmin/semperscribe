@@ -143,3 +143,44 @@ describe('bulletin designation ignores lingering MCO orderPrefix', () => {
       .toBe('MCBul 1000');
   });
 });
+
+describe('P4.2 — continuation header geometry (audit line 160)', () => {
+  it('PDF page 2: designation top at 1in, date on the next line, flush right', async () => {
+    const blob = await generateBasePDFBlob(mcoForm(), [], [], [], [], LONG_BODY, []);
+    const layout = await extractPdfTextLayout(blob);
+    const p2 = layout.filter((i) => i.page === 2);
+    // pdfjs splits per word: anchor on the unique fragments.
+    const des = p2.find((i) => i.text === '5215.1K');
+    const desStart = p2.find((i) => i.text === 'MCO' && Math.abs(i.y - (des?.y ?? -1)) < 0.5);
+    const date = p2.find((i) => i.text === '26');
+    const dateStart = p2.find((i) => i.text === '10' && Math.abs(i.y - (date?.y ?? -1)) < 0.5);
+    expect(des, 'designation').toBeDefined();
+    expect(desStart, 'designation start').toBeDefined();
+    expect(dateStart, 'date start').toBeDefined();
+    // 1 inch from the top: line top = 792 - 72 = 720; Courier-12
+    // baseline sits ~9-12pt below the line top.
+    expect(des!.y, 'baseline below 720').toBeLessThan(720);
+    expect(des!.y, 'within the first line under 1in').toBeGreaterThan(720 - 14);
+    // Date on the NEXT line.
+    expect(des!.y - date!.y, 'date directly below').toBeGreaterThan(8);
+    expect(des!.y - date!.y).toBeLessThan(20);
+    // Blocked left, longest line (11 chars) flush right at 540.
+    expect(desStart!.x, 'blocked-left shared x').toBe(dateStart!.x);
+    expect(desStart!.x + 11 * CHAR, 'flush right edge').toBeCloseTo(RIGHT_EDGE, 0);
+  });
+
+  it('DOCX directive header: 720-twip spacer lands the stack at 1in', async () => {
+    const blob = await generateDocxBlob(mcoForm(), [], [], [], [], LONG_BODY, []);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const header = await (zip.file(/word\/header\d*\.xml/)[0]).async('string');
+    // Spacer paragraph with 480 after precedes the ID table; band
+    // origin (w:header) is 720 twips => first stack line at 1440.
+    const spacerIdx = header.indexOf('<w:spacing w:after="480"/>');
+    const tableIdx = header.indexOf('<w:tbl>');
+    expect(spacerIdx, 'spacer present').toBeGreaterThan(-1);
+    expect(tableIdx, 'ID table present').toBeGreaterThan(-1);
+    expect(spacerIdx, 'spacer before the table').toBeLessThan(tableIdx);
+    const doc = await zip.file('word/document.xml')!.async('string');
+    expect(doc.match(/<w:pgMar[^/]*\/>/)![0]).toContain('w:header="720"');
+  });
+});

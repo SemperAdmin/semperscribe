@@ -2061,7 +2061,7 @@ export async function generateDocxBlob(
 
   // --- Header for Subsequent Pages (Subject Line) ---
   const subsequentHeaderParagraphs: Paragraph[] = [];
-  const subsequentHeaderTables: Table[] = [];
+  const subsequentHeaderTables: (Paragraph | Table)[] = [];
   
   if (isCivilianStyle) {
       // Business/Executive Letter Continuation Header: SSIC, Originator, Date
@@ -2096,6 +2096,14 @@ export async function generateDocxBlob(
       // table so the longest line touches the right margin.
       const contStack = [getDirectiveDesignation(formData), parseAndFormatDate(formData.date || 'Date Placeholder')]
         .filter(Boolean);
+      // P4.2 (audit line 160): the stack sits 1 INCH from the page
+      // top. The header band originates at 720 twips; a 720-twip
+      // spacer paragraph (240 line + 480 after) lands the first
+      // stack line at 1440 twips.
+      subsequentHeaderTables.push(new Paragraph({
+          children: [new TextRun({ text: '', font, size: FONT_SIZE_BODY })],
+          spacing: { after: 480 },
+      }));
       subsequentHeaderTables.push(new Table({
           width: { size: 0, type: WidthType.AUTO },
           alignment: AlignmentType.RIGHT,

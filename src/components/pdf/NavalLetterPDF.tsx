@@ -848,9 +848,12 @@ export function NavalLetterPDF({
                    </View>
                 )}
                 {isDirective && (
-                   /* P3.4 (audit lines 98, 160): ID symbols flush right,
-                      designation + date, originator code omitted. */
-                   <View style={{ alignItems: 'flex-end' }}>
+                   /* P3.4/P4.2 (audit lines 98, 160): ID symbols flush
+                      right, designation + date, originator code
+                      omitted, stack top at 1 INCH from the page top
+                      (band origin is PDF_MARGINS.top, so offset the
+                      difference). */
+                   <View style={{ alignItems: 'flex-end', marginTop: 72 - PDF_MARGINS.top }}>
                       <View style={{ alignItems: 'flex-start' }}>
                         <Text style={styles.addressLine}>
                           {getDirectiveDesignation(formData)}
