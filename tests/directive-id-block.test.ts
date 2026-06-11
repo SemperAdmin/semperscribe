@@ -136,3 +136,10 @@ describe('PDF ID block (MCO 5215.1K para 38)', () => {
     expect(p2.some((l) => l.text === 'ARDB'), 'p2 code omitted').toBe(false);
   });
 });
+
+describe('bulletin designation ignores lingering MCO orderPrefix', () => {
+  it('a bulletin with stale orderPrefix=MCO still designates MCBul', () => {
+    expect(getDirectiveDesignation({ documentType: 'bulletin', ssic: '1000', orderPrefix: 'MCO' } as never))
+      .toBe('MCBul 1000');
+  });
+});

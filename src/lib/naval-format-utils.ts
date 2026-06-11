@@ -189,7 +189,9 @@ export function formatDirectiveSSIC(
  * the order prefix with the SSIC value.
  */
 export function buildDirectiveTitle(formData: FormData): string {
-  const prefix = formData.orderPrefix || (formData.documentType === 'bulletin' ? 'MCBul' : 'MCO');
+  const prefix = formData.documentType === 'bulletin'
+    ? 'MCBul'
+    : (formData.orderPrefix || 'MCO');
   const ssic = formData.ssic || '';
 
   return ssic ? `${prefix} ${ssic}` : '';
@@ -669,8 +671,12 @@ export function getSignatureBlankLines(documentType: string): number {
  * (no point number). The SSIC field is used as entered.
  */
 export function getDirectiveDesignation(formData: FormData): string {
-  const prefix = formData.orderPrefix
-    || (formData.documentType === 'bulletin' ? 'MCBul' : 'MCO');
+  // Bulletins ALWAYS designate MCBul — orderPrefix is an MCO-side
+  // field and lingers in form state after switching types (user
+  // screenshot 2026-06-10: bulletin rendering "MCO 1000").
+  const prefix = formData.documentType === 'bulletin'
+    ? 'MCBul'
+    : (formData.orderPrefix || 'MCO');
   return formData.ssic ? `${prefix} ${formData.ssic}` : '';
 }
 
