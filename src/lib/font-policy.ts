@@ -27,8 +27,18 @@ const USMC_DIRECTIVE_TYPES = new Set<string>([
   'change-transmittal',
 ]);
 
-/** SECNAV directive document types (none yet; Phase 4 adds them). */
-const SECNAV_DIRECTIVE_TYPES = new Set<string>([]);
+/** SECNAV directive document types (P4.3; SECNAV M-5215.1). */
+const SECNAV_DIRECTIVE_TYPES = new Set<string>([
+  'secnav-instruction',
+  'secnav-notice',
+]);
+
+/** P4.3 — shared predicate so emitters and validators key the SECNAV
+ * branch on one set (same single-source rule as P3.6 distribution
+ * statements). */
+export function isSecnavDirective(documentType: string): boolean {
+  return SECNAV_DIRECTIVE_TYPES.has(documentType);
+}
 
 export function getFontArchetype(documentType: string): FontArchetype {
   if (USMC_DIRECTIVE_TYPES.has(documentType)) return 'usmc-directive';
@@ -82,8 +92,16 @@ export function resolveHeaderType(
   documentType: string,
   requested: string | undefined,
 ): string {
-  if (getFontArchetype(documentType) === 'usmc-directive' && requested === 'DLA') {
+  const archetype = getFontArchetype(documentType);
+  if (archetype === 'usmc-directive' && requested === 'DLA') {
     return 'USMC';
+  }
+  // P4.3: SECNAV directives are issued under DON letterhead (SECNAV
+  // M-5215.1 identification block; P3.9 coercion pattern). USMC unit
+  // or DLA letterhead on a SECNAVINST/SECNAVNOTE is a compliance
+  // defect, so coerce unconditionally.
+  if (archetype === 'secnav-directive') {
+    return 'DON';
   }
   return requested ?? 'USMC';
 }

@@ -318,9 +318,11 @@ export function validateDirectiveTypography(
   formData: FormData,
   paragraphs: ParagraphData[],
 ): ValidationIssue[] {
-  const isUsmcDirective = ['mco', 'bulletin', 'change-transmittal']
+  // P4.3: SECNAV directives share the Courier typewriter conventions
+  // (warn-only, as ruled for P3.3 typography checks).
+  const isAnyDirective = ['mco', 'bulletin', 'change-transmittal', 'secnav-instruction', 'secnav-notice']
     .includes(formData.documentType);
-  if (!isUsmcDirective) return [];
+  if (!isAnyDirective) return [];
   const issues: ValidationIssue[] = [];
   const singleSpaced = /[a-z]{2}[.!?] (?=[A-Z])/;
   for (const p of paragraphs) {
@@ -499,7 +501,7 @@ export function validateBulletinCancellation(
  * point number, never a two-letter suffix.
  */
 const USMC_DIRECTIVE_TYPES_V = ['mco', 'bulletin', 'change-transmittal'];
-const SECNAV_DIRECTIVE_TYPES_V: string[] = []; // populated with P4.3 types
+const SECNAV_DIRECTIVE_TYPES_V: string[] = ['secnav-instruction', 'secnav-notice']; // P4.3
 
 export function validateRevisionSuffix(formData: FormData): ValidationIssue[] {
   const t = formData.documentType;
@@ -536,6 +538,220 @@ export function validateRevisionSuffix(formData: FormData): ValidationIssue[] {
   return issues;
 }
 
+/**
+ * P4.3 — SECNAV directive paragraph-order rules (SECNAV M-5215.1;
+ * audit line 83): Purpose first (revision states the purpose of the
+ * series); Cancellation second when superseding (instructions);
+ * Forms and Information Collections last — next-to-last on a notice
+ * that carries a cancellation paragraph, which then stands last.
+ * Missing-title checks are WARN (P3.5 precedent: reduced formats);
+ * order violations are FAIL.
+ */
+export function validateSecnavSchema(
+  formData: FormData,
+  paragraphs: ParagraphData[],
+): ValidationIssue[] {
+  const t = formData.documentType;
+  if (!SECNAV_DIRECTIVE_TYPES_V.includes(t)) return [];
+  const issues: ValidationIssue[] = [];
+  const titles = paragraphs
+    .filter((p) => p.level <= 1 && p.title && p.title.trim())
+    .map((p) => p.title!.trim().toLowerCase());
+
+  if (titles.length > 0 && titles[0] !== 'purpose') {
+    issues.push({
+      id: 'secnav-purpose-first',
+      severity: 'fail',
+      rule: 'Purpose must be the first paragraph',
+      citation: 'SECNAV M-5215.1 (audit line 83)',
+      detail: `First titled paragraph is "${titles[0]}".`,
+    });
+  }
+  if (!titles.includes('purpose')) {
+    issues.push({
+      id: 'secnav-missing-purpose',
+      severity: 'warn',
+      rule: 'SECNAV directives require a "Purpose" paragraph',
+      citation: 'SECNAV M-5215.1 (audit line 83)',
+      detail: 'Mandatory level-1 paragraph title not found.',
+    });
+  }
+
+  const formsIdx = titles.indexOf('forms and information collections');
+  const cancIdx = titles.indexOf('cancellation');
+
+  if (formsIdx < 0) {
+    issues.push({
+      id: 'secnav-missing-forms',
+      severity: 'warn',
+      rule: 'SECNAV directives require a "Forms and Information Collections" paragraph',
+      citation: 'SECNAV M-5215.1 (audit line 83)',
+      detail: 'Mandatory level-1 paragraph title not found.',
+    });
+  }
+
+  if (t === 'secnav-instruction') {
+    if (cancIdx >= 0 && cancIdx !== 1) {
+      issues.push({
+        id: 'secnav-cancellation-position',
+        severity: 'fail',
+        rule: 'Cancellation must be the second paragraph when present',
+        citation: 'SECNAV M-5215.1 (audit line 83)',
+        detail: `Found at position ${cancIdx + 1}.`,
+      });
+    }
+    if (formsIdx >= 0 && formsIdx !== titles.length - 1) {
+      issues.push({
+        id: 'secnav-forms-last',
+        severity: 'fail',
+        rule: 'Forms and Information Collections must be the last paragraph',
+        citation: 'SECNAV M-5215.1 (audit line 83)',
+        detail: `Found at position ${formsIdx + 1} of ${titles.length}.`,
+      });
+    }
+  } else {
+    // Notice: cancellation paragraph, when present, stands LAST and
+    // pushes Forms to next-to-last.
+    if (cancIdx >= 0) {
+      if (cancIdx !== titles.length - 1) {
+        issues.push({
+          id: 'secnav-notice-cancellation-last',
+          severity: 'fail',
+          rule: 'A notice cancellation paragraph must be the last paragraph',
+          citation: 'SECNAV M-5215.1 (audit line 83)',
+          detail: `Found at position ${cancIdx + 1} of ${titles.length}.`,
+        });
+      }
+      if (formsIdx >= 0 && formsIdx !== titles.length - 2) {
+        issues.push({
+          id: 'secnav-notice-forms-next-to-last',
+          severity: 'fail',
+          rule: 'Forms and Information Collections must be next-to-last when a cancellation paragraph is present',
+          citation: 'SECNAV M-5215.1 (audit line 83)',
+          detail: `Found at position ${formsIdx + 1} of ${titles.length}.`,
+        });
+      }
+    } else if (formsIdx >= 0 && formsIdx !== titles.length - 1) {
+      issues.push({
+        id: 'secnav-forms-last',
+        severity: 'fail',
+        rule: 'Forms and Information Collections must be the last paragraph',
+        citation: 'SECNAV M-5215.1 (audit line 83)',
+        detail: `Found at position ${formsIdx + 1} of ${titles.length}.`,
+      });
+    }
+    // Notices carry no consecutive point number (audit line 90).
+    const ssic = (formData.ssic || '').replace(/\s*w\/.*$/i, '').trim();
+    if (/\.\d/.test(ssic)) {
+      issues.push({
+        id: 'secnav-notice-no-point-number',
+        severity: 'fail',
+        rule: 'Notices carry no consecutive point number — cite by SSIC and date',
+        citation: 'SECNAV M-5215.1 (audit line 90)',
+        detail: `"${formData.ssic}" carries a point number.`,
+      });
+    }
+  }
+  return issues;
+}
+
+/**
+ * P4.3 — notice cancellation date (SECNAV M-5215.1; audit line 86,
+ * verbatim-verified 2026-06-10 via secnav.navy.mil search excerpt:
+ * "indicated in the upper right margin of the first page, on the
+ * second line above the identification symbols", always the last day
+ * of a month; "self-canceling on the 1 year anniversary date unless
+ * the Canc date is for a longer period" — so unlike MCBul there is
+ * NO 12-month ceiling).
+ */
+export function validateSecnavNoticeCancellation(
+  formData: FormData,
+): ValidationIssue[] {
+  if (formData.documentType !== 'secnav-notice') return [];
+  const issues: ValidationIssue[] = [];
+  const raw = (formData as { cancellationDate?: string }).cancellationDate;
+  if (!raw) {
+    issues.push({
+      id: 'secnav-notice-canc-missing',
+      severity: 'fail',
+      rule: 'Notices must carry a Canc date',
+      citation: 'SECNAV M-5215.1 (audit line 86)',
+      detail: 'Set the cancellation date (upper right, 2nd line above the ID symbols).',
+    });
+    return issues;
+  }
+  const canc = new Date(raw);
+  if (isNaN(canc.getTime())) {
+    issues.push({
+      id: 'secnav-notice-canc-invalid',
+      severity: 'fail',
+      rule: 'Cancellation date is not a valid date',
+      citation: 'SECNAV M-5215.1',
+      detail: `Could not parse "${raw}".`,
+    });
+    return issues;
+  }
+  const lastDay = new Date(canc.getFullYear(), canc.getMonth() + 1, 0).getDate();
+  if (canc.getDate() !== lastDay) {
+    issues.push({
+      id: 'secnav-notice-canc-month-end',
+      severity: 'fail',
+      rule: 'Canc date must be the last day of the month',
+      citation: 'SECNAV M-5215.1 (audit line 86)',
+      detail: `${raw} is not the last day of its month (${lastDay}).`,
+    });
+  }
+  return issues;
+}
+
+/**
+ * P4.3 — references overflow (SECNAV M-5215.1; audit line 85:
+ * "References overflow -> move to enclosure"). The manual states the
+ * rule but no count; the page-1-fit trigger is layout-dependent. The
+ * threshold below is an implementation heuristic — flagged for SME
+ * confirmation at Gate 4 (same handling as the Ref/Via anomaly).
+ */
+const SECNAV_REFS_OVERFLOW_THRESHOLD = 8;
+export function validateSecnavReferencesOverflow(
+  formData: FormData,
+  references: string[],
+): ValidationIssue[] {
+  if (!SECNAV_DIRECTIVE_TYPES_V.includes(formData.documentType)) return [];
+  const refs = references.filter((r) => r && r.trim());
+  if (refs.length <= SECNAV_REFS_OVERFLOW_THRESHOLD) return [];
+  return [{
+    id: 'secnav-refs-overflow',
+    severity: 'warn',
+    rule: 'Extensive references should move to an enclosure',
+    citation: 'SECNAV M-5215.1 (audit line 85; threshold heuristic, SME ruling pending)',
+    detail: `${refs.length} references listed; consider listing them in an enclosure.`,
+  }];
+}
+
+/**
+ * P4.3 — 5-page text cap (SECNAV M-5215.1; audit line 85: instruction
+ * and notice text <=5 pages INCLUDING the signature block, EXCLUDING
+ * enclosures; audit line 115: the paginator counts pre-export and the
+ * verdict is shared — the PDF engine is the paginator, DOCX reuses
+ * the result). Pure issue builder so the export gate and tests share
+ * one definition; severity "block" refuses export (audit line 69).
+ */
+export const SECNAV_PAGE_CAP = 5;
+export function secnavPageCapIssue(
+  documentType: string,
+  pageCount: number,
+): ValidationIssue | null {
+  if (!SECNAV_DIRECTIVE_TYPES_V.includes(documentType)) return null;
+  if (pageCount <= SECNAV_PAGE_CAP) return null;
+  return {
+    id: 'secnav-page-cap',
+    severity: 'block',
+    rule: `SECNAV ${documentType === 'secnav-notice' ? 'notice' : 'instruction'} text may not exceed ${SECNAV_PAGE_CAP} pages`,
+    citation: 'SECNAV M-5215.1 (audit lines 85, 115)',
+    detail: `Document paginates to ${pageCount} pages including the signature block. Move content to an enclosure.`,
+  };
+}
+
 export function runLetterValidators(
   formData: FormData,
   vias: string[],
@@ -551,6 +767,9 @@ export function runLetterValidators(
     ...validateDirectiveTypography(formData, paragraphs),
     ...validateDirectiveSchema(formData, paragraphs),
     ...validateBulletinCancellation(formData),
+    ...validateSecnavSchema(formData, paragraphs),
+    ...validateSecnavNoticeCancellation(formData),
+    ...validateSecnavReferencesOverflow(formData, references),
     ...validateRevisionSuffix(formData),
   ];
 }

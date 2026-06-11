@@ -189,12 +189,16 @@ export function formatDirectiveSSIC(
  * the order prefix with the SSIC value.
  */
 export function buildDirectiveTitle(formData: FormData): string {
+  const ssic = formData.ssic || '';
+  if (!ssic) return '';
+  // P4.3 — SECNAV designation lines spell the type out (SECNAV
+  // M-5215.1 Exhibit 1; audit line 82: caps, underlined).
+  if (formData.documentType === 'secnav-instruction') return `SECNAV INSTRUCTION ${ssic}`;
+  if (formData.documentType === 'secnav-notice') return `SECNAV NOTICE ${ssic}`;
   const prefix = formData.documentType === 'bulletin'
     ? 'MCBul'
     : (formData.orderPrefix || 'MCO');
-  const ssic = formData.ssic || '';
-
-  return ssic ? `${prefix} ${ssic}` : '';
+  return `${prefix} ${ssic}`;
 }
 
 /**
@@ -250,6 +254,40 @@ export function getMCBulParagraphs(): ParagraphData[] {
     { id: 3, level: 1, content: '', title: 'Background' },
     { id: 4, level: 1, content: '', title: 'Action' },
     { id: 5, level: 1, content: '', title: 'Reserve Applicability' },
+  ];
+}
+
+/**
+ * P4.3 — SECNAV instruction scaffold (SECNAV M-5215.1; audit line 83:
+ * Purpose first; Cancellation second when superseding; Forms and
+ * Information Collections last; Records Management appears in the
+ * Exhibit 2 sequence with no prescriptive content text).
+ */
+export function getSecnavInstructionParagraphs(): ParagraphData[] {
+  return [
+    { id: 1, level: 1, content: '', title: 'Purpose', isMandatory: true },
+    { id: 2, level: 1, content: '', title: 'Cancellation' },
+    { id: 3, level: 1, content: '', title: 'Applicability' },
+    { id: 4, level: 1, content: '', title: 'Policy' },
+    { id: 5, level: 1, content: '', title: 'Responsibilities' },
+    { id: 6, level: 1, content: '', title: 'Records Management' },
+    { id: 7, level: 1, content: '', title: 'Forms and Information Collections' },
+  ];
+}
+
+/**
+ * P4.3 — SECNAV notice scaffold (SECNAV M-5215.1; audit line 83:
+ * Forms next-to-last when a notice carries a cancellation paragraph,
+ * which then stands last).
+ */
+export function getSecnavNoticeParagraphs(): ParagraphData[] {
+  return [
+    { id: 1, level: 1, content: '', title: 'Purpose', isMandatory: true },
+    { id: 2, level: 1, content: '', title: 'Background' },
+    { id: 3, level: 1, content: '', title: 'Action' },
+    { id: 4, level: 1, content: '', title: 'Records Management' },
+    { id: 5, level: 1, content: '', title: 'Forms and Information Collections' },
+    { id: 6, level: 1, content: '', title: 'Cancellation' },
   ];
 }
 
@@ -661,6 +699,15 @@ export function getDirectiveDesignation(formData: FormData): string {
   // Bulletins ALWAYS designate MCBul — orderPrefix is an MCO-side
   // field and lingers in form state after switching types (user
   // screenshot 2026-06-10: bulletin rendering "MCO 1000").
+  // P4.3 — SECNAV ID-block abbreviations (SECNAV M-5215.1; audit
+  // line 82: SECNAVINST + SSIC.consecutive + suffix; line 90: notices
+  // carry no consecutive number, cited by SSIC + date).
+  if (formData.documentType === 'secnav-instruction') {
+    return formData.ssic ? `SECNAVINST ${formData.ssic}` : '';
+  }
+  if (formData.documentType === 'secnav-notice') {
+    return formData.ssic ? `SECNAVNOTE ${formData.ssic}` : '';
+  }
   const prefix = formData.documentType === 'bulletin'
     ? 'MCBul'
     : (formData.orderPrefix || 'MCO');

@@ -400,6 +400,16 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                     onClick={() => handleSelect('bulletin')}
                     label="Marine Corps Bulletin"
                   />
+                  <DocumentTypeButton
+                    active={documentType === 'secnav-instruction'}
+                    onClick={() => handleSelect('secnav-instruction')}
+                    label="SECNAV Instruction"
+                  />
+                  <DocumentTypeButton
+                    active={documentType === 'secnav-notice'}
+                    onClick={() => handleSelect('secnav-notice')}
+                    label="SECNAV Notice"
+                  />
                 </div>
               </AccordionContent>
             </AccordionItem>

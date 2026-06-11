@@ -79,7 +79,7 @@ export interface DocumentFeatures {
   // Behavior
   isAMHS: boolean;
   isDirective: boolean;
-  paragraphTemplate?: 'mco' | 'bulletin' | 'moa' | 'staffing-paper' | 'information-paper' | 'default';
+  paragraphTemplate?: 'mco' | 'bulletin' | 'secnav-instruction' | 'secnav-notice' | 'moa' | 'staffing-paper' | 'information-paper' | 'default';
   showMultipleTo: boolean;
   showToDistribution: boolean;
   category: DocumentCategory;
@@ -738,6 +738,152 @@ export const BulletinDefinition: DocumentTypeDefinition = {
           className: 'md:col-span-1',
           description: 'Per MCO 5215.1K para 48 — adds Table of Contents page'
         }
+      ]
+    }
+  ]
+};
+
+// 6a. SECNAV Instruction (P4.3 — SECNAV M-5215.1)
+export const SecnavInstructionSchema = BasicLetterSchema.extend({
+  documentType: z.literal('secnav-instruction'),
+  // Directive SSIC format: SSIC + consecutive point number + revision
+  // suffix (SECNAV M-5215.1; audit line 82), e.g. 5215.1F.
+  ssic: ssicFieldDirective(),
+  // Managed by UnitInfoSection / ClosingBlockSection, not DynamicForm.
+  line1: z.string().optional(),
+  line2: z.string().optional(),
+  line3: z.string().optional(),
+  sig: z.string().optional(),
+  directiveTitle: z.string().optional(),
+  distribution: z.object({
+    statementCode: z.enum(['A', 'B', 'C', 'D', 'E', 'F', 'X', '']).optional(),
+    statementReason: z.string().optional(),
+    statementDate: z.string().optional(),
+    statementAuthority: z.string().optional(),
+  }).optional(),
+});
+
+// 6b. SECNAV Notice (P4.3 — SECNAV M-5215.1; self-canceling, no
+// consecutive number, cited by SSIC + date — audit lines 86, 90)
+export const SecnavNoticeSchema = BasicLetterSchema.extend({
+  documentType: z.literal('secnav-notice'),
+  ssic: ssicFieldDirective(),
+  line1: z.string().optional(),
+  line2: z.string().optional(),
+  line3: z.string().optional(),
+  sig: z.string().optional(),
+  directiveTitle: z.string().optional(),
+  // "The cancellation date of each notice shall be indicated in the
+  // upper right margin of the first page, on the second line above
+  // the identification symbols" (SECNAV M-5215.1; audit line 86).
+  cancellationDate: z.string().min(1, 'Cancellation Date is required'),
+  distribution: z.object({
+    statementCode: z.enum(['A', 'B', 'C', 'D', 'E', 'F', 'X', '']).optional(),
+    statementReason: z.string().optional(),
+    statementDate: z.string().optional(),
+    statementAuthority: z.string().optional(),
+  }).optional(),
+});
+
+const SECNAV_DISTRIBUTION_FIELD = {
+  name: 'distribution.statementCode',
+  label: 'Distribution Statement',
+  type: 'select' as const,
+  options: [
+    { label: 'A — Public release; unlimited', value: 'A' },
+    { label: 'B — U.S. Gov agencies only', value: 'B' },
+    { label: 'C — Gov agencies & contractors', value: 'C' },
+    { label: 'D — DoD & DoD contractors only', value: 'D' },
+    { label: 'E — DoD components only', value: 'E' },
+    { label: 'F — Further dissemination as directed', value: 'F' },
+    { label: 'X — Export-controlled', value: 'X' }
+  ],
+  defaultValue: 'A',
+  className: 'md:col-span-1',
+  description: 'Per DoD 5230.24. Shown at bottom of letterhead page.'
+};
+
+export const SecnavInstructionDefinition: DocumentTypeDefinition = {
+  id: 'secnav-instruction',
+  name: 'SECNAV Instruction',
+  description: 'DON-level directives with continuing authority (SECNAV M-5215.1).',
+  icon: '⚓',
+  schema: SecnavInstructionSchema,
+  features: {
+    ...STANDARD_LETTER_FEATURES,
+    showVia: false,
+    showDirectiveTitle: true,
+    showDistribution: true,
+    isDirective: true,
+    paragraphTemplate: 'secnav-instruction',
+    category: 'directives',
+  },
+  sections: [
+    {
+      id: 'header',
+      title: 'Instruction Information',
+      fields: [
+        ...BasicLetterDefinition.sections[0].fields.map(f =>
+          f.name === 'to' ? { ...f, type: 'hidden' as const, defaultValue: '' } :
+          f.name === 'from' ? { ...f, placeholder: 'Secretary of the Navy', description: 'Title of the issuing authority (SECNAV M-5215.1)' } :
+          f.name === 'ssic' ? { ...f, type: 'text' as const, placeholder: 'e.g. 5215.1F', description: 'SSIC + consecutive point number + revision suffix (suffixes skip I and O)' } : f
+        ),
+        {
+          name: 'directiveTitle',
+          label: 'Designation Line',
+          type: 'text',
+          placeholder: 'e.g. SECNAV INSTRUCTION 5215.1F',
+          description: 'Full designation in ALL CAPS, underlined, on the 2nd line below the date.',
+          className: 'col-span-full'
+        },
+        SECNAV_DISTRIBUTION_FIELD
+      ]
+    }
+  ]
+};
+
+export const SecnavNoticeDefinition: DocumentTypeDefinition = {
+  id: 'secnav-notice',
+  name: 'SECNAV Notice',
+  description: 'DON-level directives of brief duration; self-canceling (SECNAV M-5215.1).',
+  icon: '🗓️',
+  schema: SecnavNoticeSchema,
+  features: {
+    ...STANDARD_LETTER_FEATURES,
+    showVia: false,
+    showDirectiveTitle: true,
+    showDistribution: true,
+    isDirective: true,
+    paragraphTemplate: 'secnav-notice',
+    category: 'directives',
+  },
+  sections: [
+    {
+      id: 'header',
+      title: 'Notice Information',
+      fields: [
+        ...BasicLetterDefinition.sections[0].fields.map(f =>
+          f.name === 'to' ? { ...f, type: 'hidden' as const, defaultValue: '' } :
+          f.name === 'from' ? { ...f, placeholder: 'Secretary of the Navy', description: 'Title of the issuing authority (SECNAV M-5215.1)' } :
+          f.name === 'ssic' ? { ...f, type: 'text' as const, placeholder: 'e.g. 5215', description: 'SSIC only — notices carry no consecutive point number (SECNAV M-5215.1)' } : f
+        ),
+        {
+          name: 'directiveTitle',
+          label: 'Designation Line',
+          type: 'text',
+          placeholder: 'e.g. SECNAV NOTICE 5215',
+          description: 'Full designation in ALL CAPS, underlined, on the 2nd line below the date.',
+          className: 'col-span-full'
+        },
+        {
+          name: 'cancellationDate',
+          label: 'Cancellation Date',
+          type: 'date',
+          required: true,
+          className: 'md:col-span-1',
+          description: 'Always the last day of a month; self-cancels at 1 year unless a longer Canc date is set.'
+        },
+        SECNAV_DISTRIBUTION_FIELD
       ]
     }
   ]
@@ -2246,6 +2392,8 @@ export const DocumentSchema = z.union([
   AAFormSchema,
   MCOSchema,
   BulletinSchema,
+  SecnavInstructionSchema,
+  SecnavNoticeSchema,
   ChangeTransmittalSchema,
   Page11Schema,
   AMHSSchema,
@@ -2276,6 +2424,8 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   'aa-form': AAFormDefinition,
   mco: MCODefinition,
   bulletin: BulletinDefinition,
+  'secnav-instruction': SecnavInstructionDefinition,
+  'secnav-notice': SecnavNoticeDefinition,
   'change-transmittal': ChangeTransmittalDefinition,
   page11: Page11Definition,
   mfr: MFRDefinition,

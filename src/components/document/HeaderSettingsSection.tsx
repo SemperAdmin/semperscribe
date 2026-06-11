@@ -18,7 +18,11 @@ const HEADER_LABELS: Record<string, string> = {
 /** Directives carry Navy or Marine Corps letterhead only (user
  *  ruling 2026-06-10); DLA letterhead is correspondence-only. */
 function getAllowedHeaderTypes(documentType: string): string[] {
-  return getFontArchetype(documentType) === 'usmc-directive'
+  const archetype = getFontArchetype(documentType);
+  // P4.3: SECNAV directives carry DON letterhead only (SECNAV
+  // M-5215.1; resolveHeaderType coerces at generation time too).
+  if (archetype === 'secnav-directive') return ['DON'];
+  return archetype === 'usmc-directive'
     ? ['USMC', 'DON']
     : ['USMC', 'DON', 'DLA'];
 }

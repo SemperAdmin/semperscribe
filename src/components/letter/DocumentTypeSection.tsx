@@ -7,7 +7,7 @@ import React from 'react';
 import { FormData, EndorsementLevel, ParagraphData } from '@/types';
 import { StructuredReferenceInput } from './StructuredReferenceInput';
 import { debugFormChange } from '@/lib/console-utils';
-import { getMCOParagraphs, getMCBulParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getAssumptionOfCommandParagraphs } from '@/lib/naval-format-utils';
+import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getAssumptionOfCommandParagraphs } from '@/lib/naval-format-utils';
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -172,6 +172,40 @@ export function DocumentTypeSection({
                 if (setParagraphs && formData.documentType !== 'bulletin') {
                   if (window.confirm('Do you want to load the standard Bulletin structure? Existing paragraphs will be replaced.')) {
                     setParagraphs(getMCBulParagraphs());
+                  }
+                }
+              }}
+            />
+
+            <DocumentTypeCard
+              type="secnav-instruction"
+              icon={<ScrollText className="w-10 h-10" />}
+              title="SECNAV Instruction"
+              description="DON-level directives with continuing authority (SECNAV M-5215.1)."
+              note="→ Courier New 12; 5-page text cap"
+              isActive={formData.documentType === 'secnav-instruction'}
+              onClick={() => {
+                setFormData(prev => ({ ...prev, documentType: 'secnav-instruction', to: '', from: prev.from || 'Secretary of the Navy' }));
+                if (setParagraphs && formData.documentType !== 'secnav-instruction') {
+                  if (window.confirm('Do you want to load the standard SECNAV instruction structure? Existing paragraphs will be replaced.')) {
+                    setParagraphs(getSecnavInstructionParagraphs());
+                  }
+                }
+              }}
+            />
+
+            <DocumentTypeCard
+              type="secnav-notice"
+              icon={<AlertCircle className="w-10 h-10" />}
+              title="SECNAV Notice"
+              description="DON-level directives of brief duration; self-canceling (SECNAV M-5215.1)."
+              note="→ No point number; Canc date required"
+              isActive={formData.documentType === 'secnav-notice'}
+              onClick={() => {
+                setFormData(prev => ({ ...prev, documentType: 'secnav-notice', to: '', from: prev.from || 'Secretary of the Navy' }));
+                if (setParagraphs && formData.documentType !== 'secnav-notice') {
+                  if (window.confirm('Do you want to load the standard SECNAV notice structure? Existing paragraphs will be replaced.')) {
+                    setParagraphs(getSecnavNoticeParagraphs());
                   }
                 }
               }}
@@ -691,6 +725,32 @@ export function DocumentTypeSection({
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* SECNAV Notice-Specific Fields (P4.3) */}
+      {formData.documentType === 'secnav-notice' && (
+        <Card className="border-secondary/20 shadow-md overflow-hidden animate-in slide-in-from-top-4 duration-500">
+          <div className="bg-secondary text-primary-foreground border-b border-secondary/10 p-4 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-primary-foreground" />
+            <h3 className="text-lg font-bold text-primary-foreground font-headline tracking-wide">Notice Details</h3>
+          </div>
+
+          <CardContent className="space-y-6 pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cancellation Date</Label>
+                <DatePicker
+                  date={formData.cancellationDate ? new Date(formData.cancellationDate + 'T00:00:00') : undefined}
+                  setDate={(d) => setFormData(prev => ({ ...prev, cancellationDate: d ? format(d, 'yyyy-MM-dd') : '' }))}
+                  placeholder="Pick cancellation date"
+                />
+                <p className="text-xs text-muted-foreground italic">
+                  Always the last day of a month. Notices self-cancel at 1 year unless a longer Canc date is set (SECNAV M-5215.1).
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}

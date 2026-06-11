@@ -6,12 +6,12 @@ import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
 import { UNITS } from '@/lib/units';
 import { getTodaysDate } from '@/lib/date-utils';
-import { getMCOParagraphs, getMCBulParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
+import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
 import { loadSavedLetters, saveLetterToStorage } from '@/lib/storage-utils';
 import { getPDFPageCount, addMultipleSignaturesToBlob, ManualSignaturePosition } from '@/lib/pdf-generator';
 import { generateDocxBlob } from '@/lib/docx-generator';
-import { getExportBlockers, runLetterValidators } from '@/lib/letter-validators';
+import { getExportBlockers, runLetterValidators, secnavPageCapIssue } from '@/lib/letter-validators';
 import { SignaturePosition } from '@/types';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
@@ -331,6 +331,10 @@ function NavalLetterGeneratorInner() {
       newParagraphs = getMCOParagraphs();
     } else if (template === 'bulletin') {
       newParagraphs = getMCBulParagraphs();
+    } else if (template === 'secnav-instruction') {
+      newParagraphs = getSecnavInstructionParagraphs();
+    } else if (template === 'secnav-notice') {
+      newParagraphs = getSecnavNoticeParagraphs();
     } else if (template === 'moa') {
       newParagraphs = getMOAParagraphs();
     } else if (template === 'staffing-paper') {
@@ -453,11 +457,26 @@ function NavalLetterGeneratorInner() {
         return;
       }
 
+      // P4.3 — SECNAV 5-page text cap, HARD BLOCK (SECNAV M-5215.1;
+      // audit lines 85, 115). The PDF engine is the shared paginator:
+      // its page count is the verdict for BOTH formats — DOCX is not
+      // re-counted (divergence guard). The counted blob is reused for
+      // PDF export so the gated artifact is the downloaded artifact.
+      let secnavCountedBlob: Blob | null = null;
+      if (formData.documentType === 'secnav-instruction' || formData.documentType === 'secnav-notice') {
+        secnavCountedBlob = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+        const capIssue = secnavPageCapIssue(formData.documentType, await getPDFPageCount(secnavCountedBlob));
+        if (capIssue) {
+          alert(`Export blocked:\n\n- ${capIssue.rule}\n  ${capIssue.detail}\n  [${capIssue.citation}]`);
+          return;
+        }
+      }
+
       // Route other document types through existing pipeline
       let blob: Blob;
 
       if (format === 'pdf') {
-        blob = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+        blob = secnavCountedBlob ?? await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
       } else {
         const features = DOCUMENT_TYPES[formData.documentType]?.features;
         const paragraphsToRender = features?.isDirective

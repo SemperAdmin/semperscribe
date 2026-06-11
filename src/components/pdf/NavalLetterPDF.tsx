@@ -40,7 +40,7 @@ import { splitSubject, formatCancellationDate, getDirectiveDesignation, buildDir
 import { DISTRIBUTION_STATEMENTS } from '@/lib/constants';
 import { parseFormattedText } from '@/lib/pdf-text-parser';
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from '@/lib/indent-engine';
-import { resolveBodyFont, resolveHeaderType } from '@/lib/font-policy';
+import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from '@/lib/font-policy';
 import type { ParagraphIndentSpec } from '@/lib/indent-engine';
 
 interface NavalLetterPDFProps {
@@ -710,7 +710,9 @@ export function NavalLetterPDF({
   const enclsWithContent = enclosures.filter((e) => e.trim());
   const copiesWithContent = copyTos.filter((c) => c.trim());
   const distListWithContent = distList.filter((d) => d.trim());
-  const isDirective = formData.documentType === 'mco' || formData.documentType === 'bulletin' || formData.documentType === 'change-transmittal';
+  // P4.3: SECNAV instruction/notice join the directive path.
+  const isSecnav = isSecnavDirective(formData.documentType);
+  const isDirective = formData.documentType === 'mco' || formData.documentType === 'bulletin' || formData.documentType === 'change-transmittal' || isSecnav;
   const paragraphsWithContent = paragraphs.filter((p) => p.content.trim() || (isDirective && p.title && p.title.trim()));
 
   // Correspondence: paragraph indents from the relative engine
@@ -933,12 +935,14 @@ export function NavalLetterPDF({
 
         {/* Bulletin cancellation date — centered in right half, two lines above SSIC */}
         {!isFromToMemo && !isMfr && !isMoaOrMou && !isStaffingPaper &&
-          formData.documentType === 'bulletin' && formData.cancellationDate && (
+          (formData.documentType === 'bulletin' || formData.documentType === 'secnav-notice') && formData.cancellationDate && (
           /* P3.4: right-aligned, one blank above the SSIC position
-             (audit lines 144/170). */
+             (audit lines 144/170). P4.3: SECNAV notice Canc rides the
+             same geometry — 2nd line above the ID symbols (SECNAV
+             M-5215.1; audit line 86); no contingent variant. */
           <View style={{ marginBottom: PDF_SPACING.emptyLine, alignItems: 'flex-end' }}>
             <Text style={styles.addressLine}>
-              {formData.cancellationType === 'contingent' ? 'Canc frp: ' : 'Canc: '}{formatCancellationDate(formData.cancellationDate)}
+              {formData.documentType === 'bulletin' && formData.cancellationType === 'contingent' ? 'Canc frp: ' : 'Canc: '}{formatCancellationDate(formData.cancellationDate)}
             </Text>
           </View>
         )}
@@ -1309,6 +1313,10 @@ export function NavalLetterPDF({
                     ));
                 }
              })()
+          ) : isSecnav ? (
+             // P4.3: SECNAV directives carry no To line (SECNAV
+             // M-5215.1; audit line 82).
+             null
           ) : (
              // Standard Logic
              formData.bodyFont === 'courier' ? (

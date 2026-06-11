@@ -62,7 +62,7 @@ export interface IndentEngine {
  * are excluded; they keep their dedicated render paths until Phase 3/4.
  */
 export function isCorrespondenceType(documentType: string | undefined): boolean {
-  return !['mco', 'bulletin', 'change-transmittal', 'amhs', 'page11', 'aa-form'].includes(
+  return !['mco', 'bulletin', 'change-transmittal', 'secnav-instruction', 'secnav-notice', 'amhs', 'page11', 'aa-form'].includes(
     documentType ?? '',
   );
 }
@@ -228,7 +228,11 @@ export class FixedLadderEngine implements IndentEngine {
 
 /** USMC directive types using the fixed ladder (MCO 5215.1K). */
 export function isDirectiveType(documentType: string): boolean {
-  return ['mco', 'bulletin', 'change-transmittal'].includes(documentType);
+  // P4.3: SECNAV directives use the same fixed 4-space ladder. SECNAV
+  // M-5215.1 leaves indent values to M-5216.5 fig 11-1 (audit row C8:
+  // 4-space steps), which at the mandated Courier New 12 equals the
+  // USMC ladder (576 twips/level).
+  return ['mco', 'bulletin', 'change-transmittal', 'secnav-instruction', 'secnav-notice'].includes(documentType);
 }
 
 export const relativeIndentEngine = new RelativeIndentEngine();

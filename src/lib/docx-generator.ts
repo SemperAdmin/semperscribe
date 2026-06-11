@@ -39,7 +39,7 @@ import {
   getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle, resolveDistributionStatement } from './naval-format-utils';
 import { createFormattedParagraph, generateCitation } from "./paragraph-formatter";
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from "./indent-engine";
-import { resolveBodyFont, resolveHeaderType } from "./font-policy";
+import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from "./font-policy";
 import { parseAndFormatDate, formatBusinessDate } from "./date-utils";
 import { DISTRIBUTION_STATEMENTS } from "@/lib/constants";
 import { DOC_SETTINGS, TAB_STOPS, INDENTS } from "./doc-settings";
@@ -95,7 +95,10 @@ export async function generateDocxBlob(
   const font = getFont(formData.bodyFont);
   const headerColor = getHeaderColor(formData.accentColor);
   const sealBuffer = await getDoDSealBuffer(formData.headerType === 'DON' ? 'navy' : 'marine-corps'); // DLA uses marine-corps (DoD) seal
-  const isDirective = formData.documentType === 'mco' || formData.documentType === 'bulletin';
+  // P4.3: SECNAV instruction/notice join the directive path (SECNAV
+  // M-5215.1 delegates margins/letter geometry like MCO 5215.1K does).
+  const isSecnav = isSecnavDirective(formData.documentType);
+  const isDirective = formData.documentType === 'mco' || formData.documentType === 'bulletin' || isSecnav;
   const isStaffingPaper = ['position-paper', 'information-paper', 'decision-paper'].includes(formData.documentType);
   const isPositionPaper = formData.documentType === 'position-paper';
   const isDecisionPaper = formData.documentType === 'decision-paper';
@@ -196,9 +199,12 @@ export async function generateDocxBlob(
           spacing: { after: 240 }
       }));
   } else if (!isMoaOrMou && !isStaffingPaper) {
-      // Bulletin cancellation date — indented at ~3.25" (signature indent), above SSIC block
-      if (formData.documentType === 'bulletin' && formData.cancellationDate) {
-        const cancPrefix = formData.cancellationType === 'contingent' ? 'Canc frp:' : 'Canc:';
+      // Bulletin / SECNAV-notice cancellation date, above SSIC block.
+      // P4.3: notice Canc on the 2nd line above the ID symbols (SECNAV
+      // M-5215.1; audit line 86) — same geometry the bulletin already
+      // uses; notices have no contingent variant, prefix is "Canc:".
+      if ((formData.documentType === 'bulletin' || formData.documentType === 'secnav-notice') && formData.cancellationDate) {
+        const cancPrefix = formData.documentType === 'bulletin' && formData.cancellationType === 'contingent' ? 'Canc frp:' : 'Canc:';
         // P3.4: right-aligned, 2nd line above the SSIC position (one
         // blank between) — audit lines 144/170; MCO 5215.1K.
         ssicParagraphs.push(new Paragraph({
@@ -826,8 +832,10 @@ export async function generateDocxBlob(
           });
        }
 
-    } else {
-        // Standard To
+    } else if (!isSecnav) {
+        // Standard To. P4.3: SECNAV directives carry no To line —
+        // mandatory fields are From/Subj only (SECNAV M-5215.1;
+        // audit line 82).
         const toLabel = getFromToSpacing('To', formData.bodyFont);
         addressParagraphs.push(new Paragraph({
           children: [

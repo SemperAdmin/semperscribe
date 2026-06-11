@@ -370,7 +370,9 @@ describe('DynamicForm initialization simulation', () => {
 
 describe('Non-directive document types', () => {
   const nonDirectiveTypes = Object.keys(DOCUMENT_TYPES).filter(
-    id => !['mco', 'bulletin', 'change-transmittal'].includes(id)
+    // P4.3: SECNAV directives also use the free-text directive SSIC
+    // format (SSIC + point + suffix), not the correspondence combobox.
+    id => !['mco', 'bulletin', 'change-transmittal', 'secnav-instruction', 'secnav-notice'].includes(id)
   );
 
   nonDirectiveTypes.forEach(docTypeId => {
