@@ -72,3 +72,18 @@ export function resolveBodyFont(
   const req: BodyFont = requested === 'courier' ? 'courier' : 'times';
   return allowed.includes(req) ? req : allowed[0];
 }
+
+/**
+ * Directive letterhead rule (user ruling 2026-06-10): USMC directives
+ * carry Navy or Marine Corps letterhead only — never DLA. Coerced at
+ * generation time alongside the font (stale form state defense).
+ */
+export function resolveHeaderType(
+  documentType: string,
+  requested: string | undefined,
+): string {
+  if (getFontArchetype(documentType) === 'usmc-directive' && requested === 'DLA') {
+    return 'USMC';
+  }
+  return requested ?? 'USMC';
+}

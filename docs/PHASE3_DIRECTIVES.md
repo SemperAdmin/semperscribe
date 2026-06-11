@@ -173,6 +173,24 @@ designators in any MCO example data, scaffold sequence per ruling,
 level-0 verbatim spec, full 17-row designator-sequence assertion on
 the rendered records template including post-title-only numbering.
 
+## P3.9 — Directive letterhead rule + P3.1 UI gap (user report 2026-06-10)
+
+User ruling: directives carry Navy or Marine Corps letterhead only —
+no DLA option. HeaderSettingsSection offered all three for every
+type; directives now offer USMC/DON only, with resolveHeaderType
+coercing stale DLA form state to USMC in both emitters (same defense
+pattern as the font lock).
+
+P3.1 gap closed in the same component: DocumentLayout renders
+HeaderSettingsSection (not FontSelectorSection) when
+showHeaderSettings is set — the directive-facing screen. Its Body
+Font dropdown was unconstrained, so the UI still offered Times for
+MCOs even though generation coerced to Courier. Both selectors now
+enforce the archetype lock.
+
+Proof: 3 new font-policy tests incl. DOCX letterhead-text assertion
+under stale DLA state.
+
 ## Open items for Gate 3
 
 1. C5/C9 rulings (plan "OPEN RULINGS"): notice designation-line
@@ -183,5 +201,5 @@ the rendered records template including post-title-only numbering.
    carries both, emitters fixed at 12. Decide at Gate 3 whether a
    selector is wanted (functional addition needing approval).
 
-Suite after P3.8: 947 green (941 + 6 golden/components) (897 + 6 golden/components), tsc clean,
+Suite after P3.9: 950 green (897 + 6 golden/components), tsc clean,
 parity green, goldens byte-stable (correspondence untouched).

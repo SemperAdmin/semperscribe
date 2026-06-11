@@ -40,7 +40,7 @@ import { splitSubject, formatCancellationDate, getDirectiveDesignation, buildDir
 import { DISTRIBUTION_STATEMENTS } from '@/lib/constants';
 import { parseFormattedText } from '@/lib/pdf-text-parser';
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from '@/lib/indent-engine';
-import { resolveBodyFont } from '@/lib/font-policy';
+import { resolveBodyFont, resolveHeaderType } from '@/lib/font-policy';
 import type { ParagraphIndentSpec } from '@/lib/indent-engine';
 
 interface NavalLetterPDFProps {
@@ -681,7 +681,12 @@ export function NavalLetterPDF({
   distList = [],
 }: NavalLetterPDFProps) {
   // P3.1 (G7): archetype font policy — directives coerce to Courier.
-  formData = { ...formData, bodyFont: resolveBodyFont(formData.documentType, formData.bodyFont) };
+  // Letterhead guard: directives never carry DLA letterhead.
+  formData = {
+    ...formData,
+    bodyFont: resolveBodyFont(formData.documentType, formData.bodyFont),
+    headerType: resolveHeaderType(formData.documentType, formData.headerType) as FormData['headerType'],
+  };
   const styles = createStyles(
     formData.bodyFont || 'times',
     formData.accentColor

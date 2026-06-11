@@ -13,6 +13,7 @@ import {
   getAllowedBodyFonts,
   getAllowedFontSizesPt,
   resolveBodyFont,
+  resolveHeaderType,
 } from '@/lib/font-policy';
 import { generateDocxBlob } from '@/lib/docx-generator';
 import { FIXTURE_FORM_DATA, FIXTURE_PARAGRAPHS } from './golden/fixture';
@@ -69,5 +70,30 @@ describe('generator-level coercion (stale form state defense)', () => {
   it('basic letter with bodyFont=times still emits Times New Roman', async () => {
     const fonts = await bodyFontsIn({ documentType: 'basic', bodyFont: 'times' });
     expect(fonts.has('Times New Roman')).toBe(true);
+  });
+});
+
+describe('directive letterhead rule (user ruling 2026-06-10)', () => {
+  it('coerces DLA letterhead to USMC for directives', () => {
+    expect(resolveHeaderType('mco', 'DLA')).toBe('USMC');
+    expect(resolveHeaderType('bulletin', 'DLA')).toBe('USMC');
+    expect(resolveHeaderType('mco', 'DON')).toBe('DON');
+    expect(resolveHeaderType('mco', 'USMC')).toBe('USMC');
+  });
+
+  it('correspondence keeps DLA letterhead', () => {
+    expect(resolveHeaderType('dla-memorandum', 'DLA')).toBe('DLA');
+    expect(resolveHeaderType('basic', 'DLA')).toBe('DLA');
+  });
+
+  it('MCO with stale headerType=DLA emits Marine Corps letterhead text', async () => {
+    const blob = await generateDocxBlob(
+      { ...FIXTURE_FORM_DATA, documentType: 'mco', headerType: 'DLA', directiveTitle: 'TEST ORDER' } as never,
+      [], [], [], [], FIXTURE_PARAGRAPHS, [],
+    );
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file('word/document.xml')!.async('string');
+    expect(xml.includes('MARINE CORPS')).toBe(true);
+    expect(xml.includes('DEFENSE LOGISTICS AGENCY')).toBe(false);
   });
 });
