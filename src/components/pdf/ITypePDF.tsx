@@ -153,10 +153,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 2,
   },
-  colNSN: { width: '25%' },
-  colTAMCN: { width: '25%' },
-  colID: { width: '20%' },
-  colMODEL: { width: '30%' },
+  // Column balance (2026-06-10): MODEL gets half the width so entries
+  // like "M18 (Modular Handgun System)" render on one line; NSN keeps
+  // room for the full 16-char stock number, TAMCN/ID are short codes.
+  colNSN: { width: '22%' },
+  colTAMCN: { width: '15%' },
+  colID: { width: '13%' },
+  colMODEL: { width: '50%' },
   p3HeaderLine: { textAlign: 'center', fontSize: 8 },
   p3Service: { textAlign: 'center', fontSize: 8, fontFamily: 'Helvetica-Bold' },
   p3Date: { textAlign: 'right', marginTop: 12, marginBottom: 12 },

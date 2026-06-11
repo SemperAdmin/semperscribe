@@ -31,6 +31,14 @@ const tableCellCount = (xml: string) => (xml.match(/<w:tc[ >]/g) || []).length;
 const pageBreakCount = (xml: string) => (xml.match(/<w:br w:type="page"\/?>/g) || []).length;
 
 describe('I-Type DOCX cover table', () => {
+  it('column split gives MODEL half the width (no-wrap ruling)', async () => {
+    const xml = await docXml(1);
+    for (const w of [2376, 1620, 1404, 5400]) {
+      expect(xml).toContain(`w:w="${w}"`);
+    }
+  });
+
+
   it('pads to six rows on page 1 with two items, no overflow page', async () => {
     const xml = await docXml(2);
     // header row (4 cells) + 6 body rows (24 cells) = 28 component cells

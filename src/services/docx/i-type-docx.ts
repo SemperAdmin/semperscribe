@@ -257,7 +257,7 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
       while (out.length < 6) out.push({ nsn: '', tamcn: '', id: '', model: '' });
       return out;
     };
-    const widths = [2700, 2700, 2160, 3240]; // NSN 25, TAMCN 25, ID 20, MODEL 30 of 10800
+    const widths = [2376, 1620, 1404, 5400]; // NSN 22, TAMCN 15, ID 13, MODEL 50 of 10800 (MODEL no-wrap, 2026-06-10)
 
     const headerCell = (text: string, width: number) =>
       new TableCell({
