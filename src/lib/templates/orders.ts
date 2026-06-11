@@ -31,9 +31,9 @@ export const AssumptionOfCommandTemplate: DocumentTemplate = {
     },
 
     paragraphs: [
-      { id: 1, level: 0, content: '1. Situation. To publish an assumption of command as required by reference (a).' },
-      { id: 2, level: 0, content: '2. Cancellation. [Predecessor\'s assumption of command order, e.g., DivO 1301.2].' },
-      { id: 3, level: 0, content: '3. Execution. I have assumed duties as Commanding General, [Unit Designation], this date as directed by reference (b). All effective orders and directives issued by my predecessors remain in effect.' },
+      { id: 1, level: 1, title: 'Situation', content: 'To publish an assumption of command as required by reference (a).' },
+      { id: 2, level: 1, title: 'Cancellation', content: '[Predecessor\'s assumption of command order].' },
+      { id: 3, level: 1, title: 'Execution', content: 'I have assumed duties as Commanding General, [Unit Designation], this date as directed by reference (b). All effective orders and directives issued by my predecessors remain in effect.' },
     ],
     sig: '',
 
@@ -123,24 +123,28 @@ export const MCOTemplate: DocumentTemplate = {
       }
     },
 
+    // Structured paragraphs (user ruling 2026-06-10): designators are
+    // generated from levels, never typed into content. Execution:
+    // a. Commander's Intent / b. Concept of Operations / c. Tasks
+    // (unit taskings as (1), (2)) / d. Coordinating Instructions.
     paragraphs: [
-      { id: 1, level: 0, content: '1. Situation. The Marine Corps requires a comprehensive records management program to ensure compliance with federal law and DoD policy.' },
-      { id: 2, level: 1, content: 'a. The current records management program requires updating to align with recent changes in federal regulations and DoD directives.' },
-      { id: 3, level: 1, content: 'b. This Order cancels MCO 5210.11F.' },
-      { id: 4, level: 0, content: '2. Cancellation. MCO 5210.11F.' },
-      { id: 5, level: 0, content: '3. Mission. Establish policy and procedures for the Marine Corps Records Management Program.' },
-      { id: 6, level: 0, content: '4. Execution.' },
-      { id: 7, level: 1, content: 'a. Commander\'s Intent. Ensure all Marine Corps organizations maintain records in accordance with federal law and DoD policy.' },
-      { id: 8, level: 1, content: 'b. Concept of Operations. Commands at all levels will designate a Records Manager responsible for program implementation.' },
-      { id: 9, level: 2, content: '(1) Each command will conduct an annual records management assessment.' },
-      { id: 10, level: 2, content: '(2) Results will be reported to CMC (AR) NLT 31 October annually.' },
-      { id: 11, level: 1, content: 'c. Tasks.' },
-      { id: 12, level: 2, content: '(1) CMC (AR) will serve as the Marine Corps Records Manager and provide program oversight.' },
-      { id: 13, level: 2, content: '(2) Commanding Generals and Commanding Officers will appoint command Records Managers in writing.' },
-      { id: 14, level: 1, content: 'd. Coordinating Instructions. All commands will complete initial compliance review within 180 days of the effective date of this Order.' },
-      { id: 15, level: 0, content: '5. Administration and Logistics.' },
-      { id: 16, level: 1, content: 'a. Training requirements will be coordinated through TECOM.' },
-      { id: 17, level: 0, content: '6. Command and Signal. This Order is applicable to the Marine Corps Total Force.' }
+      { id: 1, level: 1, title: 'Situation', content: 'The Marine Corps requires a comprehensive records management program to ensure compliance with federal law and DoD policy.' },
+      { id: 2, level: 2, content: 'The current records management program requires updating to align with recent changes in federal regulations and DoD directives.' },
+      { id: 3, level: 2, content: 'This Order cancels MCO 5210.11F.' },
+      { id: 4, level: 1, title: 'Cancellation', content: 'MCO 5210.11F.' },
+      { id: 5, level: 1, title: 'Mission', content: 'Establish policy and procedures for the Marine Corps Records Management Program.' },
+      { id: 6, level: 1, title: 'Execution', content: '' },
+      { id: 7, level: 2, title: 'Commander\'s Intent', content: 'Ensure all Marine Corps organizations maintain records in accordance with federal law and DoD policy.' },
+      { id: 8, level: 2, title: 'Concept of Operations', content: 'Commands at all levels will designate a Records Manager responsible for program implementation.' },
+      { id: 9, level: 3, content: 'Each command will conduct an annual records management assessment.' },
+      { id: 10, level: 3, content: 'Results will be reported to CMC (AR) NLT 31 October annually.' },
+      { id: 11, level: 2, title: 'Tasks', content: '' },
+      { id: 12, level: 3, content: 'CMC (AR) will serve as the Marine Corps Records Manager and provide program oversight.' },
+      { id: 13, level: 3, content: 'Commanding Generals and Commanding Officers will appoint command Records Managers in writing.' },
+      { id: 14, level: 2, title: 'Coordinating Instructions', content: 'All commands will complete initial compliance review within 180 days of the effective date of this Order.' },
+      { id: 15, level: 1, title: 'Administration and Logistics', content: '' },
+      { id: 16, level: 2, content: 'Training requirements will be coordinated through TECOM.' },
+      { id: 17, level: 1, title: 'Command and Signal', content: 'This Order is applicable to the Marine Corps Total Force.' }
     ],
     sig: 'I. M. MARINE',
     delegationText: 'By direction',

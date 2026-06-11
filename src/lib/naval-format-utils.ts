@@ -214,20 +214,23 @@ export function formatDirectiveSSICBlock(formData: FormData): string {
  * Cancellation (para 2) is included as optional — delete if not needed.
  */
 export function getMCOParagraphs(): ParagraphData[] {
+  // Execution substructure per user ruling 2026-06-10: Commander's
+  // Intent / Concept of Operations / Tasks (unit taskings nest under
+  // Tasks as (1), (2), ...) / Coordinating Instructions. Designators
+  // are ALWAYS generated from levels, never typed into content.
   return [
     { id: 1,  level: 1, content: '', title: 'Situation', isMandatory: true },
     { id: 2,  level: 1, content: '', title: 'Cancellation' },
     { id: 3,  level: 1, content: '', title: 'Mission', isMandatory: true },
     { id: 4,  level: 1, content: '', title: 'Execution', isMandatory: true },
-    { id: 5,  level: 2, content: '', title: 'Commander\'s Intent and Concept of Operations' },
-    { id: 6,  level: 3, content: '', title: 'Commander\'s Intent' },
-    { id: 7,  level: 3, content: '', title: 'Concept of Operations' },
-    { id: 8,  level: 2, content: '', title: 'Subordinate Element Missions' },
-    { id: 9,  level: 2, content: '', title: 'Coordinating Instructions' },
-    { id: 10, level: 1, content: '', title: 'Administration and Logistics', isMandatory: true },
-    { id: 11, level: 1, content: '', title: 'Command and Signal', isMandatory: true },
-    { id: 12, level: 2, content: '', title: 'Command' },
-    { id: 13, level: 2, content: '', title: 'Signal' },
+    { id: 5,  level: 2, content: '', title: 'Commander\'s Intent' },
+    { id: 6,  level: 2, content: '', title: 'Concept of Operations' },
+    { id: 7,  level: 2, content: '', title: 'Tasks' },
+    { id: 8,  level: 2, content: '', title: 'Coordinating Instructions' },
+    { id: 9,  level: 1, content: '', title: 'Administration and Logistics', isMandatory: true },
+    { id: 10, level: 1, content: '', title: 'Command and Signal', isMandatory: true },
+    { id: 11, level: 2, content: '', title: 'Command' },
+    { id: 12, level: 2, content: '', title: 'Signal' },
   ];
 }
 
@@ -236,10 +239,12 @@ export function getMCOParagraphs(): ParagraphData[] {
  * Per MCO 5215.1K, Chapter 1, Figure 1-1
  */
 export function getAssumptionOfCommandParagraphs(): ParagraphData[] {
+  // Reduced format per MCO 5215.1K Fig 1-1 (no Mission/A&L/C&S).
+  // Designators generated from levels (user ruling 2026-06-10).
   return [
-    { id: 1, level: 0, content: '1. Situation. To publish an assumption of command as required by reference (a).' },
-    { id: 2, level: 0, content: '2. Cancellation. [Predecessor\'s assumption of command order].' },
-    { id: 3, level: 0, content: '3. Execution. I have assumed duties as Commanding General, [Unit Designation], this date as directed by reference (b). All effective orders and directives issued by my predecessors remain in effect.' },
+    { id: 1, level: 1, title: 'Situation', content: 'To publish an assumption of command as required by reference (a).' },
+    { id: 2, level: 1, title: 'Cancellation', content: '[Predecessor\'s assumption of command order].' },
+    { id: 3, level: 1, title: 'Execution', content: 'I have assumed duties as Commanding General, [Unit Designation], this date as directed by reference (b). All effective orders and directives issued by my predecessors remain in effect.' },
   ];
 }
 

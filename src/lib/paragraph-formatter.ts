@@ -102,7 +102,11 @@ export function generateCitation(
         const p = allParagraphs[i];
         // Only count paragraphs at the same level within the same sibling group.
         if (p.level === level) {
-             if (p.content.trim() || p.id === paragraph.id) {
+             // Count title-only structural paragraphs too (Execution,
+             // Tasks, ...). The PDF's generateCitation already did;
+             // this copy lagged and numbered siblings after a
+             // title-only paragraph one designator short.
+             if (p.content.trim() || (p.title && p.title.trim()) || p.id === paragraph.id) {
                 count++;
             }
         }

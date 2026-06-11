@@ -193,7 +193,21 @@ export class FixedLadderEngine implements IndentEngine {
     // defined in character columns and scaled by the Courier advance.
     const tpc = COURIER_TWIPS_PER_CHAR[fontSizePt] ?? fontSizePt * 0.6 * 20;
     return paragraphs.map((p, index) => {
-      const level = Math.min(Math.max(p.level, 1), 8);
+      // Level 0 = pre-formatted/verbatim line (template convention):
+      // no generated designator, no designator spacing, left margin.
+      if (p.level < 1) {
+        return {
+          citation: '',
+          spacesAfter: 0,
+          firstLineTwips: 0,
+          textStartTwips: 0,
+          firstLinePoints: 0,
+          textStartPoints: 0,
+          prefixChars: 0,
+          textStartChars: 0,
+        };
+      }
+      const level = Math.min(p.level, 8);
       const { citation } = generateCitation(p, index, paragraphs);
       const ladder = FIXED_LADDER[level];
       const firstLineTwips = ladder.citationChars * tpc;

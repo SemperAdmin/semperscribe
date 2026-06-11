@@ -367,9 +367,13 @@ export function validateDirectiveSchema(
     if (!titles.includes(m)) {
       issues.push({
         id: `directive-missing-${m.replace(/\s+/g, '-')}`,
-        severity: 'fail',
+        // WARN, not fail: MCO 5215.1K sanctions reduced formats
+        // (e.g. assumption-of-command orders per Fig 1-1, which carry
+        // only Situation/Cancellation/Execution). The order and slot
+        // rules below remain fail severity.
+        severity: 'warn',
         rule: `${t === 'mco' ? 'MCO' : 'MCBul'} requires a "${m.replace(/(^|\s)\S/g, (c) => c.toUpperCase())}" paragraph`,
-        citation: 'MCO 5215.1K (mandatory paragraphs)',
+        citation: 'MCO 5215.1K (mandatory paragraphs; Fig 1-1 reduced formats exempt)',
         detail: 'Mandatory level-1 paragraph title not found.',
       });
     }

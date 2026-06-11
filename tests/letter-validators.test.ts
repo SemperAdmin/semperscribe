@@ -227,10 +227,18 @@ describe('P3.5 directive paragraph schemas (MCO 5215.1K)', () => {
       titled(['Situation', 'Cancellation', 'Mission', 'Execution', 'Administration and Logistics', 'Command and Signal']))).toHaveLength(0);
   });
 
-  it('fails a missing Mission paragraph', () => {
+  it('warns on a missing Mission paragraph (Fig 1-1 reduced formats exempt)', () => {
     const issues = validateDirectiveSchema({ documentType: 'mco' } as never,
       titled(['Situation', 'Execution', 'Administration and Logistics', 'Command and Signal']));
-    expect(issues.map((i) => i.id)).toContain('directive-missing-mission');
+    const miss = issues.find((i) => i.id === 'directive-missing-mission');
+    expect(miss).toBeDefined();
+    expect(miss!.severity).toBe('warn');
+  });
+
+  it('assumption-of-command short form (Fig 1-1) draws warns only, no fails', () => {
+    const issues = validateDirectiveSchema({ documentType: 'mco' } as never,
+      titled(['Situation', 'Cancellation', 'Execution']));
+    expect(issues.every((i) => i.severity === 'warn')).toBe(true);
   });
 
   it('fails out-of-order mandatory paragraphs', () => {

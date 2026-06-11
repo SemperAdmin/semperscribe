@@ -140,6 +140,39 @@ Proof: tests/reports-required.test.ts (4) — DOCX placement before
 paragraph 1, singular label, 5+ referral + page with all rows; PDF
 page-after-signature with full row content.
 
+## P3.8 — MCO example data rebuild + citation count fix (user ruling 2026-06-10)
+
+Ruling: Execution carries a. Commander's Intent / b. Concept of
+Operations / c. Tasks (unit taskings as (1), (2)) / d. Coordinating
+Instructions; ALL MCO example data rebuilt so designators are
+generated from levels, never typed into content.
+
+Changes. getMCOParagraphs scaffold restructured (CI&CONOPS/SEM rows
+replaced per ruling). Records-management template and both
+assumption-of-command sources converted from embedded-designator
+level-0/legacy style to structured title+level data. Change
+transmittal template untouched (deferred scope).
+
+Defects surfaced and fixed in the same pass:
+1. generateCitation in paragraph-formatter.ts skipped title-only
+   paragraphs when counting siblings, so anything after a title-only
+   row numbered one short (Coordinating Instructions rendered c.
+   instead of d., A&L 4. instead of 5.). The PDF's copy already
+   counted titles — emitter divergence closed by matching it.
+   Affects all document types; goldens stayed byte-stable.
+2. FixedLadderEngine level-0 spec leaked spacesAfter=2, shifting
+   verbatim lines off the left margin. Level<1 now yields an explicit
+   verbatim spec (no citation, no spacing, margin zero).
+3. P3.5 severity adjustment: missing-mandatory-title checks
+   downgraded fail->warn because MCO 5215.1K Fig 1-1 sanctions
+   reduced formats (assumption-of-command has only
+   Situation/Cancellation/Execution). Order and slot rules stay fail.
+
+Proof: tests/mco-template-structure.test.ts (8) — no embedded
+designators in any MCO example data, scaffold sequence per ruling,
+level-0 verbatim spec, full 17-row designator-sequence assertion on
+the rendered records template including post-title-only numbering.
+
 ## Open items for Gate 3
 
 1. C5/C9 rulings (plan "OPEN RULINGS"): notice designation-line
@@ -150,5 +183,5 @@ page-after-signature with full row content.
    carries both, emitters fixed at 12. Decide at Gate 3 whether a
    selector is wanted (functional addition needing approval).
 
-Suite after P3.7 (PHASE 3 CODE COMPLETE): 938 green (932 + 6 golden/components) (897 + 6 golden/components), tsc clean,
+Suite after P3.8: 947 green (941 + 6 golden/components) (897 + 6 golden/components), tsc clean,
 parity green, goldens byte-stable (correspondence untouched).
