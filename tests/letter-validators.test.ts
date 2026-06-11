@@ -11,7 +11,8 @@ import {
   getExportBlockers,
   indexToRefLetter,
   validateDirectiveTypography,
-  validateDirectiveSchema, validateBulletinCancellation } from '@/lib/letter-validators';
+  validateDirectiveSchema, validateBulletinCancellation,
+  validateRevisionSuffix } from '@/lib/letter-validators';
 import type { ParagraphData, FormData } from '@/types';
 
 const p = (id: number, level: number, content: string): ParagraphData => ({ id, level, content });
@@ -300,5 +301,35 @@ describe('P3.5 bulletin cancellation date rules', () => {
 
   it('never fires for non-bulletins', () => {
     expect(validateBulletinCancellation({ documentType: 'mco' } as never)).toHaveLength(0);
+  });
+});
+
+describe('P4.4 revision suffix rules (MCO 5215.1K, audit line 151)', () => {
+  const mco = (ssic: string) => ({ documentType: 'mco', ssic } as never);
+
+  it.each(['I', 'O', 'Q'])('fails suffix %s on a USMC directive', (sfx) => {
+    const issues = validateRevisionSuffix(mco(`5215.1${sfx}`));
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('fail');
+  });
+
+  it('passes permitted suffixes and unrevised points', () => {
+    expect(validateRevisionSuffix(mco('5215.1K'))).toHaveLength(0);
+    expect(validateRevisionSuffix(mco('5210.11'))).toHaveLength(0);
+    expect(validateRevisionSuffix(mco('5215.1Z'))).toHaveLength(0);
+  });
+
+  it('fails a two-letter suffix (past Z needs a new point number)', () => {
+    const issues = validateRevisionSuffix(mco('5215.1AA'));
+    expect(issues.map((i) => i.id)).toContain('revision-suffix-past-z');
+  });
+
+  it('ignores the w/ ch annotation and lowercase input', () => {
+    expect(validateRevisionSuffix(mco('5215.1K w/ ch 2'))).toHaveLength(0);
+    expect(validateRevisionSuffix(mco('5215.1q')).map((i) => i.id)).toContain('revision-suffix-q');
+  });
+
+  it('never fires for correspondence', () => {
+    expect(validateRevisionSuffix({ documentType: 'basic', ssic: '5215.1Q' } as never)).toHaveLength(0);
   });
 });

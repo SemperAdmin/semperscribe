@@ -491,6 +491,51 @@ export function validateBulletinCancellation(
   return issues;
 }
 
+/**
+ * P4.4 — revision suffix rules (audit line 151; MCO 5215.1K /
+ * SECNAV M-5215.1): revision suffixes skip I, O, Q for USMC
+ * directives (I and O for SECNAV — both resemble numerals, Q
+ * resembles O in Courier); a directive revised past Z gets a NEW
+ * point number, never a two-letter suffix.
+ */
+const USMC_DIRECTIVE_TYPES_V = ['mco', 'bulletin', 'change-transmittal'];
+const SECNAV_DIRECTIVE_TYPES_V: string[] = []; // populated with P4.3 types
+
+export function validateRevisionSuffix(formData: FormData): ValidationIssue[] {
+  const t = formData.documentType;
+  const isUsmc = USMC_DIRECTIVE_TYPES_V.includes(t);
+  const isSecnav = SECNAV_DIRECTIVE_TYPES_V.includes(t);
+  if (!isUsmc && !isSecnav) return [];
+  const ssic = (formData.ssic || '').replace(/\s*w\/.*$/i, '').trim();
+  if (!ssic) return [];
+  // Suffix = letters trailing the point number ("5215.1K" -> K).
+  const m = ssic.match(/\.(\d+)([A-Za-z]+)$/);
+  if (!m) return [];
+  const suffix = m[2].toUpperCase();
+  const issues: ValidationIssue[] = [];
+  if (suffix.length > 1) {
+    issues.push({
+      id: 'revision-suffix-past-z',
+      severity: 'fail',
+      rule: 'A directive revised past Z requires a new point number',
+      citation: 'MCO 5215.1K (audit line 151)',
+      detail: `Suffix "${suffix}" is not a single letter. Assign a new consecutive point number instead.`,
+    });
+    return issues;
+  }
+  const forbidden = isUsmc ? ['I', 'O', 'Q'] : ['I', 'O'];
+  if (forbidden.includes(suffix)) {
+    issues.push({
+      id: `revision-suffix-${suffix.toLowerCase()}`,
+      severity: 'fail',
+      rule: `Revision suffix ${suffix} is skipped (${forbidden.join(', ')} are never used)`,
+      citation: isUsmc ? 'MCO 5215.1K (audit line 151)' : 'SECNAV M-5215.1',
+      detail: `"${ssic}" carries suffix ${suffix}. Use the next permitted letter.`,
+    });
+  }
+  return issues;
+}
+
 export function runLetterValidators(
   formData: FormData,
   vias: string[],
@@ -506,6 +551,7 @@ export function runLetterValidators(
     ...validateDirectiveTypography(formData, paragraphs),
     ...validateDirectiveSchema(formData, paragraphs),
     ...validateBulletinCancellation(formData),
+    ...validateRevisionSuffix(formData),
   ];
 }
 
