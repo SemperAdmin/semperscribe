@@ -172,38 +172,18 @@
   margin-top: 0.35rem;
   margin-bottom: 0.4rem;
   font-size: 9px;
-  table-layout: fixed;
-}
-
-.iTypeHeaderTable thead th:nth-child(1),
-.iTypeHeaderTable tbody td:nth-child(1) {
-  width: 22%;
-}
-
-.iTypeHeaderTable thead th:nth-child(2),
-.iTypeHeaderTable tbody td:nth-child(2) {
-  width: 15%;
-}
-
-.iTypeHeaderTable thead th:nth-child(3),
-.iTypeHeaderTable tbody td:nth-child(3) {
-  width: 13%;
-}
-
-.iTypeHeaderTable thead th:nth-child(4),
-.iTypeHeaderTable tbody td:nth-child(4) {
-  width: 50%;
+  table-layout: auto;
 }
 
 .iTypeTableHeaderCell {
   font-weight: bold;
   text-decoration: underline;
-  padding: 0.3rem 0.2rem;
+  padding: 0.3rem 1.4rem 0.3rem 0.2rem;
   text-align: left;
   border: none;
   background-color: transparent;
   font-size: 9px;
-  word-break: break-word;
+  white-space: nowrap;
 }
 
 .iTypeTableRow {
@@ -211,11 +191,11 @@
 }
 
 .iTypeTableCell {
-  padding: 0.4rem 0.2rem;
+  padding: 0.4rem 1.4rem 0.4rem 0.2rem;
   text-align: left;
   font-size: 9px;
   border: none;
-  word-break: break-word;
+  white-space: nowrap;
   vertical-align: top;
 }
 

@@ -16,6 +16,7 @@ import {
   formatLongDate,
   PAGE3_LINKS,
 } from '@/lib/i-type/page3-derivations';
+import { coverColumnWidths } from '@/lib/i-type/cover-columns';
 
 interface ITypePDFProps {
   formData: FormData & {
@@ -185,24 +186,27 @@ const formatDateAsMonthYear = (dateString?: string) => {
 const join = (parts: Array<string | undefined>, sep: string) =>
   parts.filter(Boolean).join(sep);
 
-const ComponentsTable = ({ rows }: { rows: Array<any> }) => (
-  <View>
-    <View style={styles.tableRow}>
-      <Text style={[styles.th, styles.colNSN]}>NSN</Text>
-      <Text style={[styles.th, styles.colTAMCN]}>TAMCN</Text>
-      <Text style={[styles.th, styles.colID]}>ID</Text>
-      <Text style={[styles.th, styles.colMODEL]}>MODEL</Text>
-    </View>
-    {rows.map((row, idx) => (
-      <View style={styles.tableRow} key={idx}>
-        <Text style={[styles.td, styles.colNSN]}>{row.nsn || ''}</Text>
-        <Text style={[styles.td, styles.colTAMCN]}>{row.tamcn || ''}</Text>
-        <Text style={[styles.td, styles.colID]}>{row.id || ''}</Text>
-        <Text style={[styles.td, styles.colMODEL]}>{row.model || ''}</Text>
+const ComponentsTable = ({ rows, colWidths }: { rows: Array<any>; colWidths?: number[] }) => {
+  const w = colWidths && colWidths.length === 4 ? colWidths : coverColumnWidths(rows, 540, 6.6, 8);
+  return (
+    <View>
+      <View style={styles.tableRow}>
+        <Text style={[styles.th, { width: w[0] }]}>NSN</Text>
+        <Text style={[styles.th, { width: w[1] }]}>TAMCN</Text>
+        <Text style={[styles.th, { width: w[2] }]}>ID</Text>
+        <Text style={[styles.th, { width: w[3] }]}>MODEL</Text>
       </View>
-    ))}
-  </View>
-);
+      {rows.map((row, idx) => (
+        <View style={styles.tableRow} key={idx}>
+          <Text style={[styles.td, { width: w[0] }]}>{row.nsn || ''}</Text>
+          <Text style={[styles.td, { width: w[1] }]}>{row.tamcn || ''}</Text>
+          <Text style={[styles.td, { width: w[2] }]}>{row.id || ''}</Text>
+          <Text style={[styles.td, { width: w[3] }]}>{row.model || ''}</Text>
+        </View>
+      ))}
+    </View>
+  );
+};
 
 export function ITypePDF({ formData, sealImageUrl }: ITypePDFProps) {
   const sealSrc = sealImageUrl || '/USMC.png';
@@ -224,6 +228,7 @@ export function ITypePDF({ formData, sealImageUrl }: ITypePDFProps) {
   const components = formData.componentsAffected || [];
   const firstSix = padToSix(components);
   const overflow = components.slice(6);
+  const coverColWidths = coverColumnWidths(components, 540, 6.6, 8);
 
   const p3Service = deriveService(formData.service);
   const p3Entity = deriveEntity(formData.entity);
@@ -256,7 +261,7 @@ export function ITypePDF({ formData, sealImageUrl }: ITypePDFProps) {
           <Text style={styles.nomenclature}>{formData.nomenclature || ''}</Text>
 
           <View style={{ marginTop: 12 }}>
-            <ComponentsTable rows={firstSix} />
+            <ComponentsTable rows={firstSix} colWidths={coverColWidths} />
           </View>
         </View>
 
@@ -294,7 +299,7 @@ export function ITypePDF({ formData, sealImageUrl }: ITypePDFProps) {
           wraps onto further pages if the overflow itself overruns) */}
       {overflow.length > 0 && (
         <Page size="LETTER" style={styles.page}>
-          <ComponentsTable rows={overflow} />
+          <ComponentsTable rows={overflow} colWidths={coverColWidths} />
         </Page>
       )}
 

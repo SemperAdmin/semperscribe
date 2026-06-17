@@ -24,6 +24,7 @@ import {
   formatLongDate,
   PAGE3_LINKS,
 } from '@/lib/i-type/page3-derivations';
+import { coverColumnWidths } from '@/lib/i-type/cover-columns';
 
 interface ITypeDocxData extends FormData {
   service?: string;
@@ -257,7 +258,9 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
       while (out.length < 6) out.push({ nsn: '', tamcn: '', id: '', model: '' });
       return out;
     };
-    const widths = [2376, 1620, 1404, 5400]; // NSN 22, TAMCN 15, ID 13, MODEL 50 of 10800 (MODEL no-wrap, 2026-06-10)
+    // Columns size to the data and fill the 10800-twip (7.5in) table width.
+    // charUnit ~125 twips/char (Arial 11pt), pad 200 twips for cell margins.
+    const widths = coverColumnWidths(components, 10800, 125, 200);
 
     const headerCell = (text: string, width: number) =>
       new TableCell({
