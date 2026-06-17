@@ -1,0 +1,110 @@
+/* Appendix A / Enclosure (1) preview styles. Kept in a separate module so the
+   appendix does not depend on itype-preview.module.css. Reuses the .page class
+   from that module for page sizing; everything here is appendix-specific. */
+
+.appendix {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11pt;
+  color: #000000;
+  line-height: 1.3;
+}
+
+/* Centered running header at the top of each appendix page:
+   bare short title, then the date in parentheses. */
+.runningHeader {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.sectionLabel {
+  margin: 0;
+}
+
+.item {
+  margin-top: 10px;
+}
+
+.subItem {
+  margin-top: 8px;
+  margin-left: 0.25in;
+}
+
+.headingLine {
+  margin: 0;
+}
+
+/* Marker column and body, so titles align with extra space after the number. */
+.paraRow {
+  display: flex;
+}
+
+.markerCol {
+  font-weight: bold;
+  flex-shrink: 0;
+  min-width: 0.3in;
+  padding-right: 0.08in;
+}
+
+.bodyCol {
+  flex: 1;
+}
+
+/* The outline number or letter: bold, not underlined. */
+.marker {
+  font-weight: bold;
+}
+
+/* The heading text: bold and underlined. */
+.heading {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+/* Fixed body text after a heading (item 8b), normal weight. */
+.note {
+  font-weight: normal;
+}
+
+/* Red placeholder prompt shown above each empty table. */
+.placeholder {
+  color: #c00000;
+  margin: 4px 0 2px 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 6px;
+}
+
+/* Borderless, fixed placeholder grid, matching the page-1 cover table. */
+.th {
+  border: none;
+  text-align: left;
+  padding: 2px 4px;
+  font-weight: normal;
+}
+
+.td {
+  border: none;
+  padding: 2px 4px;
+  height: 16px;
+}
+
+/* Each appendix page is a flex column so the page number rides the bottom of
+   the 10in sheet and the 0.5in bottom padding becomes the footer space. */
+.appendixPage {
+  display: flex;
+  flex-direction: column;
+}
+
+.appendixBody {
+  flex: 1 1 auto;
+  line-height: 1.3;
+}
+
+/* Centered page number pinned to the bottom of the sheet by the flex column. */
+.pageNumber {
+  text-align: center;
+  padding-top: 12px;
+}

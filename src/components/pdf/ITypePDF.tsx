@@ -17,6 +17,7 @@ import {
   PAGE3_LINKS,
 } from '@/lib/i-type/page3-derivations';
 import { coverColumnWidths } from '@/lib/i-type/cover-columns';
+import { ITypeAppendixPDF } from './ITypeAppendixPDF';
 
 interface ITypePDFProps {
   formData: FormData & {
@@ -368,6 +369,11 @@ export function ITypePDF({ formData, sealImageUrl }: ITypePDFProps) {
 
         <Text style={styles.p3Distribution}>DISTRIBUTION: EDO</Text>
       </Page>
+
+      {/* PAGES 4+ - APPENDIX A / ENCLOSURE (1). Structure-first: all 13
+          paragraphs and placeholder tables, running header and page number
+          fixed per appendix page. */}
+      <ITypeAppendixPDF formData={formData} />
     </Document>
   );
 }

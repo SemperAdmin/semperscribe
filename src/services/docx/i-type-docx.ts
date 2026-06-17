@@ -25,6 +25,7 @@ import {
   PAGE3_LINKS,
 } from '@/lib/i-type/page3-derivations';
 import { coverColumnWidths } from '@/lib/i-type/cover-columns';
+import { appendixSection } from './i-type-appendix-docx';
 
 interface ITypeDocxData extends FormData {
   service?: string;
@@ -531,6 +532,9 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
           },
           children: children.slice(page3StartIndex),
         },
+        // Section 3: Appendix A / Enclosure (1), pages 4+. Running header,
+        // page number restarting at 1, 1in left/right margins.
+        appendixSection(formData),
       ],
     });
 

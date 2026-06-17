@@ -1,0 +1,13 @@
+---
+# cloud.gov deploy for the SemperScribe static export.
+# Build the static site first with DEPLOY_TARGET=cloudgov so assets
+# resolve at the route root, then run `cf push` from this directory.
+applications:
+  - name: semperscribe
+    buildpack: staticfile_buildpack
+    path: out
+    memory: 64M
+    disk_quota: 256M
+    instances: 1
+    routes:
+      - route: semperscribe.app.cloud.gov

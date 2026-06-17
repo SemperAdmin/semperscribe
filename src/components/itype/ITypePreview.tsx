@@ -8,6 +8,7 @@ import { ITypeNomenclatureSection } from './sections/ITypeNomenclatureSection';
 import { ITypeMaterialTable } from './sections/ITypeMaterialTable';
 import { ITypeFooterSection } from './sections/ITypeFooterSection';
 import { ITypePage3 } from './sections/ITypePage3';
+import { ITypeAppendix } from './sections/ITypeAppendix';
 
 interface ITypePreviewProps {
   formData?: any;
@@ -155,6 +156,10 @@ export const ITypePreview: React.FC<ITypePreviewProps> = ({ formData: externalFo
       <div className={`${styles.page} ${styles.letterPage}`}>
         <ITypePage3 formData={formData} />
       </div>
+
+      {/* PAGES 4+ - APPENDIX A / ENCLOSURE (1). Self-paginating: the component
+          measures content and breaks across its own page sheets. */}
+      <ITypeAppendix formData={formData} />
     </div>
   );
 };
