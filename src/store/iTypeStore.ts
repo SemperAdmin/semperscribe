@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { FormData } from '@/types';
+import { defaultAppendixParagraphs } from '@/lib/i-type/appendix-paragraphs';
 
 interface ITypeFormState {
   formData: FormData & {
@@ -25,12 +26,14 @@ interface ITypeFormState {
     category?: string;
     timeCompliance?: string;
     componentsAffected?: Array<{ nomenclature: string; nsn: string; pn: string }>;
+    appendixComponents?: Array<{ nomenclature: string; nsn: string; pn: string }>;
     materialRequired?: Array<{ nomenclature: string; nsn: string; pn: string; qty: number }>;
     materialDiscarded?: Array<{ nomenclature: string; nsn: string; pn: string; qty: number }>;
     materialRetained?: Array<{ nomenclature: string; nsn: string; pn: string; qty: number }>;
     bulkMaterial?: Array<{ nomenclature: string; nsn: string; pn: string; qty: number }>;
     specialTools?: Array<{ nomenclature: string; nsn: string; pn: string; qty: number }>;
     jigsFixtures?: Array<{ nomenclature: string; nsn: string; pn: string; qty: number }>;
+    appendixParagraphs?: any[];
   };
   sealImageBase64: string | null;
   isLoading: boolean;
@@ -64,12 +67,14 @@ const defaultFormData = {
   poc: '',
   pcn: '',
   componentsAffected: [],
+  appendixComponents: [],
   materialRequired: [],
   materialDiscarded: [],
   materialRetained: [],
   bulkMaterial: [],
   specialTools: [],
   jigsFixtures: [],
+  appendixParagraphs: defaultAppendixParagraphs(),
 };
 
 export const useITypeStore = create<ITypeFormState>((set) => ({

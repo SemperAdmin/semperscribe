@@ -16,8 +16,15 @@ export const ITypeSchema = z.object({
   distributionControl: z.string().optional(),
   supersedureStatement: z.string().optional(),
 
-  // Components Affected (read-only in form, rendered in PDF)
+  // Cover End Items table (NSN / TAMCN / ID / MODEL).
   componentsAffected: z.array(z.object({
+    nomenclature: z.string(),
+    nsn: z.string(),
+    pn: z.string(),
+  })).optional(),
+
+  // Appendix item 7 Components Affected table (Nomenclature / NSN / PN).
+  appendixComponents: z.array(z.object({
     nomenclature: z.string(),
     nsn: z.string(),
     pn: z.string(),
@@ -66,6 +73,9 @@ export const ITypeSchema = z.object({
     pn: z.string(),
     qty: z.number(),
   })).optional(),
+
+  // Appendix A paragraphs (free-form, with optional inline tables).
+  appendixParagraphs: z.array(z.any()).optional(),
 
   // FormData compatibility fields (for union with other doc types)
   paragraphs: z.array(z.any()).optional(),
