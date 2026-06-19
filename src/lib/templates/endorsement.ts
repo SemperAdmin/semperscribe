@@ -69,6 +69,7 @@ export const EndorsementTemplate: DocumentTemplate = {
 
     // Defaults
     line1: '',
+    line1b: '',
     line2: '',
     line3: '',
     referenceWho: 'CO, Originating Unit',

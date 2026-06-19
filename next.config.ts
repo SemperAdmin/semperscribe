@@ -15,14 +15,19 @@ if (!('withResolvers' in Promise)) {
 }
 
 const isProd = process.env.NODE_ENV === 'production';
-const basePath = isProd ? '/SemperScribe' : '';
+// Deploy target controls the asset basePath.
+// 'ghpages' (default): served under /SemperScribe on GitHub Pages.
+// 'cloudgov': served at the route root on cloud.gov, so no basePath.
+const deployTarget = process.env.DEPLOY_TARGET ?? 'ghpages';
+const basePath = isProd && deployTarget !== 'cloudgov' ? '/SemperScribe' : '';
 
 console.log(`[NextConfig] Environment: ${process.env.NODE_ENV}`);
+console.log(`[NextConfig] DeployTarget: '${deployTarget}'`);
 console.log(`[NextConfig] BasePath: '${basePath}'`);
 
 const nextConfig: NextConfig = {
   basePath,
-  assetPrefix: isProd ? '/SemperScribe/' : undefined,
+  assetPrefix: basePath ? `${basePath}/` : undefined,
   output: isProd ? 'export' : undefined,
   trailingSlash: true,
   typescript: {

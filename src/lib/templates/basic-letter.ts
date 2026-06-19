@@ -91,6 +91,7 @@ export const BasicLetterTemplate: DocumentTemplate = {
 
     // Defaults for other required fields (even if unused in this type)
     line1: '',
+    line1b: '',
     line2: '',
     line3: '',
     endorsementLevel: '',

@@ -37,6 +37,7 @@ export function UnitInfoSection({
     setFormData(prev => ({
       ...prev,
       line1: unit.unitName.toUpperCase(),
+      line1b: '',
       line2: unit.streetAddress.toUpperCase(),
       line3: `${unit.cityState} ${unit.zip}`.toUpperCase(),
     }));
@@ -48,11 +49,17 @@ export function UnitInfoSection({
   };
 
   const clearUnitInfo = () => {
-    setFormData(prev => ({ ...prev, line1: '', line2: '', line3: '' }));
+    setFormData(prev => ({ ...prev, line1: '', line1b: '', line2: '', line3: '' }));
     setCurrentUnitCode(undefined);
     setCurrentUnitName(undefined);
     setIsEditing(false);
   };
+
+  // Optional letterhead sub-name line (Line 2) applies only to the standard
+  // letter family: Basic Letter, Multiple-Address Letter, New-Page Endorsement.
+  const showSubName = ['basic', 'multiple-address', 'endorsement'].includes(
+    formData.documentType || ''
+  );
 
   const filteredUnits = searchQuery.length > 1
     ? UNITS.filter(unit => 
@@ -166,24 +173,34 @@ export function UnitInfoSection({
              <div className="space-y-2">
                <div className="space-y-1">
                  <Label className="text-xs">Unit Name (Line 1)</Label>
-                 <Input 
-                   value={formData.line1} 
+                 <Input
+                   value={formData.line1}
                    onChange={(e) => setFormData(prev => ({ ...prev, line1: e.target.value.toUpperCase() }))}
                    placeholder="e.g. HEADQUARTERS BATTALION"
                  />
                </div>
+               {showSubName && (
+                 <div className="space-y-1">
+                   <Label className="text-xs">Unit Sub-Name (Line 2) <span className="text-muted-foreground font-normal">- optional</span></Label>
+                   <Input
+                     value={formData.line1b || ''}
+                     onChange={(e) => setFormData(prev => ({ ...prev, line1b: e.target.value.toUpperCase() }))}
+                     placeholder="e.g. MARINE CORPS BASE"
+                   />
+                 </div>
+               )}
                <div className="space-y-1">
-                 <Label className="text-xs">Street Address (Line 2)</Label>
-                 <Input 
-                   value={formData.line2} 
+                 <Label className="text-xs">Street Address (Line {showSubName ? 3 : 2})</Label>
+                 <Input
+                   value={formData.line2}
                    onChange={(e) => setFormData(prev => ({ ...prev, line2: e.target.value.toUpperCase() }))}
                    placeholder="e.g. 3250 CATLIN AVENUE"
                  />
                </div>
                <div className="space-y-1">
-                 <Label className="text-xs">City, State Zip (Line 3)</Label>
-                 <Input 
-                   value={formData.line3} 
+                 <Label className="text-xs">City, State Zip (Line {showSubName ? 4 : 3})</Label>
+                 <Input
+                   value={formData.line3}
                    onChange={(e) => setFormData(prev => ({ ...prev, line3: e.target.value.toUpperCase() }))}
                    placeholder="e.g. QUANTICO VA 22134-5001"
                  />
@@ -206,6 +223,7 @@ export function UnitInfoSection({
             {formData.line1 && (
                 <div className="group relative rounded-md border border-primary/20 bg-primary/5 p-3 space-y-1 hover:border-primary/40 transition-colors">
                     <div className="font-medium text-sm text-primary pr-6">{formData.line1}</div>
+                    {showSubName && formData.line1b && <div className="text-xs text-foreground/80">{formData.line1b}</div>}
                     <div className="text-xs text-foreground/80">{formData.line2}</div>
                     <div className="text-xs text-foreground/80">{formData.line3}</div>
                     

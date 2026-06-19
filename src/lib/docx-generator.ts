@@ -156,8 +156,13 @@ export async function generateDocxBlob(
         spacing: { after: 0 },
       }));
 
-      // Address Lines
-      [formData.line1, formData.line2, formData.line3].forEach(line => {
+      // Address Lines (line1b is an optional sub-name for the standard letter
+      // family: Basic Letter, Multiple-Address Letter, New-Page Endorsement)
+      const showUnitSubName = ['basic', 'multiple-address', 'endorsement'].includes(formData.documentType);
+      const addressLines = showUnitSubName
+        ? [formData.line1, formData.line1b, formData.line2, formData.line3]
+        : [formData.line1, formData.line2, formData.line3];
+      addressLines.forEach(line => {
         if (line) {
           letterheadParagraphs.push(new Paragraph({
             children: [new TextRun({ text: line, font: 'Arial', size: isDLAType ? 20 : 16, color: headerColor })], // DLA: 10pt; Navy/USMC: 8pt

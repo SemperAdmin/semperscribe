@@ -55,6 +55,7 @@ const FIELD_LABELS: Record<string, string> = {
   originatorCode: 'Originator Code',
   delegationText: 'Delegation',
   line1: 'Unit Name',
+  line1b: 'Unit Sub-Name',
   line2: 'Street Address',
   line3: 'City/State/Zip',
   directiveTitle: 'Designation Line',

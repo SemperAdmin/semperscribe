@@ -176,6 +176,7 @@ export const BasicLetterSchema = z.object({
   subj: subjFieldRequired(),
   documentType: z.literal('basic'),
   line1: z.string(),
+  line1b: z.string().optional(),
   line2: z.string(),
   line3: z.string(),
   sig: z.string(),

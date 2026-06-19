@@ -916,6 +916,7 @@ export function NavalLetterPDF({
                   : 'DEPARTMENT OF THE NAVY'}
               </Text>
               {formData.line1 && <Text style={styles.headerLine}>{formData.line1}</Text>}
+              {['basic', 'multiple-address', 'endorsement'].includes(formData.documentType) && formData.line1b && <Text style={styles.headerLine}>{formData.line1b}</Text>}
               {formData.line2 && <Text style={styles.headerLine}>{formData.line2}</Text>}
               {formData.line3 && <Text style={styles.headerLine}>{formData.line3}</Text>}
             </>
