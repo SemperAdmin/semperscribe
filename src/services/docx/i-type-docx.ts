@@ -259,9 +259,9 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
       while (out.length < 6) out.push({ nsn: '', tamcn: '', id: '', model: '' });
       return out;
     };
-    // Columns size to the data and fill the 10800-twip (7.5in) table width.
-    // charUnit ~125 twips/char (Arial 11pt), pad 200 twips for cell margins.
-    const widths = coverColumnWidths(components, 10800, 125, 200);
+    // Fixed column split of the 10800-twip (7.5in) table width per the
+    // no-wrap ruling: MODEL gets half, NSN/TAMCN/ID share the rest.
+    const widths = coverColumnWidths(10800);
 
     const headerCell = (text: string, width: number) =>
       new TableCell({

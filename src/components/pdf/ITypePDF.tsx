@@ -188,7 +188,7 @@ const join = (parts: Array<string | undefined>, sep: string) =>
   parts.filter(Boolean).join(sep);
 
 const ComponentsTable = ({ rows, colWidths }: { rows: Array<any>; colWidths?: number[] }) => {
-  const w = colWidths && colWidths.length === 4 ? colWidths : coverColumnWidths(rows, 540, 6.6, 8);
+  const w = colWidths && colWidths.length === 4 ? colWidths : coverColumnWidths(540);
   return (
     <View>
       <View style={styles.tableRow}>
@@ -229,7 +229,7 @@ export function ITypePDF({ formData, sealImageUrl }: ITypePDFProps) {
   const components = formData.componentsAffected || [];
   const firstSix = padToSix(components);
   const overflow = components.slice(6);
-  const coverColWidths = coverColumnWidths(components, 540, 6.6, 8);
+  const coverColWidths = coverColumnWidths(540);
 
   const p3Service = deriveService(formData.service);
   const p3Entity = deriveEntity(formData.entity);
