@@ -337,6 +337,24 @@ Subj: TEST
     expect(result.fields.ssic).toMatchObject({ value: '5216', confidence: 'low' });
   });
 
+  it('recovers an embedded SSIC despite ordinary adjacent punctuation', () => {
+    const withPeriod = extract(`
+Refer to Code 5216.
+From: CO
+Subj: TEST
+1. Body.
+`);
+    expect(withPeriod.fields.ssic).toMatchObject({ value: '5216', confidence: 'low' });
+
+    const withHyphen = extract(`
+Filed under SSIC-5216
+From: CO
+Subj: TEST
+1. Body.
+`);
+    expect(withHyphen.fields.ssic).toMatchObject({ value: '5216', confidence: 'low' });
+  });
+
   it('reports header noise as unmatched text, never dropping it silently', () => {
     const result = extract(`
 5216
