@@ -26,7 +26,7 @@ import {
 
 const ANCHOR_RE = /^(from|to|via|subj(?:ect)?|refs?|references?|encls?|enclosures?)\s*[:.]\s*(.*)$/i;
 const CLOSING_ANCHOR_RE = /^(copy\s*to|distribution)\s*[:.]?\s*(.*)$/i;
-const SERVICE_LINE_RE = /(UNITED STATES MARINE CORPS|DEPARTMENT OF THE NAVY|UNITED STATES NAVY)/i;
+const SERVICE_LINE_RE = /(UNITED STATES MARINE CORPS|DEPARTMENT OF THE NAVY|UNITED STATES NAVY|DEFENSE LOGISTICS AGENCY)/i;
 const MEMO_HEADING_RE = /^MEMORANDUM(\s+(FOR THE RECORD|OF AGREEMENT|OF UNDERSTANDING|FOR\b.*))?$/i;
 const IN_REPLY_RE = /^in reply refer to[:.]?$/i;
 const STANDALONE_SSIC_RE = /^(\d{4,5})((?:\.\d+[A-Za-z]?)?)\.?$/;
@@ -167,14 +167,16 @@ export function parseCorrespondence(text: ExtractedText, documentType: string = 
   let ssicIdx = -1;
   let expectAddress = 0;
   let addressBuffer: { value: string; idx: number }[] = [];
-  // Letterhead lines after the service line are buffered and mapped by count
-  // once the block ends: two lines are unit/address (line2/line3); three mean
-  // the first is the optional unit sub-name (line1b). The sub-name mapping is
-  // a guess (could be a three-line address), so it is flagged low confidence.
+  // The service line ("UNITED STATES MARINE CORPS") maps to headerType, not
+  // a field — the app renders it from headerType. The letterhead lines after
+  // it are buffered and mapped by count once the block ends: unit name
+  // (line1), street (line2), city/state/zip (line3); four lines mean the
+  // second is the optional unit sub-name (line1b). The sub-name mapping is a
+  // guess (could be a four-line address), so it is flagged low confidence.
   const flushAddress = () => {
     if (addressBuffer.length === 0) return;
     const names: ExtractedFieldName[] =
-      addressBuffer.length >= 3 ? ['line1b', 'line2', 'line3'] : ['line2', 'line3'];
+      addressBuffer.length >= 4 ? ['line1', 'line1b', 'line2', 'line3'] : ['line1', 'line2', 'line3'];
     addressBuffer.forEach((entry, n) => {
       const name = names[n];
       if (!name) return;
@@ -200,9 +202,14 @@ export function parseCorrespondence(text: ExtractedText, documentType: string = 
     }
     if (MEMO_HEADING_RE.test(s)) { expectAddress = 0; flushAddress(); claim(i); continue; }
     if (IN_REPLY_RE.test(s)) { claim(i); continue; }
-    if (SERVICE_LINE_RE.test(s) && !fields.line1) {
-      setField('line1', s.toUpperCase(), 'high', [i]);
-      expectAddress = 3;
+    if (SERVICE_LINE_RE.test(s)) {
+      if (!fields.headerType) {
+        const headerType = /MARINE CORPS/i.test(s) ? 'USMC' : /LOGISTICS/i.test(s) ? 'DLA' : 'DON';
+        setField('headerType', headerType, 'high', [i]);
+        expectAddress = 4;
+      }
+      // A repeated service line (some exports carry it in both the page
+      // header and the body) is claimed but never buffered as an address.
       claim(i);
       continue;
     }

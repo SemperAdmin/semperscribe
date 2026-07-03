@@ -67,10 +67,10 @@ describe('linesFromText', () => {
 describe('parseCorrespondence — clean basic letter', () => {
   const result = extract(CLEAN_BASIC_LETTER);
 
-  it('extracts the letterhead lines', () => {
-    expect(result.fields.line1?.value).toBe('UNITED STATES MARINE CORPS');
-    expect(result.fields.line2?.value).toBe('3D MARINE DIVISION');
-    expect(result.fields.line3?.value).toBe('UNIT 38410');
+  it('maps the service line to headerType and the letterhead lines to unit fields', () => {
+    expect(result.fields.headerType?.value).toBe('USMC');
+    expect(result.fields.line1?.value).toBe('3D MARINE DIVISION');
+    expect(result.fields.line2?.value).toBe('UNIT 38410');
   });
 
   it('extracts SSIC, originator code, and date with high confidence', () => {
@@ -132,9 +132,9 @@ By direction
 `;
   const result = extract(MANGLED);
 
-  it('recognizes a lowercased letterhead and uppercases it', () => {
-    expect(result.fields.line1?.value).toBe('UNITED STATES MARINE CORPS');
-    expect(result.fields.line2?.value).toBe('1ST MARINE REGIMENT');
+  it('recognizes a lowercased letterhead and uppercases the unit line', () => {
+    expect(result.fields.headerType?.value).toBe('USMC');
+    expect(result.fields.line1?.value).toBe('1ST MARINE REGIMENT');
   });
 
   it('handles lowercase anchor labels', () => {
@@ -209,6 +209,7 @@ UNITED STATES MARINE CORPS
 3D MARINE LOGISTICS GROUP
 COMBAT LOGISTICS REGIMENT 35
 UNIT 38410
+FPO AP 96602-8410
 5216
 G-1
 16 Feb 26
@@ -218,11 +219,12 @@ Subj: TEST SUBJECT
 1. Body paragraph.
 `);
 
-  it('maps a three-line letterhead to line1b/line2/line3', () => {
-    expect(result.fields.line1?.value).toBe('UNITED STATES MARINE CORPS');
-    expect(result.fields.line1b?.value).toBe('3D MARINE LOGISTICS GROUP');
-    expect(result.fields.line2?.value).toBe('COMBAT LOGISTICS REGIMENT 35');
-    expect(result.fields.line3?.value).toBe('UNIT 38410');
+  it('maps a four-line letterhead to line1/line1b/line2/line3', () => {
+    expect(result.fields.headerType?.value).toBe('USMC');
+    expect(result.fields.line1?.value).toBe('3D MARINE LOGISTICS GROUP');
+    expect(result.fields.line1b?.value).toBe('COMBAT LOGISTICS REGIMENT 35');
+    expect(result.fields.line2?.value).toBe('UNIT 38410');
+    expect(result.fields.line3?.value).toBe('FPO AP 96602-8410');
   });
 
   it('flags the sub-name guess as low confidence and claims every line', () => {
@@ -237,7 +239,7 @@ Subj: TEST SUBJECT
     expect(result.fields.date).toMatchObject({ value: '16 Feb 26', confidence: 'high' });
   });
 
-  it('does not swallow a short originator code as a third letterhead line', () => {
+  it('does not swallow a short originator code as another letterhead line', () => {
     const noSsic = extract(`
 UNITED STATES MARINE CORPS
 3D MARINE DIVISION
@@ -249,14 +251,31 @@ Subj: TEST
 1. Body.
 `);
     expect(noSsic.fields.line1b).toBeUndefined();
-    expect(noSsic.fields.line2?.value).toBe('3D MARINE DIVISION');
-    expect(noSsic.fields.line3?.value).toBe('UNIT 38410');
+    expect(noSsic.fields.line1?.value).toBe('3D MARINE DIVISION');
+    expect(noSsic.fields.line2?.value).toBe('UNIT 38410');
     expect(noSsic.fields.originatorCode?.value).toBe('G-1');
   });
 
-  it('includes line1b in the import payload', () => {
+  it('ignores a duplicated service line instead of treating it as an address', () => {
+    const dup = extract(`
+UNITED STATES MARINE CORPS
+UNITED STATES MARINE CORPS
+3D MARINE DIVISION
+UNIT 38410
+5216
+From: CO
+Subj: TEST
+1. Body.
+`);
+    expect(dup.fields.line1?.value).toBe('3D MARINE DIVISION');
+    expect(dup.fields.line2?.value).toBe('UNIT 38410');
+    expect(dup.unmatchedText).toEqual([]);
+  });
+
+  it('includes headerType and line1b in the import payload', () => {
     const payload = toImportPayload(result);
-    expect(payload.formData.line1b).toBe('3D MARINE LOGISTICS GROUP');
+    expect(payload.formData.headerType).toBe('USMC');
+    expect(payload.formData.line1b).toBe('COMBAT LOGISTICS REGIMENT 35');
   });
 });
 
