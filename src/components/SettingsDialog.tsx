@@ -21,6 +21,7 @@ import { Search, User, Paintbrush, FileText, Database, Trash2, ShieldAlert, Aler
 import { UserProfile, resolveUnit } from '@/hooks/useUserProfile';
 import { UNITS } from '@/lib/units';
 import { DISCLAIMERS } from '@/lib/security-utils';
+import { FEEDBACK_URL } from '@/lib/app-links';
 import { useTheme } from 'next-themes';
 
 interface SettingsDialogProps {
@@ -449,7 +450,7 @@ export function SettingsDialog({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.open('https://semperadmin.github.io/Sentinel/#detail/naval-letter-formatter/todo', '_blank')}
+                    onClick={() => window.open(FEEDBACK_URL, '_blank', 'noopener,noreferrer')}
                   >
                     <MessageSquare className="w-3 h-3 mr-1" />
                     Send Feedback

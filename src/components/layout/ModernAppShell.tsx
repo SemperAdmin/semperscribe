@@ -7,6 +7,7 @@ import { HeaderActions } from './HeaderActions';
 import { PreviewModal } from './PreviewModal';
 import { ParagraphData, SavedLetter, FormData } from '@/types';
 import { getBasePath } from '@/lib/path-utils';
+import { FEEDBACK_URL } from '@/lib/app-links';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 interface ModernAppShellProps {
@@ -252,6 +253,7 @@ export function ModernAppShell({
         <Link href="/privacy" className="underline hover:no-underline">Privacy and Security Notice</Link>
         <a href="https://github.com/SemperAdmin/semperscribe/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Security disclosure</a>
         <a href="https://github.com/SemperAdmin/semperscribe/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">License (MIT)</a>
+        <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Send Feedback</a>
       </footer>
 
       {/* Mobile Preview Modal */}

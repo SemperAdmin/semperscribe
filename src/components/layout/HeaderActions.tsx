@@ -18,9 +18,11 @@ import {
   FileSpreadsheet,
   ClipboardCheck,
   MoreVertical,
-  Settings
+  Settings,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FEEDBACK_URL } from '@/lib/app-links';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -433,6 +435,13 @@ export function HeaderActions({
                     Settings
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  onClick={() => window.open(FEEDBACK_URL, '_blank', 'noopener,noreferrer')}
+                  className="cursor-pointer focus:bg-accent focus:text-accent-foreground"
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Send Feedback...
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <DropdownMenu>
