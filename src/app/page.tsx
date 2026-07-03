@@ -673,6 +673,7 @@ function NavalLetterGeneratorInner() {
       onLoadDraft={handleLoadDraft}
       onImport={handleImport}
       onImportDocument={documentImport.startImport}
+      isImportingDocument={documentImport.isProcessing}
       onClearForm={handleClearForm}
       savedLetters={savedLetters}
       onLoadTemplateUrl={handleLoadTemplateUrl}

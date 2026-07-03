@@ -92,6 +92,7 @@ export function assemblePdfLines(items: PdfTextItem[]): string[] {
   const rows: { y: number; items: { x: number; str: string; width: number }[] }[] = [];
   for (const item of items) {
     if (!item.str || !item.str.trim()) continue;
+    if (!Array.isArray(item.transform) || item.transform.length < 6) continue;
     const x = item.transform[4];
     const y = item.transform[5];
     let row = rows.find(r => Math.abs(r.y - y) <= Y_TOLERANCE);
@@ -125,6 +126,8 @@ async function extractPdf(data: ArrayBuffer): Promise<ExtractedText> {
 
   let doc;
   try {
+    // The slice is deliberate, not a redundant copy: pdfjs transfers the
+    // buffer it is given to its worker, detaching the caller's ArrayBuffer.
     doc = await pdfjs.getDocument({ data: new Uint8Array(data.slice(0)) }).promise;
   } catch (err) {
     const name = err instanceof Error ? err.name : '';

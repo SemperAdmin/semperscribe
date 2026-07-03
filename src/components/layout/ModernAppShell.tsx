@@ -24,6 +24,7 @@ interface ModernAppShellProps {
   onLoadDraft: (id: string) => void;
   onImport: (data: any) => void;
   onImportDocument?: (file: File) => void;
+  isImportingDocument?: boolean;
   onClearForm: () => void;
   savedLetters: SavedLetter[];
   onLoadTemplateUrl: (url: string) => void;
@@ -61,6 +62,7 @@ export function ModernAppShell({
   onLoadDraft,
   onImport,
   onImportDocument,
+  isImportingDocument,
   onClearForm,
   savedLetters,
   onLoadTemplateUrl,
@@ -165,6 +167,7 @@ export function ModernAppShell({
             onLoadDraft={onLoadDraft}
             onImport={onImport}
             onImportDocument={onImportDocument}
+            isImportingDocument={isImportingDocument}
             onExportDocx={onExportDocx}
             onGeneratePdf={onGeneratePdf}
             onClearForm={onClearForm}

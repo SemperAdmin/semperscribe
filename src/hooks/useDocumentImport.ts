@@ -42,6 +42,9 @@ export function useDocumentImport({ applyImport, toast }: UseDocumentImportDeps)
   const startImport = useCallback(async (file: File) => {
     setIsProcessing(true);
     setFileName(file.name);
+    // Extraction lazy-loads mammoth/pdfjs and can take a few seconds on
+    // large files — give immediate feedback before the modal can open.
+    toast({ title: 'Reading document…', description: file.name });
     try {
       const data = await file.arrayBuffer();
       const text = await extractDocumentText(data, file.name);
