@@ -166,9 +166,25 @@ export function parseCorrespondence(text: ExtractedText, documentType: string = 
   // --- Header / letterhead block ---------------------------------------------
   let ssicIdx = -1;
   let expectAddress = 0;
+  let addressBuffer: { value: string; idx: number }[] = [];
+  // Letterhead lines after the service line are buffered and mapped by count
+  // once the block ends: two lines are unit/address (line2/line3); three mean
+  // the first is the optional unit sub-name (line1b). The sub-name mapping is
+  // a guess (could be a three-line address), so it is flagged low confidence.
+  const flushAddress = () => {
+    if (addressBuffer.length === 0) return;
+    const names: ExtractedFieldName[] =
+      addressBuffer.length >= 3 ? ['line1b', 'line2', 'line3'] : ['line2', 'line3'];
+    addressBuffer.forEach((entry, n) => {
+      const name = names[n];
+      if (!name) return;
+      setField(name, entry.value.toUpperCase(), name === 'line1b' ? 'low' : 'high', [entry.idx]);
+    });
+    addressBuffer = [];
+  };
   for (let i = 0; i < headerEnd; i++) {
     const s = lines[i];
-    if (!s) { expectAddress = 0; continue; }
+    if (!s) { expectAddress = 0; flushAddress(); continue; }
 
     const combined = s.match(COMBINED_HEADER_RE);
     if (combined && !fields.ssic) {
@@ -178,14 +194,15 @@ export function parseCorrespondence(text: ExtractedText, documentType: string = 
       setField('date', navalDate, dateConfidence(navalDate), [i]);
       ssicIdx = i;
       expectAddress = 0;
+      flushAddress();
       claim(i);
       continue;
     }
-    if (MEMO_HEADING_RE.test(s)) { expectAddress = 0; claim(i); continue; }
+    if (MEMO_HEADING_RE.test(s)) { expectAddress = 0; flushAddress(); claim(i); continue; }
     if (IN_REPLY_RE.test(s)) { claim(i); continue; }
     if (SERVICE_LINE_RE.test(s) && !fields.line1) {
       setField('line1', s.toUpperCase(), 'high', [i]);
-      expectAddress = 2;
+      expectAddress = 3;
       claim(i);
       continue;
     }
@@ -195,6 +212,7 @@ export function parseCorrespondence(text: ExtractedText, documentType: string = 
       setField('ssic', value, validateSSIC(value).isValid ? 'high' : 'low', [i]);
       ssicIdx = i;
       expectAddress = 0;
+      flushAddress();
       claim(i);
       continue;
     }
@@ -202,21 +220,27 @@ export function parseCorrespondence(text: ExtractedText, documentType: string = 
       const navalDate = parseAndFormatDate(s);
       setField('date', navalDate, dateConfidence(navalDate), [i]);
       expectAddress = 0;
+      flushAddress();
       claim(i);
       continue;
     }
-    if (expectAddress > 0) {
-      setField(fields.line2 ? 'line3' : 'line2', s.toUpperCase(), 'high', [i]);
+    // A short code-shaped line after two buffered lines is an originator
+    // code, not a third letterhead line — let it fall through.
+    const looksLikeOriginator =
+      ORIGINATOR_RE.test(s) && s.length <= 8 && !fields.originatorCode;
+    if (expectAddress > 0 && !(looksLikeOriginator && addressBuffer.length >= 2)) {
+      addressBuffer.push({ value: s, idx: i });
       expectAddress--;
       claim(i);
       continue;
     }
-    if (ORIGINATOR_RE.test(s) && s.length <= 8 && !fields.originatorCode) {
+    if (looksLikeOriginator) {
       setField('originatorCode', s, ssicIdx !== -1 && i > ssicIdx ? 'high' : 'low', [i]);
       claim(i);
       continue;
     }
   }
+  flushAddress();
   // Fallback: SSIC embedded in a line with other text.
   if (!fields.ssic) {
     for (let i = 0; i < headerEnd; i++) {

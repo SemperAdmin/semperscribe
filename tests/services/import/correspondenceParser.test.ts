@@ -203,6 +203,63 @@ T. E. STAMP
   });
 });
 
+describe('parseCorrespondence — letterhead with unit sub-name (line1b)', () => {
+  const result = extract(`
+UNITED STATES MARINE CORPS
+3D MARINE LOGISTICS GROUP
+COMBAT LOGISTICS REGIMENT 35
+UNIT 38410
+5216
+G-1
+16 Feb 26
+
+From: Commanding Officer
+Subj: TEST SUBJECT
+1. Body paragraph.
+`);
+
+  it('maps a three-line letterhead to line1b/line2/line3', () => {
+    expect(result.fields.line1?.value).toBe('UNITED STATES MARINE CORPS');
+    expect(result.fields.line1b?.value).toBe('3D MARINE LOGISTICS GROUP');
+    expect(result.fields.line2?.value).toBe('COMBAT LOGISTICS REGIMENT 35');
+    expect(result.fields.line3?.value).toBe('UNIT 38410');
+  });
+
+  it('flags the sub-name guess as low confidence and claims every line', () => {
+    expect(result.fields.line1b?.confidence).toBe('low');
+    expect(result.fields.line2?.confidence).toBe('high');
+    expect(result.unmatchedText).toEqual([]);
+  });
+
+  it('still extracts SSIC, originator, and date after the longer letterhead', () => {
+    expect(result.fields.ssic).toMatchObject({ value: '5216', confidence: 'high' });
+    expect(result.fields.originatorCode).toMatchObject({ value: 'G-1', confidence: 'high' });
+    expect(result.fields.date).toMatchObject({ value: '16 Feb 26', confidence: 'high' });
+  });
+
+  it('does not swallow a short originator code as a third letterhead line', () => {
+    const noSsic = extract(`
+UNITED STATES MARINE CORPS
+3D MARINE DIVISION
+UNIT 38410
+G-1
+
+From: CO
+Subj: TEST
+1. Body.
+`);
+    expect(noSsic.fields.line1b).toBeUndefined();
+    expect(noSsic.fields.line2?.value).toBe('3D MARINE DIVISION');
+    expect(noSsic.fields.line3?.value).toBe('UNIT 38410');
+    expect(noSsic.fields.originatorCode?.value).toBe('G-1');
+  });
+
+  it('includes line1b in the import payload', () => {
+    const payload = toImportPayload(result);
+    expect(payload.formData.line1b).toBe('3D MARINE LOGISTICS GROUP');
+  });
+});
+
 describe('parseCorrespondence — header variants', () => {
   it('parses SSIC, code, and date collapsed onto one line (PDF extraction)', () => {
     const result = extract(`

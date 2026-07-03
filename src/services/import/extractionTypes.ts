@@ -36,6 +36,7 @@ export type ExtractedFieldName =
   | 'to'
   | 'subj'
   | 'line1'
+  | 'line1b'
   | 'line2'
   | 'line3'
   | 'sig'
