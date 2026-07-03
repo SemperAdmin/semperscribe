@@ -1,16 +1,38 @@
+<div align="center">
+
+<img src="public/logo.png" alt="Semper Scribe logo" width="110" />
+
 # Semper Scribe
 
-> **Not Official USMC Software.** Semper Scribe is a non-official Proof of Concept maintained on a personal basis. It is not USMC, DON, or DoD software. It does not carry an Authority to Operate. Use is at the user's discretion and risk. Users must not enter CUI, PII, or sensitive information. See the [Privacy and Security Notice](https://furby203824.github.io/SemperScribe/privacy) and [SECURITY.md](SECURITY.md) for full details.
+**USMC correspondence, formatted right — entirely in your browser.**
 
-A professional-grade, local-first web application for creating, formatting, and exporting USMC correspondence and administrative documents. Built with Next.js, Semper Scribe helps users produce properly formatted documents aligned with SECNAV M-5216.5 and MCO 5215.1K — entirely in the browser with no server-side processing.
+[![Tests](https://github.com/SemperAdmin/semperscribe/actions/workflows/test.yml/badge.svg)](https://github.com/SemperAdmin/semperscribe/actions/workflows/test.yml)
+[![CodeQL](https://github.com/SemperAdmin/semperscribe/actions/workflows/codeql.yml/badge.svg)](https://github.com/SemperAdmin/semperscribe/actions/workflows/codeql.yml)
+[![Deploy](https://github.com/SemperAdmin/semperscribe/actions/workflows/deploy.yml/badge.svg)](https://github.com/SemperAdmin/semperscribe/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Local First](https://img.shields.io/badge/architecture-local--first%20%C2%B7%20no%20backend-2ea44f)](#security--privacy)
 
-**Live App:** [https://furby203824.github.io/SemperScribe](https://furby203824.github.io/SemperScribe)
+[**Live App**](https://semperadmin.github.io/SemperScribe) · [Report an Issue](https://github.com/SemperAdmin/semperscribe/issues) · [Security Policy](SECURITY.md)
+
+</div>
+
+> [!WARNING]
+> **Not Official USMC Software.** Semper Scribe is a non-official Proof of Concept maintained on a personal basis. It is not USMC, DON, or DoD software and carries no Authority to Operate. Use is at the user's discretion and risk. **Do not enter CUI, PII, or sensitive information.** See the [Privacy and Security Notice](https://semperadmin.github.io/SemperScribe/privacy) and [SECURITY.md](SECURITY.md) for full details.
+
+A professional-grade, local-first web application for creating, formatting, and exporting USMC correspondence and administrative documents. Built with Next.js, Semper Scribe helps users produce properly formatted documents aligned with **SECNAV M-5216.5** and **MCO 5215.1K** — entirely in the browser, with no server-side processing.
+
+## Highlights
+
+- 📄 **25 document types** across 9 categories — from Basic Letters to Marine Corps Orders, AMHS messages, and technical publications
+- 📥 **Word/PDF import** — upload an existing `.docx` or PDF (even a badly formatted one), review the extracted fields, and export it compliant
+- 👀 **Live PDF preview** as you type, with a compliance-issue banner
+- 📦 **Export anywhere** — PDF, DOCX, AMHS plain text, batch mail-merge ZIPs, shareable links
+- 🔒 **Local-first** — no backend, no telemetry, no data leaves the browser
 
 ## Document Types
 
-Semper Scribe supports 20 document types organized into seven categories:
-
-### Standard Letters
+<details>
+<summary><strong>Standard Letters</strong> (3)</summary>
 
 | Type | Description |
 |------|-------------|
@@ -18,7 +40,10 @@ Semper Scribe supports 20 document types organized into seven categories:
 | **Multiple-Address Letter** | Letter addressed to two or more commands/activities |
 | **Endorsement** | Forwards correspondence on a new page with automatic routing |
 
-### Memorandums
+</details>
+
+<details>
+<summary><strong>Memorandums</strong> (5)</summary>
 
 | Type | Description |
 |------|-------------|
@@ -28,7 +53,10 @@ Semper Scribe supports 20 document types organized into seven categories:
 | **Memorandum of Agreement** | Agreement between two or more parties (conditional) |
 | **Memorandum of Understanding** | General understanding between two or more parties (non-binding) |
 
-### Staffing Papers
+</details>
+
+<details>
+<summary><strong>Staffing Papers</strong> (4)</summary>
 
 | Type | Description |
 |------|-------------|
@@ -37,90 +65,119 @@ Semper Scribe supports 20 document types organized into seven categories:
 | **Decision Paper** | Requests a decision from a senior official |
 | **Coordination Page** | Mandatory staffing table for routing packages per MCO 5216.20B |
 
-### External & Executive
+</details>
+
+<details>
+<summary><strong>External &amp; Executive</strong> (2)</summary>
 
 | Type | Description |
 |------|-------------|
 | **Business Letter** | Correspondence with non-DoD entities or personal approach |
 | **Executive Correspondence** | Letters and memorandums for HqDON, Congress, OSD, and senior officials |
 
-### Directives
+</details>
+
+<details>
+<summary><strong>DLA Correspondence</strong> (2)</summary>
+
+| Type | Description |
+|------|-------------|
+| **DLA Memorandum** | Defense Logistics Agency internal memorandum format |
+| **DLA Business Letter** | DLA correspondence with external entities |
+
+</details>
+
+<details>
+<summary><strong>Directives</strong> (5)</summary>
 
 | Type | Description |
 |------|-------------|
 | **Marine Corps Order (MCO)** | Permanent directives that establish policy or procedures |
 | **Marine Corps Bulletin (MCBul)** | Directives of a temporary nature (expire after 12 months) |
 | **Change Transmittal** | Transmits amendments (page replacements) to an existing order per MCO 5215.1K |
+| **SECNAV Instruction** | Secretary of the Navy permanent directives per SECNAV M-5215.1 |
+| **SECNAV Notice** | Secretary of the Navy directives of a temporary nature |
 
-### Forms
+</details>
+
+<details>
+<summary><strong>Forms</strong> (2)</summary>
 
 | Type | Description |
 |------|-------------|
 | **AA Form (NAVMC 10274)** | Administrative Action form for personnel requests |
 | **Page 11 (NAVMC 118-11)** | Administrative Remarks for service record entries |
 
-### Messages
+</details>
+
+<details>
+<summary><strong>Technical Publications</strong> (1)</summary>
+
+| Type | Description |
+|------|-------------|
+| **I-Type Publication** | Technical manual cover and administrative pages with End Items table |
+
+</details>
+
+<details>
+<summary><strong>Messages</strong> (1)</summary>
 
 | Type | Description |
 |------|-------------|
 | **AMHS Message** | Automated Message Handling System (GENADMIN/MARADMIN/ALMAR) with DTG, references, NARR, and POC sections |
 
+</details>
+
 ## Features
 
-### Document Editing
+### ✍️ Document Editing
 
 - **Dynamic Forms** — Conditional field display and validation per document type
 - **Multi-Level Paragraphs** — Supports 1., 1.a., 1.a.(1), etc. with add, remove, and reorder
 - **Voice Input** — Browser Speech Recognition API for dictating paragraph content
 - **Spell Check** — Client-side spell checking with military-specific dictionary and acronym detection
 - **References & Enclosures** — Lettered references and numbered enclosures with structured input
-- **Via Chain** — Routing through intermediate commands
-- **Distribution** — Copy-to and distribution statement management
+- **Via Chain & Distribution** — Routing through intermediate commands, copy-to and distribution statement management
 
-### Export & Output
+### 📥 Import
+
+- **Word/PDF Document Import** — Upload an existing `.docx` or PDF (even a badly formatted one); fields, references, enclosures, and paragraphs are extracted in the browser with rule-based parsing, presented in a review-and-confirm modal, then dropped into the normal editing flow for a compliant re-export
+- **NLDP Import** — Naval Letter Data Package format for portable document data
+- **Shareable Links** — Load a full document state from a compressed URL
+
+### 📤 Export & Output
 
 - **PDF Export** — Multi-pipeline PDF generation with proper formatting per document type
 - **DOCX Export** — Microsoft Word format via the docx library
 - **AMHS Text Export** — Plain text export formatted for AMHS message systems
 - **Batch Generation (Mail Merge)** — Import a CSV, substitute `{{TOKEN}}` fields, generate a ZIP of PDFs
 - **Signature Placement** — Interactive signature field positioning on generated PDF pages
-- **NLDP Import/Export** — Naval Letter Data Package format for portable document data
-- **Shareable Links** — Encode the full document state into a compressed URL
+- **NLDP Export** — Save the full document as a portable data package
 
-### Preview & Proofread
+### 👀 Preview & Proofread
 
 - **Live Preview** — Real-time PDF rendering as you type (desktop side panel or mobile modal)
-- **Proofread Checklist** — Four-category compliance check per SECNAV M-5216.5, Ch 2, Para 19:
-  - Format, Framework, Typography & Grammar, Content
-  - Pass/Fail/Warn/Manual check statuses with category summaries
+- **Proofread Checklist** — Four-category compliance check per SECNAV M-5216.5, Ch 2, Para 19: Format, Framework, Typography & Grammar, and Content, with Pass/Fail/Warn/Manual statuses
 
-### Settings & Profile
+### ⚙️ Settings & Profile
 
 - **User Profile** — Store your unit (searchable RUC database), signature name, from title, originator code, rank, and title
-- **Auto-Fill** — Profile fields automatically populate new documents; identity fields fill when empty, formatting fields always track the profile
-- **Formatting Defaults** — Header type (USMC/DON), body font, header color, AMHS classification and precedence
+- **Auto-Fill** — Profile fields automatically populate new documents
+- **Formatting Defaults** — Header type (USMC/DON/DLA), body font, header color, AMHS classification and precedence
 - **Appearance** — Light, dark, and system theme support
-- **Data Management** — Clear saved drafts, view disclaimers, reset profile, send feedback
 
-### Templates & Drafts
+### 🗂️ Templates & Drafts
 
 - **Template Browser** — Pre-built global and unit-specific document templates
 - **Draft Saving** — Auto-save to browser localStorage with load/manage from the File menu
 
-### AMHS Message Features
+### 📡 AMHS Message Features
 
-- Auto-generated Date-Time Group (DTG) in Zulu time with refresh
-- Reference management with letter designators
-- NARR (Narrative) auto-generation from references
-- POC (Point of Contact) manager with email and phone fields
-- Message validation before export
-- Terminal-style preview (green text on black background)
+- Auto-generated Date-Time Group (DTG) in Zulu time, reference management with letter designators, NARR auto-generation, POC manager, message validation, and a terminal-style preview
 
-### Responsive Design
+### 📱 Responsive Design
 
-- Desktop three-pane layout (sidebar, editor, preview)
-- Mobile-friendly forms with slide-up preview modal
-- Touch-friendly controls and collapsible navigation
+- Desktop three-pane layout (sidebar, editor, preview); mobile-friendly forms with a slide-up preview modal
 
 ## Getting Started
 
@@ -132,8 +189,8 @@ Semper Scribe supports 20 document types organized into seven categories:
 ### Installation
 
 ```bash
-git clone https://github.com/furby203824/SemperScribe.git
-cd SemperScribe
+git clone https://github.com/SemperAdmin/semperscribe.git
+cd semperscribe
 npm install
 npm run dev
 ```
@@ -150,9 +207,12 @@ Static output is written to the `out/` directory, ready for deployment to any st
 
 ### Deploy to GitHub Pages
 
-The repository includes a GitHub Actions workflow (`.github/workflows/deploy.yml`) that automatically builds and deploys to GitHub Pages on pushes to `main`. Manual deployment is also available via `workflow_dispatch`.
+The repository includes a GitHub Actions workflow ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)) that automatically builds and deploys to GitHub Pages on pushes to `main`. Manual deployment is also available via `workflow_dispatch`.
 
 ## Project Structure
+
+<details>
+<summary>Expand the source tree overview</summary>
 
 ```
 src/
@@ -164,68 +224,75 @@ src/
 │   ├── layout/                 # App shell, sidebar, header, preview, theme
 │   ├── letter/                 # Letter section components (references, enclosures, etc.)
 │   ├── document/               # Document layout, header settings, signature fields
+│   ├── import/                 # Word/PDF import review modal
 │   ├── amhs/                   # AMHS editor, preview, POC manager
 │   ├── pdf/                    # PDF rendering components
 │   ├── wizard/                 # Multi-step document type wizard
-│   ├── SettingsDialog.tsx       # User profile and app settings
-│   ├── BatchGenerateModal.tsx   # Mail merge / batch generation
-│   ├── ProofreadModal.tsx       # Proofreading checklist
-│   └── DisclaimerModal.tsx      # Security and legal disclaimers
+│   ├── SettingsDialog.tsx      # User profile and app settings
+│   ├── BatchGenerateModal.tsx  # Mail merge / batch generation
+│   └── ProofreadModal.tsx      # Proofreading checklist
 ├── hooks/                      # React hooks
 │   ├── useUserProfile.ts       # Profile persistence and form defaults
 │   ├── useParagraphs.ts        # Paragraph CRUD and citation generation
-│   ├── useVoiceInput.ts        # Speech-to-text integration
+│   ├── useDocumentImport.ts    # Word/PDF import orchestration
 │   ├── useImportExport.ts      # Document import/export and sharing
 │   ├── useBatchGenerate.ts     # Mail merge engine
-│   ├── useSpellCheck.ts        # Military dictionary spell check
-│   ├── useTemplates.ts         # Template loading and search
 │   └── ...
 ├── lib/                        # Utilities and configuration
 │   ├── schemas.ts              # Document type definitions and field schemas
 │   ├── units.ts                # USMC unit database (RUC/MCC lookup)
-│   ├── merge-utils.ts          # Mail merge token detection and substitution
 │   ├── url-state.ts            # Shareable link encoding/decoding
-│   ├── security-utils.ts       # Disclaimer constants
 │   └── ...
 ├── services/
-│   ├── export/
-│   │   └── pdfPipelineService.ts  # Central PDF orchestrator (routes to correct generator)
-│   ├── pdf/                       # Per-document-type PDF generators
-│   └── amhs/                      # AMHS message formatting
+│   ├── export/                 # Central PDF orchestrator
+│   ├── import/                 # Word/PDF text extraction and correspondence parsing
+│   ├── pdf/                    # Per-document-type PDF generators
+│   ├── docx/                   # Per-document-type DOCX generators
+│   └── amhs/                   # AMHS message formatting
 └── types/                      # TypeScript type definitions
 ```
 
+</details>
+
 ## Security & Privacy
+
+> [!IMPORTANT]
+> This tool is strictly for processing **UNCLASSIFIED** information. Do not input, process, or store Classified, CUI, or PII data.
 
 - **Local-First Architecture** — All document processing happens entirely in the browser. No data is transmitted to external servers.
 - **No Backend** — Static site deployment. No server-side code, no database, no API calls.
 - **Local Storage Only** — Drafts and user profiles are stored in browser localStorage.
-- **UNCLASSIFIED Use Only** — This tool is strictly for processing UNCLASSIFIED information. Do not input, process, or store Classified, CUI, or PII data.
 - **Verification Required** — While Semper Scribe automates formatting, the final content is the responsibility of the originator. Always verify references and administrative details against current directives.
 
 ## Compliance Posture
 
-Semper Scribe undergoes voluntary alignment with DoD adoption-readiness standards. This is not an authorized DoD system and carries no Authority to Operate. The current posture covers the categories below.
+Semper Scribe undergoes voluntary alignment with DoD adoption-readiness standards. This is not an authorized DoD system and carries no Authority to Operate.
 
-### What the alignment covers
+<details>
+<summary><strong>What the alignment covers</strong></summary>
 
-- **Software Supply Chain (SCRM)**. SBOM generated on every deploy via CycloneDX. Zero known vulnerabilities in production dependencies as of the last audit pass. Maps to Executive Order 14028 SBOM requirements and the DoD CIO SWFT Initiative memo.
-- **Secure Software Development Framework (SSDF)**. Aligned with NIST SP 800-218 practices PO.3.3 (toolchain configuration), PW.4.1 and PW.4.4 (third-party component management), PW.7 (review and analyze code), and PS.1 (source protection). CodeQL static analysis runs on every push and weekly.
-- **Open Source Software**. Project license is MIT. Dual-license elections documented in `LICENSES.md`. All transitive licenses are approved per DoD CIO OSS Guidance dated 24 January 2022, Attachment 2 paragraph 3G.
-- **Privacy**. No PII collection, no telemetry, no backend at runtime. User responsibility framing applied throughout the UI. See the in-app Privacy and Security Notice and `SECURITY.md`.
-- **Records Management**. Tool outputs become Federal records under 44 USC 3301 when used in official business. Routing through a Command Designated Records Manager per MCO 5210.11F is the user's responsibility, not the application's.
+- **Software Supply Chain (SCRM)** — SBOM generated on every deploy via CycloneDX. Zero known vulnerabilities in production dependencies as of the last audit pass. Maps to Executive Order 14028 SBOM requirements and the DoD CIO SWFT Initiative memo.
+- **Secure Software Development Framework (SSDF)** — Aligned with NIST SP 800-218 practices PO.3.3 (toolchain configuration), PW.4.1 and PW.4.4 (third-party component management), PW.7 (review and analyze code), and PS.1 (source protection). CodeQL static analysis runs on every push and weekly.
+- **Open Source Software** — Project license is MIT. Dual-license elections documented in [`LICENSES.md`](LICENSES.md). All transitive licenses are approved per DoD CIO OSS Guidance dated 24 January 2022, Attachment 2 paragraph 3G.
+- **Privacy** — No PII collection, no telemetry, no backend at runtime. User responsibility framing applied throughout the UI. See the in-app Privacy and Security Notice and [`SECURITY.md`](SECURITY.md).
+- **Records Management** — Tool outputs become Federal records under 44 USC 3301 when used in official business. Routing through a Command Designated Records Manager per MCO 5210.11F is the user's responsibility, not the application's.
 
-### What the alignment does not cover
+</details>
+
+<details>
+<summary><strong>What the alignment does not cover</strong></summary>
 
 - This is not under the Risk Management Framework. DoDI 8510.01 does not apply to a personal PoC.
 - This is not registered as an Electronic Information System under MCO 5210.11F. Tool outputs are records; the tool itself is not an EIS.
 - This is not authorized for CUI processing. Users must not enter CUI, PII, PHI, or sensitive information.
 
-See `docs/COMPLIANCE_REMEDIATION_PLAN.md` for the full audit trail of the alignment work.
+</details>
+
+See [`docs/COMPLIANCE_REMEDIATION_PLAN.md`](docs/COMPLIANCE_REMEDIATION_PLAN.md) for the full audit trail of the alignment work.
 
 ### Reporting Security Issues
 
-Vulnerabilities should be reported through GitHub's Private Vulnerability Reporting. See `SECURITY.md` for the disclosure channel and response expectations.
+Vulnerabilities should be reported through GitHub's Private Vulnerability Reporting. See [`SECURITY.md`](SECURITY.md) for the disclosure channel and response expectations.
 
 ## Tech Stack
 
@@ -235,15 +302,15 @@ Vulnerabilities should be reported through GitHub's Private Vulnerability Report
 | **UI** | Tailwind CSS, shadcn/ui, Radix UI, Lucide icons |
 | **Forms** | React Hook Form, Zod validation |
 | **State** | React hooks, Zustand |
-| **PDF** | @react-pdf/renderer, pdf-lib |
-| **DOCX** | docx |
+| **PDF** | @react-pdf/renderer, pdf-lib, pdfjs-dist |
+| **DOCX** | docx (generation), mammoth (import) |
 | **Theming** | next-themes (light/dark/system) |
 | **Compression** | lz-string |
 | **Testing** | Vitest, Testing Library |
 
 ## Contributing
 
-Contributions are welcome. Please submit issues and pull requests on GitHub.
+Contributions are welcome. Please submit [issues](https://github.com/SemperAdmin/semperscribe/issues) and pull requests on GitHub.
 
 ## License
 
@@ -251,6 +318,8 @@ MIT License. See [LICENSE](LICENSE) for the legal text and [LICENSES.md](LICENSE
 
 ---
 
-*Semper Fidelis*
-#   s e m p e r s c r i b e  
- 
+<div align="center">
+
+*Semper Fidelis* 🦅
+
+</div>
