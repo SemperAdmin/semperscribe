@@ -23,6 +23,7 @@ interface ModernAppShellProps {
   // New props for HeaderActions
   onLoadDraft: (id: string) => void;
   onImport: (data: any) => void;
+  onImportDocument?: (file: File) => void;
   onClearForm: () => void;
   savedLetters: SavedLetter[];
   onLoadTemplateUrl: (url: string) => void;
@@ -59,6 +60,7 @@ export function ModernAppShell({
   paragraphs,
   onLoadDraft,
   onImport,
+  onImportDocument,
   onClearForm,
   savedLetters,
   onLoadTemplateUrl,
@@ -162,6 +164,7 @@ export function ModernAppShell({
             onSave={onSave}
             onLoadDraft={onLoadDraft}
             onImport={onImport}
+            onImportDocument={onImportDocument}
             onExportDocx={onExportDocx}
             onGeneratePdf={onGeneratePdf}
             onClearForm={onClearForm}

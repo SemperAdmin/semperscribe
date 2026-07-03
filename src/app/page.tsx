@@ -26,6 +26,9 @@ import { generateShareableUrl, copyToClipboard } from '@/lib/url-state';
 import { useParagraphs } from '@/hooks/useParagraphs';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useImportExport } from '@/hooks/useImportExport';
+import { useDocumentImport } from '@/hooks/useDocumentImport';
+import { DocumentImportModal } from '@/components/import/DocumentImportModal';
+import { ImportPayload } from '@/services/import/extractionTypes';
 import { ProofreadModal } from '@/components/ProofreadModal';
 import { BatchGenerateModal } from '@/components/BatchGenerateModal';
 import { SettingsDialog } from '@/components/SettingsDialog';
@@ -550,9 +553,10 @@ function NavalLetterGeneratorInner() {
     }
   };
 
-  const handleClearForm = () => {
-      if (window.confirm('Are you sure you want to clear the form? All unsaved progress will be lost.')) {
-        const currentType = formData.documentType;
+  // Resets every piece of document state to a blank form of the given type.
+  // Shared by Clear Form and the Word/PDF import's replace-on-confirm.
+  const resetDocumentState = (documentType: string) => {
+        const currentType = documentType;
         const defaults = getFormDefaults();
 
         setFormData({
@@ -603,8 +607,22 @@ function NavalLetterGeneratorInner() {
             to: { isValid: false, message: '' }
         });
         setFormKey(prev => prev + 1);
+  };
+
+  const handleClearForm = () => {
+      if (window.confirm('Are you sure you want to clear the form? All unsaved progress will be lost.')) {
+        resetDocumentState(formData.documentType);
       }
   };
+
+  // Word/PDF import: replace the pending document, then apply the reviewed
+  // payload through the normal import path (validation, formKey remount).
+  const applyDocumentImport = (payload: ImportPayload) => {
+    resetDocumentState(payload.formData.documentType);
+    handleImport(payload);
+  };
+
+  const documentImport = useDocumentImport({ applyImport: applyDocumentImport, toast });
 
   const handleClearSavedLetters = () => {
     localStorage.removeItem('navalLetters');
@@ -654,6 +672,7 @@ function NavalLetterGeneratorInner() {
       paragraphs={paragraphs}
       onLoadDraft={handleLoadDraft}
       onImport={handleImport}
+      onImportDocument={documentImport.startImport}
       onClearForm={handleClearForm}
       savedLetters={savedLetters}
       onLoadTemplateUrl={handleLoadTemplateUrl}
@@ -724,6 +743,15 @@ function NavalLetterGeneratorInner() {
         signaturePdfPageCount={signaturePdfPageCount}
         handleDynamicFormSubmit={handleDynamicFormSubmit}
       />}
+      <DocumentImportModal
+        open={documentImport.isOpen}
+        fileName={documentImport.fileName}
+        result={documentImport.result}
+        detection={documentImport.detection}
+        onChangeDocumentType={documentImport.changeDocumentType}
+        onConfirm={documentImport.confirmImport}
+        onCancel={documentImport.cancelImport}
+      />
       <ProofreadModal
         open={showProofreadModal}
         onOpenChange={setShowProofreadModal}

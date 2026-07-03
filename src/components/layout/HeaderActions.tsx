@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import {
   FileText,
+  FileUp,
   Download,
   Save,
   FolderOpen,
@@ -87,6 +88,7 @@ interface HeaderActionsProps {
   onSave: () => void;
   onLoadDraft: (id: string) => void;
   onImport: (data: any) => void;
+  onImportDocument?: (file: File) => void;
   onExportDocx: () => void;
   onGeneratePdf: () => void;
   onClearForm: () => void;
@@ -119,6 +121,7 @@ export function HeaderActions({
   onSave,
   onLoadDraft,
   onImport,
+  onImportDocument,
   onExportDocx,
   onGeneratePdf,
   onClearForm,
@@ -154,9 +157,20 @@ export function HeaderActions({
 
   const [isTemplateOpen, setIsTemplateOpen] = React.useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleImportDocumentClick = () => {
+    documentInputRef.current?.click();
+  };
+
+  const handleDocumentFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) onImportDocument?.(file);
+    if (documentInputRef.current) documentInputRef.current.value = '';
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -292,7 +306,15 @@ export function HeaderActions({
             <Upload className="w-4 h-4 mr-2" />
             Import Data Package (.nldp)
           </DropdownMenuItem>
-          
+
+          {onImportDocument && (
+            <DropdownMenuItem onClick={handleImportDocumentClick} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <FileUp className="w-4 h-4 mr-2" />
+              Import Word/PDF Document...
+            </DropdownMenuItem>
+          )}
+
+
           <DropdownMenuItem onClick={onExportNldp} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
             <Download className="w-4 h-4 mr-2" />
             Export Data Package (.nldp)
@@ -308,13 +330,20 @@ export function HeaderActions({
             </>
           )}
 
-          {/* Hidden File Input */}
+          {/* Hidden File Inputs */}
           <input
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
             className="hidden"
             accept=".nldp,.json"
+          />
+          <input
+            type="file"
+            ref={documentInputRef}
+            onChange={handleDocumentFileChange}
+            className="hidden"
+            accept=".docx,.pdf"
           />
 
           <DropdownMenuSeparator className="bg-border" />
