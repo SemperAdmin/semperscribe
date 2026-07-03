@@ -316,6 +316,45 @@ Subj: TEST
     expect(result.fields.ssic).toMatchObject({ value: '5215.1K', confidence: 'low' });
   });
 
+  it('does not mistake a ZIP+4 or decimal directive number for an embedded SSIC', () => {
+    const result = extract(`
+Building 4 Suite 210
+FPO AP 96602-8410
+From: CO
+Subj: TEST
+1. Body.
+`);
+    expect(result.fields.ssic).toBeUndefined();
+  });
+
+  it('still recovers an SSIC embedded in surrounding text, flagged low', () => {
+    const result = extract(`
+Standard Subject Identification Code 5216 applies
+From: CO
+Subj: TEST
+1. Body.
+`);
+    expect(result.fields.ssic).toMatchObject({ value: '5216', confidence: 'low' });
+  });
+
+  it('recovers an embedded SSIC despite ordinary adjacent punctuation', () => {
+    const withPeriod = extract(`
+Refer to Code 5216.
+From: CO
+Subj: TEST
+1. Body.
+`);
+    expect(withPeriod.fields.ssic).toMatchObject({ value: '5216', confidence: 'low' });
+
+    const withHyphen = extract(`
+Filed under SSIC-5216
+From: CO
+Subj: TEST
+1. Body.
+`);
+    expect(withHyphen.fields.ssic).toMatchObject({ value: '5216', confidence: 'low' });
+  });
+
   it('reports header noise as unmatched text, never dropping it silently', () => {
     const result = extract(`
 5216
@@ -341,6 +380,20 @@ This body paragraph lost its numbering entirely.
     expect(result.paragraphs.map(p => p.level)).toEqual([1, 1]);
     expect(result.paragraphs[0].content).toBe('This body paragraph lost its numbering entirely.');
     expect(result.warnings.some(w => w.includes('Unnumbered text'))).toBe(true);
+  });
+
+  it('treats a wrapped line starting with i.e./e.g. as a continuation, not a subparagraph', () => {
+    const result = extract(`
+From: CO
+Subj: TEST
+1. Requirements are listed in the references,
+i.e. the following items apply,
+e.g. all hands must comply.
+`);
+    expect(result.paragraphs).toHaveLength(1);
+    expect(result.paragraphs[0].content).toBe(
+      'Requirements are listed in the references, i.e. the following items apply, e.g. all hands must comply.',
+    );
   });
 
   it('collects a Distribution list', () => {

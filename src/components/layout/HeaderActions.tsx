@@ -89,6 +89,7 @@ interface HeaderActionsProps {
   onLoadDraft: (id: string) => void;
   onImport: (data: any) => void;
   onImportDocument?: (file: File) => void;
+  isImportingDocument?: boolean;
   onExportDocx: () => void;
   onGeneratePdf: () => void;
   onClearForm: () => void;
@@ -122,6 +123,7 @@ export function HeaderActions({
   onLoadDraft,
   onImport,
   onImportDocument,
+  isImportingDocument,
   onExportDocx,
   onGeneratePdf,
   onClearForm,
@@ -308,9 +310,9 @@ export function HeaderActions({
           </DropdownMenuItem>
 
           {onImportDocument && (
-            <DropdownMenuItem onClick={handleImportDocumentClick} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+            <DropdownMenuItem onClick={handleImportDocumentClick} disabled={isImportingDocument} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
               <FileUp className="w-4 h-4 mr-2" />
-              Import Word/PDF Document...
+              {isImportingDocument ? 'Reading Document...' : 'Import Word/PDF Document...'}
             </DropdownMenuItem>
           )}
 

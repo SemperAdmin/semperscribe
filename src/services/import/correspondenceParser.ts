@@ -248,11 +248,16 @@ export function parseCorrespondence(text: ExtractedText, documentType: string = 
     }
   }
   flushAddress();
-  // Fallback: SSIC embedded in a line with other text.
+  // Fallback: SSIC embedded in a line with other text. Guarded against
+  // numbers that are part of a larger token — ZIP+4 codes (96602-8410),
+  // decimals (5215.1K) — while still allowing ordinary punctuation around
+  // a real SSIC ("Code 5216.", "SSIC-5216"): a dot or hyphen only rejects
+  // the match when another digit sits on its far side. The match is still
+  // flagged low for review either way.
   if (!fields.ssic) {
     for (let i = 0; i < headerEnd; i++) {
       if (claimed[i] || !lines[i]) continue;
-      const embedded = lines[i].match(/\b(\d{4,5})\b/);
+      const embedded = lines[i].match(/(?<!\d)(?<!\d[-.])(\d{4,5})(?!\d)(?![-.]\d)/);
       if (embedded) {
         setField('ssic', embedded[1], 'low', [i]);
         break;

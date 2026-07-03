@@ -110,7 +110,11 @@ export function DocumentImportModal({
   onConfirm,
   onCancel,
 }: DocumentImportModalProps) {
-  const [edited, setEdited] = useState<EditableState | null>(null);
+  // Lazy initializer covers the first mount; the effect resyncs when the
+  // result changes (new import, or a document-type override re-parse).
+  const [edited, setEdited] = useState<EditableState | null>(
+    () => (result ? stateFromResult(result) : null),
+  );
 
   useEffect(() => {
     setEdited(result ? stateFromResult(result) : null);
