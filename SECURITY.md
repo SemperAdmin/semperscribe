@@ -17,7 +17,7 @@ Only the latest commit on the `main` branch is supported. Older commits, tags, a
 
 Use GitHub's private vulnerability reporting workflow. Do not file public issues or pull requests for vulnerabilities.
 
-1. Go to the repository Security tab at https://github.com/furby203824/SemperScribe/security
+1. Go to the repository Security tab at https://github.com/SemperAdmin/semperscribe/security
 2. Click "Report a vulnerability"
 3. Describe the issue, reproduction steps, affected commit SHA, and any proof-of-concept code
 
