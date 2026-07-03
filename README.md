@@ -12,12 +12,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Local First](https://img.shields.io/badge/architecture-local--first%20%C2%B7%20no%20backend-2ea44f)](#security--privacy)
 
-[**Live App**](https://semperadmin.github.io/SemperScribe) · [Report an Issue](https://github.com/SemperAdmin/semperscribe/issues) · [Security Policy](SECURITY.md)
+[**Live App**](https://semperadmin.github.io/semperscribe) · [Report an Issue](https://github.com/SemperAdmin/semperscribe/issues) · [Security Policy](SECURITY.md)
 
 </div>
 
 > [!WARNING]
-> **Not Official USMC Software.** Semper Scribe is a non-official Proof of Concept maintained on a personal basis. It is not USMC, DON, or DoD software and carries no Authority to Operate. Use is at the user's discretion and risk. **Do not enter CUI, PII, or sensitive information.** See the [Privacy and Security Notice](https://semperadmin.github.io/SemperScribe/privacy) and [SECURITY.md](SECURITY.md) for full details.
+> **Not Official USMC Software.** Semper Scribe is a non-official Proof of Concept maintained on a personal basis. It is not USMC, DON, or DoD software and carries no Authority to Operate. Use is at the user's discretion and risk. **Do not enter CUI, PII, or sensitive information.** See the [Privacy and Security Notice](https://semperadmin.github.io/semperscribe/privacy) and [SECURITY.md](SECURITY.md) for full details.
 
 A professional-grade, local-first web application for creating, formatting, and exporting USMC correspondence and administrative documents. Built with Next.js, Semper Scribe helps users produce properly formatted documents aligned with **SECNAV M-5216.5** and **MCO 5215.1K** — entirely in the browser, with no server-side processing.
 
