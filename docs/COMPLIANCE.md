@@ -4,7 +4,7 @@ Auditor-friendly mapping of project artifacts to NIST SP 800-218 (SSDF v1.1) pra
 
 - Last reviewed: 2026-05-23
 - Document version: 1.0
-- Repo: https://github.com/furby203824/SemperScribe
+- Repo: https://github.com/SemperAdmin/semperscribe
 - Posture: Non-official PoC pursuing voluntary alignment with DoD adoption-readiness standards. No ATO. Not under RMF scope.
 
 ## NIST SP 800-218 (SSDF v1.1) Mapping
@@ -26,7 +26,7 @@ Auditor-friendly mapping of project artifacts to NIST SP 800-218 (SSDF v1.1) pra
 
 | Practice | Description | SemperScribe Response | Artifact |
 |----------|-------------|----------------------|----------|
-| PS.1.1 | Store code securely | GitHub repository, contributor model | https://github.com/furby203824/SemperScribe |
+| PS.1.1 | Store code securely | GitHub repository, contributor model | https://github.com/SemperAdmin/semperscribe |
 | PS.2.1 | Provide software integrity verification | Git commit SHA hashes, CycloneDX SBOM with hashes | `npm run sbom` output, GitHub commit signatures |
 | PS.3.1 | Securely archive necessary files | Git tags including `baseline-pre-compliance` and `pre-p2-2-orphan-removal` | `git tag -l` |
 | PS.3.2 | Collect, safeguard, and share provenance data | SBOM artifact uploaded on every deploy, retained 90 days | Workflow artifact `sbom-{sha}` |

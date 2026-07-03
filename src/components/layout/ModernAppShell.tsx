@@ -250,8 +250,8 @@ export function ModernAppShell({
       <footer className="shrink-0 border-t bg-muted/40 text-muted-foreground text-xs px-4 py-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
         <span>SemperScribe non-official Proof of Concept.</span>
         <Link href="/privacy" className="underline hover:no-underline">Privacy and Security Notice</Link>
-        <a href="https://github.com/furby203824/SemperScribe/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Security disclosure</a>
-        <a href="https://github.com/furby203824/SemperScribe/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">License (MIT)</a>
+        <a href="https://github.com/SemperAdmin/semperscribe/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Security disclosure</a>
+        <a href="https://github.com/SemperAdmin/semperscribe/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">License (MIT)</a>
       </footer>
 
       {/* Mobile Preview Modal */}

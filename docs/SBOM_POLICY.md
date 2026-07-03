@@ -44,7 +44,7 @@ The SBOM file `sbom.cdx.json` is deliberately not committed to the git tree. Rat
 
 ## 5. Access
 
-The workflow artifact is accessible to anyone who can view the public repository at https://github.com/furby203824/SemperScribe/actions.
+The workflow artifact is accessible to anyone who can view the public repository at https://github.com/SemperAdmin/semperscribe/actions.
 
 For a specific commit's SBOM.
 
@@ -66,7 +66,7 @@ Direct dependency changes (entries added or removed in `package.json` `dependenc
 
 An SCA or compliance reviewer requesting the SBOM should be directed to.
 
-- The latest workflow artifact at https://github.com/furby203824/SemperScribe/actions for the current state.
+- The latest workflow artifact at https://github.com/SemperAdmin/semperscribe/actions for the current state.
 - Specific historical artifacts retained for 90 days per the workflow setting.
 - The commit SHA that generated each SBOM is in the artifact name.
 

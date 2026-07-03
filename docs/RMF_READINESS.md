@@ -5,7 +5,7 @@ Pre-draft of artifacts an RMF Security Control Assessor would request, prepared 
 - Last reviewed: 2026-05-23
 - Document version: 1.0
 - System: SemperScribe Proof of Concept
-- Repo: https://github.com/furby203824/SemperScribe
+- Repo: https://github.com/SemperAdmin/semperscribe
 - Current ATO status: None. Not under RMF scope per DoDI 8510.01 paragraph 1.1.
 
 ## 1. RMF Step 1. Categorize
@@ -224,7 +224,7 @@ Text representation of the system boundary.
             | HTTPS (same origin)
             |
 +-----------v------------------------------------------------+
-|              GitHub Pages CDN (https://furby203824.         |
+|              GitHub Pages CDN (https://semperadmin.         |
 |              github.io/SemperScribe)                       |
 |  Serves static HTML, JS, CSS, woff2 font files.            |
 |  No backend logic. No database. No API endpoint.           |
