@@ -16,10 +16,13 @@ if (!('withResolvers' in Promise)) {
 
 const isProd = process.env.NODE_ENV === 'production';
 // Deploy target controls the asset basePath.
-// 'ghpages' (default): served under /SemperScribe on GitHub Pages.
+// 'ghpages' (default): served under /semperscribe on GitHub Pages. The
+// prefix must match the repository name's exact case — Pages serves the
+// project site at the lowercase canonical URL, and asset requests to a
+// differently-cased prefix 404 (page loads unstyled).
 // 'cloudgov': served at the route root on cloud.gov, so no basePath.
 const deployTarget = process.env.DEPLOY_TARGET ?? 'ghpages';
-const basePath = isProd && deployTarget !== 'cloudgov' ? '/SemperScribe' : '';
+const basePath = isProd && deployTarget !== 'cloudgov' ? '/semperscribe' : '';
 
 console.log(`[NextConfig] Environment: ${process.env.NODE_ENV}`);
 console.log(`[NextConfig] DeployTarget: '${deployTarget}'`);

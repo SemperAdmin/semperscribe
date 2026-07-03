@@ -1,11 +1,11 @@
 export function getBasePath(): string {
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname || '';
-    if (pathname.startsWith('/SemperScribe')) {
-      return '/SemperScribe';
-    }
-    if (pathname.startsWith('/naval-letter-formatter')) {
-      return '/naval-letter-formatter';
+    // Case-insensitive match, returning the prefix as it appears in the
+    // URL so asset paths stay on whatever casing the page was served under.
+    const match = pathname.match(/^\/(semperscribe|naval-letter-formatter)(?=\/|$)/i);
+    if (match) {
+      return match[0];
     }
   }
   return '';

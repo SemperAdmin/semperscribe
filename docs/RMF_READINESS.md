@@ -225,7 +225,7 @@ Text representation of the system boundary.
             |
 +-----------v------------------------------------------------+
 |              GitHub Pages CDN (https://semperadmin.         |
-|              github.io/SemperScribe)                       |
+|              github.io/semperscribe)                       |
 |  Serves static HTML, JS, CSS, woff2 font files.            |
 |  No backend logic. No database. No API endpoint.           |
 +------------------------------------------------------------+

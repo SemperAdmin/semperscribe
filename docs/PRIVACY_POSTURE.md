@@ -4,7 +4,7 @@ Auditor-facing privacy posture statement. Complements the user-facing Privacy an
 
 - Last reviewed: 2026-05-23
 - Document version: 1.0
-- User-facing notice: https://semperadmin.github.io/SemperScribe/privacy
+- User-facing notice: https://semperadmin.github.io/semperscribe/privacy
 
 ## 1. Statement of Facts
 
