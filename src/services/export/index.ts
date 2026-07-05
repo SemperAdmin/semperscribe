@@ -1,6 +1,4 @@
 import { FormData } from '@/types';
-import { generateITypePDF } from '@/services/pdf/i-type-export';
-import { generateITypeDocx } from '@/services/docx/i-type-docx';
 
 export type ExportFormat = 'pdf' | 'docx';
 
@@ -9,11 +7,14 @@ export async function exportDocument(
   formData: FormData,
   format: ExportFormat
 ): Promise<Buffer | Blob> {
-  // Route I-Type exports
+  // Route I-Type exports. Generators are imported on demand so the
+  // PDF/DOCX engines stay out of the first-load bundle.
   if (documentType === 'i-type') {
     if (format === 'pdf') {
+      const { generateITypePDF } = await import('@/services/pdf/i-type-export');
       return generateITypePDF(formData as any);
     } else if (format === 'docx') {
+      const { generateITypeDocx } = await import('@/services/docx/i-type-docx');
       return generateITypeDocx(formData as any);
     }
     throw new Error(`Unsupported export format for I-Type: ${format}`);

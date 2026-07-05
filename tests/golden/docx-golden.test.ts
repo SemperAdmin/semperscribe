@@ -45,7 +45,7 @@ describe('DOCX golden file (basic naval letter fixture)', () => {
       FIXTURE_COPY_TOS,
       FIXTURE_PARAGRAPHS,
       [],
-    ] as const;
+    ] satisfies Parameters<typeof generateDocxBlob>;
     const a = await docxToDocumentXml(await generateDocxBlob(...args));
     const b = await docxToDocumentXml(await generateDocxBlob(...args));
     expect(a).toBe(b);

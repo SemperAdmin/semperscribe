@@ -3,7 +3,8 @@
 
 import React, { useState } from 'react';
 import { Input, InputProps } from '@/components/ui/input';
-import { militaryDictionary, DictionaryEntry } from '@/lib/military-dictionary';
+import type { DictionaryEntry } from '@/lib/military-dictionary';
+import { useMilitaryDictionary } from '@/hooks/useReferenceData';
 import { useDebounce } from '@/hooks/useDebounce';
 
 interface AutoSuggestInputProps extends Omit<InputProps, 'onChange'> {
@@ -15,6 +16,7 @@ export function AutoSuggestInput({ value, onChange, ...props }: AutoSuggestInput
   const [suggestions, setSuggestions] = useState<DictionaryEntry[]>([]);
   const [open, setOpen] = useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const { dictionary } = useMilitaryDictionary();
 
   const debouncedSearch = useDebounce((query: string) => {
     if (query.length < 2) {
@@ -23,7 +25,7 @@ export function AutoSuggestInput({ value, onChange, ...props }: AutoSuggestInput
       return;
     }
     const lowerCaseQuery = query.toLowerCase();
-    const filtered = militaryDictionary.filter(
+    const filtered = dictionary.filter(
       ({ term, meaning }) =>
         term.toLowerCase().includes(lowerCaseQuery) ||
         meaning.toLowerCase().includes(lowerCaseQuery)

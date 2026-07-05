@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
+  "//": [
+    "Exact pins: pdfjs-dist matches react-pdf's exact dependency so the lockfile dedupes to a single copy (two pdfjs versions = two worker bundles).",
+    "mammoth is exact-pinned defensively against .docx import-parsing regressions; bump deliberately and re-run tests/services/import before releasing."
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,7 +16,9 @@
     "test": "vitest run",
     "test:golden": "vitest run tests/golden",
     "deploy": "next build && gh-pages -d out",
-    "sbom": "cyclonedx-npm --output-format JSON --output-file sbom.cdx.json --omit dev"
+    "sbom": "cyclonedx-npm --output-format JSON --output-file sbom.cdx.json --omit dev",
+    "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc --noEmit -p tsconfig.tests.json"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

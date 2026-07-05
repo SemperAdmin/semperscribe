@@ -20,20 +20,21 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AutoSuggestInput } from '@/components/ui/AutoSuggestInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { SSICS } from '@/lib/ssic';
+import { useSsics } from '@/hooks/useReferenceData';
 
 function SSICCombobox({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const { ssics } = useSsics();
 
   const filtered = React.useMemo(() => {
     if (query.length < 2) return [];
     const q = query.toLowerCase();
-    return SSICS.filter(s =>
+    return ssics.filter(s =>
       s.code.toLowerCase().includes(q) || s.nomenclature.toLowerCase().includes(q)
     ).slice(0, 30);
-  }, [query]);
+  }, [query, ssics]);
 
   return (
     <div className="relative">

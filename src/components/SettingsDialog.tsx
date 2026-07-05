@@ -19,7 +19,8 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Search, User, Paintbrush, FileText, Database, Trash2, ShieldAlert, AlertTriangle, Scale, MessageSquare, ExternalLink } from 'lucide-react';
 import { UserProfile, resolveUnit } from '@/hooks/useUserProfile';
-import { UNITS } from '@/lib/units';
+import { useUnits } from '@/hooks/useReferenceData';
+import { resetDisclaimer } from '@/lib/storage-utils';
 import { DISCLAIMERS } from '@/lib/security-utils';
 import { FEEDBACK_URL } from '@/lib/app-links';
 import { useTheme } from 'next-themes';
@@ -47,13 +48,14 @@ export function SettingsDialog({
   const [unitSearchOpen, setUnitSearchOpen] = useState(false);
   const [unitSearchQuery, setUnitSearchQuery] = useState('');
   const [disclaimerOpen, setDisclaimerOpen] = useState(false);
+  const { units } = useUnits();
 
   const selectedUnit = profile.unitRuc
-    ? UNITS.find(u => u.ruc === profile.unitRuc)
+    ? units.find(u => u.ruc === profile.unitRuc)
     : null;
 
   const filteredUnits = unitSearchQuery.length > 1
-    ? UNITS.filter(unit =>
+    ? units.filter(unit =>
         unit.unitName.toLowerCase().includes(unitSearchQuery.toLowerCase()) ||
         unit.ruc.toLowerCase().includes(unitSearchQuery.toLowerCase()) ||
         unit.mcc.toLowerCase().includes(unitSearchQuery.toLowerCase())
@@ -427,7 +429,7 @@ export function SettingsDialog({
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        localStorage.removeItem('hasSeenDisclaimer');
+                        resetDisclaimer();
                         onOpenChange(false);
                         window.location.reload();
                       }}

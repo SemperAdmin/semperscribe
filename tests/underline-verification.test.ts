@@ -33,7 +33,7 @@ const CHAIN: ParagraphData[] = [
   { id: 8, level: 8, content: 'Level eight content.' },
 ];
 
-const args = [FIXTURE_FORM_DATA, [], [], [], [], CHAIN, []] as const;
+const args = [FIXTURE_FORM_DATA, [], [], [], [], CHAIN, []] satisfies Parameters<typeof generateDocxBlob>;
 
 interface Run { underlined: boolean; text: string }
 

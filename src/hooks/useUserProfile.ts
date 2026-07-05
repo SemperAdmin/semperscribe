@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { UNITS } from '@/lib/units';
+import { z } from 'zod';
+import { loadUnits, getLoadedUnits } from '@/lib/reference-data';
+import { STORAGE_KEYS, readStorage, writeStorage, removeStorage } from '@/lib/storage-utils';
 
 export interface UserProfile {
   // Identity / Refills
@@ -22,7 +24,22 @@ export interface UserProfile {
   amhsPrecedence: string;
 }
 
-const STORAGE_KEY = 'semperscribe-user-profile';
+// Persisted shape: every field optional so a profile saved by an older
+// build still loads; unknown/mistyped fields are rejected by zod and
+// the profile falls back to defaults rather than spreading bad data.
+const persistedProfileSchema = z.object({
+  fullName: z.string(),
+  rank: z.string(),
+  title: z.string(),
+  officeCode: z.string(),
+  fromTitle: z.string(),
+  unitRuc: z.string(),
+  headerType: z.enum(['USMC', 'DON', 'DLA']),
+  bodyFont: z.enum(['times', 'courier']),
+  accentColor: z.enum(['black', 'blue']),
+  amhsClassification: z.string(),
+  amhsPrecedence: z.string(),
+}).partial();
 
 const DEFAULT_PROFILE: UserProfile = {
   fullName: '',
@@ -43,7 +60,9 @@ const DEFAULT_PROFILE: UserProfile = {
  */
 export function resolveUnit(ruc: string) {
   if (!ruc) return { line1: '', line2: '', line3: '' };
-  const unit = UNITS.find(u => u.ruc === ruc);
+  // Reads the lazy-loaded snapshot; useUserProfile awaits loadUnits()
+  // before reporting loaded, so profile-gated callers see real data.
+  const unit = getLoadedUnits().find(u => u.ruc === ruc);
   if (!unit) return { line1: '', line2: '', line3: '' };
   return {
     line1: unit.unitName.toUpperCase(),
@@ -60,36 +79,33 @@ export function useUserProfile() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setProfile({ ...DEFAULT_PROFILE, ...parsed });
+    (async () => {
+      // Units back resolveUnit()/getFormDefaults(); make sure the lazy
+      // chunk is in before consumers gate on `loaded`. On failure the
+      // profile still loads — unit lines just resolve empty.
+      try {
+        await loadUnits();
+      } catch (e) {
+        console.error('Failed to load unit table:', e);
       }
-    } catch (e) {
-      console.error('Failed to load user profile:', e);
-    }
-    setLoaded(true);
+      const saved = readStorage(STORAGE_KEYS.userProfile, persistedProfileSchema);
+      if (saved) {
+        setProfile({ ...DEFAULT_PROFILE, ...saved });
+      }
+      setLoaded(true);
+    })();
   }, []);
 
   const updateProfile = useCallback((updates: Partial<UserProfile>) => {
     setProfile(prev => {
       const next = { ...prev, ...updates };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch (e) {
-        console.error('Failed to save user profile:', e);
-      }
+      writeStorage(STORAGE_KEYS.userProfile, next);
       return next;
     });
   }, []);
 
   const clearProfile = useCallback(() => {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch (e) {
-      console.error('Failed to clear user profile:', e);
-    }
+    removeStorage(STORAGE_KEYS.userProfile);
     setProfile(DEFAULT_PROFILE);
   }, []);
 

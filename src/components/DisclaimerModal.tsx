@@ -12,19 +12,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DISCLAIMERS } from '@/lib/security-utils';
+import { hasSeenDisclaimer, markDisclaimerSeen } from '@/lib/storage-utils';
 
 export function DisclaimerModal() {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    const hasSeenDisclaimer = localStorage.getItem('hasSeenDisclaimer');
-    if (!hasSeenDisclaimer) {
+    if (!hasSeenDisclaimer()) {
       setIsOpen(true);
     }
   }, []);
 
   const handleClose = () => {
-    localStorage.setItem('hasSeenDisclaimer', 'true');
+    markDisclaimerSeen();
     setIsOpen(false);
   };
 

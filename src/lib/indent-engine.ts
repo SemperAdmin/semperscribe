@@ -27,7 +27,7 @@
  */
 import { ParagraphData } from '@/types';
 import { SERIF_EM_WIDTHS, MONO_EM_WIDTHS } from './font-metrics';
-import { generateCitation } from './paragraph-formatter';
+import { generateCitation } from './citation';
 
 export interface ParagraphIndentSpec {
   /** Designator string, e.g. "1.", "a.", "(1)". */

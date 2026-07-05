@@ -25,7 +25,7 @@ import {
 const args = [
   FIXTURE_FORM_DATA, FIXTURE_VIAS, FIXTURE_REFERENCES,
   FIXTURE_ENCLOSURES, FIXTURE_COPY_TOS, FIXTURE_PARAGRAPHS, [],
-] as const;
+] satisfies Parameters<typeof generateDocxBlob>;
 
 describe('DOCX signature offset', () => {
   it('exactly three blank lines between last body text and the signature', async () => {

@@ -1,6 +1,7 @@
 import { Paragraph, TextRun, TabStopType, AlignmentType, UnderlineType } from 'docx';
 import { ParagraphData } from '@/types';
 import type { ParagraphIndentSpec } from './indent-engine';
+import { generateDisplayCitation, CitationOptions } from './citation';
 
 // Helper to parse markdown-like formatting to TextRuns
 // Supports nested formatting: ***bold italic***, **<u>bold underline</u>**, *<u>italic underline</u>*, etc.
@@ -40,16 +41,6 @@ const parseContentToRunsWithFormat = (text: string, font: string, size: number, 
  * Converts a number to Excel-style letters (1=a, 2=b... 26=z, 27=aa, 28=ab)
  * Handles counts >26 which String.fromCharCode(96 + count) cannot.
  */
-function numberToLetter(num: number): string {
-  let result = '';
-  while (num > 0) {
-    const remainder = (num - 1) % 26;
-    result = String.fromCharCode(97 + remainder) + result;
-    num = Math.floor((num - 1) / 26);
-  }
-  return result;
-}
-
 // 1 inch = 1440 TWIPs. All values are in TWIPs.
 // PRE-PHASE-1 fixed cascade, retained only as the fallback when no
 // ParagraphIndentSpec is supplied (legacy/directive call sites).
@@ -73,65 +64,6 @@ const NAVAL_TAB_STOPS = {
 };
 
 
-/**
- * Generates the correct citation string (e.g., "1.", "a.", "(1)") for a given paragraph.
- * This function calculates the count based on preceding sibling paragraphs at the same level.
- */
-export function generateCitation(
-  paragraph: ParagraphData,
-  index: number,
-  allParagraphs: ParagraphData[]
-): { citation: string } {
-    const { level } = paragraph;
-
-    // Find the list of siblings at the same level that belong to the same parent.
-    let listStartIndex = 0;
-    if (level > 1) {
-        // Search backwards from the current paragraph to find the parent.
-        for (let i = index - 1; i >= 0; i--) {
-            if (allParagraphs[i].level < level) {
-                listStartIndex = i + 1;
-                break;
-            }
-        }
-    }
-
-    // Count position within that list of siblings.
-    let count = 0;
-    for (let i = listStartIndex; i <= index; i++) {
-        const p = allParagraphs[i];
-        // Only count paragraphs at the same level within the same sibling group.
-        if (p.level === level) {
-             // Count title-only structural paragraphs too (Execution,
-             // Tasks, ...). The PDF's generateCitation already did;
-             // this copy lagged and numbered siblings after a
-             // title-only paragraph one designator short.
-             if (p.content.trim() || (p.title && p.title.trim()) || p.id === paragraph.id) {
-                count++;
-            }
-        }
-    }
-
-    if (count === 0) count = 1;
-
-    let citation = '';
-    switch (level) {
-        case 1: citation = `${count}.`; break;
-        case 2: citation = `${numberToLetter(count)}.`; break;
-        case 3: citation = `(${count})`; break;
-        case 4: citation = `(${numberToLetter(count)})`; break;
-        // Per SECNAV M-5216.5, levels 5-8 have underlined numbers/letters (not punctuation)
-        case 5: citation = `${count}.`; break;
-        case 6: citation = `${numberToLetter(count)}.`; break;
-        case 7: citation = `(${count})`; break;
-        case 8: citation = `(${numberToLetter(count)})`; break;
-        default: citation = '';
-    }
-
-    return { citation };
-}
-
-
 export function createFormattedParagraph(
   paragraph: ParagraphData,
   index: number,
@@ -144,10 +76,13 @@ export function createFormattedParagraph(
   isBusinessLetter: boolean = false,
   isShortLetter: boolean = false,
   relativeSpec?: ParagraphIndentSpec,
-  keepWithNext: boolean = false
+  keepWithNext: boolean = false,
+  citationOptions?: CitationOptions
 ): Paragraph {
     const { content, level } = paragraph;
-    const { citation } = generateCitation(paragraph, index, allParagraphs);
+    // Shared display ruleset keeps DOCX designators identical to the
+    // PDF renderer's (info-paper bullets, MCO four-digit numbering).
+    const citation = generateDisplayCitation(paragraph, index, allParagraphs, citationOptions ?? {});
 
     // Helper to process title
     const processTitle = (title: string) => {

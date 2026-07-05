@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import { Navmc10274Data, BoxBoundary } from '@/types/navmc';
 import { ParagraphData } from '@/types';
-import { generateCitation } from '@/lib/paragraph-formatter';
+import { generateCitation } from '@/lib/citation';
 import { getBasePath } from '@/lib/path-utils';
 
 // --- Configuration & Constants ---

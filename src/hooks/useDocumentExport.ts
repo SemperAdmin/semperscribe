@@ -1,258 +1,88 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { FormData, ParagraphData } from '@/types';
-import { Navmc11811Data } from '@/types/navmc';
-import { generateBasePDFBlob, generatePDFBlob, getPDFPageCount, addMultipleSignaturesToBlob, ManualSignaturePosition } from '@/lib/pdf-generator';
-import { generateDocxBlob } from '@/lib/docx-generator';
-import { generateNavmc10274 } from '@/services/pdf/navmc10274Generator';
-import { generateNavmc11811 } from '@/services/pdf/navmc11811Generator';
+import { DOCUMENT_TYPES } from '@/lib/schemas';
+import { getExportBlockers, secnavPageCapIssue } from '@/lib/letter-validators';
 import { getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
-import { SignaturePosition } from '@/types';
+import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
+import { downloadDocument } from '@/services/export/index';
+import type { DocumentDataSlices } from './useLivePreview';
+
+interface UseDocumentExportArgs {
+  data: DocumentDataSlices;
+  applySignatureFields: (blob: Blob) => Promise<Blob>;
+}
 
 /**
- * Hook for document generation (PDF, DOCX) and signature placement workflow.
+ * Document export orchestration: the hard export gate, the SECNAV
+ * page-cap check, format routing (PDF/DOCX/I-Type), and the download.
  */
-export function useDocumentExport() {
-  const [showSignatureModal, setShowSignatureModal] = useState(false);
-  const [signaturePdfBlob, setSignaturePdfBlob] = useState<Blob | null>(null);
-  const [signaturePdfPageCount, setSignaturePdfPageCount] = useState(1);
+export function useDocumentExport({ data, applySignatureFields }: UseDocumentExportArgs) {
+  const { formData, vias, references, enclosures, copyTos, paragraphs, distList } = data;
 
-  /**
-   * Build a base PDF blob for a given document type and data.
-   */
-  const buildPdfBlob = useCallback(async (
-    formData: FormData,
-    vias: string[],
-    references: string[],
-    enclosures: string[],
-    copyTos: string[],
-    paragraphs: ParagraphData[],
-    distList: string[]
-  ): Promise<Blob> => {
-    if (formData.documentType === 'aa-form') {
-      const aaFormData = {
-        actionNo: formData.actionNo || '',
-        ssic: formData.ssic || '',
-        date: formData.date || '',
-        from: formData.from || '',
-        orgStation: formData.orgStation || '',
-        to: formData.to || '',
-        via: vias.filter(v => v.trim()).join('\n'),
-        subject: formData.subj || '',
-        reference: references.filter(r => r.trim()).join('\n'),
-        enclosure: enclosures.filter(e => e.trim()).join('\n'),
-        supplementalInfo: paragraphs.map(p => p.content).join('\n'),
-        supplementalInfoParagraphs: paragraphs,
-        copyTo: copyTos.filter(c => c.trim()).join('\n'),
-        signature: formData.sig || '',
-      };
-      const pdfBytes = await generateNavmc10274(aaFormData);
-      return new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
+  const generateDocument = async (format: 'docx' | 'pdf') => {
+    // HARD EXPORT GATE (M-5216.5 Fig 7-3; audit line 69): window
+    // envelope violations refuse export — a validator, not a warning.
+    const blockers = getExportBlockers(formData, vias, references, paragraphs);
+    if (blockers.length > 0) {
+      alert(
+        'Export blocked:\n\n' +
+        blockers.map((b) => `- ${b.rule}\n  ${b.detail}\n  [${b.citation}]`).join('\n'),
+      );
+      return;
     }
-
-    if (formData.documentType === 'page11') {
-      const navmcData: Navmc11811Data = {
-        name: formData.name || '',
-        edipi: formData.edipi || '',
-        remarksLeft: formData.remarksLeft || '',
-        remarksRight: formData.remarksRight || '',
-      };
-      const pdfBytes = await generateNavmc11811(navmcData);
-      return new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
-    }
-
-    const paragraphsToRender = mergeAdminSubsections(paragraphs, formData.adminSubsections);
-    return generateBasePDFBlob(formData, vias, references, enclosures, copyTos, paragraphsToRender, distList);
-  }, []);
-
-  /**
-   * Download a PDF (optionally with a signature field).
-   */
-  const downloadPDF = useCallback(async (
-    formData: FormData,
-    vias: string[],
-    references: string[],
-    enclosures: string[],
-    copyTos: string[],
-    paragraphs: ParagraphData[],
-    withSignature?: ManualSignaturePosition,
-    distList?: string[]
-  ) => {
     try {
-      const paragraphsToRender = mergeAdminSubsections(paragraphs, formData.adminSubsections);
-      let blob: Blob;
-      if (withSignature) {
-        blob = await generatePDFBlob(formData, vias, references, enclosures, copyTos, paragraphsToRender, distList || [], withSignature);
-      } else {
-        blob = await generateBasePDFBlob(formData, vias, references, enclosures, copyTos, paragraphsToRender, distList || []);
+      // Route I-Type documents through unified export
+      if (formData.documentType === 'i-type') {
+        await downloadDocument(formData.documentType, formData, format);
+        return;
       }
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = getExportFilename(formData, 'pdf');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please check the console for details.');
-    }
-  }, []);
 
-  /**
-   * Generate and download document in the specified format.
-   */
-  const generateDocument = useCallback(async (
-    format: 'docx' | 'pdf',
-    formData: FormData,
-    vias: string[],
-    references: string[],
-    enclosures: string[],
-    copyTos: string[],
-    paragraphs: ParagraphData[],
-    distList: string[]
-  ) => {
-    if (format === 'pdf') {
-      if (formData.documentType === 'aa-form') {
-        try {
-          const blob = await buildPdfBlob(formData, vias, references, enclosures, copyTos, paragraphs, distList);
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = getExportFilename(formData, 'pdf');
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
-        } catch (error) {
-          console.error('Error generating AA Form PDF:', error);
-          alert('Failed to generate AA Form PDF.');
+      // P4.3 — SECNAV 5-page text cap, HARD BLOCK (SECNAV M-5215.1;
+      // audit lines 85, 115). The PDF engine is the shared paginator:
+      // its page count is the verdict for BOTH formats — DOCX is not
+      // re-counted (divergence guard). The counted blob is reused for
+      // PDF export so the gated artifact is the downloaded artifact.
+      let secnavCountedBlob: Blob | null = null;
+      if (formData.documentType === 'secnav-instruction' || formData.documentType === 'secnav-notice') {
+        secnavCountedBlob = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+        const { getPDFPageCount } = await import('@/lib/pdf-generator');
+        const capIssue = secnavPageCapIssue(formData.documentType, await getPDFPageCount(secnavCountedBlob));
+        if (capIssue) {
+          alert(`Export blocked:\n\n- ${capIssue.rule}\n  ${capIssue.detail}\n  [${capIssue.citation}]`);
+          return;
         }
-      } else if (formData.documentType === 'page11') {
-        try {
-          const blob = await buildPdfBlob(formData, vias, references, enclosures, copyTos, paragraphs, distList);
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `NAVMC_118(11)_${formData.name?.replace(/\s+/g, '_') || 'Page11'}.pdf`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
-        } catch (error) {
-          console.error('Error generating Page 11 PDF:', error);
-          alert('Failed to generate Page 11 PDF.');
-        }
-      } else {
-        await downloadPDF(formData, vias, references, enclosures, copyTos, paragraphs, undefined, distList);
       }
-    } else {
-      try {
-        const paragraphsToRender = (formData.documentType === 'mco' || (formData.documentType as string) === 'order')
+
+      // Route other document types through existing pipeline
+      let blob: Blob;
+
+      if (format === 'pdf') {
+        blob = await applySignatureFields(
+          secnavCountedBlob ?? await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
+        );
+      } else {
+        const features = DOCUMENT_TYPES[formData.documentType]?.features;
+        const paragraphsToRender = features?.isDirective
           ? mergeAdminSubsections(paragraphs, formData.adminSubsections)
           : paragraphs;
 
-        const blob = await generateDocxBlob(formData, vias, references, enclosures, copyTos, paragraphsToRender, distList);
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = getExportFilename(formData, 'docx');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error('Error generating Docx:', error);
-        alert('Failed to generate Word document.');
+        const { generateDocxBlob } = await import('@/lib/docx-generator');
+        blob = await generateDocxBlob(formData, vias, references, enclosures, copyTos, paragraphsToRender, distList);
       }
-    }
-  }, [buildPdfBlob, downloadPDF]);
 
-  /**
-   * Open the signature placement modal.
-   */
-  const handleOpenSignaturePlacement = useCallback(async (
-    formData: FormData,
-    vias: string[],
-    references: string[],
-    enclosures: string[],
-    copyTos: string[],
-    paragraphs: ParagraphData[],
-    distList: string[]
-  ) => {
-    try {
-      const blob = await buildPdfBlob(formData, vias, references, enclosures, copyTos, paragraphs, distList);
-      const pageCount = await getPDFPageCount(blob);
-      setSignaturePdfBlob(blob);
-      setSignaturePdfPageCount(pageCount);
-      setShowSignatureModal(true);
-    } catch (error) {
-      console.error('Error preparing signature placement:', error);
-      alert('Failed to prepare PDF for signature placement.');
-    }
-  }, [buildPdfBlob]);
-
-  /**
-   * Confirm signature placement and download the signed PDF.
-   */
-  const handleSignatureConfirm = useCallback(async (
-    positions: SignaturePosition[],
-    formData: FormData,
-    vias: string[],
-    references: string[],
-    enclosures: string[],
-    copyTos: string[],
-    paragraphs: ParagraphData[],
-    distList: string[]
-  ) => {
-    try {
-      setShowSignatureModal(false);
-      const baseBlob = await buildPdfBlob(formData, vias, references, enclosures, copyTos, paragraphs, distList);
-
-      const manualPositions: ManualSignaturePosition[] = positions.map(pos => ({
-        page: pos.page,
-        x: pos.x,
-        y: pos.y,
-        width: pos.width,
-        height: pos.height,
-        signerName: pos.signerName,
-        reason: pos.reason,
-        contactInfo: pos.contactInfo,
-      }));
-
-      const signedBlob = await addMultipleSignaturesToBlob(baseBlob, manualPositions);
-      const filename = getExportFilename(formData, 'pdf');
-
-      const url = window.URL.createObjectURL(signedBlob);
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = filename;
+      link.download = getExportFilename(formData, format);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-
-      setSignaturePdfBlob(null);
     } catch (error) {
-      console.error('Error adding signature:', error);
-      alert('Failed to add signature fields to PDF.');
+      console.error(`Error generating ${format.toUpperCase()}:`, error);
+      alert(`Failed to generate ${format.toUpperCase()}. Please check the console for details.`);
     }
-  }, [buildPdfBlob]);
-
-  const handleSignatureCancel = useCallback(() => {
-    setShowSignatureModal(false);
-    setSignaturePdfBlob(null);
-  }, []);
-
-  return {
-    showSignatureModal,
-    signaturePdfBlob,
-    signaturePdfPageCount,
-    generateDocument,
-    handleOpenSignaturePlacement,
-    handleSignatureConfirm,
-    handleSignatureCancel,
   };
+
+  return { generateDocument };
 }

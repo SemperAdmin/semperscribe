@@ -4,25 +4,17 @@ import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { ParagraphData, SavedLetter, ValidationState, FormData, AdminSubsections, ReportData } from '@/types';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
-import { UNITS } from '@/lib/units';
+import { getLoadedUnits } from '@/lib/reference-data';
 import { getTodaysDate } from '@/lib/date-utils';
-import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
+import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename } from '@/lib/naval-format-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
-import { loadSavedLetters, saveLetterToStorage } from '@/lib/storage-utils';
-import { getPDFPageCount, addMultipleSignaturesToBlob, ManualSignaturePosition } from '@/lib/pdf-generator';
-import { generateDocxBlob } from '@/lib/docx-generator';
-import { getExportBlockers, runLetterValidators, secnavPageCapIssue } from '@/lib/letter-validators';
-import { SignaturePosition } from '@/types';
+import { loadSavedLetters, saveLetterToStorage, clearSavedLetters } from '@/lib/storage-utils';
+import { runLetterValidators } from '@/lib/letter-validators';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
 import { AMHSPreview } from '@/components/amhs/AMHSPreview';
-import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
-import { downloadDocument } from '@/services/export/index';
 import { useToast } from '@/hooks/use-toast';
-import { getStateFromUrl, clearShareParam, SignatureRouting } from '@/lib/url-state';
 import { SignatureCeremonyPanel } from '@/components/signature/SignatureCeremonyPanel';
-import { addSignatureField, addMultipleSignatureFields } from '@/lib/pdf-signature-field';
-import { generateShareableUrl, copyToClipboard } from '@/lib/url-state';
 import { useParagraphs } from '@/hooks/useParagraphs';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useImportExport } from '@/hooks/useImportExport';
@@ -33,6 +25,10 @@ import { ProofreadModal } from '@/components/ProofreadModal';
 import { BatchGenerateModal } from '@/components/BatchGenerateModal';
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useLivePreview } from '@/hooks/useLivePreview';
+import { useDocumentExport } from '@/hooks/useDocumentExport';
+import { useSignatureWorkflow } from '@/hooks/useSignatureWorkflow';
+import { useShareLinkLoader } from '@/hooks/useShareLinkLoader';
 import { ITypePreview } from '@/components/itype/ITypePreview';
 import { useITypeStore } from '@/store/iTypeStore';
 
@@ -110,10 +106,6 @@ function NavalLetterGeneratorInner() {
 
   const [savedLetters, setSavedLetters] = useState<SavedLetter[]>([]);
 
-  // Preview State
-  const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
-  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
-
   // Voice recognition via hook
   const { activeVoiceInput, toggleVoiceInput } = useVoiceInput(paragraphs, updateParagraphContent);
 
@@ -128,11 +120,6 @@ function NavalLetterGeneratorInner() {
 
   // Batch generate modal state
   const [showBatchModal, setShowBatchModal] = useState(false);
-
-  // Signature placement state
-  const [showSignatureModal, setShowSignatureModal] = useState(false);
-  const [signaturePdfBlob, setSignaturePdfBlob] = useState<Blob | null>(null);
-  const [signaturePdfPageCount, setSignaturePdfPageCount] = useState(1);
 
   // Unit header state (sourced from user profile)
   const [currentUnitCode, setCurrentUnitCode] = useState<string | undefined>(undefined);
@@ -154,6 +141,23 @@ function NavalLetterGeneratorInner() {
     setFormKey, setValidation,
     savedLetters, toast,
   });
+
+  // Document state slices shared by preview, export, and signature
+  const documentData = { formData, vias, references, enclosures, copyTos, paragraphs, distList };
+
+  // Live preview (debounced PDF regeneration) via hook
+  const { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields } = useLivePreview(documentData);
+
+  // Export orchestration (gate, SECNAV cap, download) via hook
+  const { generateDocument } = useDocumentExport({ data: documentData, applySignatureFields });
+
+  // Signature ceremony (placement modal, request links) via hook
+  const {
+    showSignatureModal, signaturePdfBlob, signaturePdfPageCount,
+    handleOpenSignaturePlacement, handleSignatureConfirm,
+    handleSignatureConfirmAndCopy, handleSignatureCancel,
+    buildSignReadyBlob,
+  } = useSignatureWorkflow({ data: documentData, setFormData, applySignatureFields, toast });
 
   // Load saved letters
   useEffect(() => {
@@ -192,7 +196,7 @@ function NavalLetterGeneratorInner() {
     }));
     // Sync unit code/name for header display
     if (profile.unitRuc) {
-      const unit = UNITS.find(u => u.ruc === profile.unitRuc);
+      const unit = getLoadedUnits().find(u => u.ruc === profile.unitRuc);
       if (unit) {
         setCurrentUnitCode(unit.ruc);
         setCurrentUnitName(unit.unitName.toUpperCase());
@@ -259,56 +263,6 @@ function NavalLetterGeneratorInner() {
       setITypeFormData(formData);
     }
   }, [formData, setITypeFormData]);
-
-  // S2f: configured signature fields ride EVERY PDF surface — preview,
-  // export, and the ceremony save all show the same boxes (Stephen's
-  // directive: the signer opens the link and sees the PDF with the
-  // box ready). Annotation-only (S1), so layout and pagination are
-  // untouched.
-  const applySignatureFields = useCallback(async (blob: Blob): Promise<Blob> => {
-    const fields = (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
-    if (fields.length === 0) return blob;
-    const bytes = await addMultipleSignatureFields(await blob.arrayBuffer(), fields.map(f => ({
-      page: f.page, x: f.x, y: f.y, width: f.width, height: f.height,
-      signerName: f.signerName, reason: f.reason, contactInfo: f.contactInfo,
-    })));
-    return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
-  }, [formData.signatureFields]);
-
-  // Manual Preview Generation
-  const handleUpdatePreview = useCallback(async () => {
-    setIsGeneratingPreview(true);
-    try {
-      const features = DOCUMENT_TYPES[formData.documentType]?.features;
-      const isStaffingPaper = features?.category === 'staffing-papers';
-      if (features?.pdfPipeline === 'standard' && !isStaffingPaper && !formData.subj && !formData.from) {
-        setIsGeneratingPreview(false);
-        return;
-      }
-
-      const blob = await applySignatureFields(
-        await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
-      );
-
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(prev => {
-        if (prev) URL.revokeObjectURL(prev);
-        return url;
-      });
-    } catch (e) {
-      console.error("Preview generation failed", e);
-    } finally {
-      setIsGeneratingPreview(false);
-    }
-  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList, applySignatureFields]);
-
-  // Auto-refresh preview when form data changes (debounced)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      handleUpdatePreview();
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [handleUpdatePreview]);
 
   // Validation Handlers
   const handleValidateSSIC = (value: string) => {
@@ -410,149 +364,6 @@ function NavalLetterGeneratorInner() {
     setSavedLetters(updatedLetters);
   };
 
-  // Signature placement workflow handlers
-  const handleOpenSignaturePlacement = async () => {
-    try {
-      const blob = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
-      const pageCount = await getPDFPageCount(blob);
-      setSignaturePdfBlob(blob);
-      setSignaturePdfPageCount(pageCount);
-      setShowSignatureModal(true);
-    } catch (error) {
-      console.error('Error preparing signature placement:', error);
-      alert('Failed to prepare PDF for signature placement.');
-    }
-  };
-
-  // S2c (ruling 2026-06-10): the ORIGINATOR configures fields; confirm
-  // persists them on the document — no download here. They travel with
-  // the share link, drafts, and .nldp exports inside formData.
-  const handleSignatureConfirm = (positions: SignaturePosition[]) => {
-    setShowSignatureModal(false);
-    setSignaturePdfBlob(null);
-    setFormData(prev => ({ ...prev, signatureFields: positions }));
-    toast({
-      title: 'Signature fields saved',
-      description: `${positions.length} field${positions.length === 1 ? '' : 's'} configured. Download the sign-ready PDF or copy a signature request link from the Signature Fields section.`,
-    });
-  };
-
-  // S2e: one-step persist + request link from the placement modal.
-  const handleSignatureConfirmAndCopy = async (positions: SignaturePosition[]) => {
-    setShowSignatureModal(false);
-    setSignaturePdfBlob(null);
-    setFormData(prev => ({ ...prev, signatureFields: positions }));
-    await handleCopySignatureRequest(positions);
-  };
-
-  // S2c: sign-ready PDF using the configured fields (falls back to the
-  // auto-anchored S1 field when none are configured).
-  const buildSignReadyBlob = useCallback(async (): Promise<Blob> => {
-    const blockers = getExportBlockers(formData, vias, references, paragraphs);
-    if (blockers.length > 0) {
-      throw new Error('Export blocked: ' + blockers.map((b) => b.rule).join('; '));
-    }
-    const base = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
-    const fields = (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
-    if (fields.length > 0) return applySignatureFields(base);
-    const bytes = await addSignatureField(await base.arrayBuffer(), { signerName: formData.sig });
-    return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
-  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList, applySignatureFields]);
-
-  // S2c: request link = share state v2; the e-mail carries the who/
-  // when/where (ruling: no routing form fields). S2e: accepts fresh
-  // positions from the placement modal so the link never trails the
-  // async formData update.
-  const handleCopySignatureRequest = async (freshFields?: SignaturePosition[]) => {
-    const fields = freshFields ?? (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
-    const { url, isLong, error } = generateShareableUrl({
-      formData: freshFields ? { ...formData, signatureFields: freshFields } : formData,
-      paragraphs, references, enclosures, vias, copyTos, distList,
-      routing: { requestedSigner: fields[0]?.signerName || formData.sig || '' },
-      version: 2,
-    });
-    if (error && !url) {
-      toast({ title: 'Failed to build link', description: error, variant: 'destructive' });
-      return;
-    }
-    const ok = await copyToClipboard(url);
-    toast(ok
-      ? {
-          title: 'Signature request link copied',
-          description: (isLong ? 'Link is very long and may not work everywhere. ' : '') +
-            'Paste it into your request e-mail. The link contains the full letter text — send it only through channels appropriate for the content.',
-        }
-      : { title: 'Copy failed', description: 'Could not copy to clipboard.', variant: 'destructive' });
-  };
-
-  const handleSignatureCancel = () => {
-    setShowSignatureModal(false);
-    setSignaturePdfBlob(null);
-  };
-
-  const generateDocument = async (format: 'docx' | 'pdf') => {
-    // HARD EXPORT GATE (M-5216.5 Fig 7-3; audit line 69): window
-    // envelope violations refuse export — a validator, not a warning.
-    const blockers = getExportBlockers(formData, vias, references, paragraphs);
-    if (blockers.length > 0) {
-      alert(
-        'Export blocked:\n\n' +
-        blockers.map((b) => `- ${b.rule}\n  ${b.detail}\n  [${b.citation}]`).join('\n'),
-      );
-      return;
-    }
-    try {
-      // Route I-Type documents through unified export
-      if (formData.documentType === 'i-type') {
-        await downloadDocument(formData.documentType, formData, format);
-        return;
-      }
-
-      // P4.3 — SECNAV 5-page text cap, HARD BLOCK (SECNAV M-5215.1;
-      // audit lines 85, 115). The PDF engine is the shared paginator:
-      // its page count is the verdict for BOTH formats — DOCX is not
-      // re-counted (divergence guard). The counted blob is reused for
-      // PDF export so the gated artifact is the downloaded artifact.
-      let secnavCountedBlob: Blob | null = null;
-      if (formData.documentType === 'secnav-instruction' || formData.documentType === 'secnav-notice') {
-        secnavCountedBlob = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
-        const capIssue = secnavPageCapIssue(formData.documentType, await getPDFPageCount(secnavCountedBlob));
-        if (capIssue) {
-          alert(`Export blocked:\n\n- ${capIssue.rule}\n  ${capIssue.detail}\n  [${capIssue.citation}]`);
-          return;
-        }
-      }
-
-      // Route other document types through existing pipeline
-      let blob: Blob;
-
-      if (format === 'pdf') {
-        blob = await applySignatureFields(
-          secnavCountedBlob ?? await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
-        );
-      } else {
-        const features = DOCUMENT_TYPES[formData.documentType]?.features;
-        const paragraphsToRender = features?.isDirective
-          ? mergeAdminSubsections(paragraphs, formData.adminSubsections)
-          : paragraphs;
-
-        blob = await generateDocxBlob(formData, vias, references, enclosures, copyTos, paragraphsToRender, distList);
-      }
-
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = getExportFilename(formData, format);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error(`Error generating ${format.toUpperCase()}:`, error);
-      alert(`Failed to generate ${format.toUpperCase()}. Please check the console for details.`);
-    }
-  };
-
   // Resets every piece of document state to a blank form of the given type.
   // Shared by Clear Form and the Word/PDF import's replace-on-confirm.
   const resetDocumentState = (documentType: string) => {
@@ -625,33 +436,12 @@ function NavalLetterGeneratorInner() {
   const documentImport = useDocumentImport({ applyImport: applyDocumentImport, toast });
 
   const handleClearSavedLetters = () => {
-    localStorage.removeItem('navalLetters');
+    clearSavedLetters();
     setSavedLetters([]);
   };
 
-  // S2: routing slip arriving on a request-for-signature link
-  const [routingRequest, setRoutingRequest] = useState<SignatureRouting | null>(null);
-
-  // Load shared state from URL on mount
-  useEffect(() => {
-    const sharedState = getStateFromUrl();
-    if (sharedState) {
-      handleImport(sharedState);
-      clearShareParam();
-      if (sharedState.routing) {
-        // S2c follow-up (Stephen 2026-06-10): no toast — the ceremony
-        // panel at the top of the page is the whole message.
-        setRoutingRequest(sharedState.routing);
-      } else {
-        toast({
-          title: "Document Loaded",
-          description: "Shared document has been loaded. You can view and edit it.",
-        });
-      }
-    }
-  }, []);
-
-
+  // Share-link intake (?share=) and S2 routing slip via hook
+  const { routingRequest, setRoutingRequest } = useShareLinkLoader({ handleImport, toast });
 
   // Phase 2: inline compliance issues for the live preview banner.
   const validationIssues = useMemo(
@@ -681,7 +471,7 @@ function NavalLetterGeneratorInner() {
       currentUnitName={currentUnitName}
       onExportNldp={handleExportNldp}
       onShareLink={handleShareLink}
-      onUpdatePreview={handleUpdatePreview}
+      onUpdatePreview={updatePreview}
       onCopyAMHS={handleCopyAMHS}
       onExportAMHS={handleExportAMHS}
       onProofread={() => setShowProofreadModal(true)}

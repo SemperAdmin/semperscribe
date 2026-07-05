@@ -74,7 +74,7 @@ describe('records-management template renders without double designators', () =>
   it('DOCX: generated designators only, full sequence correct', async () => {
     const tpl = orderTemplates.find((t) => JSON.stringify(t.defaultData).includes('Records Management'));
     expect(tpl, 'records template').toBeDefined();
-    const data = tpl!.defaultData as { paragraphs: never[] };
+    const data = tpl!.defaultData as unknown as { paragraphs: never[] };
     const blob = await generateDocxBlob(
       { ...FIXTURE_FORM_DATA, documentType: 'mco', ssic: '5210.11G', orderPrefix: 'MCO', sig: 'I. M. MARINE' } as never,
       [], [], [], [], data.paragraphs, [],

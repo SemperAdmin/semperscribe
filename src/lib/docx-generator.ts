@@ -37,7 +37,8 @@ import {
   getEnclSpacing, 
   getCopyToSpacing, 
   getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle, resolveDistributionStatement } from './naval-format-utils';
-import { createFormattedParagraph, generateCitation } from "./paragraph-formatter";
+import { createFormattedParagraph } from "./paragraph-formatter";
+import { generateCitation } from "./citation";
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from "./indent-engine";
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from "./font-policy";
 import { parseAndFormatDate, formatBusinessDate } from "./date-utils";
@@ -1192,7 +1193,8 @@ export async function generateDocxBlob(
     const hasCivilianClosing = isCivilianStyle && !isDLAMemo && !isDLABusinessLetter;
     const keepWithSignature = (hasNavalSignature || hasCivilianClosing) && !!relativeSpecs &&
         index === paragraphsWithContent.length - 1;
-    bodyParagraphs.push(createFormattedParagraph(p, index, paragraphsWithContent, font, "000000", isDirective, shouldBoldTitle, shouldUppercaseTitle, isCivilianStyle, formData.isShortLetter, relativeSpecs?.[index], keepWithSignature));
+    bodyParagraphs.push(createFormattedParagraph(p, index, paragraphsWithContent, font, "000000", isDirective, shouldBoldTitle, shouldUppercaseTitle, isCivilianStyle, formData.isShortLetter, relativeSpecs?.[index], keepWithSignature,
+        { documentType: formData.documentType, fourDigitNumbering: formData.fourDigitNumbering, chapterNumber: formData.chapterNumber }));
 
     // Full blank line between body paragraphs (M-5216.5 7-2.13).
     // Suppressed after the LAST paragraph for correspondence: the
