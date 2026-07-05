@@ -111,3 +111,19 @@ Worth stating so the refactor doesn't fix what isn't broken: the pipeline dispat
 9. **Housekeeping tier** — include `tests/` in a typecheck pass (separate tsconfig project), document or drop the mammoth pin, add `noUncheckedIndexedAccess` and burn down the 84 `: any` starting at the I-Type/NLDP boundary (T-1, T-2, A-3).
 
 Deferred, with reason: React 19 / Next-16-native migration (A-3) — real but blocked behind renderer-library peer support and worth its own Mode 7 decision; single-deploy-target consolidation (A-2) — a product decision, not an engineering one; replacing the I-Type placeholder seal (T-4) — needs an authoritative asset, not code.
+
+---
+
+## Execution log
+
+| Date | Step | Commit theme | Result |
+|---|---|---|---|
+| 2026-07-05 | 1 | Delete dead trees & cruft | -20,634 lines; tests/build green |
+| 2026-07-05 | 2 | Lazy seal + export engines | First-load JS 8,712 → 2,774 KB; browser smoke green |
+| 2026-07-05 | 3 | Code-split reference tables | First-load JS 2,774 → 1,876 KB; browser smoke green |
+| 2026-07-05 | 4 | Versioned, validated storage module | +13 storage tests |
+| 2026-07-05 | 5 | generateCitation leaf module | Cycle C-2 eliminated; spec-citation reuse deferred to step 8 (parity risk) |
+| 2026-07-05 | 6 | url-state characterization tests | +8 tests |
+| 2026-07-05 | 7 | page.tsx → 4 hooks | 800 → 587 lines; behavior moved verbatim |
+| 2026-07-05 | 8 | Shared citation ruleset PDF+DOCX | Fixed 2 live PDF/DOCX divergences (4-digit MCO, info-paper bullets); +7 tests |
+| 2026-07-05 | 9 | Tests typecheck project + pin docs | 12 test-code type errors fixed; noUncheckedIndexedAccess deferred (247 errors), noUnusedLocals deferred (102) |

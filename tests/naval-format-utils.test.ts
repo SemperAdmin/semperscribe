@@ -16,7 +16,6 @@ import {
   getExportFilename,
   mergeAdminSubsections,
   getStaffingPaperParagraphs,
-  getTripReportParagraphs,
   getInformationPaperParagraphs,
 } from '@/lib/naval-format-utils';
 import { FormData, ParagraphData, AdminSubsections } from '@/types';

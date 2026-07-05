@@ -261,4 +261,5 @@ Version this file with the project. When a mode produces a bad result, log the f
 
 | Date | Mode | Failure observed | Patch applied |
 |---|---|---|---|
+| 2026-07-05 | 2 | Audit step-5 recommendation ("read citation from computed specs") would have changed directive/info-paper PDF output, violating Global Rule 5 — the spec citations lack the four-digit and bullet rules the renderer implements | None to the mode; lesson: refactoring-sequence steps must be parity-checked against renderer variants before being written as directives. Executed instead as a shared-ruleset extraction in step 8 |
 | | | | |

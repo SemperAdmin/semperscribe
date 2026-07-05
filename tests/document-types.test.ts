@@ -303,7 +303,7 @@ describe('DynamicForm initialization simulation', () => {
         });
 
         // Sanitize default values (same logic as DynamicForm)
-        const defaultValues = { ...initialFormData, documentType: docTypeId };
+        const defaultValues: Record<string, unknown> = { ...initialFormData, documentType: docTypeId };
         const sanitized: any = {};
         Object.keys(defaultValues).forEach(key => {
           if (allowedTopLevelKeys.has(key)) {
@@ -341,7 +341,7 @@ describe('DynamicForm initialization simulation', () => {
           });
         });
 
-        const defaultValues = { ...initialFormData, documentType: docTypeId };
+        const defaultValues: Record<string, unknown> = { ...initialFormData, documentType: docTypeId };
         const sanitized: any = {};
         Object.keys(defaultValues).forEach(key => {
           if (allowedTopLevelKeys.has(key)) {
