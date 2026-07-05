@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { z } from 'zod';
 import { loadUnits, getLoadedUnits } from '@/lib/reference-data';
+import { STORAGE_KEYS, readStorage, writeStorage, removeStorage } from '@/lib/storage-utils';
 
 export interface UserProfile {
   // Identity / Refills
@@ -22,7 +24,22 @@ export interface UserProfile {
   amhsPrecedence: string;
 }
 
-const STORAGE_KEY = 'semperscribe-user-profile';
+// Persisted shape: every field optional so a profile saved by an older
+// build still loads; unknown/mistyped fields are rejected by zod and
+// the profile falls back to defaults rather than spreading bad data.
+const persistedProfileSchema = z.object({
+  fullName: z.string(),
+  rank: z.string(),
+  title: z.string(),
+  officeCode: z.string(),
+  fromTitle: z.string(),
+  unitRuc: z.string(),
+  headerType: z.enum(['USMC', 'DON', 'DLA']),
+  bodyFont: z.enum(['times', 'courier']),
+  accentColor: z.enum(['black', 'blue']),
+  amhsClassification: z.string(),
+  amhsPrecedence: z.string(),
+}).partial();
 
 const DEFAULT_PROFILE: UserProfile = {
   fullName: '',
@@ -71,14 +88,9 @@ export function useUserProfile() {
       } catch (e) {
         console.error('Failed to load unit table:', e);
       }
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          setProfile({ ...DEFAULT_PROFILE, ...parsed });
-        }
-      } catch (e) {
-        console.error('Failed to load user profile:', e);
+      const saved = readStorage(STORAGE_KEYS.userProfile, persistedProfileSchema);
+      if (saved) {
+        setProfile({ ...DEFAULT_PROFILE, ...saved });
       }
       setLoaded(true);
     })();
@@ -87,21 +99,13 @@ export function useUserProfile() {
   const updateProfile = useCallback((updates: Partial<UserProfile>) => {
     setProfile(prev => {
       const next = { ...prev, ...updates };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch (e) {
-        console.error('Failed to save user profile:', e);
-      }
+      writeStorage(STORAGE_KEYS.userProfile, next);
       return next;
     });
   }, []);
 
   const clearProfile = useCallback(() => {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch (e) {
-      console.error('Failed to clear user profile:', e);
-    }
+    removeStorage(STORAGE_KEYS.userProfile);
     setProfile(DEFAULT_PROFILE);
   }, []);
 

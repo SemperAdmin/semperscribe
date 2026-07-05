@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, User, Paintbrush, FileText, Database, Trash2, ShieldAlert, AlertTriangle, Scale, MessageSquare, ExternalLink } from 'lucide-react';
 import { UserProfile, resolveUnit } from '@/hooks/useUserProfile';
 import { useUnits } from '@/hooks/useReferenceData';
+import { resetDisclaimer } from '@/lib/storage-utils';
 import { DISCLAIMERS } from '@/lib/security-utils';
 import { FEEDBACK_URL } from '@/lib/app-links';
 import { useTheme } from 'next-themes';
@@ -428,7 +429,7 @@ export function SettingsDialog({
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        localStorage.removeItem('hasSeenDisclaimer');
+                        resetDisclaimer();
                         onOpenChange(false);
                         window.location.reload();
                       }}

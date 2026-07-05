@@ -8,7 +8,7 @@ import { getLoadedUnits } from '@/lib/reference-data';
 import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
-import { loadSavedLetters, saveLetterToStorage } from '@/lib/storage-utils';
+import { loadSavedLetters, saveLetterToStorage, clearSavedLetters } from '@/lib/storage-utils';
 import { getExportBlockers, runLetterValidators, secnavPageCapIssue } from '@/lib/letter-validators';
 import { SignaturePosition } from '@/types';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
@@ -627,7 +627,7 @@ function NavalLetterGeneratorInner() {
   const documentImport = useDocumentImport({ applyImport: applyDocumentImport, toast });
 
   const handleClearSavedLetters = () => {
-    localStorage.removeItem('navalLetters');
+    clearSavedLetters();
     setSavedLetters([]);
   };
 
