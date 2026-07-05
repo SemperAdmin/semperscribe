@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Building, Search, X, Pencil, Check } from 'lucide-react';
-import { UNITS } from '@/lib/units';
+import type { Unit } from '@/lib/units';
+import { useUnits } from '@/hooks/useReferenceData';
 import {
   Dialog,
   DialogContent,
@@ -32,8 +33,9 @@ export function UnitInfoSection({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { units, loading: unitsLoading } = useUnits();
 
-  const handleUnitSelect = (unit: typeof UNITS[0]) => {
+  const handleUnitSelect = (unit: Unit) => {
     setFormData(prev => ({
       ...prev,
       line1: unit.unitName.toUpperCase(),
@@ -62,7 +64,7 @@ export function UnitInfoSection({
   );
 
   const filteredUnits = searchQuery.length > 1
-    ? UNITS.filter(unit => 
+    ? units.filter(unit =>
         unit.unitName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         unit.ruc.toLowerCase().includes(searchQuery.toLowerCase()) ||
         unit.mcc.toLowerCase().includes(searchQuery.toLowerCase())
@@ -122,7 +124,12 @@ export function UnitInfoSection({
             </div>
             <ScrollArea className="flex-1 pr-4">
               <div className="space-y-2">
-                {searchQuery.length > 1 && filteredUnits.length === 0 && (
+                {searchQuery.length > 1 && unitsLoading && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Loading unit directory...
+                  </div>
+                )}
+                {searchQuery.length > 1 && !unitsLoading && filteredUnits.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     No units found matching &quot;{searchQuery}&quot;
                   </div>

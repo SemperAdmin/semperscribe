@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getMilitaryWordSet } from '@/lib/military-wordset';
+import { loadMilitaryWordSet } from '@/lib/reference-data';
 import { MILITARY_ACRONYMS } from '@/lib/acronyms';
 
 export interface SpellIssue {
@@ -127,14 +127,28 @@ function checkWord(word: string, index: number, milWords: Set<string>): SpellIss
 export function useSpellCheck(text: string, enabled: boolean = true, debounceMs: number = 800) {
   const [issues, setIssues] = useState<SpellIssue[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Lazy-loaded word set; null until the chunk arrives. Checks are
+  // deferred (not run with an empty set) so military terms are never
+  // briefly flagged as unknown while the data loads.
+  const [milWordSet, setMilWordSet] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    loadMilitaryWordSet().then(set => {
+      if (!cancelled) setMilWordSet(set);
+    }).catch(e => console.error('Failed to load military word set:', e));
+    return () => { cancelled = true; };
+  }, [enabled]);
 
   const runCheck = useCallback((content: string) => {
     if (!content || !enabled) {
       setIssues([]);
       return;
     }
+    if (!milWordSet) return;
 
-    const milWords = getMilitaryWordSet();
+    const milWords = milWordSet;
     const stripped = stripFormatting(content);
     const tokens = tokenize(stripped);
     const found: SpellIssue[] = [];
@@ -153,7 +167,7 @@ export function useSpellCheck(text: string, enabled: boolean = true, debounceMs:
     }
 
     setIssues(found);
-  }, [enabled]);
+  }, [enabled, milWordSet]);
 
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);

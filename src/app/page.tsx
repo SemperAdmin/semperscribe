@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { ParagraphData, SavedLetter, ValidationState, FormData, AdminSubsections, ReportData } from '@/types';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
-import { UNITS } from '@/lib/units';
+import { getLoadedUnits } from '@/lib/reference-data';
 import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
@@ -189,7 +189,7 @@ function NavalLetterGeneratorInner() {
     }));
     // Sync unit code/name for header display
     if (profile.unitRuc) {
-      const unit = UNITS.find(u => u.ruc === profile.unitRuc);
+      const unit = getLoadedUnits().find(u => u.ruc === profile.unitRuc);
       if (unit) {
         setCurrentUnitCode(unit.ruc);
         setCurrentUnitName(unit.unitName.toUpperCase());

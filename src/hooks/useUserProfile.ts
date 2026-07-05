@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { UNITS } from '@/lib/units';
+import { loadUnits, getLoadedUnits } from '@/lib/reference-data';
 
 export interface UserProfile {
   // Identity / Refills
@@ -43,7 +43,9 @@ const DEFAULT_PROFILE: UserProfile = {
  */
 export function resolveUnit(ruc: string) {
   if (!ruc) return { line1: '', line2: '', line3: '' };
-  const unit = UNITS.find(u => u.ruc === ruc);
+  // Reads the lazy-loaded snapshot; useUserProfile awaits loadUnits()
+  // before reporting loaded, so profile-gated callers see real data.
+  const unit = getLoadedUnits().find(u => u.ruc === ruc);
   if (!unit) return { line1: '', line2: '', line3: '' };
   return {
     line1: unit.unitName.toUpperCase(),
@@ -60,16 +62,26 @@ export function useUserProfile() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setProfile({ ...DEFAULT_PROFILE, ...parsed });
+    (async () => {
+      // Units back resolveUnit()/getFormDefaults(); make sure the lazy
+      // chunk is in before consumers gate on `loaded`. On failure the
+      // profile still loads — unit lines just resolve empty.
+      try {
+        await loadUnits();
+      } catch (e) {
+        console.error('Failed to load unit table:', e);
       }
-    } catch (e) {
-      console.error('Failed to load user profile:', e);
-    }
-    setLoaded(true);
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setProfile({ ...DEFAULT_PROFILE, ...parsed });
+        }
+      } catch (e) {
+        console.error('Failed to load user profile:', e);
+      }
+      setLoaded(true);
+    })();
   }, []);
 
   const updateProfile = useCallback((updates: Partial<UserProfile>) => {
