@@ -1,7 +1,7 @@
 import { Paragraph, TextRun, TabStopType, AlignmentType, UnderlineType } from 'docx';
 import { ParagraphData } from '@/types';
 import type { ParagraphIndentSpec } from './indent-engine';
-import { generateCitation } from './citation';
+import { generateDisplayCitation, CitationOptions } from './citation';
 
 // Helper to parse markdown-like formatting to TextRuns
 // Supports nested formatting: ***bold italic***, **<u>bold underline</u>**, *<u>italic underline</u>*, etc.
@@ -76,10 +76,13 @@ export function createFormattedParagraph(
   isBusinessLetter: boolean = false,
   isShortLetter: boolean = false,
   relativeSpec?: ParagraphIndentSpec,
-  keepWithNext: boolean = false
+  keepWithNext: boolean = false,
+  citationOptions?: CitationOptions
 ): Paragraph {
     const { content, level } = paragraph;
-    const { citation } = generateCitation(paragraph, index, allParagraphs);
+    // Shared display ruleset keeps DOCX designators identical to the
+    // PDF renderer's (info-paper bullets, MCO four-digit numbering).
+    const citation = generateDisplayCitation(paragraph, index, allParagraphs, citationOptions ?? {});
 
     // Helper to process title
     const processTitle = (title: string) => {

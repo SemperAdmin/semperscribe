@@ -42,6 +42,7 @@ import { parseFormattedText } from '@/lib/pdf-text-parser';
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from '@/lib/indent-engine';
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from '@/lib/font-policy';
 import type { ParagraphIndentSpec } from '@/lib/indent-engine';
+import { generateDisplayCitation } from '@/lib/citation';
 
 interface NavalLetterPDFProps {
   formData: FormData;
@@ -344,89 +345,6 @@ const createStyles = (bodyFont: 'times' | 'courier', accentColor?: string, isSho
 /**
  * Converts a number to Excel-style letters (1=a, 2=b... 26=z, 27=aa, 28=ab)
  */
-function numberToLetter(num: number): string {
-  let result = '';
-  while (num > 0) {
-    const remainder = (num - 1) % 26;
-    result = String.fromCharCode(97 + remainder) + result;
-    num = Math.floor((num - 1) / 26);
-  }
-  return result;
-}
-
-function generateCitation(
-  paragraph: ParagraphData,
-  index: number,
-  allParagraphs: ParagraphData[],
-  documentType?: string,
-  fourDigitNumbering?: boolean,
-  chapterNumber?: number
-): string {
-  const { level } = paragraph;
-
-  if (documentType === 'information-paper' && level > 1) {
-    switch (level) {
-      case 2: return '•';
-      case 3: return '◦';
-      case 4: return '▪';
-      default: return '•';
-    }
-  }
-
-  let listStartIndex = 0;
-  if (level > 1) {
-    for (let i = index - 1; i >= 0; i--) {
-      if (allParagraphs[i].level < level) {
-        listStartIndex = i + 1;
-        break;
-      }
-    }
-  }
-
-  let count = 0;
-  for (let i = listStartIndex; i <= index; i++) {
-    const p = allParagraphs[i];
-    if (p.level === level) {
-      if (p.content.trim() || p.title || p.id === paragraph.id) {
-        count++;
-      }
-    }
-  }
-
-  if (count === 0) count = 1;
-
-  // 4-digit numbering per MCO 5215.1K para 34
-  // Level 1: {chapter}001, {chapter}002, etc.
-  // Level 2: .1, .2, .3 (displayed as part of parent e.g., 1001.1)
-  // Level 3+: standard sub-paragraph scheme (a, (1), (a), etc.)
-  if (fourDigitNumbering) {
-    const ch = chapterNumber || 1;
-    switch (level) {
-      case 1: return `${ch}${String(count).padStart(3, '0')}.`;
-      case 2: return `${count}.`;
-      case 3: return `${numberToLetter(count)}`;
-      case 4: return `(${count})`;
-      case 5: return `(${numberToLetter(count)})`;
-      case 6: return `${count}.`;
-      case 7: return `${numberToLetter(count)}.`;
-      case 8: return `(${count})`;
-      default: return '';
-    }
-  }
-
-  switch (level) {
-    case 1: return `${count}.`;
-    case 2: return `${numberToLetter(count)}.`;
-    case 3: return `(${count})`;
-    case 4: return `(${numberToLetter(count)})`;
-    case 5: return `${count}.`;
-    case 6: return `${numberToLetter(count)}.`;
-    case 7: return `(${count})`;
-    case 8: return `(${numberToLetter(count)})`;
-    default: return '';
-  }
-}
-
 /**
  * Paragraph rendering - uses hanging indent so wrapped text aligns
  * with the start of body text (after citation), matching DOCX output.
@@ -458,7 +376,7 @@ function ParagraphItem({
   spec?: ParagraphIndentSpec;
   isLast?: boolean;
 }) {
-  const citation = generateCitation(paragraph, index, allParagraphs, documentType, fourDigitNumbering, chapterNumber);
+  const citation = generateDisplayCitation(paragraph, index, allParagraphs, { documentType, fourDigitNumbering, chapterNumber });
   const level = paragraph.level;
   const tabs = PDF_PARAGRAPH_TABS[level as keyof typeof PDF_PARAGRAPH_TABS] || PDF_PARAGRAPH_TABS[1];
   const isUnderlined = level >= 5 && level <= 8;
@@ -1516,7 +1434,7 @@ export function NavalLetterPDF({
                      <View key={p.id} wrap={false} style={{ marginLeft: PDF_PARAGRAPH_TABS[1].citation, marginBottom: PDF_SPACING.paragraph }}>
                          {/* 4. Recommendation. */}
                         <Text>
-                            {generateCitation(p, i, paragraphsWithContent, formData.documentType, formData.fourDigitNumbering, formData.chapterNumber)}
+                            {generateDisplayCitation(p, i, paragraphsWithContent, { documentType: formData.documentType, fourDigitNumbering: formData.fourDigitNumbering, chapterNumber: formData.chapterNumber })}
                             {/* Restore title for the actual Recommendation paragraph */}
                             {p.title && (
                                 <Text>
