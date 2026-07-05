@@ -42,3 +42,6 @@ sbom.spdx.json
 # Audit reports
 audit-report-*.json
 tsc-errors.txt
+
+# manual source snapshots do not belong in git
+backups/
