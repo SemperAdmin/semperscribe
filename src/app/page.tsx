@@ -9,8 +9,6 @@ import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
 import { loadSavedLetters, saveLetterToStorage } from '@/lib/storage-utils';
-import { getPDFPageCount, addMultipleSignaturesToBlob, ManualSignaturePosition } from '@/lib/pdf-generator';
-import { generateDocxBlob } from '@/lib/docx-generator';
 import { getExportBlockers, runLetterValidators, secnavPageCapIssue } from '@/lib/letter-validators';
 import { SignaturePosition } from '@/types';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
@@ -21,7 +19,6 @@ import { downloadDocument } from '@/services/export/index';
 import { useToast } from '@/hooks/use-toast';
 import { getStateFromUrl, clearShareParam, SignatureRouting } from '@/lib/url-state';
 import { SignatureCeremonyPanel } from '@/components/signature/SignatureCeremonyPanel';
-import { addSignatureField, addMultipleSignatureFields } from '@/lib/pdf-signature-field';
 import { generateShareableUrl, copyToClipboard } from '@/lib/url-state';
 import { useParagraphs } from '@/hooks/useParagraphs';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
@@ -268,6 +265,7 @@ function NavalLetterGeneratorInner() {
   const applySignatureFields = useCallback(async (blob: Blob): Promise<Blob> => {
     const fields = (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
     if (fields.length === 0) return blob;
+    const { addMultipleSignatureFields } = await import('@/lib/pdf-signature-field');
     const bytes = await addMultipleSignatureFields(await blob.arrayBuffer(), fields.map(f => ({
       page: f.page, x: f.x, y: f.y, width: f.width, height: f.height,
       signerName: f.signerName, reason: f.reason, contactInfo: f.contactInfo,
@@ -414,6 +412,7 @@ function NavalLetterGeneratorInner() {
   const handleOpenSignaturePlacement = async () => {
     try {
       const blob = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+      const { getPDFPageCount } = await import('@/lib/pdf-generator');
       const pageCount = await getPDFPageCount(blob);
       setSignaturePdfBlob(blob);
       setSignaturePdfPageCount(pageCount);
@@ -455,6 +454,7 @@ function NavalLetterGeneratorInner() {
     const base = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
     const fields = (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
     if (fields.length > 0) return applySignatureFields(base);
+    const { addSignatureField } = await import('@/lib/pdf-signature-field');
     const bytes = await addSignatureField(await base.arrayBuffer(), { signerName: formData.sig });
     return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
   }, [formData, vias, references, enclosures, copyTos, paragraphs, distList, applySignatureFields]);
@@ -516,6 +516,7 @@ function NavalLetterGeneratorInner() {
       let secnavCountedBlob: Blob | null = null;
       if (formData.documentType === 'secnav-instruction' || formData.documentType === 'secnav-notice') {
         secnavCountedBlob = await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+        const { getPDFPageCount } = await import('@/lib/pdf-generator');
         const capIssue = secnavPageCapIssue(formData.documentType, await getPDFPageCount(secnavCountedBlob));
         if (capIssue) {
           alert(`Export blocked:\n\n- ${capIssue.rule}\n  ${capIssue.detail}\n  [${capIssue.citation}]`);
@@ -536,6 +537,7 @@ function NavalLetterGeneratorInner() {
           ? mergeAdminSubsections(paragraphs, formData.adminSubsections)
           : paragraphs;
 
+        const { generateDocxBlob } = await import('@/lib/docx-generator');
         blob = await generateDocxBlob(formData, vias, references, enclosures, copyTos, paragraphsToRender, distList);
       }
 

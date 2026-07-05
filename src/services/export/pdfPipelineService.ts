@@ -1,11 +1,12 @@
 import { ParagraphData, FormData } from '@/types';
 import { DOCUMENT_TYPES, PdfPipeline } from '@/lib/schemas';
-import { generateBasePDFBlob } from '@/lib/pdf-generator';
-import { generateNavmc10274 } from '@/services/pdf/navmc10274Generator';
-import { generateNavmc11811 } from '@/services/pdf/navmc11811Generator';
-import { createCoordinationPagePdf, CoordinationPageData } from '@/services/pdf/coordinationPageGenerator';
+import type { CoordinationPageData } from '@/services/pdf/coordinationPageGenerator';
 import { Navmc11811Data } from '@/types/navmc';
 import { mergeAdminSubsections } from '@/lib/naval-format-utils';
+
+// Generators are imported dynamically inside each pipeline so the PDF
+// engines (@react-pdf/renderer, pdf-lib, the seal data) stay out of the
+// first-load bundle and load on the first preview/export instead.
 
 interface PdfBuildContext {
   formData: FormData;
@@ -58,6 +59,7 @@ function buildNavmc11811Data(ctx: PdfBuildContext): Navmc11811Data {
 }
 
 async function generateStandardPdf(ctx: PdfBuildContext): Promise<Blob> {
+  const { generateBasePDFBlob } = await import('@/lib/pdf-generator');
   const paragraphsToRender = mergeAdminSubsections(ctx.paragraphs, ctx.formData.adminSubsections);
   return generateBasePDFBlob(
     ctx.formData,
@@ -71,12 +73,14 @@ async function generateStandardPdf(ctx: PdfBuildContext): Promise<Blob> {
 }
 
 async function generateNavmc10274Pdf(ctx: PdfBuildContext): Promise<Blob> {
+  const { generateNavmc10274 } = await import('@/services/pdf/navmc10274Generator');
   const data = buildNavmc10274Data(ctx);
   const pdfBytes = await generateNavmc10274(data);
   return new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
 }
 
 async function generateNavmc11811Pdf(ctx: PdfBuildContext): Promise<Blob> {
+  const { generateNavmc11811 } = await import('@/services/pdf/navmc11811Generator');
   const data = buildNavmc11811Data(ctx);
   const pdfBytes = await generateNavmc11811(data);
   return new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
@@ -93,6 +97,7 @@ function buildCoordinationPageData(ctx: PdfBuildContext): CoordinationPageData {
 }
 
 async function generateCoordinationPagePdf(ctx: PdfBuildContext): Promise<Blob> {
+  const { createCoordinationPagePdf } = await import('@/services/pdf/coordinationPageGenerator');
   const data = buildCoordinationPageData(ctx);
   const pdfBytes = await createCoordinationPagePdf(data);
   return new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });

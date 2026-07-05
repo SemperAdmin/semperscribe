@@ -1,6 +1,7 @@
 import { pdf } from '@react-pdf/renderer';
 import { FormData, ParagraphData } from '@/types';
 import { registerPDFFonts } from './pdf-fonts';
+import { preloadPDFSeal } from './pdf-seal';
 import NavalLetterPDF from '@/components/pdf/NavalLetterPDF';
 import React from 'react';
 import { openBlobInNewTab } from './blob-utils';
@@ -36,6 +37,7 @@ export async function generateBasePDFBlob(
   distList: string[] = []
 ): Promise<Blob> {
   ensureFontsRegistered();
+  await preloadPDFSeal();
 
   const document = React.createElement(NavalLetterPDF, {
     formData,
@@ -101,6 +103,7 @@ export async function generatePDFBlob(
   manualPosition?: ManualSignaturePosition
 ): Promise<Blob> {
   ensureFontsRegistered();
+  await preloadPDFSeal();
 
   // Create the PDF document element
   const document = React.createElement(NavalLetterPDF, {
