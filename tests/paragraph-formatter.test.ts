@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateCitation } from '@/lib/paragraph-formatter';
+import { generateCitation } from '@/lib/citation';
 import { FIXED_LADDER } from '@/lib/indent-engine';
 import { ParagraphData } from '@/types';
 

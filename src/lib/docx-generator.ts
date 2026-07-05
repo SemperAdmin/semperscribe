@@ -37,7 +37,8 @@ import {
   getEnclSpacing, 
   getCopyToSpacing, 
   getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle, resolveDistributionStatement } from './naval-format-utils';
-import { createFormattedParagraph, generateCitation } from "./paragraph-formatter";
+import { createFormattedParagraph } from "./paragraph-formatter";
+import { generateCitation } from "./citation";
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from "./indent-engine";
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from "./font-policy";
 import { parseAndFormatDate, formatBusinessDate } from "./date-utils";
