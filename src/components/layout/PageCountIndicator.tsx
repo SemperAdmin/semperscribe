@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getPdfWorkerSrc } from '@/lib/pdf-worker';
 
 // Dynamically import react-pdf to avoid SSR issues (pdfjs-dist requires Promise.withResolvers)
 const Document = dynamic(() => import("react-pdf").then((mod) => mod.Document), { ssr: false });
@@ -12,7 +13,7 @@ const Document = dynamic(() => import("react-pdf").then((mod) => mod.Document), 
 // Configure PDF.js worker on client only
 if (typeof window !== 'undefined') {
     import("react-pdf").then((pdfjs) => {
-        pdfjs.pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.pdfjs.version}/build/pdf.worker.min.mjs`;
+        pdfjs.pdfjs.GlobalWorkerOptions.workerSrc = getPdfWorkerSrc();
     });
 }
 

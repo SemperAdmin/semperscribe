@@ -1,5 +1,6 @@
 import { ExtractedText, SourceFormat } from './extractionTypes';
 import { linesFromText } from './correspondenceParser';
+import { getPdfWorkerSrc } from '@/lib/pdf-worker';
 
 /**
  * Browser-side text extraction for the document import pipeline:
@@ -120,8 +121,9 @@ export function assemblePdfLines(items: PdfTextItem[]): string[] {
 async function extractPdf(data: ArrayBuffer): Promise<ExtractedText> {
   const pdfjs = await import('pdfjs-dist');
   if (typeof window !== 'undefined' && typeof Worker !== 'undefined' && !pdfjs.GlobalWorkerOptions.workerSrc) {
-    // Same CDN worker configuration the app's react-pdf views use.
-    pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+    // Same-origin vendored worker (public/pdf.worker.min.mjs) — shared
+    // with the app's react-pdf views via getPdfWorkerSrc().
+    pdfjs.GlobalWorkerOptions.workerSrc = getPdfWorkerSrc();
   }
 
   let doc;

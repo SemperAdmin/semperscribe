@@ -18,6 +18,7 @@ import { ChevronLeft, ChevronRight, Move, Download, Trash2, Maximize2, X, AlertC
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { SignaturePosition } from "@/types";
+import { getPdfWorkerSrc } from '@/lib/pdf-worker';
 
 // Dynamically import react-pdf to avoid SSR issues
 const Document = dynamic(() => import("react-pdf").then((mod) => mod.Document), { ssr: false });
@@ -26,7 +27,7 @@ const Page = dynamic(() => import("react-pdf").then((mod) => mod.Page), { ssr: f
 // Configure PDF.js worker on client side only
 if (typeof window !== "undefined") {
   import("react-pdf").then((pdfjs) => {
-    pdfjs.pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.pdfjs.version}/build/pdf.worker.min.mjs`;
+    pdfjs.pdfjs.GlobalWorkerOptions.workerSrc = getPdfWorkerSrc();
   });
 }
 
