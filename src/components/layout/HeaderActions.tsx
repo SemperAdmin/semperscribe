@@ -215,6 +215,25 @@ export function HeaderActions({
 
   return (
     <div className="flex items-center space-x-2">
+      {/* Hidden file inputs. These must live OUTSIDE the dropdown menu:
+          Radix unmounts DropdownMenuContent when the menu closes, and
+          clicking an import item closes the menu while the OS file
+          picker is still open — an input inside the content would be
+          detached by selection time and its change event lost. */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept=".nldp,.json"
+      />
+      <input
+        type="file"
+        ref={documentInputRef}
+        onChange={handleDocumentFileChange}
+        className="hidden"
+        accept=".docx,.pdf"
+      />
       {onSettings && (
         <Button variant="ghost" size="sm" className={buttonClass("hidden sm:flex")} onClick={onSettings} title="Settings">
           <Settings className={cn("w-4 h-4", iconClass)} />
@@ -333,22 +352,6 @@ export function HeaderActions({
               </DropdownMenuItem>
             </>
           )}
-
-          {/* Hidden File Inputs */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-            accept=".nldp,.json"
-          />
-          <input
-            type="file"
-            ref={documentInputRef}
-            onChange={handleDocumentFileChange}
-            className="hidden"
-            accept=".docx,.pdf"
-          />
 
           <DropdownMenuSeparator className="bg-border" />
           
