@@ -20,6 +20,7 @@ import {
   PDF_SUBJECT,
   PDF_CONTENT_WIDTH,
   PDF_SPACING,
+  LINE_HEIGHT_12PT,
 } from '@/lib/pdf-settings';
 
 // Height reserved for continuation page header (Subj line + spacing)
@@ -807,7 +808,13 @@ export function NavalLetterPDF({
                 ? CONTINUATION_HEADER_HEIGHT
                 : isCivilianStyle
                   ? CONTINUATION_HEADER_HEIGHT + 48
-                  : CONTINUATION_SPACER_NAVAL }} />
+                  /* Multi-line subjects wrap inside the fixed header, so the
+                     body spacer must grow one line per extra Subj line or the
+                     blank line below the Subj block collapses (M-5216.5:
+                     text resumes on the 2nd line below the subject). Mirrors
+                     the DOCX side, where Word grows the header automatically. */
+                  : CONTINUATION_SPACER_NAVAL
+                    + Math.max(0, formattedSubjLines.length - 1) * LINE_HEIGHT_12PT }} />
             ) : null
           )}
         />

@@ -8,4 +8,4 @@
  * Settings). An externally hosted form — the app itself makes no
  * network calls; this only opens a new tab.
  */
-export const FEEDBACK_URL = 'https://semperadmin.github.io/Sentinel/#detail/naval-letter-formatter/todo';
+export const FEEDBACK_URL = 'https://forms.osi.apps.mil/r/k5QWzJDL9P';
