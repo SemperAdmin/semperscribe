@@ -126,6 +126,7 @@ export function ReferenceManager({ references, onChange, narrative = '', onNarra
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Remove reference"
                 onClick={() => removeReference(index)}
                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
               >

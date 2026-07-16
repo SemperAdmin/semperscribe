@@ -54,7 +54,7 @@ function SSICCombobox({ value, onChange, placeholder }: { value: string; onChang
         <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
           {filtered.map((s) => (
             <button
-              key={s.code}
+              key={`${s.code}-${s.nomenclature}`}
               type="button"
               className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
               onPointerDown={(e) => {
@@ -125,7 +125,9 @@ export function DynamicForm({ documentType, onSubmit, defaultValues, children }:
       // Ensure documentType is set
       sanitized.documentType = documentType.id;
       return sanitized;
-  }, [defaultValues, allowedTopLevelKeys, documentType.id]);
+  // documentType is a module-level definition object (DOCUMENT_TYPES),
+  // referentially stable across renders - memo timing is unchanged.
+  }, [defaultValues, allowedTopLevelKeys, documentType]);
 
   const form = useForm({
     resolver: zodResolver(documentType.schema),
@@ -134,8 +136,11 @@ export function DynamicForm({ documentType, onSubmit, defaultValues, children }:
   });
 
   // Watch for changes to sync with parent immediately (optional but good for previews)
+  // form.watch subscription (not useWatch) is deliberate: the callback
+  // debounces without re-rendering this large form on every keystroke.
   React.useEffect(() => {
     let timeoutId: NodeJS.Timeout;
+    // eslint-disable-next-line react-hooks/incompatible-library
     const subscription = form.watch((value) => {
        if (onSubmit) {
          clearTimeout(timeoutId);
@@ -155,7 +160,9 @@ export function DynamicForm({ documentType, onSubmit, defaultValues, children }:
       subscription.unsubscribe();
       clearTimeout(timeoutId);
     };
-  }, [form.watch, onSubmit]);
+  // form is the stable useForm instance; allowedTopLevelKeys is memoized
+  // per documentType - the subscription still attaches once per form.
+  }, [form, onSubmit, allowedTopLevelKeys]);
 
   const renderField = (field: FieldDefinition) => {
     // Dynamic condition check

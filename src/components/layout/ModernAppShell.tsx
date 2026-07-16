@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Menu } from 'lucide-react';
+import { Menu, Eye } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { LivePreview } from './LivePreview';
 import { HeaderActions } from './HeaderActions';
@@ -28,6 +28,8 @@ interface ModernAppShellProps {
   isImportingDocument?: boolean;
   onClearForm: () => void;
   savedLetters: SavedLetter[];
+  /** P1.2: opens the document library dialog */
+  onOpenLibrary?: () => void;
   onLoadTemplateUrl: (url: string) => void;
   currentUnitCode?: string;
   currentUnitName?: string;
@@ -44,6 +46,13 @@ interface ModernAppShellProps {
   onAddSignature?: () => void;
   onBatchGenerate?: () => void;
   onProofread?: () => void;
+  /** P3.1 / P3.3 / P3.2 */
+  onFindReplace?: () => void;
+  onGuide?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
   onSettings?: () => void;
   isDirty?: boolean;
   lastSavedAt?: Date | null;
@@ -66,6 +75,7 @@ export function ModernAppShell({
   isImportingDocument,
   onClearForm,
   savedLetters,
+  onOpenLibrary,
   onLoadTemplateUrl,
   currentUnitCode,
   currentUnitName,
@@ -79,6 +89,12 @@ export function ModernAppShell({
   onAddSignature,
   onBatchGenerate,
   onProofread,
+  onFindReplace,
+  onGuide,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
   onSettings,
   isDirty,
   lastSavedAt,
@@ -96,6 +112,14 @@ export function ModernAppShell({
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-sans overflow-hidden">
+      {/* F3 (SECTION_508_FINDINGS): skip link - first focusable element */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:text-foreground focus:shadow-lg"
+      >
+        Skip to document form
+      </a>
+
       {/* Persistent compliance banner. Maps to COMPLIANCE_REMEDIATION_PLAN.md Phase 4 P4-1. */}
       <div
         role="alert"
@@ -173,6 +197,7 @@ export function ModernAppShell({
             onGeneratePdf={onGeneratePdf}
             onClearForm={onClearForm}
             savedLetters={savedLetters}
+            onOpenLibrary={onOpenLibrary}
             onLoadTemplateUrl={onLoadTemplateUrl}
             currentUnitCode={currentUnitCode}
             currentUnitName={currentUnitName}
@@ -187,6 +212,12 @@ export function ModernAppShell({
             onAddSignature={onAddSignature}
             onBatchGenerate={onBatchGenerate}
             onProofread={onProofread}
+            onFindReplace={onFindReplace}
+            onGuide={onGuide}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            canUndo={canUndo}
+            canRedo={canRedo}
             onSettings={onSettings}
           />
       </header>
@@ -218,11 +249,13 @@ export function ModernAppShell({
         </Sheet>
 
         {/* Center Pane: Editor */}
-        <main className="flex-1 overflow-y-auto bg-muted/10 p-4 md:p-6 lg:p-8 relative scroll-smooth">
+        {/* F2 (SECTION_508_FINDINGS): app/layout.tsx owns the main
+            landmark - this is a labeled region, not a second main. */}
+        <div id="main-content" tabIndex={-1} role="region" aria-label="Document form" className="flex-1 overflow-y-auto bg-muted/10 p-4 md:p-6 lg:p-8 relative scroll-smooth">
           <div className="max-w-4xl mx-auto space-y-6 pb-8">
              {children}
           </div>
-        </main>
+        </div>
 
         {/* Right Pane: Live Preview or Custom Panel */}
         {showPreview && documentType && (
@@ -246,6 +279,19 @@ export function ModernAppShell({
           )
         )}
       </div>
+
+      {/* P4.5: floating preview button - phones and tablets have no
+          preview pane (hidden below xl), this opens the modal. */}
+      {documentType && (
+        <button
+          type="button"
+          onClick={() => setShowPreviewModal(true)}
+          className="xl:hidden fixed bottom-16 right-4 z-40 rounded-full bg-primary text-primary-foreground shadow-lg px-4 py-2.5 text-sm font-medium flex items-center gap-1.5 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring"
+          aria-label="Open document preview"
+        >
+          <Eye className="w-4 h-4" /> Preview
+        </button>
+      )}
 
       {/* Compliance footer. Maps to COMPLIANCE_REMEDIATION_PLAN.md Phase 4 P4-2. */}
       <footer className="shrink-0 border-t bg-muted/40 text-muted-foreground text-xs px-4 py-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">

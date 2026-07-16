@@ -6,17 +6,21 @@ import { getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-uti
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { downloadDocument } from '@/services/export/index';
 import type { DocumentDataSlices } from './useLivePreview';
+import type { EnclosureAttachment } from '@/lib/enclosure-attachments';
 
 interface UseDocumentExportArgs {
   data: DocumentDataSlices;
   applySignatureFields: (blob: Blob) => Promise<Blob>;
+  /** P3.6: attachments merged into PDF exports, in order. */
+  attachments?: EnclosureAttachment[];
+  attachmentCoverPages?: boolean;
 }
 
 /**
  * Document export orchestration: the hard export gate, the SECNAV
  * page-cap check, format routing (PDF/DOCX/I-Type), and the download.
  */
-export function useDocumentExport({ data, applySignatureFields }: UseDocumentExportArgs) {
+export function useDocumentExport({ data, applySignatureFields, attachments, attachmentCoverPages }: UseDocumentExportArgs) {
   const { formData, vias, references, enclosures, copyTos, paragraphs, distList } = data;
 
   const generateDocument = async (format: 'docx' | 'pdf') => {
@@ -68,6 +72,20 @@ export function useDocumentExport({ data, applySignatureFields }: UseDocumentExp
 
         const { generateDocxBlob } = await import('@/lib/docx-generator');
         blob = await generateDocxBlob(formData, vias, references, enclosures, copyTos, paragraphsToRender, distList);
+      }
+
+      // P3.6: merge attached PDF enclosures into the export (PDF only;
+      // the attachment panel states DOCX exports exclude them).
+      if (format === 'pdf' && attachments && attachments.length > 0) {
+        const { mergeAttachmentsIntoPdf } = await import('@/lib/enclosure-attachments');
+        const typedCount = enclosures.filter((e) => e.trim()).length;
+        const startingNumber = parseInt(formData.startingEnclosureNumber || '1', 10)
+          + Math.max(0, typedCount - attachments.length);
+        const mergedBytes = await mergeAttachmentsIntoPdf(await blob.arrayBuffer(), attachments, {
+          coverPages: attachmentCoverPages ?? true,
+          startingNumber,
+        });
+        blob = new Blob([new Uint8Array(mergedBytes)], { type: 'application/pdf' });
       }
 
       const url = window.URL.createObjectURL(blob);

@@ -82,6 +82,7 @@ export function MultipleToSection({ recipients, setRecipients, toDistribution, s
                   className="flex-shrink-0 border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
                   onClick={addItem}
                   title="Add Recipient"
+                    aria-label="Add Recipient"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -92,6 +93,7 @@ export function MultipleToSection({ recipients, setRecipients, toDistribution, s
                   className="flex-shrink-0 border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
                   onClick={() => removeItem(index)}
                   title="Remove Recipient"
+                    aria-label="Remove Recipient"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

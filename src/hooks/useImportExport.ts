@@ -3,7 +3,8 @@
 import { useCallback } from 'react';
 import { FormData, ParagraphData, ValidationState } from '@/types';
 import { getExportFilename } from '@/lib/naval-format-utils';
-import { generateShareableUrl, getStateFromUrl, clearShareParam, copyToClipboard, ShareableState } from '@/lib/url-state';
+import { generateShareableUrl, generateEncryptedShareUrl, getStateFromUrl, clearShareParam, copyToClipboard, ShareableState } from '@/lib/url-state';
+import type { ShareLinkOptions } from '@/components/ShareLinkDialog';
 import { generateFullMessage, validateAMHSMessage } from '@/services/amhs/amhsFormatter';
 import { getBasePath } from '@/lib/path-utils';
 import { findLetterById } from '@/lib/storage-utils';
@@ -150,14 +151,22 @@ export function useImportExport(deps: ImportExportDeps) {
     debugUserAction('Export Data', { format: 'nldp' });
   }, [formData, vias, references, enclosures, copyTos, distList, paragraphs]);
 
-  const handleShareLink = useCallback(async () => {
+  // P1.1 (DONDOCS_PARITY_PLAN): password-encrypted links by default,
+  // legacy unprotected format behind an explicit opt-out.
+  const handleShareLink = useCallback(async (options: ShareLinkOptions = {}) => {
     if (!formData.documentType) {
       toast({ title: "No Document", description: "Please select a document type first.", variant: "destructive" });
       return;
     }
 
     const state: ShareableState = { formData, paragraphs, references, enclosures, vias, copyTos, distList, version: 1 };
-    const { url, isLong, error } = generateShareableUrl(state);
+    if (options.password && options.expiresDays) {
+      state.expires = new Date(Date.now() + options.expiresDays * 24 * 60 * 60 * 1000).toISOString();
+    }
+
+    const { url, isLong, error } = options.password
+      ? await generateEncryptedShareUrl(state, options.password)
+      : generateShareableUrl(state);
 
     if (error && !url) {
       toast({ title: "Failed to Generate Link", description: error, variant: "destructive" });
@@ -166,11 +175,12 @@ export function useImportExport(deps: ImportExportDeps) {
 
     const success = await copyToClipboard(url);
     if (success) {
+      const lengthNote = isLong ? " Note: This link is very long and may not work in all applications." : "";
       toast({
         title: "Link Copied!",
-        description: isLong
-          ? "Link copied. Note: This link is very long and may not work in all applications."
-          : "Share link copied to clipboard. Anyone with this link can view and edit the document.",
+        description: options.password
+          ? `Encrypted link copied. Share the password through a separate channel.${lengthNote}`
+          : `Unprotected link copied. Anyone with this link can view and edit the document.${lengthNote}`,
       });
     } else {
       toast({ title: "Copy Failed", description: "Could not copy to clipboard. Please try again.", variant: "destructive" });

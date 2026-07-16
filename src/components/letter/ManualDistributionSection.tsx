@@ -89,6 +89,7 @@ export function ManualDistributionSection({ distList, setDistList }: ManualDistr
                     className="flex-shrink-0 border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
                     onClick={addItem}
                     title="Add Distribution"
+                    aria-label="Add Distribution"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -99,6 +100,7 @@ export function ManualDistributionSection({ distList, setDistList }: ManualDistr
                     className="flex-shrink-0 border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
                     onClick={() => removeItem(index)}
                     title="Remove Distribution"
+                    aria-label="Remove Distribution"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

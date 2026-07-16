@@ -41,6 +41,7 @@ import { splitSubject, formatCancellationDate, getDirectiveDesignation, buildDir
 import { DISTRIBUTION_STATEMENTS } from '@/lib/constants';
 import { parseFormattedText } from '@/lib/pdf-text-parser';
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from '@/lib/indent-engine';
+import { getClassification, bannerText, needsCuiBlock, cuiBlockLines, portionPrefix, paragraphLevel } from '@/lib/classification';
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from '@/lib/font-policy';
 import type { ParagraphIndentSpec } from '@/lib/indent-engine';
 import { generateDisplayCitation } from '@/lib/citation';
@@ -611,6 +612,11 @@ export function NavalLetterPDF({
     formData.accentColor
   );
 
+  // P2 (DONDOCS_PARITY_PLAN): classification marking config
+  const classification = getClassification(formData);
+  const markingsOn = classification.enabled;
+  const bannerLine = bannerText(classification);
+
   const isBusinessLetter = formData.documentType === 'business-letter';
   const isExecCorr = formData.documentType === 'executive-correspondence';
   const isExecLetter = isExecCorr && (formData.execFormat === 'letter' || !formData.execFormat);
@@ -632,7 +638,14 @@ export function NavalLetterPDF({
   // P4.3: SECNAV instruction/notice join the directive path.
   const isSecnav = isSecnavDirective(formData.documentType);
   const isDirective = formData.documentType === 'mco' || formData.documentType === 'bulletin' || formData.documentType === 'change-transmittal' || isSecnav;
-  const paragraphsWithContent = paragraphs.filter((p) => p.content.trim() || (isDirective && p.title && p.title.trim()));
+  const paragraphsUnmarked = paragraphs.filter((p) => p.content.trim() || (isDirective && p.title && p.title.trim()));
+  // P2: portion prefixes prepend to content so wrapping and indent
+  // math see the real line (DoDM 5200.01 V2 portion convention).
+  const paragraphsWithContent = markingsOn && classification.portionMarking
+    ? paragraphsUnmarked.map((p) => p.content.trim()
+        ? { ...p, content: `${portionPrefix(paragraphLevel(p, classification))} ${p.content}` }
+        : p)
+    : paragraphsUnmarked;
 
   // Correspondence: paragraph indents from the relative engine
   // (SECNAV M-5216.5 Fig 7-8, content-relative). Directive/message
@@ -745,6 +758,37 @@ export function NavalLetterPDF({
   // P3.6: shared resolver — both emitters resolve fill-ins through
   // resolveDistributionStatement so the text can never diverge.
   const distributionStatementText = isDirective ? resolveDistributionStatement(formData) : '';
+
+  // P2: banner top and bottom of every page, bold, centered (DoDI
+  // 5200.48 / DoDM 5200.01 V2). CUI designation indicator block sits
+  // lower right on page 1 only.
+  const classificationBanner = markingsOn ? (
+    <>
+      <Text
+        style={{ position: 'absolute', top: 8, left: 0, right: 0, textAlign: 'center', fontSize: PDF_FONT_SIZES.body, fontFamily: fontFamily, fontWeight: 'bold' }}
+        fixed
+        render={() => bannerLine}
+      />
+      <Text
+        style={{ position: 'absolute', bottom: 8, left: 0, right: 0, textAlign: 'center', fontSize: PDF_FONT_SIZES.body, fontFamily: fontFamily, fontWeight: 'bold' }}
+        fixed
+        render={() => bannerLine}
+      />
+    </>
+  ) : null;
+  const cuiDesignationBlock = markingsOn && needsCuiBlock(classification) ? (
+    <View
+      style={{ position: 'absolute', bottom: 20, right: PDF_MARGINS.right, alignItems: 'flex-end' }}
+      fixed
+      render={({ pageNumber }) => pageNumber === 1 ? (
+        <View style={{ alignItems: 'flex-end' }}>
+          {cuiBlockLines(classification).map((line, i) => (
+            <Text key={i} style={{ fontSize: 8, lineHeight: 1.2, fontFamily: fontFamily }}>{line}</Text>
+          ))}
+        </View>
+      ) : null}
+    />
+  ) : null;
 
   return (
     <Document
@@ -1864,6 +1908,10 @@ export function NavalLetterPDF({
           />
         )}
 
+        {/* P2: classification banner (all pages) + CUI block (page 1) */}
+        {classificationBanner}
+        {cuiDesignationBlock}
+
         {/* FOUO Footer - Per MCO 5215.1K para 10 */}
         {/* "FOR OFFICIAL USE ONLY" centered at bottom of pages for FOUO-designated directives */}
         {isDirective && formData.fouoDesignation && formData.fouoDesignation !== '' && (
@@ -1989,6 +2037,7 @@ export function NavalLetterPDF({
       {/* Reports Required page — for directives with 5+ reports (MCO 5216.20B par. 29c) */}
       {isDirective && formData.reports && formData.reports.filter((r: { title: string }) => r.title).length >= 5 && (
         <Page size="LETTER" style={styles.page}>
+          {classificationBanner}
           <View style={{ alignItems: 'center', marginBottom: PDF_SPACING.sectionGap * 2 }}>
             <Text style={{ fontFamily: styles.page.fontFamily, fontSize: PDF_FONT_SIZES.body }}>
               Reports Required
@@ -2044,6 +2093,7 @@ export function NavalLetterPDF({
       {/* Locator Sheet — per MCO 5215.1K para 48 */}
       {isDirective && formData.showLocatorSheet && (
         <Page size="LETTER" style={styles.page}>
+          {classificationBanner}
           {/* Top-right: Directive designation and date */}
           <View style={{ alignItems: 'flex-end', marginBottom: PDF_SPACING.emptyLine }}>
             <Text style={{ fontFamily: fontFamily, fontSize: PDF_FONT_SIZES.body }}>
@@ -2083,6 +2133,7 @@ export function NavalLetterPDF({
       {/* Record of Changes — per MCO 5215.1K para 48 */}
       {isDirective && formData.showRecordOfChanges && (
         <Page size="LETTER" style={styles.page}>
+          {classificationBanner}
           <Text style={{ fontFamily: fontFamily, fontSize: 14, fontWeight: 'bold', textAlign: 'center', marginBottom: 24 }}>
             RECORD OF CHANGES
           </Text>
@@ -2121,6 +2172,7 @@ export function NavalLetterPDF({
       {/* Table of Contents — per MCO 5215.1K para 48 */}
       {isDirective && formData.showStructuralPages && (
         <Page size="LETTER" style={styles.page}>
+          {classificationBanner}
           <Text style={{ fontFamily: fontFamily, fontSize: 14, fontWeight: 'bold', textAlign: 'center', marginBottom: 24 }}>
             TABLE OF CONTENTS
           </Text>

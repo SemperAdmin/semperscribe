@@ -7,6 +7,8 @@ import { AMHSEditor } from '@/components/amhs/AMHSEditor';
 import { LandingPage } from '@/components/layout/LandingPage';
 import { UnitInfoSection } from '@/components/letter/UnitInfoSection';
 import { ParagraphSection } from '@/components/letter/ParagraphSection';
+import { ClassificationSection } from '@/components/letter/ClassificationSection';
+import { getClassification } from '@/lib/classification';
 import { ClosingBlockSection } from '@/components/letter/ClosingBlockSection';
 import { MultipleToSection } from '@/components/letter/MultipleToSection';
 import { ViaSection } from '@/components/letter/ViaSection';
@@ -50,6 +52,7 @@ interface DocumentLayoutProps {
   moveParagraphUp: (id: number) => void;
   moveParagraphDown: (id: number) => void;
   updateParagraphContent: (id: number, content: string) => void;
+  updateParagraphMarking: (id: number, marking: string) => void;
   toggleVoiceInput: (id: number) => void;
   addParagraph: (type: 'main' | 'sub' | 'same' | 'up', afterId: number) => void;
   removeParagraph: (id: number) => void;
@@ -63,6 +66,17 @@ interface DocumentLayoutProps {
   signaturePdfPageCount: number;
   // Dynamic form
   handleDynamicFormSubmit: (data: any) => void;
+  /** P3.5: inserts a clause as a new body paragraph */
+  onInsertClause?: (content: string) => void;
+  /** P3.6: attached PDF enclosures */
+  attachments?: import('@/lib/enclosure-attachments').EnclosureAttachment[];
+  onAddAttachment?: (attachment: import('@/lib/enclosure-attachments').EnclosureAttachment) => void;
+  onRemoveAttachment?: (id: string) => void;
+  onMoveAttachment?: (index: number, direction: -1 | 1) => void;
+  attachmentCoverPages?: boolean;
+  onAttachmentCoverPagesChange?: (value: boolean) => void;
+  /** Landing quick starts route through the same handler as the sidebar. */
+  onDocumentTypeChange?: (type: string) => void;
 }
 
 export function DocumentLayout({
@@ -88,6 +102,7 @@ export function DocumentLayout({
   moveParagraphUp,
   moveParagraphDown,
   updateParagraphContent,
+  updateParagraphMarking,
   toggleVoiceInput,
   addParagraph,
   removeParagraph,
@@ -98,11 +113,19 @@ export function DocumentLayout({
   handleSignatureConfirm,
   signaturePdfBlob,
   signaturePdfPageCount,
+  onInsertClause,
+  attachments,
+  onAddAttachment,
+  onRemoveAttachment,
+  onMoveAttachment,
+  attachmentCoverPages,
+  onAttachmentCoverPagesChange,
+  onDocumentTypeChange,
   handleDynamicFormSubmit,
 }: DocumentLayoutProps) {
   // Show landing page when no document type is selected
   if (!formData.documentType) {
-    return <LandingPage />;
+    return <LandingPage onSelectType={onDocumentTypeChange} />;
   }
 
   const docTypeDef = DOCUMENT_TYPES[formData.documentType] || DOCUMENT_TYPES['basic'];
@@ -173,6 +196,9 @@ export function DocumentLayout({
             />
           </div>
 
+          {/* P2 (DONDOCS_PARITY_PLAN): classification markings */}
+          <ClassificationSection formData={formData} setFormData={setFormData} />
+
           {features.showCoordinationTable && (
             <CoordinationPageForm formData={formData} setFormData={setFormData} />
           )}
@@ -213,6 +239,12 @@ export function DocumentLayout({
               setEnclosures={setEnclosures}
               formData={formData}
               setFormData={setFormData}
+              attachments={attachments}
+              onAddAttachment={onAddAttachment}
+              onRemoveAttachment={onRemoveAttachment}
+              onMoveAttachment={onMoveAttachment}
+              attachmentCoverPages={attachmentCoverPages}
+              onAttachmentCoverPagesChange={onAttachmentCoverPagesChange}
             />
           )}
 
@@ -236,6 +268,9 @@ export function DocumentLayout({
               toggleVoiceInput={toggleVoiceInput}
               addParagraph={addParagraph}
               removeParagraph={removeParagraph}
+              classification={getClassification(formData)}
+              onUpdateMarking={updateParagraphMarking}
+              onInsertClause={onInsertClause}
             />
           )}
 

@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Search, User, Paintbrush, FileText, Database, Trash2, ShieldAlert, AlertTriangle, Scale, MessageSquare, ExternalLink } from 'lucide-react';
 import { UserProfile, resolveUnit } from '@/hooks/useUserProfile';
+import { PlatformSettings } from '@/components/PlatformSettings';
 import { useUnits } from '@/hooks/useReferenceData';
 import { resetDisclaimer } from '@/lib/storage-utils';
 import { DISCLAIMERS } from '@/lib/security-utils';
@@ -373,7 +374,7 @@ export function SettingsDialog({
                 <div className="flex items-center justify-between rounded-md border border-border p-3">
                   <div>
                     <p className="text-sm text-foreground">{savedLetterCount} saved draft{savedLetterCount !== 1 ? 's' : ''}</p>
-                    <p className="text-xs text-muted-foreground">Stored in browser localStorage</p>
+                    <p className="text-xs text-muted-foreground">Stored in this browser (IndexedDB document library)</p>
                   </div>
                   <Button
                     variant="destructive"
@@ -390,6 +391,10 @@ export function SettingsDialog({
                   </Button>
                 </div>
               </div>
+
+              <Separator />
+
+              <PlatformSettings />
 
               <Separator />
 

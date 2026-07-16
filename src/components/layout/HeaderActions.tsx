@@ -19,7 +19,11 @@ import {
   ClipboardCheck,
   MoreVertical,
   Settings,
-  MessageSquare
+  MessageSquare,
+  Undo2,
+  Redo2,
+  Replace,
+  BookOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FEEDBACK_URL } from '@/lib/app-links';
@@ -89,6 +93,8 @@ function TemplateList({ templates, onSelect }: { templates: Template[]; onSelect
 interface HeaderActionsProps {
   onSave: () => void;
   onLoadDraft: (id: string) => void;
+  /** P1.2: opens the document library dialog */
+  onOpenLibrary?: () => void;
   onImport: (data: any) => void;
   onImportDocument?: (file: File) => void;
   isImportingDocument?: boolean;
@@ -116,6 +122,13 @@ interface HeaderActionsProps {
   onBatchGenerate?: () => void;
   // Proofread
   onProofread?: () => void;
+  // P3: find/replace, guide, undo/redo
+  onFindReplace?: () => void;
+  onGuide?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
   // Settings
   onSettings?: () => void;
 }
@@ -123,6 +136,7 @@ interface HeaderActionsProps {
 export function HeaderActions({
   onSave,
   onLoadDraft,
+  onOpenLibrary,
   onImport,
   onImportDocument,
   isImportingDocument,
@@ -146,6 +160,12 @@ export function HeaderActions({
   onAddSignature,
   onBatchGenerate,
   onProofread,
+  onFindReplace,
+  onGuide,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
   onSettings
 }: HeaderActionsProps) {
   const { 
@@ -284,6 +304,18 @@ export function HeaderActions({
         </DialogContent>
       </Dialog>
 
+      {/* P3.2: undo/redo */}
+      {onUndo && onRedo && (
+        <div className="flex items-center">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
+            <Undo2 className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">
+            <Redo2 className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
       <div className="h-4 w-px bg-border hidden md:block mx-2"></div>
 
       {/* File Menu */}
@@ -302,6 +334,13 @@ export function HeaderActions({
             Save Draft
           </DropdownMenuItem>
           
+          {onOpenLibrary && (
+            <DropdownMenuItem onClick={onOpenLibrary} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <FolderOpen className="w-4 h-4 mr-2" />
+              Document Library...
+            </DropdownMenuItem>
+          )}
+
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
               <FolderOpen className="w-4 h-4 mr-2" />
@@ -431,6 +470,18 @@ export function HeaderActions({
                     Proofread
                   </DropdownMenuItem>
                 )}
+                {onFindReplace && (
+                  <DropdownMenuItem onClick={onFindReplace} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                    <Replace className="w-4 h-4 mr-2" />
+                    Find and Replace
+                  </DropdownMenuItem>
+                )}
+                {onGuide && (
+                  <DropdownMenuItem onClick={onGuide} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Correspondence Guide
+                  </DropdownMenuItem>
+                )}
                 {onSettings && <DropdownMenuSeparator className="bg-border" />}
                 {onSettings && (
                   <DropdownMenuItem onClick={onSettings} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
@@ -476,6 +527,10 @@ export function HeaderActions({
                     Word Document (.docx)
                   </DropdownMenuItem>
                 )}
+                {/* F1 (SECTION_508_FINDINGS): PDF exports are untagged. */}
+                <div className="px-2 py-1.5 text-[11px] leading-snug text-muted-foreground" role="note">
+                  Screen-reader accessible copy needed? Export DOCX - PDF exports carry no accessibility tags.
+                </div>
                 {onBatchGenerate && (
                   <>
                     <DropdownMenuSeparator />

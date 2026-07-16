@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Book, Plus, Trash2, AlertTriangle, Bookmark } from 'lucide-react';
 import { FormData } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ReferenceSuggestInput } from './ReferenceSuggestInput';
 
 interface ReferencesSectionProps {
   references: string[];
@@ -130,12 +131,11 @@ export function ReferencesSection({ references, setReferences, formData, setForm
                 <span className="flex h-10 w-12 items-center justify-center flex-shrink-0 rounded-md bg-secondary text-secondary-foreground border border-secondary font-medium shadow-sm">
                   ({getReferenceLetter(index, formData.startingReferenceLevel)})
                 </span>
-                <Input
+                <ReferenceSuggestInput
                   className="flex-1 border-input focus-visible:ring-primary"
-                  type="text"
                   placeholder="Enter reference information (e.g., NAVADMIN 123/24, OPNAVINST 5000.1)"
                   value={ref}
-                  onChange={(e) => updateItem(index, e.target.value)}
+                  onChange={(value) => updateItem(index, value)}
                   aria-label={`Reference (${getReferenceLetter(index, formData.startingReferenceLevel)})`}
                 />
                 {index === references.length - 1 ? (
@@ -145,6 +145,7 @@ export function ReferencesSection({ references, setReferences, formData, setForm
                     className="flex-shrink-0 border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
                     onClick={addItem}
                     title="Add Reference"
+                    aria-label="Add Reference"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -155,6 +156,7 @@ export function ReferencesSection({ references, setReferences, formData, setForm
                     className="flex-shrink-0 border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
                     onClick={() => removeItem(index)}
                     title="Remove Reference"
+                    aria-label="Remove Reference"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

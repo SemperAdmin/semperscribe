@@ -13,15 +13,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Paperclip, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { FormData } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AttachedEnclosures } from './AttachedEnclosures';
+import { EnclosureAttachment } from '@/lib/enclosure-attachments';
 
 interface EnclosuresSectionProps {
   enclosures: string[];
   setEnclosures: (encls: string[]) => void;
   formData: FormData;
   setFormData: (data: FormData) => void;
+  /** P3.6: attached PDF enclosures (session-scoped, PDF export merge) */
+  attachments?: EnclosureAttachment[];
+  onAddAttachment?: (attachment: EnclosureAttachment) => void;
+  onRemoveAttachment?: (id: string) => void;
+  onMoveAttachment?: (index: number, direction: -1 | 1) => void;
+  attachmentCoverPages?: boolean;
+  onAttachmentCoverPagesChange?: (value: boolean) => void;
 }
 
-export function EnclosuresSection({ enclosures, setEnclosures, formData, setFormData }: EnclosuresSectionProps) {
+export function EnclosuresSection({ enclosures, setEnclosures, formData, setFormData, attachments, onAddAttachment, onRemoveAttachment, onMoveAttachment, attachmentCoverPages, onAttachmentCoverPagesChange }: EnclosuresSectionProps) {
   const [showEncl, setShowEncl] = useState(false);
 
   useEffect(() => {
@@ -158,6 +167,7 @@ export function EnclosuresSection({ enclosures, setEnclosures, formData, setForm
                       className="flex-shrink-0 border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
                       onClick={addItem}
                       title="Add Enclosure"
+                    aria-label="Add Enclosure"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -168,6 +178,7 @@ export function EnclosuresSection({ enclosures, setEnclosures, formData, setForm
                       className="flex-shrink-0 border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
                       onClick={() => removeItem(index)}
                       title="Remove Enclosure"
+                    aria-label="Remove Enclosure"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -175,6 +186,18 @@ export function EnclosuresSection({ enclosures, setEnclosures, formData, setForm
                 </div>
               ))}
             </div>
+
+            {!isPositionPaper && attachments && onAddAttachment && onRemoveAttachment && onMoveAttachment && onAttachmentCoverPagesChange && (
+              <AttachedEnclosures
+                attachments={attachments}
+                onAdd={onAddAttachment}
+                onRemove={onRemoveAttachment}
+                onMove={onMoveAttachment}
+                coverPages={attachmentCoverPages ?? true}
+                onCoverPagesChange={onAttachmentCoverPagesChange}
+                startingNumber={parseInt(formData.startingEnclosureNumber || '1', 10) + Math.max(0, enclosures.filter(e => e.trim()).length - attachments.length)}
+              />
+            )}
           </div>
         )}
       </CardContent>

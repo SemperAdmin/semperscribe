@@ -41,6 +41,7 @@ import { createFormattedParagraph } from "./paragraph-formatter";
 import { generateCitation } from "./citation";
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from "./indent-engine";
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from "./font-policy";
+import { getClassification, bannerText, needsCuiBlock, cuiBlockLines, portionPrefix, paragraphLevel } from "./classification";
 import { parseAndFormatDate, formatBusinessDate } from "./date-utils";
 import { DISTRIBUTION_STATEMENTS } from "@/lib/constants";
 import { DOC_SETTINGS, TAB_STOPS, INDENTS } from "./doc-settings";
@@ -95,6 +96,24 @@ export async function generateDocxBlob(
   };
   const font = getFont(formData.bodyFont);
   const headerColor = getHeaderColor(formData.accentColor);
+
+  // P2 (DONDOCS_PARITY_PLAN): classification marking config and builders
+  const classification = getClassification(formData);
+  const markingsOn = classification.enabled;
+  const classificationBannerParagraph = () => new Paragraph({
+    children: [new TextRun({ text: bannerText(classification), font, size: FONT_SIZE_BODY, bold: true })],
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 0 },
+  });
+  const bannerHeaderParagraphs = (): Paragraph[] => (markingsOn ? [classificationBannerParagraph()] : []);
+  // CUI designation indicator block - page 1, lower right (DoDI 5200.48 para 3.4)
+  const cuiBlockParagraphs: Paragraph[] = markingsOn && needsCuiBlock(classification)
+    ? cuiBlockLines(classification).map((line) => new Paragraph({
+        children: [new TextRun({ text: line, font, size: 16 })],
+        alignment: AlignmentType.RIGHT,
+        spacing: { after: 0 },
+      }))
+    : [];
   const sealBuffer = await getDoDSealBuffer(formData.headerType === 'DON' ? 'navy' : 'marine-corps'); // DLA uses marine-corps (DoD) seal
   // P4.3: SECNAV instruction/notice join the directive path (SECNAV
   // M-5215.1 delegates margins/letter geometry like MCO 5215.1K does).
@@ -1029,7 +1048,14 @@ export async function generateDocxBlob(
 
   // --- Body Paragraphs ---
   const bodyParagraphs: (Paragraph | Table)[] = [];
-  const paragraphsWithContent = paragraphs.filter(p => p.content.trim() || p.title);
+  const paragraphsUnmarked = paragraphs.filter(p => p.content.trim() || p.title);
+  // P2: portion prefixes prepend to content so wrapping and indent
+  // math see the real line (DoDM 5200.01 V2 portion convention).
+  const paragraphsWithContent = markingsOn && classification.portionMarking
+    ? paragraphsUnmarked.map((p) => p.content.trim()
+        ? { ...p, content: `${portionPrefix(paragraphLevel(p, classification))} ${p.content}` }
+        : p)
+    : paragraphsUnmarked;
 
   // Correspondence: paragraph indents come from the relative engine
   // (SECNAV M-5216.5 Fig 7-8, content-relative). Directives (P3.2):
@@ -1896,6 +1922,7 @@ export async function generateDocxBlob(
 
   // --- Staffing Paper Footer ---
   let staffingFooter: Footer | undefined;
+  let staffingFooterLines: Paragraph[] | undefined;
   // Keep variable to avoid breaking children array until updated
   const staffingFooterParagraphs: Paragraph[] = []; 
 
@@ -1995,6 +2022,7 @@ export async function generateDocxBlob(
 
       }
       
+      staffingFooterLines = footerLines;
       staffingFooter = new Footer({
           children: footerLines
       });
@@ -2011,6 +2039,7 @@ export async function generateDocxBlob(
   if (sealBuffer && !isFromToMemo && !isMfr && !isStaffingPaper) {
       firstPageHeader = new Header({
           children: [
+              ...bannerHeaderParagraphs(),
               new Paragraph({
                   children: [
                       new ImageRun({
@@ -2038,7 +2067,7 @@ export async function generateDocxBlob(
           ],
       });
   } else {
-      firstPageHeader = new Header({ children: [] });
+      firstPageHeader = new Header({ children: bannerHeaderParagraphs() });
   }
 
   // Add FOUO to first page header for DLA types
@@ -2053,6 +2082,7 @@ export async function generateDocxBlob(
           // Rebuild with FOUO + seal
           firstPageHeader = new Header({
               children: [
+                  ...bannerHeaderParagraphs(),
                   fouoParagraph,
                   new Paragraph({
                       children: [
@@ -2070,7 +2100,7 @@ export async function generateDocxBlob(
               ],
           });
       } else {
-          firstPageHeader = new Header({ children: [fouoParagraph] });
+          firstPageHeader = new Header({ children: [...bannerHeaderParagraphs(), fouoParagraph] });
       }
   }
 
@@ -2215,7 +2245,7 @@ export async function generateDocxBlob(
   }
 
   const defaultHeader = new Header({
-      children: [...dlaFouoHeaderParagraphs, ...subsequentHeaderTables, ...subsequentHeaderParagraphs]
+      children: [...bannerHeaderParagraphs(), ...dlaFouoHeaderParagraphs, ...subsequentHeaderTables, ...subsequentHeaderParagraphs]
   });
 
   // --- Footer (Page Numbers) ---
@@ -2240,6 +2270,8 @@ export async function generateDocxBlob(
       ],
       alignment: isDLAType ? AlignmentType.RIGHT : AlignmentType.CENTER  // DLA: right margin per Ch.3-2 Para 13
   }));
+
+  if (markingsOn) footerChildren.push(classificationBannerParagraph());
 
   const footer = new Footer({ children: footerChildren });
 
@@ -2268,12 +2300,15 @@ export async function generateDocxBlob(
         margin: { top: 1440, right: 1440, bottom: 1440, left: 1440, header: 720, footer: 708 },
       },
     };
-    const emptyHeader = new Header({ children: [] });
+    const emptyHeader = new Header({ children: bannerHeaderParagraphs() });
     const romanFooter = (label: string) => new Footer({
-      children: [new Paragraph({
-        children: [new TextRun({ text: label, font, size: FONT_SIZE_BODY })],
-        alignment: AlignmentType.CENTER,
-      })],
+      children: [
+        new Paragraph({
+          children: [new TextRun({ text: label, font, size: FONT_SIZE_BODY })],
+          alignment: AlignmentType.CENTER,
+        }),
+        ...bannerHeaderParagraphs(),
+      ],
     });
     const structuralSection = (label: string, children: (Paragraph | Table)[]) => ({
       properties: structuralPageProps,
@@ -2363,6 +2398,16 @@ export async function generateDocxBlob(
     }
   }
 
+  // P2: first-page footer = CUI designation block (page 1 only), then
+  // the base footer content, then the banner when the base lacks one.
+  const baseFirstFooter: Paragraph[] = isStaffingPaper && staffingFooterLines
+    ? staffingFooterLines
+    : (showPageNumberOnFirstPage ? footerChildren : []);
+  const baseHasBanner = markingsOn && showPageNumberOnFirstPage && !(isStaffingPaper && staffingFooterLines);
+  const firstFooterChildren: Paragraph[] = [...cuiBlockParagraphs, ...baseFirstFooter];
+  if (markingsOn && !baseHasBanner) firstFooterChildren.push(classificationBannerParagraph());
+  const firstPageFooter = new Footer({ children: firstFooterChildren });
+
   // --- Assemble Document ---
   const doc = new Document({
     sections: [{
@@ -2390,7 +2435,7 @@ export async function generateDocxBlob(
         default: defaultHeader,
       },
       footers: {
-        first: isStaffingPaper && staffingFooter ? staffingFooter : (showPageNumberOnFirstPage ? footer : new Footer({ children: [] })),
+        first: firstPageFooter,
         default: footer,
       },
       children: [

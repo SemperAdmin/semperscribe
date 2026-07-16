@@ -88,6 +88,7 @@ export function CopyToSection({ copyTos, setCopyTos }: CopyToSectionProps) {
                     className="flex-shrink-0 border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
                     onClick={addItem}
                     title="Add Copy To"
+                    aria-label="Add Copy To"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -98,6 +99,7 @@ export function CopyToSection({ copyTos, setCopyTos }: CopyToSectionProps) {
                     className="flex-shrink-0 border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
                     onClick={() => removeItem(index)}
                     title="Remove Copy To"
+                    aria-label="Remove Copy To"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

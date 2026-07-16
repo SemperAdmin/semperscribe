@@ -243,7 +243,7 @@ export function DecisionGridSection({ data, mode, onDataChange, onModeChange }: 
                             onChange={(e) => updateCoa(idx, e.target.value)}
                             placeholder={`COA ${idx + 1}`}
                         />
-                        <Button variant="ghost" size="icon" onClick={() => removeCoa(idx)}>
+                        <Button variant="ghost" size="icon" aria-label="Remove course of action" onClick={() => removeCoa(idx)}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                     </div>
@@ -271,7 +271,7 @@ export function DecisionGridSection({ data, mode, onDataChange, onModeChange }: 
                             placeholder="Enter recommendation text..."
                             className="flex-1"
                         />
-                        <Button variant="ghost" size="icon" onClick={() => removeRecItem(idx)} className="mt-1">
+                        <Button variant="ghost" size="icon" aria-label="Remove recommendation item" onClick={() => removeRecItem(idx)} className="mt-1">
                             <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                     </div>

@@ -6,6 +6,8 @@
  */
 
 import { ParagraphData, AdminSubsections } from '@/types';
+import { ClassificationConfig, STANDARD_LEVELS, TRAINING_LEVELS } from '@/lib/classification';
+import { ClauseToolbar } from './ClauseToolbar';
 import { ParagraphItem } from './ParagraphItem';
 import { 
   Indent,
@@ -39,6 +41,11 @@ interface ParagraphSectionProps {
   removeParagraph: (id: number) => void;
   fourDigitNumbering?: boolean;
   chapterNumber?: number;
+  /** P2: marking config; portion dropdowns render when enabled. */
+  classification?: ClassificationConfig;
+  onUpdateMarking?: (id: number, marking: string) => void;
+  /** P3.5: inserts a clause as a new body paragraph */
+  onInsertClause?: (content: string) => void;
 }
 
 export function ParagraphSection({
@@ -56,9 +63,16 @@ export function ParagraphSection({
   addParagraph,
   removeParagraph,
   fourDigitNumbering,
-  chapterNumber
+  chapterNumber,
+  classification,
+  onUpdateMarking,
+  onInsertClause
 }: ParagraphSectionProps) {
   const numberingErrors = validateParagraphNumbering(paragraphs);
+  const portionMarking = Boolean(classification?.enabled && classification.portionMarking && onUpdateMarking);
+  const markingLevels: string[] = classification?.customLevels
+    ? [...STANDARD_LEVELS, ...TRAINING_LEVELS]
+    : [...STANDARD_LEVELS];
   const [focusedId, setFocusedId] = useState<number | null>(null);
 
   // Options for 4-digit numbering (passed through to citation generation)
@@ -116,10 +130,18 @@ export function ParagraphSection({
   return (
     <Card className="mb-8 border-border shadow-sm border-l-4 border-l-primary">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="text-lg font-semibold flex items-center font-headline tracking-wide">
-          <Indent className="mr-2 h-5 w-5 text-primary-foreground" />
-          Body Paragraphs
-        </CardTitle>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-lg font-semibold flex items-center font-headline tracking-wide">
+            <Indent className="mr-2 h-5 w-5 text-primary-foreground" />
+            Body Paragraphs
+          </CardTitle>
+          {onInsertClause && (
+            <ClauseToolbar
+              onInsert={onInsertClause}
+              lastParagraphContent={paragraphs[paragraphs.length - 1]?.content}
+            />
+          )}
+        </div>
       </CardHeader>
       
       <CardContent className="pt-6 space-y-6">
@@ -299,6 +321,9 @@ export function ParagraphSection({
             isFocused={focusedId === paragraph.id}
             documentType={documentType}
             nextCitations={getNextCitations(paragraph, index)}
+            portionMarking={portionMarking}
+            markingLevels={markingLevels}
+            onUpdateMarking={onUpdateMarking}
           />
             );
           })}

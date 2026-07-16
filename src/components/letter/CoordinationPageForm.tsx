@@ -77,6 +77,7 @@ export function CoordinationPageForm({ formData, setFormData }: CoordinationPage
                   type="button"
                   variant="ghost"
                   size="icon"
+                  aria-label="Remove entry"
                   onClick={() => removeEntry(index)}
                   className="h-8 w-8 text-destructive hover:text-destructive"
                 >

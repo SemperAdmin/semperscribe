@@ -19,6 +19,8 @@ export interface ParagraphData {
   acronymError?: string;
   title?: string;
   isMandatory?: boolean;
+  /** P2: portion marking level (e.g. 'CUI'); absent = banner default. */
+  marking?: string;
 }
 
 export type EndorsementLevel = 'FIRST' | 'SECOND' | 'THIRD' | 'FOURTH' | 'FIFTH' | 'SIXTH' | 'SEVENTH' | 'EIGHTH' | 'NINTH' | 'TENTH' | '';
@@ -57,6 +59,10 @@ export interface AdminSubsections {
 export type SavedLetter = FormData & {
   id: string;
   savedAt: string;
+  /** P1.2: user-assigned document name (defaults to the subject). */
+  name?: string;
+  /** P1.2: ISO timestamp of the last save - sortable, unlike savedAt. */
+  updatedAt?: string;
   vias: string[];
   references: string[];
   enclosures: string[];

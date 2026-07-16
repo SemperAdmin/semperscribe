@@ -8,6 +8,7 @@
  *   warn  — cannot be verified automatically or plan-only provenance
  */
 import { FormData, ParagraphData } from '@/types';
+import { validateClassification } from '@/lib/classification';
 
 export type ValidatorSeverity = 'block' | 'fail' | 'warn';
 
@@ -437,6 +438,22 @@ export function validateDirectiveSchema(
  * bulletins self-cancel, "Canc frp: Mmm yyyy", last day of month,
  * 12-month hard ceiling from the bulletin date).
  */
+/**
+ * Timezone-safe parse for date inputs. `new Date('2027-01-31')` reads
+ * date-only ISO strings as UTC MIDNIGHT, so every getDate() west of
+ * Greenwich returns the previous day and month-end checks falsely
+ * fail (found by Stephen's local test run, 2026-07-15). Date-only
+ * strings parse into LOCAL calendar parts; anything else falls back
+ * to the platform parser.
+ */
+function parseDateLocal(raw: string): Date {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim());
+  if (dateOnly) {
+    return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
+  }
+  return new Date(raw);
+}
+
 export function validateBulletinCancellation(
   formData: FormData,
 ): ValidationIssue[] {
@@ -453,7 +470,7 @@ export function validateBulletinCancellation(
     });
     return issues;
   }
-  const canc = new Date(raw);
+  const canc = parseDateLocal(raw);
   if (isNaN(canc.getTime())) {
     issues.push({
       id: 'bulletin-canc-invalid',
@@ -477,7 +494,7 @@ export function validateBulletinCancellation(
     });
   }
   // 12-month hard ceiling from the bulletin's own date.
-  const base = new Date(formData.date || '');
+  const base = parseDateLocal(formData.date || '');
   if (!isNaN(base.getTime())) {
     const ceiling = new Date(base.getFullYear() + 1, base.getMonth(), base.getDate());
     if (canc.getTime() > ceiling.getTime()) {
@@ -680,7 +697,7 @@ export function validateSecnavNoticeCancellation(
     });
     return issues;
   }
-  const canc = new Date(raw);
+  const canc = parseDateLocal(raw);
   if (isNaN(canc.getTime())) {
     issues.push({
       id: 'secnav-notice-canc-invalid',
@@ -771,6 +788,7 @@ export function runLetterValidators(
     ...validateSecnavNoticeCancellation(formData),
     ...validateSecnavReferencesOverflow(formData, references),
     ...validateRevisionSuffix(formData),
+    ...validateClassification(formData, paragraphs),
   ];
 }
 

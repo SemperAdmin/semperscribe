@@ -16,6 +16,8 @@ export const STORAGE_KEYS = {
   savedLetters: 'navalLetters',
   userProfile: 'semperscribe-user-profile',
   disclaimerSeen: 'hasSeenDisclaimer',
+  /** P3.5: user-saved clause library */
+  customClauses: 'semperscribe-custom-clauses',
 } as const;
 
 const CURRENT_VERSION = 1;

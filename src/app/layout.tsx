@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { DisclaimerModal } from "@/components/DisclaimerModal";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 const bebasNeue = Bebas_Neue({
   weight: '400',
@@ -38,6 +39,7 @@ export default function RootLayout({
           </main>
           <DisclaimerModal />
           <Toaster />
+          <ServiceWorkerRegister />
         </ThemeProvider>
       </body>
     </html>

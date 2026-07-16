@@ -42,10 +42,10 @@ export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview,
                Refresh
              </Button>
            )}
-           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+           <Button variant="ghost" size="icon" aria-label="Print preview" className="h-7 w-7 text-muted-foreground hover:text-foreground">
              <Printer className="w-3.5 h-3.5" />
            </Button>
-           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+           <Button variant="ghost" size="icon" aria-label="Download preview" className="h-7 w-7 text-muted-foreground hover:text-foreground">
              <Download className="w-3.5 h-3.5" />
            </Button>
         </div>
@@ -72,6 +72,10 @@ export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview,
       )}
 
       <div className="flex-1 overflow-hidden relative bg-muted/40">
+        {/* F5 (SECTION_508_FINDINGS): announce preview state changes */}
+        <div aria-live="polite" className="sr-only">
+          {isLoading ? 'Updating document preview' : previewUrl ? 'Document preview updated' : 'Preview not available'}
+        </div>
         <PageCountIndicator url={previewUrl || null} documentType={documentType} />
         {isLoading ? (
           <div className="absolute inset-0 flex items-center justify-center">

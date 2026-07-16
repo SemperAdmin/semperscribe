@@ -8,7 +8,9 @@ import { getLoadedUnits } from '@/lib/reference-data';
 import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename } from '@/lib/naval-format-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
-import { loadSavedLetters, saveLetterToStorage, clearSavedLetters } from '@/lib/storage-utils';
+import { loadSavedLetters, clearSavedLetters } from '@/lib/storage-utils';
+import { libLoadAll, libPut, libDelete, libClear, migrateLegacyDrafts } from '@/lib/document-library';
+import { backupDocument } from '@/lib/auto-backup';
 import { runLetterValidators } from '@/lib/letter-validators';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
@@ -23,6 +25,13 @@ import { DocumentImportModal } from '@/components/import/DocumentImportModal';
 import { ImportPayload } from '@/services/import/extractionTypes';
 import { ProofreadModal } from '@/components/ProofreadModal';
 import { BatchGenerateModal } from '@/components/BatchGenerateModal';
+import { ShareLinkDialog, UnlockShareDialog } from '@/components/ShareLinkDialog';
+import { FindReplaceDialog } from '@/components/FindReplaceDialog';
+import { GuidanceDialog } from '@/components/GuidanceDialog';
+import { FindReplaceResult } from '@/lib/find-replace';
+import { useUndoHistory } from '@/hooks/useUndoHistory';
+import { EnclosureAttachment, moveAttachment } from '@/lib/enclosure-attachments';
+import { DocumentLibraryDialog } from '@/components/DocumentLibraryDialog';
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useLivePreview } from '@/hooks/useLivePreview';
@@ -99,7 +108,7 @@ function NavalLetterGeneratorInner() {
   // Paragraph state and CRUD via hook
   const {
     paragraphs, setParagraphs,
-    addParagraph, removeParagraph, updateParagraphContent,
+    addParagraph, removeParagraph, updateParagraphContent, updateParagraphMarking,
     moveParagraphUp, moveParagraphDown,
     getUiCitation, validateParagraphNumbering,
   } = useParagraphs();
@@ -120,6 +129,20 @@ function NavalLetterGeneratorInner() {
 
   // Batch generate modal state
   const [showBatchModal, setShowBatchModal] = useState(false);
+
+  // P1.1: share-link creation dialog state
+  const [showShareDialog, setShowShareDialog] = useState(false);
+
+  // P1.2: document library dialog state
+  const [showLibrary, setShowLibrary] = useState(false);
+
+  // P3.1 / P3.3: find-replace and guidance dialogs
+  const [showFindReplace, setShowFindReplace] = useState(false);
+  const [showGuidance, setShowGuidance] = useState(false);
+
+  // P3.6: attached PDF enclosures (session-scoped)
+  const [attachments, setAttachments] = useState<EnclosureAttachment[]>([]);
+  const [attachmentCoverPages, setAttachmentCoverPages] = useState(true);
 
   // Unit header state (sourced from user profile)
   const [currentUnitCode, setCurrentUnitCode] = useState<string | undefined>(undefined);
@@ -149,7 +172,7 @@ function NavalLetterGeneratorInner() {
   const { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields } = useLivePreview(documentData);
 
   // Export orchestration (gate, SECNAV cap, download) via hook
-  const { generateDocument } = useDocumentExport({ data: documentData, applySignatureFields });
+  const { generateDocument } = useDocumentExport({ data: documentData, applySignatureFields, attachments, attachmentCoverPages });
 
   // Signature ceremony (placement modal, request links) via hook
   const {
@@ -159,10 +182,21 @@ function NavalLetterGeneratorInner() {
     buildSignReadyBlob,
   } = useSignatureWorkflow({ data: documentData, setFormData, applySignatureFields, toast });
 
-  // Load saved letters
+  // Load saved letters (P1.2: IndexedDB library with a one-time import
+  // of the legacy localStorage drafts; the legacy key stays for rollback)
   useEffect(() => {
-    const letters = loadSavedLetters();
-    setSavedLetters(letters);
+    let cancelled = false;
+    (async () => {
+      try {
+        await migrateLegacyDrafts(loadSavedLetters());
+        const letters = await libLoadAll();
+        if (!cancelled) setSavedLetters(letters);
+      } catch (error) {
+        console.error('Document library unavailable, falling back to localStorage', error);
+        if (!cancelled) setSavedLetters(loadSavedLetters());
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // Set today's date
@@ -170,14 +204,9 @@ function NavalLetterGeneratorInner() {
     setFormData(prev => ({ ...prev, date: getTodaysDate() }));
   }, []);
 
-  // Apply user profile defaults on initial load
-  useEffect(() => {
-    if (profileLoaded) {
-      applyProfileToForm();
-    }
-  }, [profileLoaded]);
-
   // Re-apply profile when settings change (e.g. user edits profile mid-session)
+  // (Declared before the effect below that calls it - declaration-order
+  // requirement from the React Compiler; behavior unchanged.)
   const applyProfileToForm = useCallback(() => {
     const defaults = getFormDefaults();
     setFormData(prev => ({
@@ -204,6 +233,16 @@ function NavalLetterGeneratorInner() {
     }
     setFormKey(prev => prev + 1);
   }, [getFormDefaults, profile.unitRuc]);
+
+  // Apply user profile defaults on initial load
+  useEffect(() => {
+    if (profileLoaded) {
+      applyProfileToForm();
+    }
+    // Mount-gated by profileLoaded only - re-application on later profile
+    // edits happens explicitly on Settings close (pre-existing contract).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileLoaded]);
 
   // Handle Cancellation Contingency for MCBul
   useEffect(() => {
@@ -353,6 +392,8 @@ function NavalLetterGeneratorInner() {
       ...formData,
       id: now.toISOString(),
       savedAt: now.toLocaleString(),
+      name: formData.subj || 'Untitled',
+      updatedAt: now.toISOString(),
       vias,
       references,
       enclosures,
@@ -360,8 +401,52 @@ function NavalLetterGeneratorInner() {
       paragraphs,
     };
 
-    const updatedLetters = saveLetterToStorage(newLetter, savedLetters);
-    setSavedLetters(updatedLetters);
+    // P1.2: IndexedDB is the store of record - no eviction cap. A
+    // failed write is reported, never silently dropped.
+    setSavedLetters(prev => [newLetter, ...prev]);
+    libPut(newLetter)
+      .then(() => {
+        toast({ title: 'Draft Saved', description: `"${newLetter.name}" added to your document library.` });
+        // P1.3: mirror to the backup folder when auto backup is on.
+        backupDocument(newLetter).catch((error) => {
+          console.error('Auto backup failed', error);
+          toast({ title: 'Backup Skipped', description: 'The library save worked, but the folder backup failed. Check Settings, Data.', variant: 'destructive' });
+        });
+      })
+      .catch((error) => {
+        console.error('Library save failed', error);
+        setSavedLetters(prev => prev.filter(l => l.id !== newLetter.id));
+        toast({ title: 'Save Failed', description: 'Storage is full or unavailable. Export an .nldp backup instead.', variant: 'destructive' });
+      });
+  };
+
+  // P1.2: per-document library operations
+  const handleRenameDocument = (id: string, name: string) => {
+    const letter = savedLetters.find(l => l.id === id);
+    if (!letter) return;
+    const updated = { ...letter, name, updatedAt: new Date().toISOString() };
+    setSavedLetters(prev => prev.map(l => (l.id === id ? updated : l)));
+    libPut(updated).catch((error) => console.error('Library rename failed', error));
+  };
+
+  const handleDuplicateDocument = (id: string) => {
+    const letter = savedLetters.find(l => l.id === id);
+    if (!letter) return;
+    const now = new Date();
+    const copy: SavedLetter = {
+      ...letter,
+      id: now.toISOString(),
+      savedAt: now.toLocaleString(),
+      updatedAt: now.toISOString(),
+      name: `${letter.name || letter.subj || 'Untitled'} (copy)`,
+    };
+    setSavedLetters(prev => [copy, ...prev]);
+    libPut(copy).catch((error) => console.error('Library duplicate failed', error));
+  };
+
+  const handleDeleteDocument = (id: string) => {
+    setSavedLetters(prev => prev.filter(l => l.id !== id));
+    libDelete(id).catch((error) => console.error('Library delete failed', error));
   };
 
   // Resets every piece of document state to a blank form of the given type.
@@ -411,6 +496,7 @@ function NavalLetterGeneratorInner() {
         setReferences(['']);
         setEnclosures(['']);
         setCopyTos(['']);
+        setAttachments([]);
         setValidation({
             ssic: { isValid: false, message: '' },
             subj: { isValid: false, message: '' },
@@ -437,11 +523,66 @@ function NavalLetterGeneratorInner() {
 
   const handleClearSavedLetters = () => {
     clearSavedLetters();
+    libClear().catch((error) => console.error('Library clear failed', error));
     setSavedLetters([]);
   };
 
-  // Share-link intake (?share=) and S2 routing slip via hook
-  const { routingRequest, setRoutingRequest } = useShareLinkLoader({ handleImport, toast });
+  // P3.2: undo/redo over the seven document slices (snapshot history)
+  const { undo, redo, canUndo, canRedo } = useUndoHistory({
+    formData, paragraphs, vias, references, enclosures, copyTos, distList,
+    setFormData, setParagraphs, setVias, setReferences, setEnclosures, setCopyTos, setDistList,
+    setFormKey,
+  });
+
+  // P3.1: apply a replace-all through the normal setters (one undo step)
+  const handleFindReplaceApply = (result: FindReplaceResult) => {
+    setFormData(result.formData);
+    setParagraphs(result.paragraphs);
+    setVias(result.vias);
+    setReferences(result.references);
+    setEnclosures(result.enclosures);
+    setCopyTos(result.copyTos);
+    setFormKey(prev => prev + 1);
+    toast({ title: 'Replaced', description: `${result.replaced} occurrence${result.replaced === 1 ? '' : 's'} replaced.` });
+  };
+
+  // P3.6: attachment handlers - adding also appends the enclosure
+  // line so the letter's Encl: block lists the attached document.
+  const handleAddAttachment = (attachment: EnclosureAttachment) => {
+    setAttachments(prev => [...prev, attachment]);
+    setEnclosures(prev => [...prev.filter(e => e.trim()), attachment.title]);
+  };
+
+  const handleRemoveAttachment = (id: string) => {
+    const target = attachments.find(a => a.id === id);
+    setAttachments(prev => prev.filter(a => a.id !== id));
+    if (target) {
+      setEnclosures(prev => {
+        const index = prev.findIndex(e => e === target.title);
+        if (index === -1) return prev;
+        const next = prev.filter((_, i) => i !== index);
+        return next.length > 0 ? next : [''];
+      });
+    }
+  };
+
+  const handleMoveAttachment = (index: number, direction: -1 | 1) => {
+    setAttachments(prev => moveAttachment(prev, index, direction));
+  };
+
+  // P3.5: insert a clause as a new level-1 body paragraph
+  const handleInsertClause = (content: string) => {
+    setParagraphs(prev => {
+      const newId = (prev.length > 0 ? Math.max(...prev.map(p => p.id)) : 0) + 1;
+      return [...prev, { id: newId, level: 1, content }];
+    });
+  };
+
+  // Share-link intake (?share= legacy, #es= encrypted) and S2 routing slip
+  const {
+    routingRequest, setRoutingRequest,
+    hasEncryptedPending, unlockEncrypted, dismissEncrypted,
+  } = useShareLinkLoader({ handleImport, toast });
 
   // Phase 2: inline compliance issues for the live preview banner.
   const validationIssues = useMemo(
@@ -466,15 +607,22 @@ function NavalLetterGeneratorInner() {
       isImportingDocument={documentImport.isProcessing}
       onClearForm={handleClearForm}
       savedLetters={savedLetters}
+      onOpenLibrary={() => setShowLibrary(true)}
       onLoadTemplateUrl={handleLoadTemplateUrl}
       currentUnitCode={currentUnitCode}
       currentUnitName={currentUnitName}
       onExportNldp={handleExportNldp}
-      onShareLink={handleShareLink}
+      onShareLink={() => setShowShareDialog(true)}
       onUpdatePreview={updatePreview}
       onCopyAMHS={handleCopyAMHS}
       onExportAMHS={handleExportAMHS}
       onProofread={() => setShowProofreadModal(true)}
+      onFindReplace={() => setShowFindReplace(true)}
+      onGuide={() => setShowGuidance(true)}
+      onUndo={undo}
+      onRedo={redo}
+      canUndo={canUndo}
+      canRedo={canRedo}
       onBatchGenerate={() => setShowBatchModal(true)}
       onSettings={() => setShowSettings(true)}
       customRightPanel={
@@ -522,6 +670,7 @@ function NavalLetterGeneratorInner() {
         moveParagraphUp={moveParagraphUp}
         moveParagraphDown={moveParagraphDown}
         updateParagraphContent={updateParagraphContent}
+        updateParagraphMarking={updateParagraphMarking}
         toggleVoiceInput={toggleVoiceInput}
         addParagraph={addParagraph}
         removeParagraph={removeParagraph}
@@ -533,6 +682,14 @@ function NavalLetterGeneratorInner() {
         signaturePdfBlob={signaturePdfBlob}
         signaturePdfPageCount={signaturePdfPageCount}
         handleDynamicFormSubmit={handleDynamicFormSubmit}
+        onDocumentTypeChange={handleDocumentTypeChange}
+        onInsertClause={handleInsertClause}
+        attachments={attachments}
+        onAddAttachment={handleAddAttachment}
+        onRemoveAttachment={handleRemoveAttachment}
+        onMoveAttachment={handleMoveAttachment}
+        attachmentCoverPages={attachmentCoverPages}
+        onAttachmentCoverPagesChange={setAttachmentCoverPages}
       />}
       <DocumentImportModal
         open={documentImport.isOpen}
@@ -561,6 +718,36 @@ function NavalLetterGeneratorInner() {
         enclosures={enclosures}
         copyTos={copyTos}
         distList={distList}
+      />
+      <ShareLinkDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        onCreate={handleShareLink}
+      />
+      <DocumentLibraryDialog
+        open={showLibrary}
+        onOpenChange={setShowLibrary}
+        letters={savedLetters}
+        onLoad={handleLoadDraft}
+        onRename={handleRenameDocument}
+        onDuplicate={handleDuplicateDocument}
+        onDelete={handleDeleteDocument}
+      />
+      <UnlockShareDialog
+        open={hasEncryptedPending}
+        onUnlock={unlockEncrypted}
+        onDismiss={dismissEncrypted}
+      />
+      <FindReplaceDialog
+        open={showFindReplace}
+        onOpenChange={setShowFindReplace}
+        input={{ formData, paragraphs, vias, references, enclosures, copyTos }}
+        onApply={handleFindReplaceApply}
+      />
+      <GuidanceDialog
+        open={showGuidance}
+        onOpenChange={setShowGuidance}
+        documentType={formData.documentType}
       />
       <SettingsDialog
         open={showSettings}

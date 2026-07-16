@@ -22,6 +22,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { portionPrefix } from '@/lib/classification';
 
 interface ParagraphItemProps {
   paragraph: ParagraphData;
@@ -41,6 +42,10 @@ interface ParagraphItemProps {
   isFocused: boolean;
   documentType?: string;
   nextCitations?: { main?: string; sub?: string; same?: string; up?: string };
+  /** P2: portion marking dropdown */
+  portionMarking?: boolean;
+  markingLevels?: string[];
+  onUpdateMarking?: (id: number, marking: string) => void;
 }
 
 /**
@@ -86,7 +91,10 @@ export function ParagraphItem({
   onFocus,
   isFocused,
   documentType,
-  nextCitations
+  nextCitations,
+  portionMarking,
+  markingLevels,
+  onUpdateMarking
 }: ParagraphItemProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [localContent, setLocalContent] = useState(paragraph.content || '');
@@ -209,6 +217,21 @@ export function ParagraphItem({
             >
               L{paragraph.level} • {citation}
             </Badge>
+
+            {portionMarking && onUpdateMarking && (
+              <select
+                value={paragraph.marking ?? ''}
+                onChange={(e) => onUpdateMarking(paragraph.id, e.target.value)}
+                className="h-6 rounded border border-border bg-background text-xs px-1 text-foreground"
+                title="Portion marking"
+                aria-label="Portion marking"
+              >
+                <option value="">Banner default</option>
+                {(markingLevels ?? []).map((level) => (
+                  <option key={level} value={level}>{portionPrefix(level)} {level}</option>
+                ))}
+              </select>
+            )}
 
             {/* Ensure MOU displays "UNDERSTANDING" for paragraph 4, even if data says "AGREEMENT" due to legacy state */}
             {paragraph.title && (

@@ -135,6 +135,7 @@ export function DistributionSection({
                   <Button 
                     variant="ghost" 
                     size="icon" 
+                    aria-label="Remove copy-to recipient"
                     onClick={() => removeCopyTo(index)}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   >

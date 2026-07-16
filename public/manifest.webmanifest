@@ -1,0 +1,30 @@
+{
+  "name": "SemperScribe - Naval Correspondence Formatter",
+  "short_name": "SemperScribe",
+  "description": "Formats naval letters, directives, memorandums, and forms to SECNAV M-5216.5 standards. Works offline.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1f2937",
+  "theme_color": "#991b1b",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -97,6 +97,7 @@ export function UnitInfoSection({
               size="icon"
               onClick={clearUnitInfo}
               title="Clear Unit Information"
+                    aria-label="Clear Unit Information"
               className="shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               disabled={!formData.line1}
             >

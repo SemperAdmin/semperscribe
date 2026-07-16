@@ -18,7 +18,10 @@ export function parseFormattedText(text: string, parentStyle: PdfStyle = {}): Re
 
   const parts = text.split(/(\*\*\*.*?\*\*\*|\*\*.*?\*\*|\*.*?\*|<u>.*?<\/u>)/g);
 
-  return parts.flatMap((part, index) => {
+  // Explicit return annotation: every branch returns an array, but
+  // inference widens to a union flatMap's overloads reject. Latent
+  // pre-existing error surfaced 2026-07-15 during Phase 1 verification.
+  return parts.flatMap((part, index): React.ReactNode[] => {
     if (part.startsWith('***') && part.endsWith('***') && part.length >= 6) {
       return parseFormattedText(part.slice(3, -3), { ...parentStyle, fontWeight: 'bold', fontStyle: 'italic' });
     }

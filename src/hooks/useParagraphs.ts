@@ -99,6 +99,11 @@ export function useParagraphs(initialParagraphs?: ParagraphData[]) {
     setParagraphs(prev => prev.map(p => p.id === id ? { ...p, content: cleanedContent } : p));
   }, []);
 
+  // P2: portion marking level for a paragraph ('' clears to banner default)
+  const updateParagraphMarking = useCallback((id: number, marking: string) => {
+    setParagraphs(prev => prev.map(p => p.id === id ? { ...p, marking: marking || undefined } : p));
+  }, []);
+
   const moveParagraphUp = useCallback((id: number) => {
     setParagraphs(prev => {
       const currentIndex = prev.findIndex(p => p.id === id);
@@ -247,6 +252,7 @@ export function useParagraphs(initialParagraphs?: ParagraphData[]) {
     addParagraph,
     removeParagraph,
     updateParagraphContent,
+    updateParagraphMarking,
     moveParagraphUp,
     moveParagraphDown,
     getUiCitation,

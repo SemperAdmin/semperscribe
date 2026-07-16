@@ -1,5 +1,6 @@
 import LZString from 'lz-string';
 import { FormData, ParagraphData } from '@/types';
+import { encryptText, decryptText, DecryptFailedError, MalformedPayloadError } from '@/lib/crypto-utils';
 
 /**
  * State that can be shared via URL
@@ -32,6 +33,8 @@ export interface ShareableState {
   distList?: string[];
   /** S2: present only on request-for-signature links (v2) */
   routing?: SignatureRouting;
+  /** P1.1: ISO expiry date, enforced on load. Set only on encrypted links. */
+  expires?: string;
   version: number; // For future compatibility
 }
 
@@ -126,6 +129,99 @@ export function clearShareParam(): void {
 
   const url = new URL(window.location.href);
   url.searchParams.delete('share');
+  window.history.replaceState({}, '', url.toString());
+}
+
+// ---------------------------------------------------------------------------
+// P1.1 Encrypted share links (DONDOCS_PARITY_PLAN)
+//
+// New links: `${base}#es=<v1 payload>` - AES-256-GCM over the same
+// lz-string-compressed JSON the legacy format uses. The fragment never
+// reaches server logs. Legacy `?share=` links continue to decode above.
+// ---------------------------------------------------------------------------
+
+const ENCRYPTED_HASH_PREFIX = '#es=';
+
+export type EncryptedLoadResult =
+  | { status: 'ok'; state: ShareableState }
+  | { status: 'wrong-password' }
+  | { status: 'expired'; expiredAt: string }
+  | { status: 'corrupt' };
+
+/**
+ * Generates an encrypted shareable URL. Compression happens BEFORE
+ * encryption (ciphertext does not compress).
+ */
+export async function generateEncryptedShareUrl(
+  state: ShareableState,
+  password: string,
+  baseUrl?: string
+): Promise<{ url: string; isLong: boolean; error?: string }> {
+  try {
+    const compressed = encodeStateForUrl({ ...state, version: CURRENT_VERSION });
+    const payload = await encryptText(compressed, password);
+    const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '');
+    const url = `${base}${ENCRYPTED_HASH_PREFIX}${payload}`;
+    const isLong = url.length > MAX_URL_LENGTH;
+    return {
+      url,
+      isLong,
+      error: isLong ? 'URL is very long and may not work in all browsers/applications' : undefined,
+    };
+  } catch (error) {
+    return {
+      url: '',
+      isLong: false,
+      error: error instanceof Error ? error.message : 'Failed to generate encrypted URL',
+    };
+  }
+}
+
+/**
+ * Returns the encrypted payload from the URL fragment, or null.
+ */
+export function getEncryptedPayloadFromHash(): string | null {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash;
+  if (!hash.startsWith(ENCRYPTED_HASH_PREFIX)) return null;
+  const payload = hash.slice(ENCRYPTED_HASH_PREFIX.length);
+  return payload.length > 0 ? payload : null;
+}
+
+/**
+ * Decrypts an encrypted share payload and enforces expiry.
+ */
+export async function decryptSharedState(
+  payload: string,
+  password: string
+): Promise<EncryptedLoadResult> {
+  let compressed: string;
+  try {
+    compressed = await decryptText(payload, password);
+  } catch (error) {
+    if (error instanceof DecryptFailedError) return { status: 'wrong-password' };
+    if (error instanceof MalformedPayloadError) return { status: 'corrupt' };
+    return { status: 'corrupt' };
+  }
+  const state = decodeStateFromUrl(compressed);
+  if (!state) return { status: 'corrupt' };
+  if (state.expires) {
+    const expiry = Date.parse(state.expires);
+    if (!Number.isNaN(expiry) && Date.now() > expiry) {
+      return { status: 'expired', expiredAt: state.expires };
+    }
+  }
+  return { status: 'ok', state };
+}
+
+/**
+ * Clears the encrypted fragment from the URL without reloading.
+ */
+export function clearShareHash(): void {
+  if (typeof window === 'undefined') return;
+  if (!window.location.hash.startsWith(ENCRYPTED_HASH_PREFIX)) return;
+  const url = new URL(window.location.href);
+  url.hash = '';
   window.history.replaceState({}, '', url.toString());
 }
 
