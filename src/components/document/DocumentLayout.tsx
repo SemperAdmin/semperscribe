@@ -62,6 +62,8 @@ interface DocumentLayoutProps {
   handleSignatureConfirm: (positions: any) => void;
   signaturePdfBlob: Blob | null;
   signaturePdfPageCount: number;
+  /** ENC: letter-page boundary - pages beyond are view-only enclosures. */
+  signatureLetterPageCount?: number;
   // Dynamic form
   handleDynamicFormSubmit: (data: any) => void;
   /** ENC: enclosure rows (title + optional bound file) and file map */
@@ -119,6 +121,7 @@ export function DocumentLayout({
   handleSignatureConfirm,
   signaturePdfBlob,
   signaturePdfPageCount,
+  signatureLetterPageCount,
   enclosureRows,
   enclosureFiles,
   onAddEnclosureRow,
@@ -343,6 +346,7 @@ export function DocumentLayout({
                 onConfirmAndCopyLink={handleSignatureConfirmAndCopy}
                 pdfBlob={signaturePdfBlob}
                 totalPages={signaturePdfPageCount}
+                placeablePages={signatureLetterPageCount}
               />
             </>
           )}

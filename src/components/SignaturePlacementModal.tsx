@@ -44,6 +44,11 @@ interface SignaturePlacementModalProps {
   onConfirmAndCopyLink?: (positions: SignaturePosition[]) => void;
   pdfBlob: Blob | null;
   totalPages: number;
+  /** ENC: pages beyond this are merged enclosures - visible for
+   * context, but fields land on letter pages only (fields travel on
+   * request links, and links never carry enclosure files). Defaults
+   * to totalPages (everything placeable). */
+  placeablePages?: number;
 }
 
 type InteractionMode = "none" | "drawing" | "moving" | "resizing";
@@ -56,7 +61,9 @@ export function SignaturePlacementModal({
   onConfirmAndCopyLink,
   pdfBlob,
   totalPages,
+  placeablePages,
 }: SignaturePlacementModalProps) {
+  const lastLetterPage = placeablePages ?? totalPages;
   const [currentPage, setCurrentPage] = useState(1);
   const [signatureBoxes, setSignatureBoxes] = useState<SignaturePosition[]>([]);
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
@@ -81,15 +88,17 @@ export function SignaturePlacementModal({
     }
   }, [pdfBlob]);
 
-  // Reset state when modal opens
+  // Reset state when modal opens. ENC: open on the LAST LETTER page
+  // (where the signature block lives) - with enclosures merged behind,
+  // the last document page is an enclosure, not the letter.
   useEffect(() => {
     if (open) {
-      setCurrentPage(totalPages > 0 ? totalPages : 1); 
+      setCurrentPage(lastLetterPage > 0 ? lastLetterPage : 1);
       setSignatureBoxes([]);
       setSelectedBoxId(null);
       setInteractionMode("none");
     }
-  }, [open, totalPages]);
+  }, [open, lastLetterPage]);
 
   // Handle page load to get dimensions
   const onPageLoadSuccess = useCallback(({ width, height }: { width: number; height: number }) => {
@@ -135,10 +144,15 @@ export function SignaturePlacementModal({
     };
   };
 
+  // ENC: enclosure pages are view-only.
+  const onEnclosurePage = currentPage > lastLetterPage;
+
   // Interaction Handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     // If clicking on a form input or button, ignore
     if ((e.target as HTMLElement).closest('.interaction-ignore')) return;
+    // ENC: no drawing on enclosure pages - the banner explains why.
+    if (onEnclosurePage) return;
 
     const coords = screenToPdfCoords(e.clientX, e.clientY);
     
@@ -382,8 +396,9 @@ export function SignaturePlacementModal({
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="text-sm font-medium w-32 text-center">
+                <span className="text-sm font-medium w-44 text-center">
                   Page {currentPage} of {totalPages}
+                  {onEnclosurePage && <span className="text-muted-foreground"> (enclosure)</span>}
                 </span>
                 <Button
                   variant="ghost"
@@ -395,9 +410,17 @@ export function SignaturePlacementModal({
                 </Button>
             </div>
 
+            {/* ENC: enclosure pages are shown for context, never signed -
+                fields ride request links and links never carry files. */}
+            {onEnclosurePage && (
+              <div role="note" className="border-b bg-amber-50 dark:bg-amber-950/40 px-4 py-2 text-center text-xs text-amber-800 dark:text-amber-200 interaction-ignore">
+                Enclosure page, view only. Signature fields go on the letter (pages 1&ndash;{lastLetterPage}).
+              </div>
+            )}
+
             {/* PDF Render Area */}
-            <div 
-              className="flex-1 overflow-auto flex justify-center p-8 cursor-crosshair relative"
+            <div
+              className={cn("flex-1 overflow-auto flex justify-center p-8 relative", onEnclosurePage ? "cursor-not-allowed" : "cursor-crosshair")}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}

@@ -103,24 +103,69 @@ export function SettingsDialog({
                     <Badge variant="secondary" className="text-[10px] h-5">RUC: {selectedUnit.ruc}</Badge>
                   </div>
                 ) : (
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-muted-foreground border-dashed"
-                    onClick={() => setUnitSearchOpen(true)}
-                  >
-                    <Search className="w-4 h-4 mr-2" />
-                    Search for your unit...
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-muted-foreground border-dashed"
+                      onClick={() => setUnitSearchOpen(true)}
+                    >
+                      <Search className="w-4 h-4 mr-2" />
+                      Search for your unit...
+                    </Button>
+
+                    {/* SET-1: manual entry for units the RUC dataset
+                        does not carry. Active only while no dataset
+                        unit is selected. */}
+                    <div className="space-y-3 rounded-md border border-border p-3">
+                      <p className="text-xs text-muted-foreground">
+                        Unit not in the list? Enter the letterhead address manually.
+                      </p>
+                      <div className="space-y-2">
+                        <Label htmlFor="manual-unit-name" className="text-xs font-medium text-muted-foreground">Unit Name</Label>
+                        <Input
+                          id="manual-unit-name"
+                          value={profile.manualUnitName}
+                          onChange={(e) => onUpdateProfile({ manualUnitName: e.target.value })}
+                          placeholder="e.g. 1ST BATTALION, 8TH MARINES"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="manual-unit-line2" className="text-xs font-medium text-muted-foreground">Street Address</Label>
+                        <Input
+                          id="manual-unit-line2"
+                          value={profile.manualUnitLine2}
+                          onChange={(e) => onUpdateProfile({ manualUnitLine2: e.target.value })}
+                          placeholder="e.g. PSC BOX 20081"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="manual-unit-line3" className="text-xs font-medium text-muted-foreground">City, State ZIP</Label>
+                        <Input
+                          id="manual-unit-line3"
+                          value={profile.manualUnitLine3}
+                          onChange={(e) => onUpdateProfile({ manualUnitLine3: e.target.value })}
+                          placeholder="e.g. CAMP LEJEUNE NC 28542-0081"
+                        />
+                      </div>
+                    </div>
+                  </>
                 )}
                 {selectedUnit && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => setUnitSearchOpen(true)}
-                  >
-                    Change Unit
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => setUnitSearchOpen(true)}
+                    >
+                      Change Unit
+                    </Button>
+                    {profile.manualUnitName.trim() !== '' && (
+                      <p className="text-xs text-muted-foreground">
+                        A selected unit overrides your manual entry. Clear the unit to use it.
+                      </p>
+                    )}
+                  </>
                 )}
 
                 {/* Unit search sub-dialog */}

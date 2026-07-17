@@ -273,13 +273,18 @@ function NavalLetterGeneratorInner() {
   // Export orchestration (gate, SECNAV cap, download) via hook
   const { generateDocument } = useDocumentExport({ data: documentData, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages });
 
-  // Signature ceremony (placement modal, request links) via hook
+  // Signature ceremony (placement modal, request links) via hook.
+  // ENC: enclosures show in the placement modal (view-only pages) and
+  // merge into the sign-ready download.
   const {
-    showSignatureModal, signaturePdfBlob, signaturePdfPageCount,
+    showSignatureModal, signaturePdfBlob, signaturePdfPageCount, signatureLetterPageCount,
     handleOpenSignaturePlacement, handleSignatureConfirm,
     handleSignatureConfirmAndCopy, handleSignatureCancel,
     buildSignReadyBlob,
-  } = useSignatureWorkflow({ data: documentData, setFormData, applySignatureFields, toast });
+  } = useSignatureWorkflow({
+    data: documentData, setFormData, applySignatureFields, toast,
+    enclosureRows, enclosureFiles, attachmentCoverPages,
+  });
 
   // Load saved letters (P1.2: IndexedDB library with a one-time import
   // of the legacy localStorage drafts; the legacy key stays for rollback)
@@ -371,6 +376,10 @@ function NavalLetterGeneratorInner() {
         setCurrentUnitCode(unit.ruc);
         setCurrentUnitName(unit.unitName.toUpperCase());
       }
+    } else if (profile.manualUnitName.trim()) {
+      // SET-1: manual unit has no RUC - name only.
+      setCurrentUnitCode(undefined);
+      setCurrentUnitName(profile.manualUnitName.trim().toUpperCase());
     }
     setFormKey(prev => prev + 1);
   }, [getFormDefaults, profile.unitRuc]);
@@ -948,6 +957,7 @@ function NavalLetterGeneratorInner() {
         handleSignatureConfirm={handleSignatureConfirm}
         signaturePdfBlob={signaturePdfBlob}
         signaturePdfPageCount={signaturePdfPageCount}
+        signatureLetterPageCount={signatureLetterPageCount}
         handleDynamicFormSubmit={handleDynamicFormSubmit}
         onDocumentTypeChange={handleDocumentTypeChange}
         enclosureRows={enclosureRows}

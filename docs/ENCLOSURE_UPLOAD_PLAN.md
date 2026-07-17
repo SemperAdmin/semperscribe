@@ -321,9 +321,16 @@ uploaded pages are never overprinted with classification markings.
   signature fields, then merge), attach/remove/reorder trigger the debounced
   refresh. Same ruling moved the stamp from first-page-only to EVERY page of
   each enclosure (permitted by M-5216.5), verified per-page via pdftotext.
-  Signature field placement still renders the letter alone by design - fields
-  land on letter pages, and the merge happens after field application in both
-  preview and export, so indices stay letter-relative.
+  ~~Signature field placement still renders the letter alone by design.~~
+  REVERSED same day (ENC-7): the placement modal shows the merged package too.
+  The constraint that survives: fields land on LETTER pages only, because
+  fields travel on request links and links never carry enclosure files - a
+  field on an enclosure page would reference a page the signer's machine
+  cannot rebuild. Enclosure pages render view-only with a banner naming the
+  rule; the modal opens on the last LETTER page (the signature block's home),
+  not the last document page. Merge order everywhere stays fields-then-merge,
+  so indices are letter-relative and letter pages never shift. The sign-ready
+  download now merges enclosures as well (parity with export).
 - Rotated source-PDF pages: the stamp uses unrotated coordinates; a rotated
   first page gets the stamp in a rotated position. Edge case, unhandled.
 - AttachedEnclosures.tsx is orphaned (zero importers) and awaits Windows

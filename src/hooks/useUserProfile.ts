@@ -13,6 +13,11 @@ export interface UserProfile {
   officeCode: string;
   fromTitle: string;
   unitRuc: string;
+  // SET-1: manual unit entry for units missing from the RUC dataset.
+  // Used only when unitRuc is empty - a selected unit always wins.
+  manualUnitName: string;
+  manualUnitLine2: string;
+  manualUnitLine3: string;
 
   // Document Formatting
   headerType: 'USMC' | 'DON' | 'DLA';
@@ -34,6 +39,9 @@ const persistedProfileSchema = z.object({
   officeCode: z.string(),
   fromTitle: z.string(),
   unitRuc: z.string(),
+  manualUnitName: z.string(),
+  manualUnitLine2: z.string(),
+  manualUnitLine3: z.string(),
   headerType: z.enum(['USMC', 'DON', 'DLA']),
   bodyFont: z.enum(['times', 'courier']),
   accentColor: z.enum(['black', 'blue']),
@@ -48,6 +56,9 @@ const DEFAULT_PROFILE: UserProfile = {
   officeCode: '',
   fromTitle: '',
   unitRuc: '',
+  manualUnitName: '',
+  manualUnitLine2: '',
+  manualUnitLine3: '',
   headerType: 'USMC',
   bodyFont: 'times',
   accentColor: 'black',
@@ -113,7 +124,17 @@ export function useUserProfile() {
    * Build a partial FormData object from the profile for applying defaults.
    */
   const getFormDefaults = useCallback(() => {
-    const unit = resolveUnit(profile.unitRuc);
+    // SET-1: a dataset unit wins; the manual entry fills the gap for
+    // units the RUC table does not carry.
+    const unit = profile.unitRuc
+      ? resolveUnit(profile.unitRuc)
+      : profile.manualUnitName.trim()
+        ? {
+            line1: profile.manualUnitName.trim().toUpperCase(),
+            line2: profile.manualUnitLine2.trim().toUpperCase(),
+            line3: profile.manualUnitLine3.trim().toUpperCase(),
+          }
+        : { line1: '', line2: '', line3: '' };
     return {
       sig: profile.fullName,
       originatorCode: profile.officeCode,
