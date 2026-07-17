@@ -263,8 +263,12 @@ function NavalLetterGeneratorInner() {
   // Document state slices shared by preview, export, and signature
   const documentData = { formData, vias, references, enclosures, copyTos, paragraphs, distList };
 
-  // Live preview (debounced PDF regeneration) via hook
-  const { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields } = useLivePreview(documentData);
+  // Live preview (debounced PDF regeneration) via hook. ENC: the
+  // preview merges bound enclosure files, so it shows the full package.
+  const { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields } = useLivePreview(
+    documentData,
+    { enclosureRows, enclosureFiles, attachmentCoverPages },
+  );
 
   // Export orchestration (gate, SECNAV cap, download) via hook
   const { generateDocument } = useDocumentExport({ data: documentData, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages });

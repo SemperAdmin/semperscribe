@@ -3,9 +3,9 @@
  *
  * The defect this build killed: v1 kept uploads in a second list and
  * guessed their numbers. Position-based numbering gets the coverage,
- * plus the M-5216.5 marking rules: stamp the first page by default,
- * cover sheet (carrying the mark, banner when classified) as the
- * fallback, never both.
+ * plus the M-5216.5 marking rules: stamp EVERY page by default
+ * (2026-07-16 ruling), cover sheet (carrying the mark, banner when
+ * classified) as the fallback, never both.
  */
 import { describe, it, expect } from 'vitest';
 import { PDFDocument, StandardFonts } from 'pdf-lib';

@@ -301,8 +301,8 @@ export function EnclosuresSection({
             {!isPositionPaper && anyFiles && (
               <div className="space-y-2 rounded-md border border-border p-3">
                 <p className="text-xs text-muted-foreground">
-                  Attached files merge into the PDF export behind the letter, in row order.
-                  Each file&apos;s first page is stamped &quot;Enclosure (n)&quot; per SECNAV M-5216.5.
+                  Attached files merge behind the letter in the preview and PDF export, in row order.
+                  Every page is stamped &quot;Enclosure (n)&quot; per SECNAV M-5216.5.
                   Files save with the document in this browser. Not included in DOCX, .nldp, or share links.
                 </p>
                 <div className="flex items-center gap-2">

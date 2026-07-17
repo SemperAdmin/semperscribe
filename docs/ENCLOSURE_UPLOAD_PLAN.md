@@ -315,7 +315,15 @@ uploaded pages are never overprinted with classification markings.
 - Sibling saves of one session share file bytes; ownership follows the latest
   save. Deleting the owning document strands earlier siblings' bindings -
   hydration then reports the missing file and strips the binding, visibly.
-- Live preview never merges files (export-only), matching the panel copy.
+- ~~Live preview never merges files (export-only), matching the panel copy.~~
+  REVERSED 2026-07-16 (post-deploy ruling): the preview merges bound files -
+  full-package WYSIWYG. Wired through useLivePreview (same order as export:
+  signature fields, then merge), attach/remove/reorder trigger the debounced
+  refresh. Same ruling moved the stamp from first-page-only to EVERY page of
+  each enclosure (permitted by M-5216.5), verified per-page via pdftotext.
+  Signature field placement still renders the letter alone by design - fields
+  land on letter pages, and the merge happens after field application in both
+  preview and export, so indices stay letter-relative.
 - Rotated source-PDF pages: the stamp uses unrotated coordinates; a rotated
   first page gets the stamp in a rotated position. Edge case, unhandled.
 - AttachedEnclosures.tsx is orphaned (zero importers) and awaits Windows

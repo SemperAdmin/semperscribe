@@ -8,11 +8,13 @@
  * The row's position IS the number - no arithmetic guess exists.
  *
  * Marking (SECNAV M-5216.5, para on enclosure identification):
- * - Default: "Enclosure (N)" stamped in the lower right corner of the
- *   file's first page - the doctrinal mark.
+ * - Default: "Enclosure (N)" stamped in the lower right corner of
+ *   EVERY page of the file (the manual: mark the first page, marking
+ *   all pages permitted - Stephen's 2026-07-16 ruling picks all pages
+ *   so a separated sheet still names its enclosure).
  * - Cover page ON (the manual's attach-a-paper fallback, for files
- *   whose corner is unusable): the generated cover carries the mark
- *   and the stamp is omitted - substitution, not duplication.
+ *   whose corners are unusable): the generated cover carries the mark
+ *   and the stamps are omitted - substitution, not duplication.
  * - Generated cover pages carry the classification banner when the
  *   marking engine is active. Uploaded pages are NEVER overprinted
  *   with classification markings - the user owns their content.
@@ -218,10 +220,10 @@ export async function mergeAttachmentsIntoPdf(
         throw new Error(`Enclosure (${number}) "${attachment.fileName}" failed to parse as a PDF.`);
       }
       const pages = await merged.copyPages(source, source.getPageIndices());
-      pages.forEach((page) => merged.addPage(page));
-      if (!options.coverPages && pages.length > 0) {
-        stampEnclosureNumber(pages[0], font, number);
-      }
+      pages.forEach((page) => {
+        merged.addPage(page);
+        if (!options.coverPages) stampEnclosureNumber(page, font, number);
+      });
     } else {
       // JPG/PNG: one generated letter-size page, image fit inside the
       // one-inch margin box, never upscaled past natural size.

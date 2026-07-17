@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { FormData, ParagraphData, SignaturePosition } from '@/types';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
+import { getClassification, bannerText } from '@/lib/classification';
+import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-attachments';
 
 /** The document state slices every PDF surface renders from. */
 export interface DocumentDataSlices {
@@ -16,12 +18,22 @@ export interface DocumentDataSlices {
   distList: string[];
 }
 
+/** ENC: bound enclosure files merged into the preview (Stephen's
+ * 2026-07-16 ruling: the preview shows the full package, WYSIWYG with
+ * the export). Optional - callers without files pass nothing. */
+export interface PreviewEnclosureArgs {
+  enclosureRows?: EnclosureRow[];
+  enclosureFiles?: ReadonlyMap<string, EnclosureAttachment>;
+  attachmentCoverPages?: boolean;
+}
+
 /**
  * Live PDF preview: debounced regeneration on document changes, blob
  * URL lifecycle, and the signature-field overlay shared with export.
  */
-export function useLivePreview(data: DocumentDataSlices) {
+export function useLivePreview(data: DocumentDataSlices, enclosureArgs: PreviewEnclosureArgs = {}) {
   const { formData, vias, references, enclosures, copyTos, paragraphs, distList } = data;
+  const { enclosureRows, enclosureFiles, attachmentCoverPages } = enclosureArgs;
 
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
@@ -53,9 +65,26 @@ export function useLivePreview(data: DocumentDataSlices) {
         return;
       }
 
-      const blob = await applySignatureFields(
+      let blob = await applySignatureFields(
         await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
       );
+
+      // ENC: merge bound enclosure files behind the letter - the SAME
+      // order and options as export (signature fields first, merge
+      // after), so the preview IS the export.
+      if (enclosureRows && enclosureFiles) {
+        const { mergeAttachmentsIntoPdf, computeMergeItems } = await import('@/lib/enclosure-attachments');
+        const startingNumber = parseInt(formData.startingEnclosureNumber || '1', 10);
+        const items = computeMergeItems(enclosureRows, enclosureFiles, startingNumber);
+        if (items.length > 0) {
+          const cls = getClassification(formData);
+          const mergedBytes = await mergeAttachmentsIntoPdf(await blob.arrayBuffer(), items, {
+            coverPages: attachmentCoverPages ?? false,
+            bannerText: cls.enabled ? bannerText(cls) : undefined,
+          });
+          blob = new Blob([new Uint8Array(mergedBytes)], { type: 'application/pdf' });
+        }
+      }
 
       const url = URL.createObjectURL(blob);
       setPreviewUrl(prev => {
@@ -67,7 +96,7 @@ export function useLivePreview(data: DocumentDataSlices) {
     } finally {
       setIsGeneratingPreview(false);
     }
-  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList, applySignatureFields]);
+  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages]);
 
   // Auto-refresh preview when form data changes (debounced)
   useEffect(() => {
