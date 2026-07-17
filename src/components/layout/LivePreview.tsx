@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { FileText, Download, Printer, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 import { PageCountIndicator } from './PageCountIndicator';
+import { hasFixer } from '@/lib/autofix';
 
 export interface PreviewIssue {
+  /** Validator issue id - the autofix registry keys on it (R5). */
+  id: string;
   severity: 'block' | 'fail' | 'warn';
   rule: string;
   detail: string;
@@ -20,20 +23,50 @@ interface LivePreviewProps {
   isLoading?: boolean;
   onUpdatePreview?: () => void;
   documentType?: string;
+  /** R12: filename for the Download button (defaults to a sensible name). */
+  downloadFileName?: string;
+  /** R5: opens the full compliance issue list. */
+  onOpenIssues?: () => void;
 }
 
-export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview, documentType = 'standard', issues = [] }: LivePreviewProps) {
+export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview, documentType = 'standard', issues = [], downloadFileName, onOpenIssues }: LivePreviewProps) {
   const blocking = issues.filter((i) => i.severity === 'block');
   const failing = issues.filter((i) => i.severity === 'fail');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // R12 (USER_DRIVEN_ROADMAP): the Print and Download buttons were inert.
+  // Print drives the same-origin blob iframe's own print dialog; Download
+  // saves the preview blob under the export filename.
+  const handlePrint = () => {
+    const frame = iframeRef.current;
+    if (!frame) return;
+    try {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+    } catch {
+      if (previewUrl) window.open(previewUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleDownload = () => {
+    if (!previewUrl) return;
+    const link = document.createElement('a');
+    link.href = previewUrl;
+    link.download = downloadFileName || 'SemperScribe_Preview.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <aside className={cn("w-[45%] max-w-[900px] min-w-[500px] bg-muted/20 border-l border-border hidden xl:flex flex-col h-full", className)}>
       <div className="h-12 bg-card border-b border-border flex items-center justify-between px-4 shrink-0">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Live Preview</h3>
         <div className="flex items-center space-x-1">
            {onUpdatePreview && (
-             <Button 
-               variant="ghost" 
-               size="sm" 
+             <Button
+               variant="ghost"
+               size="sm"
                className="h-7 text-xs text-primary hover:text-primary/80 hover:bg-primary/10 px-2 gap-1.5 mr-2"
                onClick={onUpdatePreview}
                disabled={isLoading}
@@ -42,10 +75,26 @@ export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview,
                Refresh
              </Button>
            )}
-           <Button variant="ghost" size="icon" aria-label="Print preview" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+           <Button
+             variant="ghost"
+             size="icon"
+             aria-label="Print preview"
+             title="Print"
+             className="h-7 w-7 text-muted-foreground hover:text-foreground"
+             onClick={handlePrint}
+             disabled={!previewUrl || isLoading}
+           >
              <Printer className="w-3.5 h-3.5" />
            </Button>
-           <Button variant="ghost" size="icon" aria-label="Download preview" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+           <Button
+             variant="ghost"
+             size="icon"
+             aria-label="Download preview"
+             title="Download PDF"
+             className="h-7 w-7 text-muted-foreground hover:text-foreground"
+             onClick={handleDownload}
+             disabled={!previewUrl || isLoading}
+           >
              <Download className="w-3.5 h-3.5" />
            </Button>
         </div>
@@ -55,19 +104,33 @@ export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview,
         <div
           role="alert"
           className={cn(
-            "px-4 py-1.5 text-xs text-white shrink-0",
+            "px-4 py-1.5 text-xs text-white shrink-0 flex items-center justify-between gap-3",
             blocking.length > 0 ? "bg-red-900" : "bg-amber-900",
           )}
           title={[...blocking, ...failing].map((i) => `${i.rule} — ${i.detail} [${i.citation}]`).join('\n')}
         >
-          <span className="font-semibold">
-            {blocking.length > 0 ? 'EXPORT BLOCKED: ' : 'Compliance: '}
+          <span className="min-w-0 truncate">
+            <span className="font-semibold">
+              {blocking.length > 0 ? 'EXPORT BLOCKED: ' : 'Compliance: '}
+            </span>
+            {[...new Set([...blocking, ...failing].map((i) => i.rule))].slice(0, 2).join(' | ')}
+            {(() => {
+              const rules = [...new Set([...blocking, ...failing].map((i) => i.rule))];
+              return rules.length > 2 ? ` (+${rules.length - 2} more)` : '';
+            })()}
           </span>
-          {[...new Set([...blocking, ...failing].map((i) => i.rule))].slice(0, 2).join(' | ')}
-          {(() => {
-            const rules = [...new Set([...blocking, ...failing].map((i) => i.rule))];
-            return rules.length > 2 ? ` (+${rules.length - 2} more — see Proofread)` : '';
-          })()}
+          {/* R5: the overflow pointer used to say "see Proofread" - a
+              different check system that never listed these. This opens
+              the real list, with autofix. */}
+          {onOpenIssues && (
+            <button
+              type="button"
+              onClick={onOpenIssues}
+              className="shrink-0 underline font-semibold hover:no-underline focus:outline-none focus:ring-2 focus:ring-white/50 rounded"
+            >
+              Review{issues.some((i) => hasFixer(i.id)) ? ' & fix' : ''}
+            </button>
+          )}
         </div>
       )}
 
@@ -85,7 +148,7 @@ export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview,
             </div>
           </div>
         ) : previewUrl ? (
-          <iframe src={previewUrl} className="w-full h-full border-none" title="PDF Preview" />
+          <iframe ref={iframeRef} src={previewUrl} className="w-full h-full border-none" title="PDF Preview" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-center text-muted-foreground/40">
             <div>

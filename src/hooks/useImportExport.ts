@@ -29,6 +29,11 @@ interface ImportExportDeps {
   setFormKey: React.Dispatch<React.SetStateAction<number>>;
   setValidation: React.Dispatch<React.SetStateAction<ValidationState>>;
   savedLetters: any[];
+  /** R1: comments travel on the share link. */
+  comments?: import('@/lib/review-comments').ReviewComment[];
+  /** ENC: imported documents carrying file bindings hydrate through
+   * this (drafts, recovery). Absent on .nldp and share links. */
+  onEnclosureBindings?: (bindings: { key: string; title: string; fileId?: string }[]) => void;
   toast: (opts: { title: string; description: string; variant?: 'default' | 'destructive' }) => void;
 }
 
@@ -45,7 +50,7 @@ export function useImportExport(deps: ImportExportDeps) {
     copyTos, setCopyTos,
     distList, setDistList,
     setFormKey, setValidation,
-    savedLetters, toast,
+    savedLetters, toast, comments, onEnclosureBindings,
   } = deps;
 
   const handleImport = useCallback((inputData: any) => {
@@ -88,6 +93,8 @@ export function useImportExport(deps: ImportExportDeps) {
       if (data.enclosures) setEnclosures(data.enclosures);
       if (data.copyTos) setCopyTos(data.copyTos);
       if (data.distList) setDistList(data.distList);
+      // ENC: bindings override the plain title reconcile above.
+      if (data.enclosureBindings && onEnclosureBindings) onEnclosureBindings(data.enclosureBindings);
 
       if (formDataToMerge.ssic) setValidation(prev => ({ ...prev, ssic: validateSSIC(formDataToMerge.ssic) }));
       if (formDataToMerge.subj) setValidation(prev => ({ ...prev, subj: validateSubject(formDataToMerge.subj) }));
@@ -100,7 +107,7 @@ export function useImportExport(deps: ImportExportDeps) {
       console.error('Import failed', error);
       alert('Failed to import data structure.');
     }
-  }, [setFormData, setParagraphs, setVias, setReferences, setEnclosures, setCopyTos, setDistList, setFormKey, setValidation]);
+  }, [setFormData, setParagraphs, setVias, setReferences, setEnclosures, setCopyTos, setDistList, setFormKey, setValidation, onEnclosureBindings]);
 
   const handleLoadDraft = useCallback((id: string) => {
     const letter = findLetterById(id, savedLetters);
@@ -160,6 +167,8 @@ export function useImportExport(deps: ImportExportDeps) {
     }
 
     const state: ShareableState = { formData, paragraphs, references, enclosures, vias, copyTos, distList, version: 1 };
+    // R1: carry review comments so the reviewer's notes reach the drafter.
+    if (comments && comments.length > 0) state.comments = comments;
     if (options.password && options.expiresDays) {
       state.expires = new Date(Date.now() + options.expiresDays * 24 * 60 * 60 * 1000).toISOString();
     }
@@ -185,7 +194,7 @@ export function useImportExport(deps: ImportExportDeps) {
     } else {
       toast({ title: "Copy Failed", description: "Could not copy to clipboard. Please try again.", variant: "destructive" });
     }
-  }, [formData, paragraphs, references, enclosures, vias, copyTos, distList, toast]);
+  }, [formData, paragraphs, references, enclosures, vias, copyTos, distList, comments, toast]);
 
   const handleCopyAMHS = useCallback(() => {
     const validation = validateAMHSMessage(formData, formData.amhsReferences || []);

@@ -15,6 +15,8 @@ import type { useToast } from '@/hooks/use-toast';
 interface UseShareLinkLoaderArgs {
   handleImport: (state: ShareableState) => void;
   toast: ReturnType<typeof useToast>['toast'];
+  /** R1: receives comments arriving on a shared link. */
+  onComments?: (comments: import('@/lib/review-comments').ReviewComment[]) => void;
 }
 
 /**
@@ -26,7 +28,7 @@ interface UseShareLinkLoaderArgs {
  * - Encrypted `#es=` fragment: held until the user supplies the
  *   password through the UnlockShareDialog, then imported.
  */
-export function useShareLinkLoader({ handleImport, toast }: UseShareLinkLoaderArgs) {
+export function useShareLinkLoader({ handleImport, toast, onComments }: UseShareLinkLoaderArgs) {
   // S2: routing slip arriving on a request-for-signature link
   const [routingRequest, setRoutingRequest] = useState<SignatureRouting | null>(null);
 
@@ -35,6 +37,8 @@ export function useShareLinkLoader({ handleImport, toast }: UseShareLinkLoaderAr
 
   const applyImportedState = useCallback((sharedState: ShareableState) => {
     handleImport(sharedState);
+    // R1: comments arriving with the document.
+    if (sharedState.comments?.length) onComments?.(sharedState.comments);
     if (sharedState.routing) {
       // S2c follow-up (Stephen 2026-06-10): no toast — the ceremony
       // panel at the top of the page is the whole message.

@@ -6,13 +6,16 @@ import { getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-uti
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { downloadDocument } from '@/services/export/index';
 import type { DocumentDataSlices } from './useLivePreview';
-import type { EnclosureAttachment } from '@/lib/enclosure-attachments';
+import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-attachments';
+import { getClassification, bannerText } from '@/lib/classification';
 
 interface UseDocumentExportArgs {
   data: DocumentDataSlices;
   applySignatureFields: (blob: Blob) => Promise<Blob>;
-  /** P3.6: attachments merged into PDF exports, in order. */
-  attachments?: EnclosureAttachment[];
+  /** ENC: enclosure rows + files - bound files merge into PDF exports
+   * at their row-derived numbers. */
+  enclosureRows?: EnclosureRow[];
+  enclosureFiles?: ReadonlyMap<string, EnclosureAttachment>;
   attachmentCoverPages?: boolean;
 }
 
@@ -20,7 +23,7 @@ interface UseDocumentExportArgs {
  * Document export orchestration: the hard export gate, the SECNAV
  * page-cap check, format routing (PDF/DOCX/I-Type), and the download.
  */
-export function useDocumentExport({ data, applySignatureFields, attachments, attachmentCoverPages }: UseDocumentExportArgs) {
+export function useDocumentExport({ data, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages }: UseDocumentExportArgs) {
   const { formData, vias, references, enclosures, copyTos, paragraphs, distList } = data;
 
   const generateDocument = async (format: 'docx' | 'pdf') => {
@@ -74,18 +77,21 @@ export function useDocumentExport({ data, applySignatureFields, attachments, att
         blob = await generateDocxBlob(formData, vias, references, enclosures, copyTos, paragraphsToRender, distList);
       }
 
-      // P3.6: merge attached PDF enclosures into the export (PDF only;
-      // the attachment panel states DOCX exports exclude them).
-      if (format === 'pdf' && attachments && attachments.length > 0) {
-        const { mergeAttachmentsIntoPdf } = await import('@/lib/enclosure-attachments');
-        const typedCount = enclosures.filter((e) => e.trim()).length;
-        const startingNumber = parseInt(formData.startingEnclosureNumber || '1', 10)
-          + Math.max(0, typedCount - attachments.length);
-        const mergedBytes = await mergeAttachmentsIntoPdf(await blob.arrayBuffer(), attachments, {
-          coverPages: attachmentCoverPages ?? true,
-          startingNumber,
-        });
-        blob = new Blob([new Uint8Array(mergedBytes)], { type: 'application/pdf' });
+      // ENC: merge bound enclosure files into the export (PDF only; the
+      // panel states DOCX exports exclude them). Numbers derive from
+      // row position - computeMergeItems is the single source.
+      if (format === 'pdf' && enclosureRows && enclosureFiles) {
+        const { mergeAttachmentsIntoPdf, computeMergeItems } = await import('@/lib/enclosure-attachments');
+        const startingNumber = parseInt(formData.startingEnclosureNumber || '1', 10);
+        const items = computeMergeItems(enclosureRows, enclosureFiles, startingNumber);
+        if (items.length > 0) {
+          const cls = getClassification(formData);
+          const mergedBytes = await mergeAttachmentsIntoPdf(await blob.arrayBuffer(), items, {
+            coverPages: attachmentCoverPages ?? false,
+            bannerText: cls.enabled ? bannerText(cls) : undefined,
+          });
+          blob = new Blob([new Uint8Array(mergedBytes)], { type: 'application/pdf' });
+        }
       }
 
       const url = window.URL.createObjectURL(blob);

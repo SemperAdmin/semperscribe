@@ -38,8 +38,6 @@ interface DocumentLayoutProps {
   setVias: React.Dispatch<React.SetStateAction<string[]>>;
   references: string[];
   setReferences: React.Dispatch<React.SetStateAction<string[]>>;
-  enclosures: string[];
-  setEnclosures: React.Dispatch<React.SetStateAction<string[]>>;
   copyTos: string[];
   setCopyTos: React.Dispatch<React.SetStateAction<string[]>>;
   distList: string[];
@@ -66,17 +64,27 @@ interface DocumentLayoutProps {
   signaturePdfPageCount: number;
   // Dynamic form
   handleDynamicFormSubmit: (data: any) => void;
-  /** P3.5: inserts a clause as a new body paragraph */
-  onInsertClause?: (content: string) => void;
-  /** P3.6: attached PDF enclosures */
-  attachments?: import('@/lib/enclosure-attachments').EnclosureAttachment[];
-  onAddAttachment?: (attachment: import('@/lib/enclosure-attachments').EnclosureAttachment) => void;
-  onRemoveAttachment?: (id: string) => void;
-  onMoveAttachment?: (index: number, direction: -1 | 1) => void;
+  /** ENC: enclosure rows (title + optional bound file) and file map */
+  enclosureRows: import('@/lib/enclosure-attachments').EnclosureRow[];
+  enclosureFiles: ReadonlyMap<string, import('@/lib/enclosure-attachments').EnclosureAttachment>;
+  onAddEnclosureRow: () => void;
+  onRemoveEnclosureRow: (key: string) => void;
+  onUpdateEnclosureTitle: (key: string, title: string) => void;
+  onMoveEnclosureRow: (key: string, direction: -1 | 1) => void;
+  onClearEnclosureRows: () => void;
+  onBindEnclosureFile: (rowKey: string, attachment: import('@/lib/enclosure-attachments').EnclosureAttachment) => void;
+  onUnbindEnclosureFile: (rowKey: string) => void;
   attachmentCoverPages?: boolean;
   onAttachmentCoverPagesChange?: (value: boolean) => void;
   /** Landing quick starts route through the same handler as the sidebar. */
   onDocumentTypeChange?: (type: string) => void;
+  /** R1: review comments threaded to the paragraph pins. */
+  comments?: import('@/lib/review-comments').ReviewComment[];
+  reviewMode?: boolean;
+  onAddComment?: (comment: import('@/lib/review-comments').ReviewComment) => void;
+  onToggleComment?: (id: string) => void;
+  onRemoveComment?: (id: string) => void;
+  commentAuthor?: string;
 }
 
 export function DocumentLayout({
@@ -89,8 +97,6 @@ export function DocumentLayout({
   setVias,
   references,
   setReferences,
-  enclosures,
-  setEnclosures,
   copyTos,
   setCopyTos,
   distList,
@@ -113,14 +119,24 @@ export function DocumentLayout({
   handleSignatureConfirm,
   signaturePdfBlob,
   signaturePdfPageCount,
-  onInsertClause,
-  attachments,
-  onAddAttachment,
-  onRemoveAttachment,
-  onMoveAttachment,
+  enclosureRows,
+  enclosureFiles,
+  onAddEnclosureRow,
+  onRemoveEnclosureRow,
+  onUpdateEnclosureTitle,
+  onMoveEnclosureRow,
+  onClearEnclosureRows,
+  onBindEnclosureFile,
+  onUnbindEnclosureFile,
   attachmentCoverPages,
   onAttachmentCoverPagesChange,
   onDocumentTypeChange,
+  comments,
+  reviewMode,
+  onAddComment,
+  onToggleComment,
+  onRemoveComment,
+  commentAuthor,
   handleDynamicFormSubmit,
 }: DocumentLayoutProps) {
   // Show landing page when no document type is selected
@@ -235,16 +251,19 @@ export function DocumentLayout({
 
           {features.showEnclosures && (
             <EnclosuresSection
-              enclosures={enclosures}
-              setEnclosures={setEnclosures}
+              rows={enclosureRows}
+              onAddRow={onAddEnclosureRow}
+              onRemoveRow={onRemoveEnclosureRow}
+              onUpdateTitle={onUpdateEnclosureTitle}
+              onMoveRow={onMoveEnclosureRow}
+              onClearRows={onClearEnclosureRows}
+              files={enclosureFiles}
+              onBindFile={onBindEnclosureFile}
+              onUnbindFile={onUnbindEnclosureFile}
+              coverPages={attachmentCoverPages ?? false}
+              onCoverPagesChange={onAttachmentCoverPagesChange ?? (() => {})}
               formData={formData}
               setFormData={setFormData}
-              attachments={attachments}
-              onAddAttachment={onAddAttachment}
-              onRemoveAttachment={onRemoveAttachment}
-              onMoveAttachment={onMoveAttachment}
-              attachmentCoverPages={attachmentCoverPages}
-              onAttachmentCoverPagesChange={onAttachmentCoverPagesChange}
             />
           )}
 
@@ -270,7 +289,12 @@ export function DocumentLayout({
               removeParagraph={removeParagraph}
               classification={getClassification(formData)}
               onUpdateMarking={updateParagraphMarking}
-              onInsertClause={onInsertClause}
+              comments={comments}
+              reviewMode={reviewMode}
+              onAddComment={onAddComment}
+              onToggleComment={onToggleComment}
+              onRemoveComment={onRemoveComment}
+              commentAuthor={commentAuthor}
             />
           )}
 

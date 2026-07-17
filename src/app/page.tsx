@@ -9,7 +9,11 @@ import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename } from '@/lib/naval-format-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
 import { loadSavedLetters, clearSavedLetters } from '@/lib/storage-utils';
-import { libLoadAll, libPut, libDelete, libClear, migrateLegacyDrafts } from '@/lib/document-library';
+import {
+  libLoadAll, libPut, libDelete, libClear, migrateLegacyDrafts,
+  filePut, fileGet, fileDeleteIfOwnedBy, fileDeleteForDoc, fileReparentByIds,
+  WORKING_COPY_DOC_ID,
+} from '@/lib/document-library';
 import { backupDocument } from '@/lib/auto-backup';
 import { runLetterValidators } from '@/lib/letter-validators';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
@@ -30,7 +34,20 @@ import { FindReplaceDialog } from '@/components/FindReplaceDialog';
 import { GuidanceDialog } from '@/components/GuidanceDialog';
 import { FindReplaceResult } from '@/lib/find-replace';
 import { useUndoHistory } from '@/hooks/useUndoHistory';
-import { EnclosureAttachment, moveAttachment } from '@/lib/enclosure-attachments';
+import { EnclosureAttachment, EnclosureRow, newRow, reconcileRows } from '@/lib/enclosure-attachments';
+import { useAutosave } from '@/hooks/useAutosave';
+import { RecoveryDialog } from '@/components/RecoveryDialog';
+import type { WorkingCopy } from '@/lib/autosave';
+import { CommandPalette, useCommandPalette } from '@/components/CommandPalette';
+import { ComplianceDialog } from '@/components/ComplianceDialog';
+import { getFixer, fixAll, DocumentSlices } from '@/lib/autofix';
+import { RevisionCompareDialog } from '@/components/RevisionCompareDialog';
+import { PackageDialog } from '@/components/PackageDialog';
+import { usePackageAssembly } from '@/hooks/usePackageAssembly';
+import { ReviewPanel } from '@/components/review/ReviewPanel';
+import {
+  ReviewComment, addComment, toggleResolved, removeComment, pruneOrphans,
+} from '@/lib/review-comments';
 import { DocumentLibraryDialog } from '@/components/DocumentLibraryDialog';
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -101,9 +118,67 @@ function NavalLetterGeneratorInner() {
 
   const [vias, setVias] = useState<string[]>(['']);
   const [references, setReferences] = useState<string[]>(['']);
-  const [enclosures, setEnclosures] = useState<string[]>(['']);
   const [copyTos, setCopyTos] = useState<string[]>(['']);
   const [distList, setDistList] = useState<string[]>(['']);
+
+  // ENC (ENCLOSURE_UPLOAD_PLAN): enclosure ROWS are the source of
+  // truth - each row optionally binds an uploaded file, and the row's
+  // position is its number. `enclosures` (string[]) derives for every
+  // legacy reader; `setEnclosures` reconciles titles onto rows so
+  // legacy writers (undo, find-replace, import, recovery) keep their
+  // contract without learning about files.
+  const [enclosureRows, setEnclosureRows] = useState<EnclosureRow[]>(() => [newRow()]);
+  const [enclosureFiles, setEnclosureFiles] = useState<ReadonlyMap<string, EnclosureAttachment>>(new Map());
+  const enclosures = useMemo(() => enclosureRows.map(r => r.title), [enclosureRows]);
+  const setEnclosures = useCallback((next: React.SetStateAction<string[]>) => {
+    setEnclosureRows(prevRows => {
+      const titles = typeof next === 'function' ? next(prevRows.map(r => r.title)) : next;
+      return reconcileRows(prevRows, titles);
+    });
+  }, []);
+
+  // ENC: restores rows + files from a saved document or recovery copy.
+  // Files resolve by fileId (sibling saves of one session share bytes);
+  // a missing file strips its binding and reports, never silently.
+  const hydrateEnclosureBindings = useCallback((bindings: { key: string; title: string; fileId?: string }[]) => {
+    const rows: EnclosureRow[] = bindings.length > 0
+      ? bindings.map(b => ({ key: b.key, title: b.title, fileId: b.fileId }))
+      : [newRow()];
+    setEnclosureRows(rows);
+    setEnclosureFiles(new Map());
+    void (async () => {
+      const map = new Map<string, EnclosureAttachment>();
+      const missing: string[] = [];
+      for (const b of bindings) {
+        if (!b.fileId) continue;
+        try {
+          const record = await fileGet(b.fileId);
+          if (record) {
+            map.set(record.fileId, {
+              id: record.fileId,
+              fileName: record.fileName,
+              title: record.title,
+              mimeType: record.mimeType,
+              bytes: record.bytes,
+            });
+          } else {
+            missing.push(b.title || b.fileId);
+          }
+        } catch {
+          missing.push(b.title || b.fileId);
+        }
+      }
+      setEnclosureFiles(map);
+      if (missing.length > 0) {
+        setEnclosureRows(prev => prev.map(r => (r.fileId && !map.has(r.fileId) ? { ...r, fileId: undefined } : r)));
+        toast({
+          title: 'Enclosure Files Missing',
+          description: `${missing.length} attached file(s) were not found in this browser. Re-attach: ${missing.join(', ')}`,
+          variant: 'destructive',
+        });
+      }
+    })();
+  }, [toast]);
 
   // Paragraph state and CRUD via hook
   const {
@@ -140,9 +215,28 @@ function NavalLetterGeneratorInner() {
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showGuidance, setShowGuidance] = useState(false);
 
-  // P3.6: attached PDF enclosures (session-scoped)
-  const [attachments, setAttachments] = useState<EnclosureAttachment[]>([]);
-  const [attachmentCoverPages, setAttachmentCoverPages] = useState(true);
+  // R8: Ctrl+K command palette
+  const [paletteOpen, setPaletteOpen] = useCommandPalette();
+
+  // R5: compliance issues + autofix dialog
+  const [showCompliance, setShowCompliance] = useState(false);
+
+  // R2: revision compare dialog
+  const [showCompare, setShowCompare] = useState(false);
+
+  // R4: package assembly dialog
+  const [showPackage, setShowPackage] = useState(false);
+
+  // R1: review comments (travel on the encrypted share link)
+  const [comments, setComments] = useState<ReviewComment[]>([]);
+  const [reviewMode, setReviewMode] = useState(false);
+
+  // ENC: cover sheets are the M-5216.5 fallback; the default mark is
+  // the first-page stamp, so this starts OFF.
+  const [attachmentCoverPages, setAttachmentCoverPages] = useState(false);
+
+  // R3: autosave becomes active once the initial document load settles
+  const [autosaveReady, setAutosaveReady] = useState(false);
 
   // Unit header state (sourced from user profile)
   const [currentUnitCode, setCurrentUnitCode] = useState<string | undefined>(undefined);
@@ -162,7 +256,8 @@ function NavalLetterGeneratorInner() {
     copyTos, setCopyTos,
     distList, setDistList,
     setFormKey, setValidation,
-    savedLetters, toast,
+    savedLetters, toast, comments,
+    onEnclosureBindings: hydrateEnclosureBindings,
   });
 
   // Document state slices shared by preview, export, and signature
@@ -172,7 +267,7 @@ function NavalLetterGeneratorInner() {
   const { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields } = useLivePreview(documentData);
 
   // Export orchestration (gate, SECNAV cap, download) via hook
-  const { generateDocument } = useDocumentExport({ data: documentData, applySignatureFields, attachments, attachmentCoverPages });
+  const { generateDocument } = useDocumentExport({ data: documentData, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages });
 
   // Signature ceremony (placement modal, request links) via hook
   const {
@@ -198,6 +293,48 @@ function NavalLetterGeneratorInner() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // R3: autosave working copy + crash recovery
+  const { recovery, dismissRecovery, clear: clearAutosave } = useAutosave({
+    formData, paragraphs, vias, references, enclosures, copyTos, distList,
+    enclosureBindings: enclosureRows,
+    ready: autosaveReady,
+  });
+
+  // Enable autosave shortly after mount, once profile defaults and the
+  // date effect have settled (they run in their own mount effects).
+  useEffect(() => {
+    const t = setTimeout(() => setAutosaveReady(true), 2000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleRestoreRecovery = () => {
+    if (!recovery) return;
+    const copy: WorkingCopy = recovery;
+    setFormData(copy.formData);
+    setParagraphs(copy.paragraphs);
+    setVias(copy.vias);
+    setReferences(copy.references);
+    // ENC: bindings restore rows AND files; older copies carry titles only.
+    if (copy.enclosureBindings) {
+      hydrateEnclosureBindings(copy.enclosureBindings);
+    } else {
+      setEnclosures(copy.enclosures);
+    }
+    setCopyTos(copy.copyTos);
+    setDistList(copy.distList);
+    setFormKey(prev => prev + 1);
+    dismissRecovery();
+    toast({ title: 'Work Restored', description: 'Your in-progress document is back.' });
+  };
+
+  const handleDiscardRecovery = () => {
+    clearAutosave();
+    // ENC: a discarded copy's write-through files are garbage. Files a
+    // SAVED document owns are untouched (different owner id).
+    fileDeleteForDoc(WORKING_COPY_DOC_ID).catch((error) => console.error('Working-copy file cleanup failed', error));
+    dismissRecovery();
+  };
 
   // Set today's date
   useEffect(() => {
@@ -399,7 +536,13 @@ function NavalLetterGeneratorInner() {
       enclosures,
       copyTos,
       paragraphs,
+      // ENC: bindings persist with the document; bytes live in the
+      // enclosureFiles store, keyed by fileId.
+      enclosureBindings: enclosureRows,
     };
+
+    // R3: an explicit save supersedes the autosaved working copy.
+    clearAutosave();
 
     // P1.2: IndexedDB is the store of record - no eviction cap. A
     // failed write is reported, never silently dropped.
@@ -407,6 +550,10 @@ function NavalLetterGeneratorInner() {
     libPut(newLetter)
       .then(() => {
         toast({ title: 'Draft Saved', description: `"${newLetter.name}" added to your document library.` });
+        // ENC: ownership follows the latest save - bound files re-point
+        // to this document so its cascade delete governs them.
+        const boundIds = enclosureRows.map(r => r.fileId).filter((id): id is string => Boolean(id));
+        fileReparentByIds(boundIds, newLetter.id).catch((error) => console.error('Enclosure file re-parent failed', error));
         // P1.3: mirror to the backup folder when auto backup is on.
         backupDocument(newLetter).catch((error) => {
           console.error('Auto backup failed', error);
@@ -494,9 +641,14 @@ function NavalLetterGeneratorInner() {
         setParagraphs([{ id: 1, level: 1, content: '', acronymError: '' }]);
         setVias(['']);
         setReferences(['']);
-        setEnclosures(['']);
+        setEnclosureRows([newRow()]);
+        setEnclosureFiles(new Map());
+        // ENC: clear-form abandons unsaved write-through files.
+        fileDeleteForDoc(WORKING_COPY_DOC_ID).catch((error) => console.error('Working-copy file cleanup failed', error));
         setCopyTos(['']);
-        setAttachments([]);
+        setComments([]);
+        setReviewMode(false);
+        clearAutosave();
         setValidation({
             ssic: { isValid: false, message: '' },
             subj: { isValid: false, message: '' },
@@ -546,43 +698,139 @@ function NavalLetterGeneratorInner() {
     toast({ title: 'Replaced', description: `${result.replaced} occurrence${result.replaced === 1 ? '' : 's'} replaced.` });
   };
 
-  // P3.6: attachment handlers - adding also appends the enclosure
-  // line so the letter's Encl: block lists the attached document.
-  const handleAddAttachment = (attachment: EnclosureAttachment) => {
-    setAttachments(prev => [...prev, attachment]);
-    setEnclosures(prev => [...prev.filter(e => e.trim()), attachment.title]);
+  // ENC: enclosure row operations - the file binding rides the row,
+  // so reorder and remove keep title and file together by construction.
+  const handleAddEnclosureRow = () => setEnclosureRows(prev => [...prev, newRow()]);
+
+  const handleUpdateEnclosureTitle = (key: string, title: string) =>
+    setEnclosureRows(prev => prev.map(r => (r.key === key ? { ...r, title } : r)));
+
+  const handleMoveEnclosureRow = (key: string, direction: -1 | 1) =>
+    setEnclosureRows(prev => {
+      const index = prev.findIndex(r => r.key === key);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+
+  const handleUnbindEnclosureFile = (rowKey: string) => {
+    const fileId = enclosureRows.find(r => r.key === rowKey)?.fileId;
+    if (!fileId) return;
+    setEnclosureFiles(prev => {
+      const next = new Map(prev);
+      next.delete(fileId);
+      return next;
+    });
+    setEnclosureRows(prev => prev.map(r => (r.key === rowKey ? { ...r, fileId: undefined } : r)));
+    // ENC: bytes delete only when the working copy owns them - a saved
+    // document's file falls to that document's own cascade delete.
+    fileDeleteIfOwnedBy(fileId, WORKING_COPY_DOC_ID).catch((error) => console.error('Enclosure file delete failed', error));
   };
 
-  const handleRemoveAttachment = (id: string) => {
-    const target = attachments.find(a => a.id === id);
-    setAttachments(prev => prev.filter(a => a.id !== id));
-    if (target) {
-      setEnclosures(prev => {
-        const index = prev.findIndex(e => e === target.title);
-        if (index === -1) return prev;
-        const next = prev.filter((_, i) => i !== index);
-        return next.length > 0 ? next : [''];
-      });
-    }
-  };
-
-  const handleMoveAttachment = (index: number, direction: -1 | 1) => {
-    setAttachments(prev => moveAttachment(prev, index, direction));
-  };
-
-  // P3.5: insert a clause as a new level-1 body paragraph
-  const handleInsertClause = (content: string) => {
-    setParagraphs(prev => {
-      const newId = (prev.length > 0 ? Math.max(...prev.map(p => p.id)) : 0) + 1;
-      return [...prev, { id: newId, level: 1, content }];
+  const handleRemoveEnclosureRow = (key: string) => {
+    handleUnbindEnclosureFile(key);
+    setEnclosureRows(prev => {
+      const next = prev.filter(r => r.key !== key);
+      return next.length > 0 ? next : [newRow()];
     });
   };
+
+  const handleClearEnclosureRows = () => {
+    setEnclosureRows([newRow()]);
+    setEnclosureFiles(new Map());
+    fileDeleteForDoc(WORKING_COPY_DOC_ID).catch((error) => console.error('Working-copy file cleanup failed', error));
+  };
+
+  const handleBindEnclosureFile = (rowKey: string, attachment: EnclosureAttachment) => {
+    const oldFileId = enclosureRows.find(r => r.key === rowKey)?.fileId;
+    setEnclosureFiles(prev => {
+      const next = new Map(prev);
+      if (oldFileId) next.delete(oldFileId);
+      next.set(attachment.id, attachment);
+      return next;
+    });
+    setEnclosureRows(prev => prev.map(r => (r.key === rowKey ? { ...r, fileId: attachment.id } : r)));
+    if (oldFileId) {
+      fileDeleteIfOwnedBy(oldFileId, WORKING_COPY_DOC_ID).catch((error) => console.error('Enclosure file delete failed', error));
+    }
+    // ENC: write-through - the file survives a crash before Save. A
+    // failed persist keeps the in-memory binding (export still works)
+    // and says so.
+    filePut({
+      fileId: attachment.id,
+      docId: WORKING_COPY_DOC_ID,
+      fileName: attachment.fileName,
+      title: attachment.title,
+      mimeType: attachment.mimeType,
+      bytes: attachment.bytes,
+      byteLength: attachment.bytes.byteLength,
+    }).catch((error) => {
+      console.error('Enclosure file persist failed', error);
+      toast({
+        title: 'File Not Saved to Browser Storage',
+        description: `"${attachment.fileName}" is attached for this session and will export, but will not survive a reload. Storage may be full.`,
+        variant: 'destructive',
+      });
+    });
+  };
+
+  // R5: apply fixer output through the normal setters, so one fix is
+  // one undo step. Slices in, slices out - the fixers stay pure.
+  const applySlices = (next: DocumentSlices) => {
+    setFormData(next.formData);
+    setParagraphs(next.paragraphs);
+    setVias(next.vias);
+    setReferences(next.references);
+    setEnclosures(next.enclosures);
+    setCopyTos(next.copyTos);
+    setDistList(next.distList);
+    setFormKey(prev => prev + 1);
+  };
+
+  const currentSlices = (): DocumentSlices => ({
+    formData, paragraphs, vias, references, enclosures, copyTos, distList,
+  });
+
+  const handleFixIssue = (issueId: string) => {
+    const fixer = getFixer(issueId);
+    if (!fixer) return;
+    applySlices(fixer.apply(currentSlices()));
+    toast({ title: 'Fixed', description: fixer.label });
+  };
+
+  const handleFixAll = (issueIds: string[]) => {
+    applySlices(fixAll(currentSlices(), issueIds));
+    toast({ title: 'Fixes Applied', description: `${issueIds.length} issue${issueIds.length === 1 ? '' : 's'} corrected. Undo reverses this.` });
+  };
+
+  // R4: endorsement-chain package assembly
+  const pkg = usePackageAssembly({ savedLetters, toast });
+
+  // R1: comment handlers. Orphans (comments on deleted paragraphs) are
+  // pruned on add so a stranded note never hides from the drafter.
+  const handleAddComment = (comment: ReviewComment) => {
+    setComments((prev) => pruneOrphans(addComment(prev, comment), paragraphs.map((p) => p.id)));
+  };
+  const handleToggleComment = (id: string) => setComments((prev) => toggleResolved(prev, id));
+  const handleRemoveComment = (id: string) => setComments((prev) => removeComment(prev, id));
 
   // Share-link intake (?share= legacy, #es= encrypted) and S2 routing slip
   const {
     routingRequest, setRoutingRequest,
     hasEncryptedPending, unlockEncrypted, dismissEncrypted,
-  } = useShareLinkLoader({ handleImport, toast });
+  } = useShareLinkLoader({
+    handleImport,
+    toast,
+    onComments: (incoming) => {
+      setComments(incoming);
+      toast({
+        title: 'Review Comments Received',
+        description: `${incoming.filter((c) => !c.resolved).length} open comment(s) arrived with this document.`,
+      });
+    },
+  });
 
   // Phase 2: inline compliance issues for the live preview banner.
   const validationIssues = useMemo(
@@ -617,6 +865,9 @@ function NavalLetterGeneratorInner() {
       onCopyAMHS={handleCopyAMHS}
       onExportAMHS={handleExportAMHS}
       onProofread={() => setShowProofreadModal(true)}
+      onCompliance={() => setShowCompliance(true)}
+      onCompare={() => setShowCompare(true)}
+      onPackage={() => setShowPackage(true)}
       onFindReplace={() => setShowFindReplace(true)}
       onGuide={() => setShowGuidance(true)}
       onUndo={undo}
@@ -637,6 +888,20 @@ function NavalLetterGeneratorInner() {
       }
       formData={formData}
     >
+      {/* R1: review comments - shown to a drafter receiving a reviewed
+          link, and to a reviewer annotating one. */}
+      {!routingRequest && formData.documentType && (
+        <ReviewPanel
+          comments={comments}
+          paragraphs={paragraphs}
+          reviewMode={reviewMode}
+          onReviewModeChange={setReviewMode}
+          onAdd={handleAddComment}
+          onToggleResolved={handleToggleComment}
+          onRemove={handleRemoveComment}
+          authorName={profile.fullName || ''}
+        />
+      )}
       {routingRequest && (
         <SignatureCeremonyPanel
           routing={routingRequest}
@@ -657,8 +922,6 @@ function NavalLetterGeneratorInner() {
         setVias={setVias}
         references={references}
         setReferences={setReferences}
-        enclosures={enclosures}
-        setEnclosures={setEnclosures}
         copyTos={copyTos}
         setCopyTos={setCopyTos}
         distList={distList}
@@ -683,13 +946,23 @@ function NavalLetterGeneratorInner() {
         signaturePdfPageCount={signaturePdfPageCount}
         handleDynamicFormSubmit={handleDynamicFormSubmit}
         onDocumentTypeChange={handleDocumentTypeChange}
-        onInsertClause={handleInsertClause}
-        attachments={attachments}
-        onAddAttachment={handleAddAttachment}
-        onRemoveAttachment={handleRemoveAttachment}
-        onMoveAttachment={handleMoveAttachment}
+        enclosureRows={enclosureRows}
+        enclosureFiles={enclosureFiles}
+        onAddEnclosureRow={handleAddEnclosureRow}
+        onRemoveEnclosureRow={handleRemoveEnclosureRow}
+        onUpdateEnclosureTitle={handleUpdateEnclosureTitle}
+        onMoveEnclosureRow={handleMoveEnclosureRow}
+        onClearEnclosureRows={handleClearEnclosureRows}
+        onBindEnclosureFile={handleBindEnclosureFile}
+        onUnbindEnclosureFile={handleUnbindEnclosureFile}
         attachmentCoverPages={attachmentCoverPages}
         onAttachmentCoverPagesChange={setAttachmentCoverPages}
+        comments={comments}
+        reviewMode={reviewMode}
+        onAddComment={handleAddComment}
+        onToggleComment={handleToggleComment}
+        onRemoveComment={handleRemoveComment}
+        commentAuthor={profile.fullName || ''}
       />}
       <DocumentImportModal
         open={documentImport.isOpen}
@@ -737,6 +1010,55 @@ function NavalLetterGeneratorInner() {
         open={hasEncryptedPending}
         onUnlock={unlockEncrypted}
         onDismiss={dismissEncrypted}
+      />
+      <RecoveryDialog
+        copy={recovery}
+        onRestore={handleRestoreRecovery}
+        onDiscard={handleDiscardRecovery}
+      />
+      <RevisionCompareDialog
+        open={showCompare}
+        onOpenChange={setShowCompare}
+        letters={savedLetters}
+        onRestore={handleLoadDraft}
+      />
+      <PackageDialog
+        open={showPackage}
+        onOpenChange={setShowPackage}
+        savedLetters={savedLetters}
+        members={pkg.members}
+        sequences={pkg.sequences}
+        issues={pkg.issues}
+        busy={pkg.busy}
+        onAdd={pkg.add}
+        onRemove={pkg.remove}
+        onMove={pkg.move}
+        onClear={pkg.clear}
+        onMeasure={pkg.measure}
+        onExport={pkg.exportPackage}
+      />
+      <ComplianceDialog
+        open={showCompliance}
+        onOpenChange={setShowCompliance}
+        issues={validationIssues}
+        onFix={handleFixIssue}
+        onFixAll={handleFixAll}
+      />
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        hasDocument={Boolean(formData.documentType)}
+        onSelectType={handleDocumentTypeChange}
+        onExportPdf={() => generateDocument('pdf')}
+        onExportDocx={() => generateDocument('docx')}
+        onSave={saveLetter}
+        onOpenLibrary={() => setShowLibrary(true)}
+        onShareLink={() => setShowShareDialog(true)}
+        onFindReplace={() => setShowFindReplace(true)}
+        onCompliance={() => setShowCompliance(true)}
+        onGuide={() => setShowGuidance(true)}
+        onSettings={() => setShowSettings(true)}
+        onClearForm={handleClearForm}
       />
       <FindReplaceDialog
         open={showFindReplace}

@@ -69,6 +69,13 @@ export type SavedLetter = FormData & {
   copyTos: string[];
   distList?: string[];
   paragraphs: ParagraphData[];
+  /**
+   * ENC: enclosure rows with optional file bindings. Structurally
+   * mirrors EnclosureRow (kept inline - types/ does not import lib/).
+   * File BYTES live in the enclosureFiles IndexedDB store, keyed by
+   * fileId, so loading the library never pulls binaries.
+   */
+  enclosureBindings?: { key: string; title: string; fileId?: string }[];
 };
 
 export interface AMHSReference {

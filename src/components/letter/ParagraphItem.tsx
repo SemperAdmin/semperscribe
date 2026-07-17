@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { portionPrefix } from '@/lib/classification';
+import { ParagraphCommentButton } from '@/components/review/ParagraphCommentButton';
+import type { ReviewComment } from '@/lib/review-comments';
 
 interface ParagraphItemProps {
   paragraph: ParagraphData;
@@ -46,6 +48,13 @@ interface ParagraphItemProps {
   portionMarking?: boolean;
   markingLevels?: string[];
   onUpdateMarking?: (id: number, marking: string) => void;
+  /** R1: review comment pin */
+  comments?: ReviewComment[];
+  showComments?: boolean;
+  onAddComment?: (comment: ReviewComment) => void;
+  onToggleComment?: (id: string) => void;
+  onRemoveComment?: (id: string) => void;
+  commentAuthor?: string;
 }
 
 /**
@@ -94,7 +103,13 @@ export function ParagraphItem({
   nextCitations,
   portionMarking,
   markingLevels,
-  onUpdateMarking
+  onUpdateMarking,
+  comments,
+  showComments,
+  onAddComment,
+  onToggleComment,
+  onRemoveComment,
+  commentAuthor
 }: ParagraphItemProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [localContent, setLocalContent] = useState(paragraph.content || '');
@@ -242,6 +257,16 @@ export function ParagraphItem({
           </div>
 
           <div className="flex items-center space-x-1">
+            {showComments && comments && onAddComment && onToggleComment && onRemoveComment && (
+              <ParagraphCommentButton
+                paragraphId={paragraph.id}
+                comments={comments}
+                onAdd={onAddComment}
+                onToggleResolved={onToggleComment}
+                onRemove={onRemoveComment}
+                authorName={commentAuthor ?? ''}
+              />
+            )}
             {index > 0 && (
                 <Button
                 variant="ghost"

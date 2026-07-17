@@ -23,7 +23,10 @@ import {
   Undo2,
   Redo2,
   Replace,
-  BookOpen
+  BookOpen,
+  BadgeCheck,
+  GitCompare,
+  Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FEEDBACK_URL } from '@/lib/app-links';
@@ -122,6 +125,12 @@ interface HeaderActionsProps {
   onBatchGenerate?: () => void;
   // Proofread
   onProofread?: () => void;
+  // R5: compliance issues + autofix
+  onCompliance?: () => void;
+  // R2: revision compare
+  onCompare?: () => void;
+  // R4: package assembly
+  onPackage?: () => void;
   // P3: find/replace, guide, undo/redo
   onFindReplace?: () => void;
   onGuide?: () => void;
@@ -160,6 +169,9 @@ export function HeaderActions({
   onAddSignature,
   onBatchGenerate,
   onProofread,
+  onCompliance,
+  onCompare,
+  onPackage,
   onFindReplace,
   onGuide,
   onUndo,
@@ -468,6 +480,24 @@ export function HeaderActions({
                   <DropdownMenuItem onClick={onProofread} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
                     <ClipboardCheck className="w-4 h-4 mr-2" />
                     Proofread
+                  </DropdownMenuItem>
+                )}
+                {onCompliance && (
+                  <DropdownMenuItem onClick={onCompliance} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                    <BadgeCheck className="w-4 h-4 mr-2" />
+                    Compliance Issues
+                  </DropdownMenuItem>
+                )}
+                {onCompare && (
+                  <DropdownMenuItem onClick={onCompare} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                    <GitCompare className="w-4 h-4 mr-2" />
+                    Compare Revisions
+                  </DropdownMenuItem>
+                )}
+                {onPackage && (
+                  <DropdownMenuItem onClick={onPackage} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                    <Layers className="w-4 h-4 mr-2" />
+                    Assemble Package
                   </DropdownMenuItem>
                 )}
                 {onFindReplace && (

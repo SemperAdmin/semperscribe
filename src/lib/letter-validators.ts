@@ -9,6 +9,8 @@
  */
 import { FormData, ParagraphData } from '@/types';
 import { validateClassification } from '@/lib/classification';
+import { validateSignature } from '@/lib/signature-validators';
+import { validateAcronyms } from '@/lib/acronym-validators';
 
 export type ValidatorSeverity = 'block' | 'fail' | 'warn';
 
@@ -789,6 +791,8 @@ export function runLetterValidators(
     ...validateSecnavReferencesOverflow(formData, references),
     ...validateRevisionSuffix(formData),
     ...validateClassification(formData, paragraphs),
+    ...validateSignature(formData),
+    ...validateAcronyms(paragraphs),
   ];
 }
 

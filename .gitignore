@@ -45,3 +45,9 @@ tsc-errors.txt
 
 # manual source snapshots do not belong in git
 backups/
+
+# AA Form PDF reference templates (27MB, local reference for R13 - commit deliberately if ever needed)
+Forms/
+
+# sandbox scoped type-check config (tooling artifact, never app code)
+_tsc-scoped.json

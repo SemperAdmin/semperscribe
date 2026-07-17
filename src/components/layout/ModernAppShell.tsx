@@ -7,6 +7,7 @@ import { HeaderActions } from './HeaderActions';
 import { PreviewModal } from './PreviewModal';
 import { ParagraphData, SavedLetter, FormData } from '@/types';
 import { getBasePath } from '@/lib/path-utils';
+import { getExportFilename } from '@/lib/naval-format-utils';
 import { FEEDBACK_URL } from '@/lib/app-links';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
@@ -46,6 +47,12 @@ interface ModernAppShellProps {
   onAddSignature?: () => void;
   onBatchGenerate?: () => void;
   onProofread?: () => void;
+  /** R5: opens the compliance issues + autofix dialog */
+  onCompliance?: () => void;
+  /** R2: opens the revision compare dialog */
+  onCompare?: () => void;
+  /** R4: opens the package assembly dialog */
+  onPackage?: () => void;
   /** P3.1 / P3.3 / P3.2 */
   onFindReplace?: () => void;
   onGuide?: () => void;
@@ -89,6 +96,9 @@ export function ModernAppShell({
   onAddSignature,
   onBatchGenerate,
   onProofread,
+  onCompliance,
+  onCompare,
+  onPackage,
   onFindReplace,
   onGuide,
   onUndo,
@@ -212,6 +222,9 @@ export function ModernAppShell({
             onAddSignature={onAddSignature}
             onBatchGenerate={onBatchGenerate}
             onProofread={onProofread}
+            onCompliance={onCompliance}
+            onCompare={onCompare}
+            onPackage={onPackage}
             onFindReplace={onFindReplace}
             onGuide={onGuide}
             onUndo={onUndo}
@@ -271,10 +284,12 @@ export function ModernAppShell({
           ) : (
             <LivePreview
               issues={validationIssues}
+              onOpenIssues={onCompliance}
               previewUrl={previewUrl}
               isLoading={isGeneratingPreview}
               onUpdatePreview={onUpdatePreview}
               documentType={documentType}
+              downloadFileName={formData ? getExportFilename(formData, 'pdf') : undefined}
             />
           )
         )}

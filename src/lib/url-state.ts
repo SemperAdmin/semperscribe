@@ -1,6 +1,7 @@
 import LZString from 'lz-string';
 import { FormData, ParagraphData } from '@/types';
 import { encryptText, decryptText, DecryptFailedError, MalformedPayloadError } from '@/lib/crypto-utils';
+import type { ReviewComment } from '@/lib/review-comments';
 
 /**
  * State that can be shared via URL
@@ -35,6 +36,8 @@ export interface ShareableState {
   routing?: SignatureRouting;
   /** P1.1: ISO expiry date, enforced on load. Set only on encrypted links. */
   expires?: string;
+  /** R1: review comments ride the same encrypted payload - the link IS the routing. */
+  comments?: ReviewComment[];
   version: number; // For future compatibility
 }
 

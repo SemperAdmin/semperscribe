@@ -7,7 +7,6 @@
 
 import { ParagraphData, AdminSubsections } from '@/types';
 import { ClassificationConfig, STANDARD_LEVELS, TRAINING_LEVELS } from '@/lib/classification';
-import { ClauseToolbar } from './ClauseToolbar';
 import { ParagraphItem } from './ParagraphItem';
 import { 
   Indent,
@@ -44,8 +43,13 @@ interface ParagraphSectionProps {
   /** P2: marking config; portion dropdowns render when enabled. */
   classification?: ClassificationConfig;
   onUpdateMarking?: (id: number, marking: string) => void;
-  /** P3.5: inserts a clause as a new body paragraph */
-  onInsertClause?: (content: string) => void;
+  /** R1: review comments */
+  comments?: import('@/lib/review-comments').ReviewComment[];
+  reviewMode?: boolean;
+  onAddComment?: (comment: import('@/lib/review-comments').ReviewComment) => void;
+  onToggleComment?: (id: string) => void;
+  onRemoveComment?: (id: string) => void;
+  commentAuthor?: string;
 }
 
 export function ParagraphSection({
@@ -66,7 +70,12 @@ export function ParagraphSection({
   chapterNumber,
   classification,
   onUpdateMarking,
-  onInsertClause
+  comments,
+  reviewMode,
+  onAddComment,
+  onToggleComment,
+  onRemoveComment,
+  commentAuthor
 }: ParagraphSectionProps) {
   const numberingErrors = validateParagraphNumbering(paragraphs);
   const portionMarking = Boolean(classification?.enabled && classification.portionMarking && onUpdateMarking);
@@ -130,18 +139,10 @@ export function ParagraphSection({
   return (
     <Card className="mb-8 border-border shadow-sm border-l-4 border-l-primary">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="text-lg font-semibold flex items-center font-headline tracking-wide">
-            <Indent className="mr-2 h-5 w-5 text-primary-foreground" />
-            Body Paragraphs
-          </CardTitle>
-          {onInsertClause && (
-            <ClauseToolbar
-              onInsert={onInsertClause}
-              lastParagraphContent={paragraphs[paragraphs.length - 1]?.content}
-            />
-          )}
-        </div>
+        <CardTitle className="text-lg font-semibold flex items-center font-headline tracking-wide">
+          <Indent className="mr-2 h-5 w-5 text-primary-foreground" />
+          Body Paragraphs
+        </CardTitle>
       </CardHeader>
       
       <CardContent className="pt-6 space-y-6">
@@ -324,6 +325,12 @@ export function ParagraphSection({
             portionMarking={portionMarking}
             markingLevels={markingLevels}
             onUpdateMarking={onUpdateMarking}
+            comments={comments}
+            showComments={Boolean(reviewMode || (comments ?? []).some((c) => c.anchor === `paragraph:${paragraph.id}`))}
+            onAddComment={onAddComment}
+            onToggleComment={onToggleComment}
+            onRemoveComment={onRemoveComment}
+            commentAuthor={commentAuthor}
           />
             );
           })}
