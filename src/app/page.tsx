@@ -361,7 +361,7 @@ function NavalLetterGeneratorInner() {
       ...(prev.sig ? {} : { sig: defaults.sig }),
       ...(prev.from ? {} : { from: defaults.from }),
       ...(prev.originatorCode ? {} : { originatorCode: defaults.originatorCode }),
-      ...(prev.line1 ? {} : { line1: defaults.line1, line2: defaults.line2, line3: defaults.line3 }),
+      ...(prev.line1 ? {} : { line1: defaults.line1, line1b: defaults.line1b, line2: defaults.line2, line3: defaults.line3 }),
       // Formatting defaults always track the profile
       headerType: defaults.headerType,
       bodyFont: defaults.bodyFont,
@@ -624,7 +624,7 @@ function NavalLetterGeneratorInner() {
             referenceDate: '',
             startingReferenceLevel: 'a',
             startingEnclosureNumber: '1',
-            line1: defaults.line1, line1b: '', line2: defaults.line2, line3: defaults.line3,
+            line1: defaults.line1, line1b: defaults.line1b, line2: defaults.line2, line3: defaults.line3,
             ssic: '', originatorCode: defaults.originatorCode, date: getTodaysDate(),
             from: defaults.from, to: '', subj: '', sig: defaults.sig, delegationText: '',
             startingPageNumber: 1,

@@ -121,30 +121,39 @@ export function SettingsDialog({
                         Unit not in the list? Enter the letterhead address manually.
                       </p>
                       <div className="space-y-2">
-                        <Label htmlFor="manual-unit-name" className="text-xs font-medium text-muted-foreground">Unit Name</Label>
+                        <Label htmlFor="manual-unit-name" className="text-xs font-medium text-muted-foreground">Unit Name (Line 1)</Label>
                         <Input
                           id="manual-unit-name"
                           value={profile.manualUnitName}
                           onChange={(e) => onUpdateProfile({ manualUnitName: e.target.value })}
-                          placeholder="e.g. 1ST BATTALION, 8TH MARINES"
+                          placeholder="e.g. HEADQUARTERS BATTALION"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="manual-unit-line2" className="text-xs font-medium text-muted-foreground">Street Address</Label>
+                        <Label htmlFor="manual-unit-subname" className="text-xs font-medium text-muted-foreground">Unit Sub-Name (Line 2) <span className="font-normal">- optional</span></Label>
+                        <Input
+                          id="manual-unit-subname"
+                          value={profile.manualUnitSubName}
+                          onChange={(e) => onUpdateProfile({ manualUnitSubName: e.target.value })}
+                          placeholder="e.g. MARINE CORPS BASE"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="manual-unit-line2" className="text-xs font-medium text-muted-foreground">Street Address (Line 3)</Label>
                         <Input
                           id="manual-unit-line2"
                           value={profile.manualUnitLine2}
                           onChange={(e) => onUpdateProfile({ manualUnitLine2: e.target.value })}
-                          placeholder="e.g. PSC BOX 20081"
+                          placeholder="e.g. 3250 CATLIN AVENUE"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="manual-unit-line3" className="text-xs font-medium text-muted-foreground">City, State ZIP</Label>
+                        <Label htmlFor="manual-unit-line3" className="text-xs font-medium text-muted-foreground">City, State Zip (Line 4)</Label>
                         <Input
                           id="manual-unit-line3"
                           value={profile.manualUnitLine3}
                           onChange={(e) => onUpdateProfile({ manualUnitLine3: e.target.value })}
-                          placeholder="e.g. CAMP LEJEUNE NC 28542-0081"
+                          placeholder="e.g. QUANTICO VA 22134-5001"
                         />
                       </div>
                     </div>
