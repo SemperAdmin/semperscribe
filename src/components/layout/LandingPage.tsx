@@ -76,13 +76,16 @@ export function LandingPage({ onSelectType }: LandingPageProps) {
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-secondary via-secondary to-primary/40 px-8 py-12 text-center shadow-lg">
         <div className="relative space-y-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-primary-foreground/60">
+          {/* Text on the navy `secondary` gradient takes secondary-foreground
+              (white in BOTH modes). primary-foreground flips to near-black in
+              dark mode (it sits on gold), which made this hero unreadable. */}
+          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-secondary-foreground/60">
             Semper Admin Suite
           </p>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-primary font-headline">
             Semper Scribe
           </h1>
-          <p className="text-lg md:text-xl text-primary-foreground/90 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-secondary-foreground/90 max-w-2xl mx-auto">
             Naval correspondence, formatted to standard and validated as you type.
             You bring the content - the formatting, citations, and compliance checks are handled.
           </p>
@@ -90,7 +93,7 @@ export function LandingPage({ onSelectType }: LandingPageProps) {
             {['25 document types', 'SECNAV M-5216.5 aligned', 'Live compliance checks', '100% on-device - no server'].map((chip) => (
               <span
                 key={chip}
-                className="rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-3 py-1 text-xs font-medium text-primary-foreground/90"
+                className="rounded-full border border-secondary-foreground/20 bg-secondary-foreground/10 px-3 py-1 text-xs font-medium text-secondary-foreground/90"
               >
                 {chip}
               </span>

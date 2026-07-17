@@ -3,15 +3,20 @@
  *
  * Offline strategy for a fully static export:
  * - Navigations: network first, cached app shell as the offline fallback.
- * - Same-origin assets (hashed chunks, fonts, pdf worker, templates):
- *   cache first, populated on first fetch. Hashed filenames make cache
- *   invalidation automatic; the shell refreshes on each online visit.
+ * - Hashed /_next/ chunks: cache first - the hash IS the invalidation.
+ * - Stable-named assets (pdf worker, fonts, templates, manifest):
+ *   stale-while-revalidate. The v2 worker cached these forever, which
+ *   pinned the cloud.gov octet-stream pdf.worker response even after
+ *   the server was fixed (the mime.types incident). Serving cache and
+ *   refreshing in the background heals any stable-name change within
+ *   one reload, offline behavior unchanged.
  *
  * All URLs are computed relative to the registration scope, so the same
  * file serves /semperscribe (GitHub Pages) and / (cloud.gov).
  */
 
-const CACHE_NAME = 'semperscribe-v2';
+// v3: purges v2 caches poisoned by the octet-stream pdf worker.
+const CACHE_NAME = 'semperscribe-v3';
 const SCOPE_PATH = new URL(self.registration ? self.registration.scope : self.location.href).pathname;
 const SHELL_URL = SCOPE_PATH; // './' relative to scope
 
@@ -61,17 +66,38 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Assets: cache first, populate on miss.
+  // Hashed build chunks: cache first - the filename hash is the version.
+  if (url.pathname.includes('/_next/')) {
+    event.respondWith(
+      caches.match(request).then((hit) => {
+        if (hit) return hit;
+        return fetch(request).then((response) => {
+          if (response.ok && (response.type === 'basic' || response.type === 'default')) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Stable-named assets: stale-while-revalidate. Cache answers now;
+  // the network refreshes the entry for the next load, so a changed
+  // file (or fixed response header) never stays pinned.
   event.respondWith(
     caches.match(request).then((hit) => {
-      if (hit) return hit;
-      return fetch(request).then((response) => {
-        if (response.ok && (response.type === 'basic' || response.type === 'default')) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        }
-        return response;
-      });
+      const refresh = fetch(request)
+        .then((response) => {
+          if (response.ok && (response.type === 'basic' || response.type === 'default')) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => hit || Response.error());
+      return hit || refresh;
     })
   );
 });
