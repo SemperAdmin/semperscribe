@@ -1,0 +1,121 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-bah-designated-place",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - BAH Change of Designated Place",
+      "description": "Request BAH for relocation of dependents to a designated place. Routes to CMC (MMIB-3).",
+      "subject": "REQUEST FOR BAH ICW THE RELOCATION OF DEPENDENTS TO A DESIGNATED PLACE",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "Unit Name\nAddress\nCity, State Zip",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "COMMANDANT OF THE MARINE CORPS\nHEADQUARTERS U. S. MARINE CORPS\nMANPOWER MANAGEMENT DIVISION (MMIB-3)\n3280 RUSSELL ROAD\nQUANTICO, VIRGINIA 22134-5103",
+      "subj": "REQUEST FOR BAH ICW THE RELOCATION OF DEPENDENTS TO A DESIGNATED PLACE",
+      "date": "",
+      "sig": "",
+      "ssic": "7220",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [
+      "CO,"
+    ],
+    "references": [
+      "JTR",
+      "MCO 7220.56A",
+      "MARADMIN 150/22",
+      "DOD FMR"
+    ],
+    "enclosures": [
+      "BASIC ORDERS",
+      "TBIR, CHRO, D150, RT01, S901 (MCTFS)",
+      "TRAVEL CLAIM"
+    ],
+    "copyTos": [
+      "(1) SNM",
+      "(2) FILES"
+    ],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "Per the references, I respectfully request to receive the BAH rate for the location of (REQUESTED DESIGNATED PLACE) instead of the BAH rate for the location of (PREVIOUS DUTY STATION/PREVIOUS DESIGNATED PLACE) due to..."
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "The following is provided:"
+      },
+      {
+        "id": 3,
+        "level": 2,
+        "content": "RTD: 00000000."
+      },
+      {
+        "id": 4,
+        "level": 2,
+        "content": "DCTB: 00000000."
+      },
+      {
+        "id": 5,
+        "level": 2,
+        "content": "Current duty station:"
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "Current dependent location:"
+      },
+      {
+        "id": 7,
+        "level": 2,
+        "content": "Current BAH rate: $XXXX.00 ; CITY STATE ZIP"
+      },
+      {
+        "id": 8,
+        "level": 2,
+        "content": "Requested BAH rate: $XXXX.00 ; CITY STATE ZIP"
+      },
+      {
+        "id": 9,
+        "level": 2,
+        "content": "Dependent data: FName LName - Relation to Marine (Spouse/Son/Daughter, etc.) FName LName - Relation to Marine (Spouse/Son/Daughter, etc.)"
+      },
+      {
+        "id": 10,
+        "level": 1,
+        "content": "For questions regarding this matter, I can be reached at DSN (315) 637-0000 or fname.lname@usmc.mil. FI. MI. LNAME"
+      }
+    ]
+  }
+}

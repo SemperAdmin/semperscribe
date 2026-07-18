@@ -1,0 +1,119 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-cot-incentive",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - COT Incentive",
+      "description": "Request to execute the Consecutive Overseas Tour incentive. Routes to CMC (MMIB-3).",
+      "subject": "REQUEST TO EXECUTE COT INCENTIVE",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "Unit Name\nAddress\nCity, State Zip",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "COMMANDANT OF THE MARINE CORPS\nHEADQUARTERS U. S. MARINE CORPS\nMANPOWER MANAGEMENT DIVISION (MMIB-3)\n3280 RUSSELL ROAD\nQUANTICO, VIRGINIA 22134-5103",
+      "subj": "REQUEST TO EXECUTE COT INCENTIVE",
+      "date": "",
+      "sig": "",
+      "ssic": "4600",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [
+      "CO,"
+    ],
+    "references": [
+      "JTR",
+      "MCO 1300.8"
+    ],
+    "enclosures": [
+      "BASIC ORDERS",
+      "APPROVED TFRS RELM (ENLISTED)/AMHS MSG (OFFICERS)",
+      "COST ESTIMATE/COST COMPARISON LTR (DMO)"
+    ],
+    "copyTos": [
+      "(1) SNM",
+      "(2) FILES"
+    ],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "Per the references, I respectfully request appropriation data to utilize my COT incentive to my HOR."
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "Enclosures (1) and (2) provide source documentation of my consecutive overseas tours."
+      },
+      {
+        "id": 3,
+        "level": 1,
+        "content": "(If requesting an alternate location besides the HOR) I request to travel to an alternation location. I acknowledge that if the cost of travel to my requested alternate location exceeds the cost estimate of travel to my home of record, I will be required to pay the difference out of pocket."
+      },
+      {
+        "id": 4,
+        "level": 1,
+        "content": "The following is provided:"
+      },
+      {
+        "id": 5,
+        "level": 2,
+        "content": "First Overseas Duty Station:"
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "Second Overseas Duty Station:"
+      },
+      {
+        "id": 7,
+        "level": 2,
+        "content": "Number of requested travelers: X"
+      },
+      {
+        "id": 8,
+        "level": 2,
+        "content": "Home of record/Alternate location requested:"
+      },
+      {
+        "id": 9,
+        "level": 2,
+        "content": "Requested date of travel:"
+      },
+      {
+        "id": 10,
+        "level": 1,
+        "content": "For questions regarding this matter, I can be reached at DSN (XXX) XXX-XXXX or EMAIL@USMC.MIL. FI. MI. LNAME"
+      }
+    ]
+  }
+}

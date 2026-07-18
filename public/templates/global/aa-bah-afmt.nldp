@@ -1,0 +1,123 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-bah-afmt",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - BAH Advanced Family Member Travel",
+      "description": "Request BAH in conjunction with advanced family member travel. Routes to CMC (MMIB-3).",
+      "subject": "REQUEST FOR BAH IN CONJUNCTION WITH ADVANCED FAMILY MEMBER TRAVEL",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "Unit Name\nAddress\nCity, State Zip",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "COMMANDANT OF THE MARINE CORPS\nHEADQUARTERS U. S. MARINE CORPS\nMANPOWER MANAGEMENT DIVISION (MMIB-3)\n3280 RUSSELL ROAD\nQUANTICO, VIRGINIA 22134-5103",
+      "subj": "REQUEST FOR BAH IN CONJUNCTION WITH ADVANCED FAMILY MEMBER TRAVEL",
+      "date": "",
+      "sig": "",
+      "ssic": "7220",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [
+      "CO,"
+    ],
+    "references": [
+      "JTR",
+      "DoDFMR Vol 7A, Ch 26",
+      "MCO 7220.56A"
+    ],
+    "enclosures": [
+      "BASIC ORDERS (DD Mon YY)"
+    ],
+    "copyTos": [
+      "(1) SNM",
+      "(2) FILES"
+    ],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "Per the references, I respectfully request BAH in conjunction with advanced family member travel to my next permanent duty station."
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "I understand BAH authorization or adjustments will not occur until the latest of the following: -The day after I have vacated family-type government quarters at my permanent duty station (PDS). -The day Basic Orders to the future PDS are funded. This does not include Basic Orders of Intent. -The day my dependents complete their PCS travel and arrive IVO my future PDS. My BAH authorization or adjustment may be delayed if my dependents conduct stops or delays en-route to my future PDS."
+      },
+      {
+        "id": 3,
+        "level": 1,
+        "content": "The following is provided:"
+      },
+      {
+        "id": 4,
+        "level": 2,
+        "content": "Present PDS: UNIT, STATION, CITY, STATE, COUNTRY"
+      },
+      {
+        "id": 5,
+        "level": 2,
+        "content": "Future PDS: UNIT, STATION, CITY, STATE, COUNTRY"
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "Dependent data: FName LName - Relation to Marine (Spouse/Son/Daughter, etc.)"
+      },
+      {
+        "id": 7,
+        "level": 2,
+        "content": "Date Basic Orders were generated: DD Mon YY"
+      },
+      {
+        "id": 8,
+        "level": 2,
+        "content": "Estimated date of dependent(s) departure from vicinity of Present Unit: DD Mon YY."
+      },
+      {
+        "id": 9,
+        "level": 2,
+        "content": "Estimated date of dependent(s) arrival to vicinity of Future Unit: DD Mon YY."
+      },
+      {
+        "id": 10,
+        "level": 2,
+        "content": "Estimated date of your detachment from Present Unit: DD Mon YY"
+      },
+      {
+        "id": 11,
+        "level": 1,
+        "content": "For questions regarding this matter, I can be reached at DSN (XXX) XXX-XXXX or EMAIL@USMC.MIL. FI. MI. LNAME"
+      }
+    ]
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-bah-deployment",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - BAH DDT (Deployment)",
+      "description": "Request BAH with delayed dependent travel due to an upcoming deployment. Routes to CMC (MMIB-3).",
+      "subject": "REQUEST FOR BAH ICW DELAY DEPENDENT TRAVEL DUE TO UPCOMING DEPLOYMENT",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "Unit Name\nAddress\nCity, State Zip",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "COMMANDANT OF THE MARINE CORPS\nHEADQUARTERS U. S. MARINE CORPS\nMANPOWER MANAGEMENT DIVISION (MMIB-3)\n3280 RUSSELL ROAD\nQUANTICO, VIRGINIA 22134-5103",
+      "subj": "REQUEST FOR BAH ICW DELAY DEPENDENT TRAVEL DUE TO UPCOMING DEPLOYMENT",
+      "date": "",
+      "sig": "",
+      "ssic": "7220",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [
+      "CO,"
+    ],
+    "references": [
+      "JTR",
+      "MCO 7220.56A"
+    ],
+    "enclosures": [
+      "BASIC ORDERS",
+      "DEPLOYMENT VERIFICATION"
+    ],
+    "copyTos": [
+      "(1) SNM",
+      "(2) FILES"
+    ],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "Per the references, I respectfully request a delay of family member travel waiver due to deploying within 90 days of arrival to my future PCS."
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "The following is provided:"
+      },
+      {
+        "id": 3,
+        "level": 2,
+        "content": "Current duty station:"
+      },
+      {
+        "id": 4,
+        "level": 2,
+        "content": "Future duty station:"
+      },
+      {
+        "id": 5,
+        "level": 2,
+        "content": "Estimated deployment departure date:"
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "Estimated deployment return date:"
+      },
+      {
+        "id": 7,
+        "level": 2,
+        "content": "Estimated date of dependent arrival to future duty station:"
+      },
+      {
+        "id": 8,
+        "level": 1,
+        "content": "For questions regarding this matter, I can be reached at DSN (315) 637-0000 or fname.lname@usmc.mil. FI. MI. LNAME"
+      }
+    ]
+  }
+}

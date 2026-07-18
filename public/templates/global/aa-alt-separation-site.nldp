@@ -1,0 +1,131 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-alt-separation-site",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - Alternate Separation Site",
+      "description": "Request separation at a site other than the normal processing location. Routes to CMC (MMIB-3).",
+      "subject": "REQUEST FOR ALTERNATE SEPARATION SITE",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "Unit Name\nAddress\nCity, State Zip",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "COMMANDANT OF THE MARINE CORPS\nHEADQUARTERS U. S. MARINE CORPS\nMANPOWER MANAGEMENT DIVISION (MMIB-3)\n3280 RUSSELL ROAD\nQUANTICO, VIRGINIA 22134-5103",
+      "subj": "REQUEST FOR ALTERNATE SEPARATION SITE",
+      "date": "",
+      "sig": "",
+      "ssic": "1330",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [
+      "CO,"
+    ],
+    "references": [
+      "JTR",
+      "MCO 7220.56A",
+      "Appendix J",
+      "MCO 1900.16"
+    ],
+    "enclosures": [
+      "Approved AMHS Message or Retirement Date in MCTFS",
+      "Home of selection endorsement",
+      "Separation Site Confirmation"
+    ],
+    "copyTos": [
+      "(1) SNM",
+      "(2) FILES"
+    ],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "Per the references, I respectfully request to separate at UNIT in CITY/STATE."
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "Per enclosure (1), I am approved for EAS or retirement on DD Mon YY."
+      },
+      {
+        "id": 3,
+        "level": 1,
+        "content": "Per enclosure (2), my home of record/home of selection is in the vicinity of my requested alternate separation site."
+      },
+      {
+        "id": 4,
+        "level": 1,
+        "content": "Per enclosure (3), the alternate separation site CO, XO, SgtMaj, Adjutant, or Admin Chief has agreed to provide required administrative support to complete my separation."
+      },
+      {
+        "id": 5,
+        "level": 1,
+        "content": "The following is provided:"
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "EAS or approved retirement date: 00000000."
+      },
+      {
+        "id": 7,
+        "level": 2,
+        "content": "Present address: STATION, CITY, STATE, COUNTRY & ZIP CODE"
+      },
+      {
+        "id": 8,
+        "level": 2,
+        "content": "Dependent data: FName LName - Relation to Marine (Spouse/Son/Daughter, etc.)"
+      },
+      {
+        "id": 9,
+        "level": 2,
+        "content": "Estimated date of Arrival at Alternate Separation Site: DD Mon YY."
+      },
+      {
+        "id": 10,
+        "level": 2,
+        "content": "Home of record: CITY, STATE, COUNTRY & ZIP CODE."
+      },
+      {
+        "id": 11,
+        "level": 2,
+        "content": "Home of Selection (retirement only): CITY, STATE, COUNTRY & ZIP CODE."
+      },
+      {
+        "id": 12,
+        "level": 1,
+        "content": "For questions regarding this matter, I can be reached at DSN (XXX) XXX-XXXX or EMAIL@USMC.MIL. FI. MI. LNAME"
+      }
+    ]
+  }
+}

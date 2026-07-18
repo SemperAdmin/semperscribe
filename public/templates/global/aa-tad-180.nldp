@@ -1,0 +1,112 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-tad-180",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - TAD in Excess of 180 Days",
+      "description": "Request authorization of TAD exceeding 180 days. Routes to CMC (MMIB-3).",
+      "subject": "REQUEST FOR AUTHORIZATION OF TAD IN EXCESS OF 180 DAYS",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "Unit Name\nAddress\nCity, State Zip",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "COMMANDANT OF THE MARINE CORPS\nHEADQUARTERS U. S. MARINE CORPS\nMANPOWER MANAGEMENT DIVISION (MMIB-3)\n3280 RUSSELL ROAD\nQUANTICO, VIRGINIA 22134-5103",
+      "subj": "REQUEST FOR AUTHORIZATION OF TAD IN EXCESS OF 180 DAYS",
+      "date": "",
+      "sig": "",
+      "ssic": "7220",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [
+      "CO,"
+    ],
+    "references": [
+      "JTR 010206"
+    ],
+    "enclosures": [
+      "DTS ORDERS (DD MMM YY)",
+      "D112 (MCTFS)"
+    ],
+    "copyTos": [
+      "(1) SNM",
+      "(2) FILES"
+    ],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "Per the reference, I respectfully request TAD in excess of 180 days."
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "Justification: Replace this text with a detailed justification about why TAD in excess of 180 days is required."
+      },
+      {
+        "id": 3,
+        "level": 1,
+        "content": "The following is provided:"
+      },
+      {
+        "id": 4,
+        "level": 2,
+        "content": "Permanent duty station:"
+      },
+      {
+        "id": 5,
+        "level": 2,
+        "content": "TAD unit information: UNIT, STATION, CITY, STATE, COUNTRY"
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "Date TAD began:"
+      },
+      {
+        "id": 7,
+        "level": 2,
+        "content": "If approved, estimated date of TAD completion:"
+      },
+      {
+        "id": 8,
+        "level": 2,
+        "content": "If approved, total requested TAD duration:"
+      },
+      {
+        "id": 9,
+        "level": 1,
+        "content": "For questions regarding this matter, I can be reached at DSN (XXX) XXX-XXXX or EMAIL@USMC.MIL. FI. MI. LNAME"
+      }
+    ]
+  }
+}

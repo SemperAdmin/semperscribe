@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "packageId": "page11_redesignation_firstsgt",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template"
+    },
+    "package": {
+      "title": "Redesignation to First Sergeant",
+      "description": "OBS counseling entry for redesignation to First Sergeant (24-month obligated service, SgtMaj promotion eligibility, PCS obligation).",
+      "documentType": "page11"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "page11",
+      "name": "",
+      "edipi": "",
+      "date": "",
+      "remarksLeft": "Entry:",
+      "remarksRight": "____________: I have been counseled by my Commanding Officer this date that I must incur an additional 24-month Obligated Service (OBS) upon acceptance of redesignation to the rank of First Sergeant. Also, I understand that if selected for redesignation, I will not be eligible for promotion to Sergeant Major until I have served 2 years time in grade as a First Sergeant, and that I may receive permanent change of station orders requiring me to obligate additional service.\n\n\n________________________________________________________\n(Marines Signature)\n\n\n________________________________________________________\n(Commanding Officers Signature)"
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-oteip-change",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - OTEIP Incentive Change",
+      "description": "Request a change to an elected Overseas Tour Extension Incentive. Routes to CMC (MMIB-3).",
+      "subject": "REQUEST FOR CHANGE OF OTEIP INCENTIVE",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "Unit Name\nAddress\nCity, State Zip",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "COMMANDANT OF THE MARINE CORPS\nHEADQUARTERS U. S. MARINE CORPS\nMANPOWER MANAGEMENT DIVISION (MMIB-3)\n3280 RUSSELL ROAD\nQUANTICO, VIRGINIA 22134-5103",
+      "subj": "REQUEST FOR CHANGE OF OTEIP INCENTIVE",
+      "date": "",
+      "sig": "",
+      "ssic": "1330",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [
+      "CO,"
+    ],
+    "references": [
+      "JTR",
+      "MCO 1300.8"
+    ],
+    "enclosures": [
+      "BASIC ORDERS",
+      "APPROVED TFRS RELM (ENLISTED)/AMHS MSG (OFFICERS)",
+      "COST ESTIMATE LTR (DMO) (If applicable)"
+    ],
+    "copyTos": [
+      "(1) SNM",
+      "(2) FILES"
+    ],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "In accordance with the references, I respectfully request to change my approved OTEIP incentive."
+      },
+      {
+        "id": 2,
+        "level": 2,
+        "content": "Approved OTEIP incentive:"
+      },
+      {
+        "id": 3,
+        "level": 2,
+        "content": "Desired OTEIP incentive:"
+      },
+      {
+        "id": 4,
+        "level": 1,
+        "content": "The following is provided:"
+      },
+      {
+        "id": 5,
+        "level": 2,
+        "content": "RTD: DD Mon YY"
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "DCTB: DD Mon YY"
+      },
+      {
+        "id": 7,
+        "level": 2,
+        "content": "Current duty station:"
+      },
+      {
+        "id": 8,
+        "level": 2,
+        "content": "Extension start date: DD Mon YY"
+      },
+      {
+        "id": 9,
+        "level": 2,
+        "content": "Extension end date: DD Mon YY"
+      },
+      {
+        "id": 10,
+        "level": 1,
+        "content": "For questions regarding this matter, I can be reached at DSN (XXX) XXX-XXXX or EMAIL@USMC.MIL. FI. MI. LNAME"
+      }
+    ]
+  }
+}

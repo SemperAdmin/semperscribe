@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-sgtmaj-slate-decline",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - Reserve O6-Level SgtMaj Slate (Decline)",
+      "description": "Request NOT to be considered for the Reserve O6-level Sergeant Major slate. Routes to CMC (MMOA).",
+      "subject": "REQUEST TO NOT BE CONSIDERED FOR THE RESERVE O6 LEVEL SGTMAJ SLATE",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "HOME COMMAND ADDRESS",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "DIRECTOR, RESERVE AFFAIRS\n(ATTN: RA SGTMAJ)\n3280 RUSSELL RD\nQUANTICO, VA 22134",
+      "subj": "REQUEST TO NOT BE CONSIDERED FOR THE RESERVE O6 LEVEL SGTMAJ SLATE",
+      "date": "",
+      "sig": "",
+      "ssic": "1320",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [
+      "Battalion Commander",
+      "Regimental Commander"
+    ],
+    "references": [
+      "MARADMIN 463/19",
+      "MARADMIN 478/19"
+    ],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "I request to not be considered for the O6 level SgtMaj slate."
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "I understand that I will not be reassigned due to this request and will either drop to the IRR or submit for retirement."
+      },
+      {
+        "id": 3,
+        "level": 1,
+        "content": "For additional information I can be reached at (XXX)XXX-XXXX or via email at i.m.marine@usmc.mil. delete this and sign here I. M. MARINE"
+      }
+    ]
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-ra-sgtmaj-billet",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - Reserve 1stSgt/SgtMaj Billet Acceptance",
+      "description": "Statement of intent to accept a Reserve First Sergeant or Sergeant Major billet. Routes to CMC (MMOA).",
+      "subject": "INTENT TO ACCEPT RESERVE FIRST SERGEANT OR SERGEANT MAJOR BILLET ASSIGNMENT",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "HOME ADDRESS",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "DIRECTOR, RESERVE AFFAIRS\n(ATTN: RA SGTMAJ)\n3280 RUSSELL RD\nQUANTICO, VA 22134",
+      "subj": "INTENT TO ACCEPT RESERVE FIRST SERGEANT OR SERGEANT MAJOR BILLET ASSIGNMENT",
+      "date": "",
+      "sig": "",
+      "ssic": "1300",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [],
+    "references": [
+      "MARADMIN XXX/20"
+    ],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "The following are the Reserve 1stSgt/SgtMaj billets listed in order of preference for which I would like to be considered during the FY20 Reserve (SMCR-IRR) SNCO selection board: Unit Location BIC"
+      },
+      {
+        "id": 2,
+        "level": 2,
+        "content": "SAMPLE Elmendorf, AK M1111111111"
+      },
+      {
+        "id": 3,
+        "level": 2,
+        "content": "SAMPLE Bessemer, AL M2222222222"
+      },
+      {
+        "id": 4,
+        "level": 2,
+        "content": "SAMPLE Salt Lake City, UT M3333333333"
+      },
+      {
+        "id": 5,
+        "level": 2,
+        "content": "SAMPLE Buffalo, NY M4444444444"
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "SAMPLE Niagara Falls, NY M5555555555 (List all billets willing to accept. If you are willing to accept any available billet, state so in the body of the AA Form as such, do not list every open billet individually)"
+      },
+      {
+        "id": 7,
+        "level": 1,
+        "content": "If selected to 1stSgt/SgtMaj, I will accept any billet assignment listed above, however, I understand that all assignments will be made based on the needs of the Marine Corps, and that failure to accept an assignment may result in revocation of my selection to 1stSgt/SgtMaj and involuntary transfer to the Individual Ready Reserve. I am also willing to incur a three (3) mandatory service obligation to accept this promotion."
+      },
+      {
+        "id": 8,
+        "level": 1,
+        "content": "For additional information I can be reached at (XXX)XXX-XXXX or via email at i.m.marine@usmc.mil. Sign here I. M. MARINE"
+      }
+    ]
+  }
+}

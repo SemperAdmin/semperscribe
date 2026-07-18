@@ -1,0 +1,119 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-conus-extension",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - CONUS 12-Month Extension",
+      "description": "Officer 12-month CONUS tour extension. Use maximum approved abbreviations (MCO P1070.12K sec 6002); Via lists endorsing units, not the destination. Routes to CMC (MMOA-1).",
+      "subject": "RE 12 MON EXT ICO CAPT FNAME MI. LNAME EDIPI: 1234567891/####(MOS) USMC",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "Unit Name\nAddress\nCity, State Zip",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "Commandant of the Marine Corps\nHeadquarters, U.S. Marine Corps\nManpower and Reserve Affairs (MMOA-1)\n3280 Russell Road,\nQuantico, VA 22134-5103",
+      "subj": "RE 12 MON EXT ICO CAPT FNAME MI. LNAME EDIPI: 1234567891/####(MOS) USMC",
+      "date": "",
+      "sig": "",
+      "ssic": "1331",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [
+      "CO, (endorsing unit)"
+    ],
+    "references": [
+      "MCO 1300.8 CH-1"
+    ],
+    "enclosures": [
+      "BIR",
+      "RED"
+    ],
+    "copyTos": [],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "IAW ref (a), I respectfully re a 12 mon ext. An add 12 mons will.... (PROVIDE ADDITIONAL JUSTIFICATION HERE)(MCO 5216.19A, Par. 12, MAX abbreviation) (MCO P1070.12K, SEC. 6002 FOR APPROVED ABBREVIATIONS)."
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "Add info is provided:"
+      },
+      {
+        "id": 3,
+        "level": 2,
+        "content": "DCTB: YYYYMMDD"
+      },
+      {
+        "id": 4,
+        "level": 2,
+        "content": "RTD: YYYYMMDD"
+      },
+      {
+        "id": 5,
+        "level": 2,
+        "content": "Marital Status: YYYYMMDD"
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "Number of Depns: YYYYMMDD"
+      },
+      {
+        "id": 7,
+        "level": 2,
+        "content": "AFADBD: YYYYMMDD"
+      },
+      {
+        "id": 8,
+        "level": 2,
+        "content": "EAS/ECC: Indef"
+      },
+      {
+        "id": 9,
+        "level": 2,
+        "content": "PUJD: YYYYMMDD"
+      },
+      {
+        "id": 10,
+        "level": 2,
+        "content": "DOR: YYYYMMDD"
+      },
+      {
+        "id": 11,
+        "level": 1,
+        "content": "POC is LtCol/Maj/Capt/MSgt/MGySgt FName MI. LName at DSN 315-645-#### or e-mail at fname.lname@usmc.mil I. M. CAPTAIN"
+      }
+    ]
+  }
+}

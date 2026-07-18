@@ -222,5 +222,187 @@
     "description": "USMC technical publication template with sample data for all elements.",
     "documentType": "i-type",
     "url": "/templates/global/i-type-test-template.nldp"
+  },
+  {
+    "id": "aa-3-pov",
+    "title": "AA Form - Third POV Authorization",
+    "description": "Request authorization of a third privately owned vehicle. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-3-pov.nldp"
+  },
+  {
+    "id": "aa-alt-separation-site",
+    "title": "AA Form - Alternate Separation Site",
+    "description": "Request separation at a site other than the normal processing location. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-alt-separation-site.nldp"
+  },
+  {
+    "id": "aa-bah-afmt",
+    "title": "AA Form - BAH Advanced Family Member Travel",
+    "description": "Request BAH in conjunction with advanced family member travel. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-bah-afmt.nldp"
+  },
+  {
+    "id": "aa-bah-designated-place",
+    "title": "AA Form - BAH Change of Designated Place",
+    "description": "Request BAH for relocation of dependents to a designated place. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-bah-designated-place.nldp"
+  },
+  {
+    "id": "aa-bah-ddt-extension",
+    "title": "AA Form - BAH DDT Waiver Extension",
+    "description": "Request extension of an existing BAH waiver for delayed dependent travel. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-bah-ddt-extension.nldp"
+  },
+  {
+    "id": "aa-bah-ddt",
+    "title": "AA Form - BAH Delay of Dependent Travel",
+    "description": "Request a BAH waiver in conjunction with delayed dependent travel. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-bah-ddt.nldp"
+  },
+  {
+    "id": "aa-bah-deployment",
+    "title": "AA Form - BAH DDT (Deployment)",
+    "description": "Request BAH with delayed dependent travel due to an upcoming deployment. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-bah-deployment.nldp"
+  },
+  {
+    "id": "aa-bah-pme",
+    "title": "AA Form - BAH PME/Training Waiver",
+    "description": "Request a BAH PME waiver for school or training moves. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-bah-pme.nldp"
+  },
+  {
+    "id": "aa-bah-proximity-retention",
+    "title": "AA Form - BAH Retention (Low-Cost PCS)",
+    "description": "Request BAH retention for a low-cost or proximity PCS move. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-bah-proximity-retention.nldp"
+  },
+  {
+    "id": "aa-cot-incentive",
+    "title": "AA Form - COT Incentive",
+    "description": "Request to execute the Consecutive Overseas Tour incentive. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-cot-incentive.nldp"
+  },
+  {
+    "id": "aa-circuitous-travel",
+    "title": "AA Form - Circuitous Travel",
+    "description": "Request circuitous travel in conjunction with PCS. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-circuitous-travel.nldp"
+  },
+  {
+    "id": "aa-erd",
+    "title": "AA Form - Early Return of Dependents",
+    "description": "Request early return of dependents from an overseas station. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-erd.nldp"
+  },
+  {
+    "id": "aa-excess-baggage",
+    "title": "AA Form - Excess Baggage Reimbursement",
+    "description": "Request reimbursement of excess baggage expenses in conjunction with PCS. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-excess-baggage.nldp"
+  },
+  {
+    "id": "aa-fully-funded-pcso",
+    "title": "AA Form - PCA/LCPCS to Fully Funded PCSO",
+    "description": "Request conversion of PCA/low-cost PCS orders to fully funded PCS orders. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-fully-funded-pcso.nldp"
+  },
+  {
+    "id": "aa-ipcot-incentive",
+    "title": "AA Form - IPCOT Incentive",
+    "description": "Request to execute the In-Place Consecutive Overseas Tour incentive. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-ipcot-incentive.nldp"
+  },
+  {
+    "id": "aa-oteip-change",
+    "title": "AA Form - OTEIP Incentive Change",
+    "description": "Request a change to an elected Overseas Tour Extension Incentive. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-oteip-change.nldp"
+  },
+  {
+    "id": "aa-oteip-incentive",
+    "title": "AA Form - OTEIP Incentive Funding",
+    "description": "Request Overseas Tour Extension Incentive Program funding. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-oteip-incentive.nldp"
+  },
+  {
+    "id": "aa-tad-180",
+    "title": "AA Form - TAD in Excess of 180 Days",
+    "description": "Request authorization of TAD exceeding 180 days. Routes to CMC (MMIB-3).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-tad-180.nldp"
+  },
+  {
+    "id": "aa-sgtmaj-slate",
+    "title": "AA Form - Reserve O6-Level SgtMaj Slate (Request)",
+    "description": "Request consideration for the Reserve O6-level Sergeant Major slate. Routes to CMC (MMOA).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-sgtmaj-slate.nldp"
+  },
+  {
+    "id": "aa-sgtmaj-slate-decline",
+    "title": "AA Form - Reserve O6-Level SgtMaj Slate (Decline)",
+    "description": "Request NOT to be considered for the Reserve O6-level Sergeant Major slate. Routes to CMC (MMOA).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-sgtmaj-slate-decline.nldp"
+  },
+  {
+    "id": "aa-ra-sgtmaj-billet",
+    "title": "AA Form - Reserve 1stSgt/SgtMaj Billet Acceptance",
+    "description": "Statement of intent to accept a Reserve First Sergeant or Sergeant Major billet. Routes to CMC (MMOA).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-ra-sgtmaj-billet.nldp"
+  },
+  {
+    "id": "aa-conus-extension",
+    "title": "AA Form - CONUS 12-Month Extension",
+    "description": "Officer 12-month CONUS tour extension. Use maximum approved abbreviations (MCO P1070.12K sec 6002); Via lists endorsing units, not the destination. Routes to CMC (MMOA-1).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-conus-extension.nldp"
+  },
+  {
+    "id": "aa-oconus-extension",
+    "title": "AA Form - OCONUS 12-Month Extension",
+    "description": "Officer 12-month overseas tour extension. Use maximum approved abbreviations (MCO P1070.12K sec 6002); Via lists endorsing units, not the destination. Routes to CMC (MMOA-1).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-oconus-extension.nldp"
+  },
+  {
+    "id": "aa-tos-waiver",
+    "title": "AA Form - 12-Month TOS Waiver",
+    "description": "Officer time-on-station waiver. Use maximum approved abbreviations (MCO P1070.12K sec 6002); spell the unit address in full in Organization/Station. Routes to CMC (MMOA-1).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-tos-waiver.nldp"
+  },
+  {
+    "id": "aa-tour-curtailment",
+    "title": "AA Form - 12-Month Tour Curtailment",
+    "description": "Officer overseas tour curtailment. Use maximum approved abbreviations (MCO P1070.12K sec 6002); Via lists endorsing units, not the destination. Routes to CMC (MMOA-1).",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-tour-curtailment.nldp"
+  },
+  {
+    "id": "page11-redesignation-firstsgt",
+    "title": "Page 11 - Redesignation to First Sergeant",
+    "description": "OBS counseling entry for redesignation to First Sergeant.",
+    "documentType": "page11",
+    "url": "/templates/global/page11-redesignation-firstsgt.nldp"
   }
 ]

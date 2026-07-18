@@ -1,0 +1,115 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-bah-ddt-extension",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - BAH DDT Waiver Extension",
+      "description": "Request extension of an existing BAH waiver for delayed dependent travel. Routes to CMC (MMIB-3).",
+      "subject": "REQUEST FOR EXTENSION OF BAH WAIVER ICW DELAY DEPENDENT TRAVEL",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "Unit Name\nAddress\nCity, State Zip",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "COMMANDANT OF THE MARINE CORPS\nHEADQUARTERS U. S. MARINE CORPS\nMANPOWER MANAGEMENT DIVISION (MMIB-3)\n3280 RUSSELL ROAD\nQUANTICO, VIRGINIA 22134-5103",
+      "subj": "REQUEST FOR EXTENSION OF BAH WAIVER ICW DELAY DEPENDENT TRAVEL",
+      "date": "",
+      "sig": "",
+      "ssic": "7220",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [
+      "CO,"
+    ],
+    "references": [
+      "JTR",
+      "MCO 7220.56A"
+    ],
+    "enclosures": [
+      "BASIC ORDERS",
+      "TBIR, CHRO, D150, RT01, S901 (MCTFS)",
+      "SOURCE DOCUMENTATION TO SUPPORT REASON FOR REQUEST",
+      "MMIB-3 DDT APPROVAL LETTER DTD (DD MMM YY)"
+    ],
+    "copyTos": [
+      "(1) SNM",
+      "(2) FILES"
+    ],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "Per the references, I respectfully request an extension to my previously approved BAH Waiver ICW delay of dependent travel."
+      },
+      {
+        "id": 2,
+        "level": 2,
+        "content": "My previous waiver was approved on DD Mon YY"
+      },
+      {
+        "id": 3,
+        "level": 2,
+        "content": "The waiver is due to expire on DD Mon YY"
+      },
+      {
+        "id": 4,
+        "level": 2,
+        "content": "I am requesting an additional (#) days of delay due to....."
+      },
+      {
+        "id": 5,
+        "level": 1,
+        "content": "The following is provided:"
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "Current duty station:"
+      },
+      {
+        "id": 7,
+        "level": 2,
+        "content": "Previous duty station:"
+      },
+      {
+        "id": 8,
+        "level": 2,
+        "content": "Estimated date of dependent arrival: DD Mon YY"
+      },
+      {
+        "id": 9,
+        "level": 1,
+        "content": "For questions regarding this matter, I can be reached at DSN (XXX) XXX-XXXX or EMAIL@USMC.MIL. FI. MI. LNAME"
+      }
+    ]
+  }
+}

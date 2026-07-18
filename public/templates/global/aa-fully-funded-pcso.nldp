@@ -1,0 +1,113 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-fully-funded-pcso",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - PCA/LCPCS to Fully Funded PCSO",
+      "description": "Request conversion of PCA/low-cost PCS orders to fully funded PCS orders. Routes to CMC (MMIB-3).",
+      "subject": "REQUEST FOR PCA/LCPCS CONVERSION TO FULLY FUNDED PCSO",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "Unit Name\nAddress\nCity, State Zip",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "COMMANDANT OF THE MARINE CORPS\nHEADQUARTERS U. S. MARINE CORPS\nMANPOWER MANAGEMENT DIVISION (MMIB-3)\n3280 RUSSELL ROAD\nQUANTICO, VIRGINIA 22134-5103",
+      "subj": "REQUEST FOR PCA/LCPCS CONVERSION TO FULLY FUNDED PCSO",
+      "date": "",
+      "sig": "",
+      "ssic": "1330",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [
+      "CO,"
+    ],
+    "references": [
+      "JTR",
+      "MCO 1300.8"
+    ],
+    "enclosures": [
+      "BASIC ORDERS",
+      "BASE ORDER/SOP VERIFYING MISSION ESSENTIAL/CRITICAL BILLET"
+    ],
+    "copyTos": [
+      "(1) SNM",
+      "(2) FILES"
+    ],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "Per the references, I respectfully request my PCA/LCPCS to be converted to fully funded permanent change of station orders (PCSO)."
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "Justification: (replace this text with the details of your situation and how an approval is supported by the references)"
+      },
+      {
+        "id": 3,
+        "level": 1,
+        "content": "The following is provided:"
+      },
+      {
+        "id": 4,
+        "level": 2,
+        "content": "Current Unit & Location:"
+      },
+      {
+        "id": 5,
+        "level": 2,
+        "content": "Future Unit & Location:"
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "Future Billet:"
+      },
+      {
+        "id": 7,
+        "level": 2,
+        "content": "Commute Distance:"
+      },
+      {
+        "id": 8,
+        "level": 2,
+        "content": "Transfer Date:"
+      },
+      {
+        "id": 9,
+        "level": 1,
+        "content": "For questions regarding this matter, I can be reached at DSN (XXX) XXX-XXXX or EMAIL@USMC.MIL. FI. MI. LNAME"
+      }
+    ]
+  }
+}
