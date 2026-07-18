@@ -1,4 +1,9 @@
-import { version as pdfjsVersion } from 'pdfjs-dist';
+// The version comes from package.json, NOT `import { version } from
+// 'pdfjs-dist'` - the main module runs Promise.withResolvers (ES2024)
+// at module scope, and a static import drags it into Next's SERVER
+// prerender graph, which crashed the GH Actions build on pre-22 Node.
+// A JSON import carries data only, nothing executes.
+import { version as pdfjsVersion } from 'pdfjs-dist/package.json';
 import { resolvePublicPath } from './path-utils';
 
 /**
