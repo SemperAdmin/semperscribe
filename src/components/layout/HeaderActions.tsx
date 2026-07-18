@@ -52,7 +52,6 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { SavedLetter } from '@/types';
 import { useTemplates, Template } from '@/hooks/useTemplates';
@@ -304,14 +303,17 @@ export function HeaderActions({
               <TabsTrigger value="unit">Unit Templates ({unitTemplates.length})</TabsTrigger>
             </TabsList>
             
-            <ScrollArea className="flex-1 mt-4 h-[300px] pr-4">
+            {/* Native overflow scrolling - the Radix ScrollArea here
+                stopped scrolling once the list outgrew the dialog
+                (26+ templates). A plain overflow-y div cannot fail. */}
+            <div className="flex-1 min-h-0 mt-4 max-h-[55vh] overflow-y-auto pr-2">
               <TabsContent value="global" className="mt-0">
                 <TemplateList templates={globalTemplates} onSelect={handleTemplateSelect} />
               </TabsContent>
               <TabsContent value="unit" className="mt-0">
                 <TemplateList templates={unitTemplates} onSelect={handleTemplateSelect} />
               </TabsContent>
-            </ScrollArea>
+            </div>
           </Tabs>
         </DialogContent>
       </Dialog>

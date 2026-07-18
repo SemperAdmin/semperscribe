@@ -271,7 +271,7 @@ function NavalLetterGeneratorInner() {
   );
 
   // Export orchestration (gate, SECNAV cap, download) via hook
-  const { generateDocument } = useDocumentExport({ data: documentData, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages });
+  const { generateDocument } = useDocumentExport({ data: documentData, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages, toast });
 
   // Signature ceremony (placement modal, request links) via hook.
   // ENC: enclosures show in the placement modal (view-only pages) and

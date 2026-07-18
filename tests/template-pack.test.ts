@@ -93,9 +93,18 @@ describe('Page 11 redesignation (R13/B2)', () => {
     expect(entry).toBeTruthy();
     const { formData } = loadNldp(entry!.url).data;
     expect(formData.documentType).toBe('page11');
-    expect(formData.remarksLeft).toBe('Entry:');
-    expect(formData.remarksRight).toContain('24-month Obligated Service');
-    expect(formData.remarksRight).toContain('(Marines Signature)');
-    expect(formData.remarksRight).toContain('(Commanding Officers Signature)');
+    // Entries flow LEFT column first (Stephen's ruling 2026-07-17; the
+    // NAVMC 118(11) two-column remarks fill left, overflow right).
+    expect(formData.remarksLeft).toContain('24-month Obligated Service');
+    expect(formData.remarksLeft).toContain('(Marines Signature)');
+    expect(formData.remarksLeft).toContain('(Commanding Officers Signature)');
+  });
+
+  it('every page11 template starts its entry in the LEFT column', () => {
+    for (const entry of index.filter((e) => e.documentType === 'page11')) {
+      const { formData } = loadNldp(entry.url).data;
+      expect((formData.remarksLeft ?? '').length, `${entry.id}: empty left column`).toBeGreaterThan(10);
+      expect(formData.remarksLeft, `${entry.id}: label-only left column`).not.toBe('Entry:');
+    }
   });
 });

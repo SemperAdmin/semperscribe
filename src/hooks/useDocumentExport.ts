@@ -17,13 +17,15 @@ interface UseDocumentExportArgs {
   enclosureRows?: EnclosureRow[];
   enclosureFiles?: ReadonlyMap<string, EnclosureAttachment>;
   attachmentCoverPages?: boolean;
+  /** XFA: surfaces the Adobe-only note when the official form exports. */
+  toast?: (opts: { title: string; description: string }) => void;
 }
 
 /**
  * Document export orchestration: the hard export gate, the SECNAV
  * page-cap check, format routing (PDF/DOCX/I-Type), and the download.
  */
-export function useDocumentExport({ data, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages }: UseDocumentExportArgs) {
+export function useDocumentExport({ data, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages, toast }: UseDocumentExportArgs) {
   const { formData, vias, references, enclosures, copyTos, paragraphs, distList } = data;
 
   const generateDocument = async (format: 'docx' | 'pdf') => {
@@ -56,6 +58,33 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
         const capIssue = secnavPageCapIssue(formData.documentType, await getPDFPageCount(secnavCountedBlob));
         if (capIssue) {
           alert(`Export blocked:\n\n- ${capIssue.rule}\n  ${capIssue.detail}\n  [${capIssue.citation}]`);
+          return;
+        }
+      }
+
+      // XFA (Stephen's 2026-07-17 ruling): unsigned FORMS export onto
+      // the OFFICIAL NAVMC form - fillable in Adobe, not a flattened
+      // redraw. Signature fields or bound enclosure files force the
+      // flattened path: the dynamic-XFA renderer ignores drawn
+      // annotations and appended pages, so they would silently vanish.
+      if (format === 'pdf' && (formData.documentType === 'aa-form' || formData.documentType === 'page11')) {
+        const signatureFields = (formData.signatureFields as unknown[] | undefined) ?? [];
+        const hasBoundFiles = Boolean(enclosureRows?.some(r => r.fileId && enclosureFiles?.has(r.fileId)));
+        if (signatureFields.length === 0 && !hasBoundFiles) {
+          const { exportOfficialForm } = await import('@/lib/xfa-form-fill');
+          const formBlob = await exportOfficialForm({ formData, vias, references, enclosures, copyTos, paragraphs });
+          const url = window.URL.createObjectURL(formBlob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = getExportFilename(formData, format);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          toast?.({
+            title: 'Official Form Exported',
+            description: 'This is the fillable NAVMC form - open it in Adobe Acrobat or Reader. Browsers show a placeholder page. Add signature fields to export a flattened print PDF instead.',
+          });
           return;
         }
       }

@@ -122,6 +122,36 @@ existing template model. F2 is therefore ONE new .nldp file
 - B5: human pass - Stephen spot-checks 3-4 templates in the picker on
   localhost before push (content accuracy is his call, not mine).
 
+## 5b. ADDENDUM - Official-form PDF export (SHIPPED 2026-07-17)
+
+Stephen's ruling: unsigned FORM exports go onto the ACTUAL NAVMC form,
+fillable, not the flattened redraw. Implementation:
+
+- public/forms/ bundles the blank NAVMC 10274 and NAVMC 118(11)
+  (pikepdf-normalized: decrypted + xref rewritten - the identical
+  operation that produced the Adobe-validated prototypes; the page11
+  source was rights-encrypted and the AA source had a broken xref,
+  both fatal to pdf-lib until normalized).
+- src/lib/xfa-form-fill.ts replaces the XFA `datasets` stream via
+  pdf-lib's low-level API. XML builders invert the template converter:
+  (a)/(1) prefixes re-added, paragraph citations reconstructed with the
+  SAME engine as the flattened renderer, XML-escaped, CR separators.
+- useDocumentExport routes PDF exports of aa-form/page11 to the
+  official form when NO signature fields are configured AND NO
+  enclosure files are bound - both force the flattened path because the
+  dynamic-XFA renderer ignores drawn annotations and appended pages.
+  A toast states the Adobe-only constraint on every official export.
+- Verified: 10/10 sandbox harness (builders, real-blank round trips,
+  NeedsRendering preserved, non-XFA refusal), scoped tsc clean,
+  tests/xfa-form-fill.test.ts runs the same against the real blanks.
+  Adobe gate ROUND TWO pending: _XFA_TEST_*_V2.pdf are pdf-lib-written
+  (the shipping code); Stephen validates in Adobe, then deletes all
+  four _XFA_TEST_* files.
+
+Known bounds (format properties, not defects): output renders only in
+Adobe Acrobat/Reader; browsers show the LiveCycle shell page. DOCX
+export of forms is unchanged (flattened path).
+
 ## 6. Rulings (Stephen, 2026-07-17)
 
 1. F1 scope: ALL 22 topics in one pass (18 MMIB-3 + 4 MMOA reviewed).
