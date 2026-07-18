@@ -119,6 +119,25 @@ function xfaEntryName(obj: unknown): string {
 }
 
 /**
+ * Copies any byte source into THIS realm's Uint8Array.
+ *
+ * pdf-lib gates on `instanceof Uint8Array` in two places (PDFDocument
+ * .load and typedArrayFor inside flateStream). Bytes born in another
+ * JavaScript realm - a Node Buffer from readFileSync, or jsdom's
+ * TextEncoder output under vitest - fail that check and pdf-lib then
+ * misroutes them (NaN type, or .charCodeAt on a typed array). Copying
+ * through the local constructor makes the check true by construction.
+ * Duck-typed on purpose: instanceof is the very thing failing.
+ */
+function toLocalBytes(source: ArrayBuffer | Uint8Array): Uint8Array {
+  const view = source as { byteOffset?: number; byteLength: number; buffer?: ArrayBufferLike };
+  if (view.buffer !== undefined && view.byteOffset !== undefined) {
+    return new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength));
+  }
+  return new Uint8Array(source as ArrayBuffer);
+}
+
+/**
  * Replaces the `datasets` stream inside a dynamic XFA PDF. Everything
  * else - template, page shell, NeedsRendering - stays byte-identical,
  * which is what keeps the form official and editable.
@@ -127,16 +146,18 @@ export async function fillXfaDatasets(baseBytes: ArrayBuffer | Uint8Array, datas
   // The bundled blanks are pre-decrypted/normalized (pikepdf rewrite -
   // the same operation that produced the Adobe-validated prototypes).
   // ignoreEncryption is belt-and-braces for a stray rights-enabled base.
-  const doc = await PDFDocument.load(baseBytes, { updateMetadata: false, ignoreEncryption: true });
-  const acroForm = doc.catalog.lookup(PDFName.of('AcroForm'), PDFDict);
-  const xfa = acroForm.lookup(PDFName.of('XFA'));
+  const doc = await PDFDocument.load(toLocalBytes(baseBytes), { updateMetadata: false, ignoreEncryption: true });
+  // Typed lookup THROWS on absence - probe untyped so a non-form PDF
+  // gets the honest error, not pdf-lib's assertion.
+  const acroForm = doc.catalog.lookup(PDFName.of('AcroForm'));
+  const xfa = acroForm instanceof PDFDict ? acroForm.lookup(PDFName.of('XFA')) : undefined;
   if (!(xfa instanceof PDFArray)) {
     throw new Error('Base form carries no XFA array - not a LiveCycle form.');
   }
   let replaced = false;
   for (let i = 0; i < xfa.size() - 1; i += 2) {
     if (xfaEntryName(xfa.get(i)) === 'datasets') {
-      const stream = doc.context.flateStream(new TextEncoder().encode(datasetsXml));
+      const stream = doc.context.flateStream(toLocalBytes(new TextEncoder().encode(datasetsXml)));
       xfa.set(i + 1, doc.context.register(stream));
       replaced = true;
       break;
