@@ -9,6 +9,8 @@ export const ITypeDefinition: DocumentTypeDefinition = {
   icon: '📋',
   schema: ITypeSchema,
   features: {
+    // I-Type carries its own cover/marking scheme, not the letter banner.
+    showClassification: false,
     showHeaderSettings: false,
     showFontSelector: false,
     showUnitInfo: false,

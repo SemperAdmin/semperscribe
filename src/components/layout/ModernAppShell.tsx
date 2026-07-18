@@ -290,6 +290,7 @@ export function ModernAppShell({
               onUpdatePreview={onUpdatePreview}
               documentType={documentType}
               downloadFileName={formData ? getExportFilename(formData, 'pdf') : undefined}
+              onDownloadExport={onGeneratePdf}
             />
           )
         )}

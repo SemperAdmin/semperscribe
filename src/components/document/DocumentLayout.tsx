@@ -8,6 +8,7 @@ import { LandingPage } from '@/components/layout/LandingPage';
 import { UnitInfoSection } from '@/components/letter/UnitInfoSection';
 import { ParagraphSection } from '@/components/letter/ParagraphSection';
 import { ClassificationSection } from '@/components/letter/ClassificationSection';
+import { Page11RemarksSection } from '@/components/letter/Page11RemarksSection';
 import { getClassification } from '@/lib/classification';
 import { ClosingBlockSection } from '@/components/letter/ClosingBlockSection';
 import { MultipleToSection } from '@/components/letter/MultipleToSection';
@@ -215,8 +216,19 @@ export function DocumentLayout({
             />
           </div>
 
-          {/* P2 (DONDOCS_PARITY_PLAN): classification markings */}
-          <ClassificationSection formData={formData} setFormData={setFormData} />
+          {/* PG11-1: remarks columns with the right-column template
+              insert. Custom because the dynamic form cannot host the
+              button; the schema still owns validation. */}
+          {formData.documentType === 'page11' && (
+            <Page11RemarksSection formData={formData} setFormData={setFormData} />
+          )}
+
+          {/* P2 (DONDOCS_PARITY_PLAN): classification markings. Hidden
+              for the NAVMC forms - the official form has no banner
+              block, so the engine would have nowhere to render. */}
+          {features.showClassification && (
+            <ClassificationSection formData={formData} setFormData={setFormData} />
+          )}
 
           {features.showCoordinationTable && (
             <CoordinationPageForm formData={formData} setFormData={setFormData} />

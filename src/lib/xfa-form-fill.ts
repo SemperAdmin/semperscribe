@@ -167,11 +167,19 @@ export async function fillXfaDatasets(baseBytes: ArrayBuffer | Uint8Array, datas
   return doc.save({ useObjectStreams: false });
 }
 
-/** Which document types have an official XFA base form. */
+/**
+ * Which document types have an official XFA base form. The path is
+ * forced absolute: with an empty basePath the resolver returns a bare
+ * relative name, which resolves against the current route instead of
+ * the origin (the same trap that broke the pdfjs worker on cloud.gov).
+ */
 export function officialFormPath(documentType: string): string | null {
-  if (documentType === 'aa-form') return resolvePublicPath('forms/navmc-10274-blank.pdf');
-  if (documentType === 'page11') return resolvePublicPath('forms/navmc-118-11-blank.pdf');
-  return null;
+  const file = documentType === 'aa-form' ? 'forms/navmc-10274-blank.pdf'
+    : documentType === 'page11' ? 'forms/navmc-118-11-blank.pdf'
+    : null;
+  if (!file) return null;
+  const path = resolvePublicPath(file);
+  return path.startsWith('/') || /^https?:\/\//.test(path) ? path : `/${path}`;
 }
 
 /** Fetches the bundled blank and fills it from the document state. */

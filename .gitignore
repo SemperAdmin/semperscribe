@@ -46,8 +46,12 @@ tsc-errors.txt
 # manual source snapshots do not belong in git
 backups/
 
-# AA Form PDF reference templates (27MB, local reference for R13 - commit deliberately if ever needed)
-Forms/
+# AA Form PDF reference templates (27MB, local reference for R13 - commit deliberately if ever needed).
+# ANCHORED to the repo root on purpose: a bare `Forms/` matches any
+# directory of that name at any depth, and Windows git runs
+# core.ignorecase=true - which silently excluded public/forms/ (the
+# bundled NAVMC blanks the XFA export fetches at runtime).
+/Forms/
 
 # sandbox scoped type-check config (tooling artifact, never app code)
 _tsc-scoped.json

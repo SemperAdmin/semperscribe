@@ -27,9 +27,17 @@ interface LivePreviewProps {
   downloadFileName?: string;
   /** R5: opens the full compliance issue list. */
   onOpenIssues?: () => void;
+  /**
+   * XFA: the real export. The preview blob is a RENDER, and for the
+   * NAVMC forms the real export is a different artifact (the official
+   * fillable form) - saving the preview instead handed users a flat
+   * copy under the export's own filename. When supplied, Download
+   * delegates here so one authority produces every downloaded file.
+   */
+  onDownloadExport?: () => void;
 }
 
-export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview, documentType = 'standard', issues = [], downloadFileName, onOpenIssues }: LivePreviewProps) {
+export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview, documentType = 'standard', issues = [], downloadFileName, onOpenIssues, onDownloadExport }: LivePreviewProps) {
   const blocking = issues.filter((i) => i.severity === 'block');
   const failing = issues.filter((i) => i.severity === 'fail');
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -49,6 +57,12 @@ export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview,
   };
 
   const handleDownload = () => {
+    // Export path wins when wired - it owns format routing (official
+    // XFA form vs flattened render) and the export gate.
+    if (onDownloadExport) {
+      onDownloadExport();
+      return;
+    }
     if (!previewUrl) return;
     const link = document.createElement('a');
     link.href = previewUrl;

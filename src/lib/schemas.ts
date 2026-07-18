@@ -75,6 +75,12 @@ export interface DocumentFeatures {
   showSignature: boolean;
   showDecisionGrid: boolean;
   showCoordinationTable: boolean;
+  /**
+   * Classification markings. FALSE for the NAVMC forms (10274, 118(11)):
+   * the official form carries no banner block, and its layout has no
+   * room for one - the marking engine has nowhere to render.
+   */
+  showClassification: boolean;
 
   // Behavior
   isAMHS: boolean;
@@ -203,6 +209,7 @@ const STANDARD_LETTER_FEATURES: DocumentFeatures = {
   showSignature: true,
   showDecisionGrid: false,
   showCoordinationTable: false,
+  showClassification: true,
   isAMHS: false,
   isDirective: false,
   showMultipleTo: false,
@@ -359,6 +366,8 @@ export const AAFormDefinition: DocumentTypeDefinition = {
     ...STANDARD_LETTER_FEATURES,
     showHeaderSettings: false,
     showUnitInfo: false,
+    // The official NAVMC 10274 has no banner block and no room for one.
+    showClassification: false,
     category: 'forms',
     pdfPipeline: 'navmc10274',
     exportFormats: ['pdf'],
@@ -915,6 +924,8 @@ export const Page11Definition: DocumentTypeDefinition = {
     showEnclosures: false,
     showParagraphs: false,
     showClosingBlock: false,
+    // The official NAVMC 118(11) has no banner block.
+    showClassification: false,
     category: 'forms',
     pdfPipeline: 'navmc11811',
     exportFormats: ['pdf'],
@@ -942,28 +953,11 @@ export const Page11Definition: DocumentTypeDefinition = {
         }
       ]
     },
-    {
-      id: 'remarks',
-      title: 'Remarks',
-      fields: [
-        {
-          name: 'remarksLeft',
-          label: 'Left Column Content',
-          type: 'textarea',
-          placeholder: 'Enter dates or entry headers...',
-          className: 'md:col-span-1 font-mono',
-          rows: 20
-        },
-        {
-          name: 'remarksRight',
-          label: 'Right Column Content',
-          type: 'textarea',
-          placeholder: 'Enter remarks text...',
-          className: 'md:col-span-1 font-mono',
-          rows: 20
-        }
-      ]
-    }
+    // PG11-1: the Remarks columns render through the custom
+    // Page11RemarksSection (it carries the right-column template
+    // insert), NOT the dynamic form. Fields stay in the schema for
+    // validation and import; the section list omits them so they are
+    // not drawn twice.
   ]
 };
 
@@ -995,6 +989,8 @@ export const AMHSDefinition: DocumentTypeDefinition = {
   icon: '📡',
   schema: AMHSSchema,
   features: {
+    // AMHS classification rides amhsClassification, not the banner engine.
+    showClassification: false,
     showHeaderSettings: false,
     showUnitInfo: false,
     showEndorsementDetails: false,
@@ -2087,6 +2083,8 @@ export const ChangeTransmittalDefinition: DocumentTypeDefinition = {
 // --- DLA Correspondence Schemas (DLA Correspondence Manual, 2011) ---
 
 const DLA_CORRESPONDENCE_FEATURES: DocumentFeatures = {
+  // DLA correspondence keeps the marking engine (FOUO/CUI headers).
+  showClassification: true,
   showHeaderSettings: true,
   showFontSelector: false,
   showUnitInfo: true,
