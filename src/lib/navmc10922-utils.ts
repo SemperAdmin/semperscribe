@@ -135,6 +135,12 @@ function shortName(name: string): string {
  * Each item is one comma-separated entry on the printed line; the
  * component adds custom items on top.
  */
+// The `& Record<string, unknown>` intersections below are load-bearing:
+// these parameter shapes are all-optional ("weak types"), and the app's
+// loose FormData bag ({ documentType } + index signature) shares no
+// declared property with them - TypeScript's weak-type check then
+// REJECTS the call outright (broke the Next build 2026-07-21). The
+// intersection keeps the shape documentation while accepting FormData.
 export function suggestedDocuments(formData: {
   reason?: string;
   dependents?: Array<Partial<Navmc10922Dependent>>;
@@ -143,7 +149,7 @@ export function suggestedDocuments(formData: {
   lostDependentName?: string;
   lostEventType?: string;
   marriageType?: string;
-}): SuggestedDocument[] {
+} & Record<string, unknown>): SuggestedDocument[] {
   const out: SuggestedDocument[] = [];
   const seen = new Set<string>();
   const add = (label: string, citation: string) => {
@@ -263,7 +269,7 @@ export function lossNarrative(formData: {
   lostDependentName?: string;
   lostDependentRelationship?: string;
   lostEffectiveDate?: string;
-}): string | null {
+} & Record<string, unknown>): string | null {
   const name = (formData.lostDependentName ?? '').trim().toUpperCase();
   const rel = (formData.lostDependentRelationship ?? '').trim().toUpperCase();
   const date = parseDateLoose(formData.lostEffectiveDate ?? '');

@@ -7,7 +7,7 @@ import {
 
 // All supported control types that DynamicForm can render
 const SUPPORTED_CONTROL_TYPES: ControlType[] = [
-  'text', 'textarea', 'date', 'select', 'checkbox', 'combobox',
+  'text', 'textarea', 'date', 'date-picker', 'select', 'checkbox', 'combobox',
   'autosuggest', 'number', 'hidden',
 ];
 
