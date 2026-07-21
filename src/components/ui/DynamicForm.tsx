@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DatePicker } from '@/components/ui/date-picker';
 import { AutoSuggestInput } from '@/components/ui/AutoSuggestInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSsics } from '@/hooks/useReferenceData';
@@ -72,6 +73,18 @@ function SSICCombobox({ value, onChange, placeholder }: { value: string; onChang
       )}
     </div>
   );
+}
+
+// ISO date <-> Date without UTC parsing - `new Date('YYYY-MM-DD')`
+// lands on the previous local day west of Greenwich.
+function isoToLocalDate(value: string | undefined): Date | undefined {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value ?? '');
+  if (!m) return undefined;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return isNaN(d.getTime()) ? undefined : d;
+}
+function localDateToIso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 interface DynamicFormProps {
@@ -202,6 +215,12 @@ export function DynamicForm({ documentType, onSubmit, defaultValues, children }:
                 <Input placeholder={field.placeholder} {...formField} value={formField.value ?? ''} />
               ) : field.type === 'date' ? (
                 <Input type="text" placeholder={field.placeholder || 'DD MMM YY'} {...formField} value={formField.value ?? ''} />
+              ) : field.type === 'date-picker' ? (
+                <DatePicker
+                  date={isoToLocalDate(formField.value)}
+                  setDate={(d) => formField.onChange(d ? localDateToIso(d) : '')}
+                  placeholder={field.placeholder || 'Pick a date'}
+                />
               ) : field.type === 'textarea' ? (
                 <Textarea placeholder={field.placeholder} rows={field.rows} {...formField} value={formField.value ?? ''} />
               ) : field.type === 'autosuggest' ? (

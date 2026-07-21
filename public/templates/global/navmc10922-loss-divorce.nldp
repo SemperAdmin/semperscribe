@@ -1,0 +1,142 @@
+{
+  "metadata": {
+    "packageId": "navmc10922-loss-divorce",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-20T00:00:00.000Z",
+    "author": {
+      "name": "SemperScribe"
+    },
+    "package": {
+      "title": "NAVMC 10922 - Loss of Spouse (Divorce)",
+      "description": "LOSS after a final divorce decree, loss narrative in Section 7, original decree attached (MCO 1751.3 Ch 1 para 4.a). Pre-filled with SAMPLE data - replace before use.",
+      "subject": "",
+      "documentType": "navmc10922"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "navmc10922",
+      "reason": "loss",
+      "dateOfApplication": "2026-07-01",
+      "lifeEventDate": "2026-06-25",
+      "nameOfMarine": "MARINE, ALONZO DEAN",
+      "edipi": "1234567890",
+      "grade": "SGT",
+      "typeOfService": "usmc",
+      "organizationStation": "1ST BN 6TH MARINES 2D MARDIV\nCAMP LEJEUNE NC 28547",
+      "unitRuc": "12160",
+      "ecc": "2027-06-13",
+      "dateEnlistmentOrAd": "2024-06-13",
+      "dateLastDischarge": "",
+      "futureAddressEta": "",
+      "dependents": [
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        }
+      ],
+      "custodian": {
+        "depNo": "",
+        "name": "",
+        "relationship": "",
+        "address": ""
+      },
+      "marriageDate": "",
+      "marriagePlace": "",
+      "marriageSpouseName": "",
+      "memberPrevMarried": "yes",
+      "memberPrevMarriedTimes": "1",
+      "spousePrevMarried": "",
+      "spousePrevMarriedTimes": "",
+      "dissolutions": [
+        {
+          "formerMarriageOf": "self",
+          "spouseName": "MARINE, TONYA CAROL",
+          "dateOfDissolution": "2026-06-25",
+          "placeOfDissolution": "ONSLOW COUNTY, NC",
+          "reason": "divorce"
+        },
+        {
+          "formerMarriageOf": "",
+          "spouseName": "",
+          "dateOfDissolution": "",
+          "placeOfDissolution": "",
+          "reason": ""
+        },
+        {
+          "formerMarriageOf": "",
+          "spouseName": "",
+          "dateOfDissolution": "",
+          "placeOfDissolution": "",
+          "reason": ""
+        },
+        {
+          "formerMarriageOf": "",
+          "spouseName": "",
+          "dateOfDissolution": "",
+          "placeOfDissolution": "",
+          "reason": ""
+        }
+      ],
+      "courtOrderInEffect": "no",
+      "courtOrderDatePlace": "",
+      "naturalParentArmedForces": "no",
+      "naturalParentInfo": "",
+      "spouseArmedForces": "no",
+      "spouseEdipi": "",
+      "spouseGrade": "",
+      "spouseTypeOfService": "",
+      "spouseBranch": "",
+      "spouseServiceDates": "",
+      "spouseBaq": "",
+      "documentsViewed": "ORIGINAL DIVORCE DECREE, LOSS OF SPOUSE TONYA CAROL MARINE EFF 6/25/26",
+      "swornDay": "1",
+      "swornMonth": "July",
+      "swornYear2Digit": "26",
+      "attestingOfficerName": "STEWART, THOMAS J",
+      "reasonMode": "manual",
+      "lostDependentName": "TONYA CAROL MARINE",
+      "lostDependentRelationship": "SPOUSE",
+      "lostEventType": "divorce",
+      "lostEffectiveDate": "2026-06-25"
+    }
+  }
+}

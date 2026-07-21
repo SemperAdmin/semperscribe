@@ -62,7 +62,7 @@ export interface IndentEngine {
  * are excluded; they keep their dedicated render paths until Phase 3/4.
  */
 export function isCorrespondenceType(documentType: string | undefined): boolean {
-  return !['mco', 'bulletin', 'change-transmittal', 'secnav-instruction', 'secnav-notice', 'amhs', 'page11', 'aa-form'].includes(
+  return !['mco', 'bulletin', 'change-transmittal', 'secnav-instruction', 'secnav-notice', 'amhs', 'page11', 'aa-form', 'navmc10922'].includes(
     documentType ?? '',
   );
 }

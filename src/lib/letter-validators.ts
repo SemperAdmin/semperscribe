@@ -11,6 +11,7 @@ import { FormData, ParagraphData } from '@/types';
 import { validateClassification } from '@/lib/classification';
 import { validateSignature } from '@/lib/signature-validators';
 import { validateAcronyms } from '@/lib/acronym-validators';
+import { runNavmc10922Validators } from '@/lib/navmc10922-validators';
 
 export type ValidatorSeverity = 'block' | 'fail' | 'warn';
 
@@ -793,6 +794,9 @@ export function runLetterValidators(
     ...validateClassification(formData, paragraphs),
     ...validateSignature(formData),
     ...validateAcronyms(paragraphs),
+    // NAVMC 10922 dependency-application rules - no-op for every other
+    // documentType (docs/NAVMC_10922_SPEC.md section 9).
+    ...runNavmc10922Validators(formData),
   ];
 }
 

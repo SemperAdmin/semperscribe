@@ -359,6 +359,12 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
     return `NAVMC 118(11) - ${name}.${extension}`;
   }
 
+  // Dependency Application
+  if (formData.documentType === 'navmc10922') {
+    const name = sanitize(formData.nameOfMarine ?? '') || 'Marine';
+    return `NAVMC 10922 - ${name}.${extension}`;
+  }
+
   // AMHS
   if (formData.documentType === 'amhs') {
     return `AMHS - ${subject}.${extension}`;

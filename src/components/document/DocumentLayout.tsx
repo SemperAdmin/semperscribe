@@ -9,6 +9,7 @@ import { UnitInfoSection } from '@/components/letter/UnitInfoSection';
 import { ParagraphSection } from '@/components/letter/ParagraphSection';
 import { ClassificationSection } from '@/components/letter/ClassificationSection';
 import { Page11RemarksSection } from '@/components/letter/Page11RemarksSection';
+import { Navmc10922FormSections } from '@/components/letter/Navmc10922Sections';
 import { getClassification } from '@/lib/classification';
 import { ClosingBlockSection } from '@/components/letter/ClosingBlockSection';
 import { MultipleToSection } from '@/components/letter/MultipleToSection';
@@ -206,15 +207,28 @@ export function DocumentLayout({
             <EndorsementDetailsSection formData={formData} setFormData={setFormData} />
           )}
 
-          {/* Dynamic Header Form based on Document Type */}
-          <div className="bg-card p-6 rounded-lg shadow-sm border border-border mb-6">
-            <DynamicForm
-              key={`${formData.documentType}-${formKey}`}
-              documentType={docTypeDef}
-              onSubmit={handleDynamicFormSubmit}
-              defaultValues={formData}
+          {/* NAVMC 10922: four narrow DynamicForm instances interleaved
+              with the dependents/custodian/dissolution grids so the
+              screen follows the paper's section order. Everything else
+              keeps the single schema-driven form. */}
+          {formData.documentType === 'navmc10922' ? (
+            <Navmc10922FormSections
+              formData={formData}
+              setFormData={setFormData}
+              onDynamicSync={handleDynamicFormSubmit}
+              formKey={formKey}
             />
-          </div>
+          ) : (
+            /* Dynamic Header Form based on Document Type */
+            <div className="bg-card p-6 rounded-lg shadow-sm border border-border mb-6">
+              <DynamicForm
+                key={`${formData.documentType}-${formKey}`}
+                documentType={docTypeDef}
+                onSubmit={handleDynamicFormSubmit}
+                defaultValues={formData}
+              />
+            </div>
+          )}
 
           {/* PG11-1: remarks columns with the right-column template
               insert. Custom because the dynamic form cannot host the

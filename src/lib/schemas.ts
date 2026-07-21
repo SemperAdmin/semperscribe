@@ -1,15 +1,17 @@
 import { z } from 'zod';
 import { ITypeDefinition } from '@/lib/i-type/definition';
+import { NAVMC_10922_RELATIONSHIPS } from '@/types/navmc';
 
 // --- UI Schema Definitions ---
 
-export type ControlType = 
-  | 'text' 
-  | 'textarea' 
-  | 'date' 
-  | 'select' 
-  | 'radio' 
-  | 'checkbox' 
+export type ControlType =
+  | 'text'
+  | 'textarea'
+  | 'date'
+  | 'date-picker' // Calendar popover storing ISO (YYYY-MM-DD) - NAVMC 10922 dates
+  | 'select'
+  | 'radio'
+  | 'checkbox'
   | 'combobox'
   | 'autosuggest'
   | 'number'
@@ -45,7 +47,7 @@ export interface SectionDefinition {
   className?: string; // Optional override for the grid layout (e.g. "grid-cols-1")
 }
 
-export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'amhs' | 'coordination-page';
+export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'amhs' | 'coordination-page';
 export type ExportFormat = 'pdf' | 'docx' | 'amhs-text';
 export type DocumentCategory =
   | 'standard-letter'
@@ -959,6 +961,345 @@ export const Page11Definition: DocumentTypeDefinition = {
     // validation and import; the section list omits them so they are
     // not drawn twice.
   ]
+};
+
+// 7b. NAVMC 10922 (Dependency Application)
+// Rule source: docs/NAVMC_10922_SPEC.md. Zod stays permissive - it
+// gives inline hints while editing. The hard export gate is the
+// Phase 3 validator module (navmc10922-validators.ts), which carries
+// the MCO/FMR citations.
+const yesNo = () => z.enum(['', 'yes', 'no']).optional();
+
+const Navmc10922DependentRow = z.object({
+  name: z.string().optional().default(''),
+  address: z.string().optional().default(''),
+  relationship: z
+    .union([z.literal(''), z.enum(NAVMC_10922_RELATIONSHIPS)])
+    .optional()
+    .default(''),
+  dateOfBirth: z.string().optional().default(''),
+  allowanceClaimedFrom: z.string().optional().default(''),
+  livesOutsideHousehold: z.boolean().optional(),
+  previouslyApproved: z.boolean().optional(),
+});
+
+const Navmc10922DissolutionRow = z.object({
+  formerMarriageOf: z.enum(['', 'self', 'spouse']).optional().default(''),
+  spouseName: z.string().optional().default(''),
+  dateOfDissolution: z.string().optional().default(''),
+  placeOfDissolution: z.string().optional().default(''),
+  reason: z.enum(['', 'death', 'annulment', 'divorce']).optional().default(''),
+  foreignDivorce: z.boolean().optional(),
+});
+
+export const Navmc10922Schema = z.object({
+  documentType: z.literal('navmc10922'),
+  reason: z.enum(['', 'start', 'gain', 'loss']).optional(),
+  reasonMode: z.enum(['auto', 'manual']).optional(),
+  lostDependentName: z.string().optional(),
+  lostDependentRelationship: z.string().optional(),
+  lostEventType: z.enum(['', 'divorce', 'annulment', 'death', 'other']).optional(),
+  lostEffectiveDate: z.string().optional(),
+  dateOfApplication: z.string().min(1, 'Date of application is required'),
+  lifeEventDate: z.string().optional(),
+  nameOfMarine: z.string().min(1, 'Name is required (Last, First, Middle)'),
+  edipi: z
+    .string()
+    .min(1, 'EDIPI is required')
+    .regex(/^\d{10}$/, 'EDIPI is the 10-digit DOD ID number'),
+  grade: z.string().min(1, 'Grade is required'),
+  typeOfService: z.enum(['', 'usmc', 'usmcr']).optional(),
+  organizationStation: z.string().optional(),
+  unitRuc: z.string().optional(),
+  ecc: z.string().optional(),
+  dateEnlistmentOrAd: z.string().optional(),
+  dateLastDischarge: z.string().optional(),
+  futureAddressEta: z.string().optional(),
+  dependents: z.array(Navmc10922DependentRow).max(6).optional(),
+  custodian: z
+    .object({
+      depNo: z.string().optional().default(''),
+      name: z.string().optional().default(''),
+      relationship: z.string().optional().default(''),
+      address: z.string().optional().default(''),
+    })
+    .optional(),
+  marriageDate: z.string().optional(),
+  marriagePlace: z.string().optional(),
+  marriageSpouseName: z.string().optional(),
+  marriageType: z.enum(['', 'ceremonial-us', 'foreign', 'proxy-telephone', 'common-law', 'indian-tribal']).optional(),
+  memberPrevMarried: yesNo(),
+  memberPrevMarriedTimes: z.string().optional(),
+  spousePrevMarried: yesNo(),
+  spousePrevMarriedTimes: z.string().optional(),
+  dissolutions: z.array(Navmc10922DissolutionRow).max(4).optional(),
+  courtOrderInEffect: yesNo(),
+  courtOrderDatePlace: z.string().optional(),
+  naturalParentArmedForces: yesNo(),
+  naturalParentInfo: z.string().optional(),
+  spouseArmedForces: yesNo(),
+  spouseEdipi: z.string().optional(),
+  spouseGrade: z.string().optional(),
+  spouseTypeOfService: z.enum(['', 'regular', 'reserve']).optional(),
+  spouseBranch: z.string().optional(),
+  spouseServiceDates: z.string().optional(),
+  spouseBaq: z.enum(['', 'with', 'without']).optional(),
+  documentsViewed: z.string().optional(),
+  swornDay: z.string().optional(),
+  swornMonth: z.string().optional(),
+  swornYear2Digit: z.string().optional(),
+  attestingOfficerName: z.string().optional(),
+});
+
+const YES_NO_OPTIONS: FieldOption[] = [
+  { label: '—', value: '' },
+  { label: 'Yes', value: 'yes' },
+  { label: 'No', value: 'no' },
+];
+
+export const Navmc10922Definition: DocumentTypeDefinition = {
+  id: 'navmc10922',
+  name: 'NAVMC 10922 (Dependency Application)',
+  description:
+    'Dependency Application for BAH and travel/transportation entitlements per MCO 1751.3 W/CH-1.',
+  icon: '👪',
+  schema: Navmc10922Schema,
+  features: {
+    ...STANDARD_LETTER_FEATURES,
+    showHeaderSettings: false,
+    showUnitInfo: false,
+    showVia: false,
+    showReferences: false,
+    showEnclosures: false,
+    showParagraphs: false,
+    showClosingBlock: false,
+    // The official form carries its own CUI artwork; the app adds no
+    // markings (spec section 2 constraint 5).
+    showClassification: false,
+    category: 'forms',
+    pdfPipeline: 'navmc10922',
+    exportFormats: ['pdf'],
+  },
+  sections: [
+    {
+      id: 'reason',
+      title: 'Application Dates',
+      // The REASON control renders through the custom ReasonSection in
+      // Navmc10922Sections - it derives START/GAIN from the Section 2
+      // previously-approved flags and writes formData.reason from
+      // outside DynamicForm, so it must not live inside one.
+      fields: [
+        {
+          name: 'dateOfApplication',
+          label: 'Date of Application',
+          type: 'date-picker',
+          required: true,
+          className: 'md:col-span-1',
+        },
+        {
+          name: 'lifeEventDate',
+          label: 'Date of Life Event',
+          type: 'date-picker',
+          description:
+            'Marriage, birth, adoption, divorce, or death driving this application. Substantiating documents are due within 30 days of this date (MCO 1751.3 Ch 1 para 1.f). Not printed on the form.',
+          className: 'md:col-span-1',
+        },
+      ],
+    },
+    {
+      id: 'identification',
+      title: 'Section 1 — Identification',
+      fields: [
+        {
+          name: 'nameOfMarine',
+          label: 'Name of Marine (Last, First, Middle)',
+          type: 'text',
+          required: true,
+          placeholder: 'MARINE, ALONZO DEAN',
+          className: 'md:col-span-1',
+        },
+        { name: 'edipi', label: 'EDIPI', type: 'text', required: true, placeholder: '1234567890', className: 'md:col-span-1' },
+        { name: 'grade', label: 'Grade', type: 'text', required: true, placeholder: 'SGT', className: 'md:col-span-1' },
+        {
+          name: 'typeOfService',
+          label: 'Type of Service',
+          type: 'select',
+          options: [
+            { label: '—', value: '' },
+            { label: 'USMC', value: 'usmc' },
+            { label: 'USMCR', value: 'usmcr' },
+          ],
+          className: 'md:col-span-1',
+        },
+        // organizationStation, unitRuc, and futureAddressEta render
+        // through the custom unit-search block in Navmc10922Sections -
+        // NOT here. A DynamicForm instance owning those keys would
+        // clobber unit-search writes on its next debounced sync (RHF
+        // state seeds once at mount). Zod keeps the keys.
+        { name: 'ecc', label: 'ECC', type: 'date-picker', className: 'md:col-span-1' },
+        {
+          name: 'dateEnlistmentOrAd',
+          label: 'Date of Current Enlistment/Appointment or Date Reporting for Active Duty (whichever is later)',
+          type: 'date-picker',
+          className: 'md:col-span-1',
+        },
+        {
+          name: 'dateLastDischarge',
+          label: 'Date of Last Discharge or Last Release to Inactive Duty',
+          type: 'date-picker',
+          description: 'Leave blank with no prior service.',
+          className: 'md:col-span-1',
+        },
+      ],
+    },
+    // Section 2 (dependents grid), Section 3 (custodian), and the
+    // Section 4 dissolution grid render through custom components in
+    // Phase 2 - the schema keeps their fields for validation and
+    // import, same pattern as Page11RemarksSection.
+    {
+      id: 'marital',
+      title: 'Section 4 — Marital Status and Support/Paternity',
+      fields: [
+        {
+          name: 'marriageDate',
+          label: 'Present Marriage — Date',
+          type: 'date-picker',
+          description: 'Leave the present-marriage block blank when unmarried.',
+          className: 'md:col-span-1',
+        },
+        { name: 'marriagePlace', label: 'Present Marriage — Place (County and State)', type: 'text', className: 'md:col-span-1' },
+        { name: 'marriageSpouseName', label: 'Full Given Name of Spouse', type: 'text', className: 'md:col-span-1' },
+        {
+          name: 'marriageType',
+          label: 'Type of Marriage',
+          type: 'select',
+          options: [
+            { label: '—', value: '' },
+            { label: 'US Ceremonial (civil or religious)', value: 'ceremonial-us' },
+            { label: 'Foreign', value: 'foreign' },
+            { label: 'Proxy / Telephone', value: 'proxy-telephone' },
+            { label: 'Common-Law', value: 'common-law' },
+            { label: 'Indian Tribal', value: 'indian-tribal' },
+          ],
+          description:
+            'Not printed on the form - drives the evidence checklist and approval routing. Proxy/telephone and common-law marriages route to CMC (MFP-1); the CO cannot approve them (MCO 1751.3 Ch 1 paras 3.a-3.b).',
+          className: 'md:col-span-1',
+        },
+        { name: 'memberPrevMarried', label: 'Have You Been Previously Married?', type: 'select', options: YES_NO_OPTIONS, className: 'md:col-span-1' },
+        {
+          name: 'memberPrevMarriedTimes',
+          label: 'Your Prior Marriages — No. of Times',
+          type: 'number',
+          condition: (d) => d.memberPrevMarried === 'yes',
+          className: 'md:col-span-1',
+        },
+        { name: 'spousePrevMarried', label: 'Has Present Spouse Been Previously Married?', type: 'select', options: YES_NO_OPTIONS, className: 'md:col-span-1' },
+        {
+          name: 'spousePrevMarriedTimes',
+          label: 'Spouse Prior Marriages — No. of Times',
+          type: 'number',
+          condition: (d) => d.spousePrevMarried === 'yes',
+          className: 'md:col-span-1',
+        },
+      ],
+    },
+    // The dissolution grid renders between 'marital' and 'support' via
+    // Navmc10922Sections - paper order is marriage info, prior-marriage
+    // flags, dissolution table, then the court-order question.
+    {
+      id: 'support',
+      title: 'Section 4 — Support/Paternity Court Order',
+      fields: [
+        {
+          name: 'courtOrderInEffect',
+          label: 'Court Order or Written Agreement in Effect Relative to Support/Maintenance/Paternity?',
+          type: 'select',
+          options: YES_NO_OPTIONS,
+          className: 'md:col-span-1',
+        },
+        {
+          name: 'courtOrderDatePlace',
+          label: 'If Yes — Date and Place (County and State) Issued',
+          type: 'text',
+          description: 'Attach a copy of the order or agreement.',
+          condition: (d) => d.courtOrderInEffect === 'yes',
+          className: 'col-span-full',
+        },
+      ],
+    },
+    {
+      id: 'natural-parent',
+      title: 'Section 5 — Natural Parent of Child in Armed Forces',
+      fields: [
+        {
+          name: 'naturalParentArmedForces',
+          label: 'Has a Natural Parent Other Than Claimant of Any Child Listed Ever Been a Member of Any U.S. Armed Force?',
+          type: 'select',
+          options: YES_NO_OPTIONS,
+          className: 'md:col-span-1',
+        },
+        {
+          name: 'naturalParentInfo',
+          label: 'If Yes — All Available Identifying Information',
+          type: 'textarea',
+          rows: 3,
+          description: 'Full name of natural parent, EDIPI, grade, type of service, branch, inclusive dates of active service, and full name of child(ren).',
+          condition: (d) => d.naturalParentArmedForces === 'yes',
+          className: 'col-span-full',
+        },
+      ],
+    },
+    {
+      id: 'spouse-service',
+      title: 'Section 6 — Spouse in Armed Forces',
+      fields: [
+        {
+          name: 'spouseArmedForces',
+          label: 'Has Your Spouse Ever Been a Member of Any U.S. Armed Force?',
+          type: 'select',
+          options: YES_NO_OPTIONS,
+          className: 'md:col-span-1',
+        },
+        { name: 'spouseEdipi', label: 'Spouse EDIPI', type: 'text', condition: (d) => d.spouseArmedForces === 'yes', className: 'md:col-span-1' },
+        { name: 'spouseGrade', label: 'Spouse Grade', type: 'text', condition: (d) => d.spouseArmedForces === 'yes', className: 'md:col-span-1' },
+        {
+          name: 'spouseTypeOfService',
+          label: 'Spouse Type of Service',
+          type: 'select',
+          options: [
+            { label: '—', value: '' },
+            { label: 'Regular', value: 'regular' },
+            { label: 'Reserve', value: 'reserve' },
+          ],
+          condition: (d) => d.spouseArmedForces === 'yes',
+          className: 'md:col-span-1',
+        },
+        { name: 'spouseBranch', label: 'Branch of Service', type: 'text', condition: (d) => d.spouseArmedForces === 'yes', className: 'md:col-span-1' },
+        { name: 'spouseServiceDates', label: 'Inclusive Dates of Active Service', type: 'text', condition: (d) => d.spouseArmedForces === 'yes', className: 'md:col-span-1' },
+        {
+          name: 'spouseBaq',
+          label: 'BAQ (spouse housing allowance status)',
+          type: 'select',
+          options: [
+            { label: '—', value: '' },
+            { label: 'With Dependents', value: 'with' },
+            { label: 'Without Dependents', value: 'without' },
+          ],
+          description: 'BAQ is the obsolete term still printed on the 7-21 form - it means the spouse\'s own housing allowance status.',
+          condition: (d) => d.spouseArmedForces === 'yes',
+          className: 'md:col-span-1',
+        },
+      ],
+    },
+    // Section 7 renders ENTIRELY through custom blocks in
+    // Navmc10922Sections: SwornDateSection (date picker parsing into
+    // day/month/2-digit year + attesting officer name) and
+    // DocumentsViewedSection (claims-driven checklist + field-93 width
+    // meter). Fields written from outside DynamicForm must not live
+    // inside one - the debounced sync would clobber them. Zod keeps
+    // documentsViewed, swornDay, swornMonth, swornYear2Digit, and
+    // attestingOfficerName for validation and import.
+  ],
 };
 
 // 8. AMHS Message
@@ -2395,6 +2736,7 @@ export const DocumentSchema = z.union([
   SecnavNoticeSchema,
   ChangeTransmittalSchema,
   Page11Schema,
+  Navmc10922Schema,
   AMHSSchema,
   MFRSchema,
   FromToMemoSchema,
@@ -2427,6 +2769,7 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   'secnav-notice': SecnavNoticeDefinition,
   'change-transmittal': ChangeTransmittalDefinition,
   page11: Page11Definition,
+  navmc10922: Navmc10922Definition,
   mfr: MFRDefinition,
   'from-to-memo': FromToMemoDefinition,
   'letterhead-memo': LetterheadMemoDefinition,

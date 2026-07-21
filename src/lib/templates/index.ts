@@ -55,6 +55,7 @@ export const DOCUMENT_TEMPLATES: Record<string, DocumentTemplate> = {
   // Aliases or Additional Placeholders (Mapped to Basic if not implemented)
   'multiple-address': { ...BasicLetterTemplate, id: 'multiple-address-default', typeId: 'multiple-address', name: 'Multiple-Address Letter' },
   'page11': { ...BasicLetterTemplate, id: 'page11-default', typeId: 'page11', name: 'Page 11' }, // Placeholder
+  'navmc10922': { ...BasicLetterTemplate, id: 'navmc10922-default', typeId: 'navmc10922', name: 'NAVMC 10922 (Dependency Application)' }, // Placeholder
   'amhs': { ...BasicLetterTemplate, id: 'amhs-default', typeId: 'amhs', name: 'AMHS Message' }, // Placeholder
 
   // DLA Correspondence

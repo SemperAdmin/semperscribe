@@ -21,6 +21,9 @@ import { FormData, ParagraphData } from '@/types';
 import { generateCitation } from '@/lib/citation';
 import { indexToRefLetter } from '@/lib/letter-validators';
 import { resolvePublicPath } from '@/lib/path-utils';
+// NAVMC 10922 needs a POSITIONAL emitter - 77 of its 102 datasets
+// nodes share one name, so the tag() helper above cannot address them.
+import { buildNavmc10922Xml } from '@/lib/navmc10922-xfa';
 
 /** XML-escape plus XFA's CR line separator (&#xD;). */
 function xfaEscape(value: string): string {
@@ -176,6 +179,7 @@ export async function fillXfaDatasets(baseBytes: ArrayBuffer | Uint8Array, datas
 export function officialFormPath(documentType: string): string | null {
   const file = documentType === 'aa-form' ? 'forms/navmc-10274-blank.pdf'
     : documentType === 'page11' ? 'forms/navmc-118-11-blank.pdf'
+    : documentType === 'navmc10922' ? 'forms/navmc-10922-blank.pdf'
     : null;
   if (!file) return null;
   const path = resolvePublicPath(file);
@@ -191,7 +195,9 @@ export async function exportOfficialForm(slices: FormSlices): Promise<Blob> {
   const base = await res.arrayBuffer();
   const xml = slices.formData.documentType === 'aa-form'
     ? buildNavmc10274Xml(slices)
-    : buildNavmc11811Xml(slices.formData);
+    : slices.formData.documentType === 'navmc10922'
+      ? buildNavmc10922Xml(slices.formData)
+      : buildNavmc11811Xml(slices.formData);
   const bytes = await fillXfaDatasets(base, xml);
   return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
 }

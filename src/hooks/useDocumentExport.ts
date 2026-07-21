@@ -67,10 +67,18 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
       // redraw. Signature fields or bound enclosure files force the
       // flattened path: the dynamic-XFA renderer ignores drawn
       // annotations and appended pages, so they would silently vanish.
-      if (format === 'pdf' && (formData.documentType === 'aa-form' || formData.documentType === 'page11')) {
+      if (
+        format === 'pdf' &&
+        (formData.documentType === 'aa-form' || formData.documentType === 'page11' || formData.documentType === 'navmc10922')
+      ) {
         const signatureFields = (formData.signatureFields as unknown[] | undefined) ?? [];
         const hasBoundFiles = Boolean(enclosureRows?.some(r => r.fileId && enclosureFiles?.has(r.fileId)));
-        if (signatureFields.length === 0 && !hasBoundFiles) {
+        // START (10922): the checkbox is unbindable in the XFA datasets,
+        // so a START application routes to the flattened redraw where
+        // the box CAN be checked (build plan Phase 5 routing).
+        const startNeedsFlattened =
+          formData.documentType === 'navmc10922' && formData.reason === 'start';
+        if (signatureFields.length === 0 && !hasBoundFiles && !startNeedsFlattened) {
           const { exportOfficialForm } = await import('@/lib/xfa-form-fill');
           const formBlob = await exportOfficialForm({ formData, vias, references, enclosures, copyTos, paragraphs });
           const url = window.URL.createObjectURL(formBlob);
@@ -81,9 +89,20 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
           link.click();
           document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
+          // The CUI line reports the FORM'S OWN artwork - the app adds
+          // no markings (spec constraint 5; the blank carries
+          // "CUI (when filled in)" / PRVCY in its template). START
+          // applications never reach this branch - they route to the
+          // flattened redraw above.
+          const startNote =
+            formData.documentType === 'navmc10922'
+              ? ' The official form\'s own artwork marks it CUI (when filled in) - handle the filled file accordingly.'
+              : '';
           toast?.({
             title: 'Official Form Exported',
-            description: 'This is the fillable NAVMC form - open it in Adobe Acrobat or Reader. Browsers show a placeholder page. Add signature fields to export a flattened print PDF instead.',
+            description:
+              'This is the fillable NAVMC form - open it in Adobe Acrobat or Reader. Browsers show a placeholder page. Add signature fields to export a flattened print PDF instead.' +
+              startNote,
           });
           return;
         }

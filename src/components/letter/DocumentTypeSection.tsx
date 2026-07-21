@@ -522,6 +522,16 @@ export function DocumentTypeSection({
               isActive={formData.documentType === 'page11'}
               onClick={() => setFormData(prev => ({ ...prev, documentType: 'page11' }))}
             />
+
+            <DocumentTypeCard
+              type="navmc10922"
+              icon={<Users className="w-10 h-10" />}
+              title="NAVMC 10922"
+              description="Dependency Application for BAH entitlements per MCO 1751.3 W/CH-1. Spouse and children."
+              note="→ For dependency claims"
+              isActive={formData.documentType === 'navmc10922'}
+              onClick={() => setFormData(prev => ({ ...prev, documentType: 'navmc10922' }))}
+            />
           </div>
         </div>
 
@@ -545,7 +555,7 @@ export function DocumentTypeSection({
       </section>
 
       {/* Header Type & Body Font - Only for Letters */}
-      {formData.documentType !== 'aa-form' && formData.documentType !== 'page11' && formData.documentType !== 'amhs' && (
+      {formData.documentType !== 'aa-form' && formData.documentType !== 'page11' && formData.documentType !== 'navmc10922' && formData.documentType !== 'amhs' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 border-t border-border/50">
           <Card className="border-border shadow-sm bg-card/50">
             <CardHeader className="pb-2">

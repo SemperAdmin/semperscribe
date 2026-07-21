@@ -435,6 +435,11 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                     onClick={() => handleSelect('page11')}
                     label="Pg. 11 (NAVMC 118(11))"
                   />
+                  <DocumentTypeButton
+                    active={documentType === 'navmc10922'}
+                    onClick={() => handleSelect('navmc10922')}
+                    label="Dependency Application (NAVMC 10922)"
+                  />
                 </div>
               </AccordionContent>
             </AccordionItem>

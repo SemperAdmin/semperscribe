@@ -1,0 +1,138 @@
+{
+  "metadata": {
+    "packageId": "navmc10922-marriage",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-20T00:00:00.000Z",
+    "author": {
+      "name": "SemperScribe"
+    },
+    "package": {
+      "title": "NAVMC 10922 - Marriage (No Prior Marriages)",
+      "description": "GAIN of spouse by US ceremonial marriage. Pre-filled with SAMPLE data - replace before use.",
+      "subject": "",
+      "documentType": "navmc10922"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "navmc10922",
+      "reason": "start",
+      "dateOfApplication": "2026-07-01",
+      "lifeEventDate": "2026-06-20",
+      "nameOfMarine": "MARINE, ALONZO DEAN",
+      "edipi": "1234567890",
+      "grade": "SGT",
+      "typeOfService": "usmc",
+      "organizationStation": "1ST BN 6TH MARINES 2D MARDIV\nCAMP LEJEUNE NC 28547",
+      "unitRuc": "12160",
+      "ecc": "2027-06-13",
+      "dateEnlistmentOrAd": "2024-06-13",
+      "dateLastDischarge": "",
+      "futureAddressEta": "",
+      "dependents": [
+        {
+          "name": "TONYA CAROL MARINE",
+          "address": "123 FOURTH ST JACKSONVILLE NC 28540",
+          "relationship": "SPOUSE",
+          "dateOfBirth": "1997-07-07",
+          "allowanceClaimedFrom": "2026-06-20"
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        }
+      ],
+      "custodian": {
+        "depNo": "",
+        "name": "",
+        "relationship": "",
+        "address": ""
+      },
+      "marriageDate": "2026-06-20",
+      "marriagePlace": "ONSLOW, NC",
+      "marriageSpouseName": "TONYA CAROL GRAY",
+      "memberPrevMarried": "no",
+      "memberPrevMarriedTimes": "",
+      "spousePrevMarried": "no",
+      "spousePrevMarriedTimes": "",
+      "dissolutions": [
+        {
+          "formerMarriageOf": "",
+          "spouseName": "",
+          "dateOfDissolution": "",
+          "placeOfDissolution": "",
+          "reason": ""
+        },
+        {
+          "formerMarriageOf": "",
+          "spouseName": "",
+          "dateOfDissolution": "",
+          "placeOfDissolution": "",
+          "reason": ""
+        },
+        {
+          "formerMarriageOf": "",
+          "spouseName": "",
+          "dateOfDissolution": "",
+          "placeOfDissolution": "",
+          "reason": ""
+        },
+        {
+          "formerMarriageOf": "",
+          "spouseName": "",
+          "dateOfDissolution": "",
+          "placeOfDissolution": "",
+          "reason": ""
+        }
+      ],
+      "courtOrderInEffect": "no",
+      "courtOrderDatePlace": "",
+      "naturalParentArmedForces": "no",
+      "naturalParentInfo": "",
+      "spouseArmedForces": "no",
+      "spouseEdipi": "",
+      "spouseGrade": "",
+      "spouseTypeOfService": "",
+      "spouseBranch": "",
+      "spouseServiceDates": "",
+      "spouseBaq": "",
+      "documentsViewed": "MARRIAGE CERTIFICATE",
+      "swornDay": "1",
+      "swornMonth": "July",
+      "swornYear2Digit": "26",
+      "attestingOfficerName": "STEWART, THOMAS J",
+      "reasonMode": "auto"
+    }
+  }
+}

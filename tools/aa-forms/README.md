@@ -61,3 +61,30 @@ with raw downloads without re-normalizing:
 import pikepdf
 pdf = pikepdf.open('raw.pdf'); pdf.save('normalized.pdf')
 ```
+
+`public/forms/navmc-10922-blank.pdf` is the NAVMC 10922 (7-21)
+Dependency Application, same normalization (source was encrypted with
+invalid padding, fatal to pypdf). All 10 XFA streams verified
+byte-identical to the source after normalization.
+
+## NAVMC 10922 positional map
+
+The 10922 form has non-unique field names (77 of 102 datasets nodes are
+`ParticipantName`), so filling is positional, not name-keyed.
+`extract_10922_map.py` derives the position order from template.xml and
+verifies it against the form's shipped datasets stream on every run:
+
+```bash
+# regenerate the map (fails loudly if the form revision changed)
+python3 tools/aa-forms/extract_10922_map.py extract \
+    public/forms/navmc-10922-blank.pdf tools/aa-forms/navmc10922-map.json
+
+# sentinel round-trip: fill 102 indexed values, re-extract, assert order
+python3 tools/aa-forms/extract_10922_map.py verify \
+    public/forms/navmc-10922-blank.pdf tools/aa-forms/navmc10922-map.json
+```
+
+`navmc10922-map.json` is the single source for the positional emitter
+(`buildNavmc10922Xml`), the flattened generator's box map, and the
+round-trip tests. Rule source: `docs/NAVMC_10922_SPEC.md`. Build
+sequence: `docs/NAVMC_10922_BUILD_PLAN.md`.

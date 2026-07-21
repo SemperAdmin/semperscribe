@@ -127,9 +127,10 @@ describe('fillXfaDatasets round-trip on the real blanks', () => {
 });
 
 describe('routing table', () => {
-  it('maps only the two form types', () => {
+  it('maps only the three form types', () => {
     expect(officialFormPath('aa-form')).toContain('navmc-10274-blank.pdf');
     expect(officialFormPath('page11')).toContain('navmc-118-11-blank.pdf');
+    expect(officialFormPath('navmc10922')).toContain('navmc-10922-blank.pdf');
     expect(officialFormPath('basic')).toBeNull();
   });
 });

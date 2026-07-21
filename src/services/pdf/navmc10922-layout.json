@@ -1,0 +1,4894 @@
+{
+ "form": "NAVMC 10922 (7-21) (EF)",
+ "pageSize": {
+  "wPt": 612,
+  "hPt": 792
+ },
+ "content": {
+  "x": 12.7,
+  "y": 12.7,
+  "w": 190.5,
+  "h": 247.65
+ },
+ "master": [
+  {
+   "x": 12.7,
+   "y": 260.35,
+   "w": 69.85,
+   "h": 6.35,
+   "text": "NAVMC 10922 (7-21) (EF)",
+   "size": null,
+   "va": "middle"
+  },
+  {
+   "x": 158.75,
+   "y": 266.7,
+   "w": 44.45,
+   "h": 6.35,
+   "text": "AEM Form Designer 6.5",
+   "size": 8.0,
+   "ha": "right",
+   "va": "middle"
+  },
+  {
+   "x": 133.35,
+   "y": 260.35,
+   "w": 69.85,
+   "h": 6.35,
+   "text": "Page of",
+   "size": 8.0,
+   "ha": "right",
+   "va": "middle"
+  },
+  {
+   "x": 139.7,
+   "y": 6.35,
+   "w": 63.5,
+   "h": 6.35,
+   "text": "MCO 1751.3",
+   "size": 8.0,
+   "ha": "right",
+   "va": "bottom"
+  },
+  {
+   "x": 12.7,
+   "y": 266.7,
+   "w": 44.45,
+   "h": 6.35,
+   "text": "Previous versions are obsolete",
+   "size": 8.0,
+   "va": "middle"
+  },
+  {
+   "x": 82.55,
+   "y": 6.35,
+   "w": 50.8,
+   "h": 6.35,
+   "text": "CUI (when filled in)",
+   "size": 8.0,
+   "va": "middle"
+  },
+  {
+   "x": 82.55,
+   "y": 260.35,
+   "w": 50.8,
+   "h": 13.97,
+   "text": "CUI (when filled in)\nControlled by: USMC\nCUI Category: PRVCY\nLDC: DL ONLY\nPOC: MFPrivacy@usmc.mil",
+   "size": 9.0,
+   "ha": "center",
+   "va": "middle"
+  }
+ ],
+ "pages": [
+  {
+   "labels": [
+    {
+     "x": 12.7,
+     "y": 12.7,
+     "w": 190.5,
+     "h": 12.7,
+     "text": "DEPENDENCY APPLICATION",
+     "size": null,
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.528
+      ]
+     ]
+    },
+    {
+     "x": 12.7,
+     "y": 31.75,
+     "w": 76.2,
+     "h": 12.7,
+     "text": "INSTRUCTIONS\nWHERE ADDITIONAL SPACE IS NECESSARY TO COMPLETE ITEMS",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       false,
+       0.353
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 88.9,
+     "y": 31.75,
+     "w": 114.15,
+     "h": 12.7,
+     "text": "REASON FOR THIS APPLICATION\n(CHECK ONE)",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       false,
+       0.353
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 88.9,
+     "y": 44.45,
+     "w": 25.4,
+     "h": 6.35,
+     "text": "START",
+     "size": 8.0,
+     "ha": "center",
+     "edges": [
+      [
+       false,
+       0.353
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 114.3,
+     "y": 44.45,
+     "w": 88.9,
+     "h": 6.35,
+     "text": "CHANGE IN DEPENDENTS (Check one)",
+     "size": 8.0,
+     "ha": "center",
+     "edges": [
+      [
+       false,
+       0.353
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 190.5,
+     "y": 33.178,
+     "w": 10.16,
+     "h": 10.16,
+     "text": "G",
+     "size": 22.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 12.7,
+     "y": 57.150000000000006,
+     "w": 50.8,
+     "h": 6.35,
+     "text": "SECTION 1",
+     "size": 8.0,
+     "rotate": 90,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       false,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 158.75,
+     "y": 57.150000000000006,
+     "w": 44.45,
+     "h": 6.35,
+     "text": "TYPE OF SERVICE",
+     "size": 8.0,
+     "ha": "center",
+     "edges": [
+      [
+       false,
+       0.353
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 12.7,
+     "y": 107.95,
+     "w": 50.8,
+     "h": 6.35,
+     "text": "SECTION 2 DEPENDENT INFORMATION",
+     "size": 8.0,
+     "rotate": 90,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       false,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 107.95,
+     "w": 6.35,
+     "h": 12.7,
+     "text": "NO.",
+     "size": 7.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 25.4,
+     "y": 107.95,
+     "w": 50.8,
+     "h": 12.7,
+     "text": "NAME OF DEPENDENT\n(Include full given name)",
+     "size": 7.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 76.2,
+     "y": 107.95,
+     "w": 50.8,
+     "h": 12.7,
+     "text": "COMPLETE ADDRESS\n(Include Zip Code)",
+     "size": 7.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 127.0,
+     "y": 107.95,
+     "w": 25.4,
+     "h": 12.7,
+     "text": "RELATIONSHIP\n(if child, indicate step, adopted, ward or born out)",
+     "size": 7.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 107.95,
+     "w": 19.05,
+     "h": 12.7,
+     "text": "DATE OF BIRTH\n(M/D/YY)",
+     "size": 7.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 171.45,
+     "y": 107.95,
+     "w": 31.75,
+     "h": 12.7,
+     "text": "DATE ALLOWANCE CLAIMED FROM (If previously approved, give date of approval)",
+     "size": 7.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 120.65,
+     "w": 6.35,
+     "h": 6.35,
+     "text": "1",
+     "size": 7.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 127.0,
+     "w": 6.35,
+     "h": 6.35,
+     "text": "2",
+     "size": 7.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 133.35,
+     "w": 6.35,
+     "h": 6.35,
+     "text": "3",
+     "size": 7.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 139.7,
+     "w": 6.35,
+     "h": 6.35,
+     "text": "4",
+     "size": 7.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 146.04999999999998,
+     "w": 6.35,
+     "h": 6.35,
+     "text": "5",
+     "size": 7.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 152.39999999999998,
+     "w": 6.35,
+     "h": 6.35,
+     "text": "6",
+     "size": 7.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 12.7,
+     "y": 158.75,
+     "w": 19.05,
+     "h": 6.35,
+     "text": "SECTION 3",
+     "size": 8.0,
+     "rotate": 90,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       false,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 158.75,
+     "w": 184.15,
+     "h": 6.35,
+     "text": "Furnish the following information concerning custodian of any dependent named above.",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 165.1,
+     "w": 6.35,
+     "h": 6.35,
+     "text": "DEP\nNO.",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 25.4,
+     "y": 165.1,
+     "w": 66.675,
+     "h": 6.35,
+     "text": "FULL NAME OF CUSTODIAN",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 92.075,
+     "y": 165.1,
+     "w": 44.45,
+     "h": 6.35,
+     "text": "RELATIONSHIP TO DEPENDENT",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 136.525,
+     "y": 165.1,
+     "w": 66.675,
+     "h": 6.35,
+     "text": "ADDRESS AND ZIP CODE",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 12.7,
+     "y": 177.79999999999998,
+     "w": 82.55,
+     "h": 6.35,
+     "text": "SECTION 4 MARITAL OF SERVICE MEMBER AND SPOUSE AND INFORMATION REGARDING SUPPORT/PATERNITY",
+     "size": 8.0,
+     "rotate": 90,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       false,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 12.7,
+     "y": 25.4,
+     "w": 190.5,
+     "h": 6.35,
+     "text": "Please read the Privacy Act Statement on back before completing the form",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       false,
+       0.353
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 101.60000000000001,
+     "y": 190.5,
+     "w": 101.6,
+     "h": 6.35,
+     "text": "IF EITHER ANSWER ABOVE IS \"YES\", GIVE INFORMATION REQUESTED BELOW.",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 177.79999999999998,
+     "w": 50.8,
+     "h": 6.35,
+     "text": "HAS PRESENT SPOUSE BEEN PREVIOUSLY MARRIED?",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 101.60000000000001,
+     "y": 177.79999999999998,
+     "w": 50.8,
+     "h": 6.35,
+     "text": "HAVE YOU BEEN PREVIOUSLY MARRIED?",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 177.79999999999998,
+     "w": 82.55,
+     "h": 6.35,
+     "text": "INFORMATION CONCERNING PRESENT MARRIAGE",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 184.14999999999998,
+     "w": 19.05,
+     "h": 6.35,
+     "text": "DATE",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 38.099999999999994,
+     "y": 184.14999999999998,
+     "w": 31.75,
+     "h": 6.35,
+     "text": "PLACE (County and State)",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 69.85,
+     "y": 184.14999999999998,
+     "w": 31.75,
+     "h": 6.35,
+     "text": "FULL GIVEN NAME OF SPOUSE",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 196.85,
+     "w": 184.14999999999998,
+     "h": 6.35,
+     "text": "INFORMATION CONCERNING DISSOLUTION OF EACH FORMER MARRIAGE OF BOTH YOURSELF AND/OR SPOUSE (Continue on separate sheet if necessary)",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 203.2,
+     "w": 31.75,
+     "h": 6.35,
+     "text": "FORMER MARRIAGE OF",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 209.54999999999998,
+     "w": 15.875,
+     "h": 6.35,
+     "text": "YOUR-",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 34.925,
+     "y": 209.54999999999998,
+     "w": 15.875,
+     "h": 6.35,
+     "text": "SPOUSE",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 50.8,
+     "y": 203.2,
+     "w": 38.1,
+     "h": 12.7,
+     "text": "NAME OF THE SPOUSE IN THE DISSOLVED MARRIAGE",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 88.9,
+     "y": 203.2,
+     "w": 25.4,
+     "h": 12.7,
+     "text": "DATE OF DISSOLUTION",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 114.3,
+     "y": 203.2,
+     "w": 31.75,
+     "h": 12.7,
+     "text": "PLACE OF DISSOLUTION (County and State)",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 146.04999999999998,
+     "y": 203.2,
+     "w": 57.15,
+     "h": 6.35,
+     "text": "REASON (Check one)",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 185.42,
+     "y": 209.54999999999998,
+     "w": 17.78,
+     "h": 6.35,
+     "text": "DIVORCE",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 165.1,
+     "y": 209.54999999999998,
+     "w": 20.32,
+     "h": 6.35,
+     "text": "ANNULMENT",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 146.04999999999998,
+     "y": 209.54999999999998,
+     "w": 19.05,
+     "h": 6.35,
+     "text": "DEATH",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 241.29999999999998,
+     "w": 184.14999999999998,
+     "h": 6.35,
+     "text": "IS THERE A COURT ORDER OR WRITTEN AGREEMENT IN EFFECT RELATIVE TO SUPPORT/MAINTENANCE/PATERNITY?",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 44.45,
+     "y": 247.64999999999998,
+     "w": 158.75,
+     "h": 6.35,
+     "text": "IF YES, STATE DATE AND PLACE (county and state) WHERE SUCH ORDER/AGREEMENT WAS ISSUED AND ATTACH A COPY.",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    }
+   ],
+   "cells": [
+    {
+     "x": 12.7,
+     "y": 44.45,
+     "w": 76.2,
+     "h": 12.7,
+     "index": 0,
+     "kind": "dateTimeEdit",
+     "caption": "DATE OF APPLICATION",
+     "va": "middle",
+     "capPlace": "top",
+     "capReserve": 3.81,
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 57.150000000000006,
+     "w": 82.55,
+     "h": 12.7,
+     "index": 94,
+     "kind": "textEdit",
+     "caption": "NAME OF MARINE (Last, First, Middle)",
+     "va": "middle",
+     "capPlace": "top",
+     "capReserve": 3.81,
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 114.3,
+     "y": 50.8,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 1,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "2",
+       "caption": "LOSS (EXPLAIN IN CERTIFICATION SECTION)",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 69.85,
+       "h": 6.35
+      },
+      {
+       "value": "3",
+       "caption": "GAIN",
+       "x": 69.85,
+       "y": 0.0,
+       "w": 19.05,
+       "h": 6.35,
+       "cx": 529.8,
+       "cy": 153.0
+      }
+     ],
+     "edges": [
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       false,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 101.60000000000001,
+     "y": 57.150000000000006,
+     "w": 31.75,
+     "h": 12.7,
+     "index": 2,
+     "kind": "textEdit",
+     "caption": "EDIPI",
+     "va": "middle",
+     "capPlace": "top",
+     "capReserve": 3.81,
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 69.85,
+     "w": 114.3,
+     "h": 19.05,
+     "index": 3,
+     "kind": "textEdit",
+     "caption": "ORGANIZATION AND STATION PREPARING THIS APPLICATION",
+     "va": "middle",
+     "capPlace": "top",
+     "capReserve": 3.81,
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 88.9,
+     "w": 114.3,
+     "h": 19.05,
+     "index": 4,
+     "kind": "textEdit",
+     "caption": "FUTURE ADDRESS AND ETA IF TRANSER IS ANTICIPATED WITHIN 60 DAYS",
+     "va": "middle",
+     "capPlace": "top",
+     "capReserve": 3.81,
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 133.35,
+     "y": 57.150000000000006,
+     "w": 25.4,
+     "h": 12.7,
+     "index": 5,
+     "kind": "textEdit",
+     "caption": "GRADE",
+     "va": "middle",
+     "capPlace": "top",
+     "capReserve": 3.81,
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 133.35,
+     "y": 69.85,
+     "w": 25.4,
+     "h": 19.05,
+     "index": 6,
+     "kind": "textEdit",
+     "caption": "UNIT RUC",
+     "va": "middle",
+     "capPlace": "top",
+     "capReserve": 3.81,
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 133.35,
+     "y": 88.9,
+     "w": 25.4,
+     "h": 19.05,
+     "index": 7,
+     "kind": "dateTimeEdit",
+     "caption": "ECC",
+     "va": "middle",
+     "capPlace": "top",
+     "capReserve": 3.81,
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 158.75,
+     "y": 69.85,
+     "w": 44.45,
+     "h": 19.05,
+     "index": 8,
+     "kind": "dateTimeEdit",
+     "caption": "DATE OF CURRENT ENLISTMENT/APPOINTMENT OR DATE REPORTING FOR ACTIVE DUTY (WHICHEVER IS LATER)",
+     "va": "middle",
+     "capPlace": "top",
+     "capReserve": 11.395,
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 158.75,
+     "y": 88.9,
+     "w": 44.45,
+     "h": 19.05,
+     "index": 9,
+     "kind": "dateTimeEdit",
+     "caption": "DATE OF LAST DISCHARGE OR DATE OF LAST RELEASE TO INACTIVE DUTY",
+     "va": "middle",
+     "capPlace": "top",
+     "capReserve": 11.395,
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 158.75,
+     "y": 63.5,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 10,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "1",
+       "caption": "USMCR",
+       "x": 22.225,
+       "y": 0.0,
+       "w": 22.225,
+       "h": 6.35,
+       "cx": 520.8,
+       "cy": 189.0
+      },
+      {
+       "value": "2",
+       "caption": "USMC",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 22.225,
+       "h": 6.35,
+       "cx": 457.8,
+       "cy": 189.0
+      }
+     ]
+    },
+    {
+     "x": 25.4,
+     "y": 120.65,
+     "w": 50.8,
+     "h": 6.35,
+     "index": 11,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 76.2,
+     "y": 120.65,
+     "w": 50.8,
+     "h": 6.35,
+     "index": 12,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 127.0,
+     "y": 120.65,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 13,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 120.65,
+     "w": 19.05,
+     "h": 6.35,
+     "index": 14,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 171.45,
+     "y": 120.65,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 15,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 25.4,
+     "y": 127.0,
+     "w": 50.8,
+     "h": 6.35,
+     "index": 16,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 76.2,
+     "y": 127.0,
+     "w": 50.8,
+     "h": 6.35,
+     "index": 17,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 127.0,
+     "y": 127.0,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 18,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 127.0,
+     "w": 19.05,
+     "h": 6.35,
+     "index": 19,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 171.45,
+     "y": 127.0,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 20,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 25.4,
+     "y": 133.35,
+     "w": 50.8,
+     "h": 6.35,
+     "index": 21,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 76.2,
+     "y": 133.35,
+     "w": 50.8,
+     "h": 6.35,
+     "index": 22,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 127.0,
+     "y": 133.35,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 23,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 133.35,
+     "w": 19.05,
+     "h": 6.35,
+     "index": 24,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 171.45,
+     "y": 133.35,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 25,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 25.4,
+     "y": 139.7,
+     "w": 50.8,
+     "h": 6.35,
+     "index": 26,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 76.2,
+     "y": 139.7,
+     "w": 50.8,
+     "h": 6.35,
+     "index": 27,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 127.0,
+     "y": 139.7,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 28,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 139.7,
+     "w": 19.05,
+     "h": 6.35,
+     "index": 29,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 171.45,
+     "y": 139.7,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 30,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 25.4,
+     "y": 146.04999999999998,
+     "w": 50.8,
+     "h": 6.35,
+     "index": 31,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 76.2,
+     "y": 146.04999999999998,
+     "w": 50.8,
+     "h": 6.35,
+     "index": 32,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 127.0,
+     "y": 146.04999999999998,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 33,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 146.04999999999998,
+     "w": 19.05,
+     "h": 6.35,
+     "index": 34,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 171.45,
+     "y": 146.04999999999998,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 35,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 25.4,
+     "y": 152.39999999999998,
+     "w": 50.8,
+     "h": 6.35,
+     "index": 36,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 76.2,
+     "y": 152.39999999999998,
+     "w": 50.8,
+     "h": 6.35,
+     "index": 37,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 127.0,
+     "y": 152.39999999999998,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 38,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 152.39999999999998,
+     "w": 19.05,
+     "h": 6.35,
+     "index": 39,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 171.45,
+     "y": 152.39999999999998,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 40,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 171.45,
+     "w": 6.35,
+     "h": 6.35,
+     "index": 41,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 25.4,
+     "y": 171.45,
+     "w": 66.675,
+     "h": 6.35,
+     "index": 42,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 136.525,
+     "y": 171.45,
+     "w": 66.675,
+     "h": 6.35,
+     "index": 43,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 92.075,
+     "y": 171.45,
+     "w": 44.45,
+     "h": 6.35,
+     "index": 44,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 184.14999999999998,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 45,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "1",
+       "caption": "YES",
+       "x": 12.7,
+       "y": 0.0,
+       "w": 12.7,
+       "h": 6.35,
+       "cx": 475.8,
+       "cy": 531.0
+      },
+      {
+       "value": "2",
+       "caption": "NO",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 12.7,
+       "h": 6.35,
+       "cx": 439.8,
+       "cy": 531.0
+      }
+     ]
+    },
+    {
+     "x": 177.79999999999998,
+     "y": 184.14999999999998,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 46,
+     "kind": "textEdit",
+     "caption": "# OF TIMES",
+     "va": "middle",
+     "capPlace": "right",
+     "capReserve": 15.779
+    },
+    {
+     "x": 101.60000000000001,
+     "y": 184.14999999999998,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 47,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "1",
+       "caption": "YES",
+       "x": 12.7,
+       "y": 0.0,
+       "w": 12.7,
+       "h": 6.35,
+       "cx": 331.8,
+       "cy": 531.0
+      },
+      {
+       "value": "2",
+       "caption": "NO",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 12.7,
+       "h": 6.35,
+       "cx": 295.8,
+       "cy": 531.0
+      }
+     ]
+    },
+    {
+     "x": 127.0,
+     "y": 184.14999999999998,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 48,
+     "kind": "textEdit",
+     "caption": "# OF TIMES",
+     "va": "middle",
+     "capPlace": "right",
+     "capReserve": 15.779,
+     "edges": [
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 69.85,
+     "y": 190.5,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 49,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 38.099999999999994,
+     "y": 190.5,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 50,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 190.5,
+     "w": 19.05,
+     "h": 6.35,
+     "index": 51,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 23.813,
+     "y": 215.89999999999998,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 52,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "2",
+       "caption": "",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 77.7,
+       "cy": 621.0
+      },
+      {
+       "value": "1",
+       "caption": "",
+       "x": 15.875,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 122.7,
+       "cy": 621.0
+      }
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 215.89999999999998,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 53,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "1",
+       "caption": "",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 442.2,
+       "cy": 621.0
+      },
+      {
+       "value": "2",
+       "caption": "",
+       "x": 19.05,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 496.2,
+       "cy": 621.0
+      },
+      {
+       "value": "3",
+       "caption": "",
+       "x": 38.1,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 550.2,
+       "cy": 621.0
+      }
+     ]
+    },
+    {
+     "x": 50.8,
+     "y": 215.89999999999998,
+     "w": 38.1,
+     "h": 6.35,
+     "index": 54,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 114.3,
+     "y": 215.89999999999998,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 55,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 88.9,
+     "y": 215.89999999999998,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 56,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 23.813,
+     "y": 222.25,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 57,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "2",
+       "caption": "",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 77.7,
+       "cy": 639.0
+      },
+      {
+       "value": "1",
+       "caption": "",
+       "x": 15.875,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 122.7,
+       "cy": 639.0
+      }
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 222.25,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 58,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "1",
+       "caption": "",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 442.2,
+       "cy": 639.0
+      },
+      {
+       "value": "2",
+       "caption": "",
+       "x": 19.05,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 496.2,
+       "cy": 639.0
+      },
+      {
+       "value": "3",
+       "caption": "",
+       "x": 38.1,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 550.2,
+       "cy": 639.0
+      }
+     ]
+    },
+    {
+     "x": 50.8,
+     "y": 222.25,
+     "w": 38.1,
+     "h": 6.35,
+     "index": 59,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 114.3,
+     "y": 222.25,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 60,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 88.9,
+     "y": 222.25,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 61,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 23.813,
+     "y": 228.6,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 62,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "2",
+       "caption": "",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 77.7,
+       "cy": 657.0
+      },
+      {
+       "value": "1",
+       "caption": "",
+       "x": 15.875,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 122.7,
+       "cy": 657.0
+      }
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 228.6,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 63,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "1",
+       "caption": "",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 442.2,
+       "cy": 657.0
+      },
+      {
+       "value": "2",
+       "caption": "",
+       "x": 19.05,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 496.2,
+       "cy": 657.0
+      },
+      {
+       "value": "3",
+       "caption": "",
+       "x": 38.1,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 550.2,
+       "cy": 657.0
+      }
+     ]
+    },
+    {
+     "x": 50.8,
+     "y": 228.6,
+     "w": 38.1,
+     "h": 6.35,
+     "index": 64,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 114.3,
+     "y": 228.6,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 65,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 88.9,
+     "y": 228.6,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 66,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 23.813,
+     "y": 234.95,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 67,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "2",
+       "caption": "",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 77.7,
+       "cy": 675.0
+      },
+      {
+       "value": "1",
+       "caption": "",
+       "x": 15.875,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 122.7,
+       "cy": 675.0
+      }
+     ]
+    },
+    {
+     "x": 152.39999999999998,
+     "y": 234.95,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 68,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "1",
+       "caption": "",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 442.2,
+       "cy": 675.0
+      },
+      {
+       "value": "2",
+       "caption": "",
+       "x": 19.05,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 496.2,
+       "cy": 675.0
+      },
+      {
+       "value": "3",
+       "caption": "",
+       "x": 38.1,
+       "y": 0.0,
+       "w": 6.35,
+       "h": 6.35,
+       "cx": 550.2,
+       "cy": 675.0
+      }
+     ]
+    },
+    {
+     "x": 50.8,
+     "y": 234.95,
+     "w": 38.1,
+     "h": 6.35,
+     "index": 69,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 114.3,
+     "y": 234.95,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 70,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 88.9,
+     "y": 234.95,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 71,
+     "kind": "dateTimeEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 247.64999999999998,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 72,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "2",
+       "caption": "NO",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 12.7,
+       "h": 6.35,
+       "cx": 61.8,
+       "cy": 711.0
+      },
+      {
+       "value": "1",
+       "caption": "YES",
+       "x": 12.7,
+       "y": 0.0,
+       "w": 12.7,
+       "h": 6.35,
+       "cx": 97.8,
+       "cy": 711.0
+      }
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 254.0,
+     "w": 184.15,
+     "h": 6.35,
+     "index": 73,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    }
+   ],
+   "checkboxes": [
+    {
+     "x": 88.9,
+     "y": 50.8,
+     "w": 15.689,
+     "h": 6.35,
+     "caption": "",
+     "cx": 288.6,
+     "cy": 153.0
+    }
+   ]
+  },
+  {
+   "labels": [
+    {
+     "x": 44.45,
+     "y": 31.75,
+     "w": 158.75,
+     "h": 6.35,
+     "text": "IF YES, LIST ALL AVAILABLE IDENTIFYING INFORMATION (Full name of natural parent, EDIPI, grade, type of service, branch of service, inclusive dates of active service, and full name of child(ren).",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 25.4,
+     "w": 184.14999999999998,
+     "h": 6.35,
+     "text": "HAS NATURAL PARENT OTHER THAN CLAIMANT OF CHILD(REN) LISTED EVER BEEN A MEMBER OF ANY U.S. ARMED FORCE?",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 12.7,
+     "y": 25.4,
+     "w": 44.45,
+     "h": 6.35,
+     "text": "SECTION 5 NATURAL PARENT OF CHILD IN ARMED FORCES",
+     "size": 8.0,
+     "rotate": 90,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       false,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 44.45,
+     "y": 76.2,
+     "w": 158.75,
+     "h": 6.35,
+     "text": "IF YES, COMPLETE THE BLOCKS BELOW.",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 69.85,
+     "w": 184.14999999999998,
+     "h": 6.35,
+     "text": "HAS YOUR SPOUSE EVER BEEN A MEMBER OF ANY U.S. ARMED FORCE?",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 82.55,
+     "w": 31.75,
+     "h": 6.35,
+     "text": "EDIPI",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 50.8,
+     "y": 82.55,
+     "w": 25.4,
+     "h": 6.35,
+     "text": "GRADE",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 76.2,
+     "y": 82.55,
+     "w": 25.4,
+     "h": 6.35,
+     "text": "TYPE OF SERVICE",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 101.60000000000001,
+     "y": 82.55,
+     "w": 38.1,
+     "h": 6.35,
+     "text": "BRANCH OF SERVICE",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 139.7,
+     "y": 82.55,
+     "w": 38.1,
+     "h": 6.35,
+     "text": "INCLUSIVE DATES OF ACTIVE SERVICE",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 177.79999999999998,
+     "y": 82.55,
+     "w": 25.4,
+     "h": 6.35,
+     "text": "BAQ",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 12.7,
+     "y": 69.85,
+     "w": 31.75,
+     "h": 6.35,
+     "text": "SECTION 6 SPOUSE IN ARMED FORCES",
+     "size": 8.0,
+     "rotate": 90,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       false,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 12.7,
+     "y": 101.60000000000001,
+     "w": 63.5,
+     "h": 6.35,
+     "text": "SECTION 7 CERTIFICATION",
+     "size": 8.0,
+     "rotate": 90,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       false,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 12.7,
+     "y": 165.1,
+     "w": 95.25,
+     "h": 6.35,
+     "text": "SECTION 8 APPROVING AUTHORITY",
+     "size": 8.0,
+     "rotate": 90,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       false,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 101.60000000000001,
+     "w": 92.075,
+     "h": 25.4,
+     "text": "I CERTIFY that all the above statements are true to the best of my knowledge and belief, and I consent to checkage against my pay for any allowances paid on laws and regulations. I will immediately inform my Commanding Officer of any change in the number and/or status of my dependents, whether it be the gain of additional dependents, or the loss of dependents.",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 111.125,
+     "y": 101.60000000000001,
+     "w": 92.075,
+     "h": 25.4,
+     "text": "By signing this form, I hereby authorize release of any information hereon or obtained as a result of the processing/adjudication of this application, to my claimed dependents or custodians thereof, to the extent necessary for the proper adjudication of benefits, entitlements and/or of my legal obligation to support my dependents.",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 146.04999999999998,
+     "w": 50.8,
+     "h": 6.35,
+     "text": "Subscribed and sworn before me this",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle"
+    },
+    {
+     "x": 82.55,
+     "y": 146.04999999999998,
+     "w": 12.7,
+     "h": 6.35,
+     "text": "day of",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle"
+    },
+    {
+     "x": 127.0,
+     "y": 146.04999999999998,
+     "w": 6.35,
+     "h": 6.35,
+     "text": "20",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle"
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 165.1,
+     "w": 184.15,
+     "h": 6.35,
+     "text": "FOR USE BY COMMAND APPROVING AUTHORITY:",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 203.2,
+     "w": 184.15,
+     "h": 6.35,
+     "text": "FOR USE BY UNIT DIARY CLERK:",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 234.95,
+     "w": 184.15,
+     "h": 6.35,
+     "text": "FOR USE BY CMC APPROVING AUTHORITY:",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 209.54999999999998,
+     "w": 44.45,
+     "h": 6.35,
+     "text": "REPORTED ON UNIT DIARY:",
+     "size": 8.0,
+     "va": "middle"
+    }
+   ],
+   "cells": [
+    {
+     "x": 120.65,
+     "y": 12.7,
+     "w": 82.55,
+     "h": 12.7,
+     "index": 94,
+     "kind": "textEdit",
+     "caption": "NAME OF MARINE (Last, First, Middle)",
+     "va": "middle",
+     "capPlace": "top",
+     "capReserve": 3.511,
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 38.099999999999994,
+     "w": 184.15,
+     "h": 31.75,
+     "index": 74,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 31.75,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 75,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "2",
+       "caption": "NO",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 12.7,
+       "h": 6.35,
+       "cx": 61.8,
+       "cy": 99.0
+      },
+      {
+       "value": "1",
+       "caption": "YES",
+       "x": 12.7,
+       "y": 0.0,
+       "w": 12.7,
+       "h": 6.35,
+       "cx": 97.8,
+       "cy": 99.0
+      }
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 76.2,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 76,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "2",
+       "caption": "NO",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 12.7,
+       "h": 6.35,
+       "cx": 61.8,
+       "cy": 225.0
+      },
+      {
+       "value": "1",
+       "caption": "YES",
+       "x": 12.7,
+       "y": 0.0,
+       "w": 12.7,
+       "h": 6.35,
+       "cx": 97.8,
+       "cy": 225.0
+      }
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 88.9,
+     "w": 31.75,
+     "h": 12.7,
+     "index": 77,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 50.8,
+     "y": 88.9,
+     "w": 25.4,
+     "h": 12.7,
+     "index": 78,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 76.2,
+     "y": 88.9,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 79,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "2",
+       "caption": "REGULAR",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 25.4,
+       "h": 6.35
+      },
+      {
+       "value": "1",
+       "caption": "RESERVE",
+       "x": 0.0,
+       "y": 6.35,
+       "w": 25.4,
+       "h": 6.35
+      }
+     ]
+    },
+    {
+     "x": 101.60000000000001,
+     "y": 88.9,
+     "w": 38.1,
+     "h": 12.7,
+     "index": 80,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 177.79999999999998,
+     "y": 88.9,
+     "w": 25.4,
+     "h": 6.35,
+     "index": 81,
+     "kind": "radio",
+     "caption": "",
+     "options": [
+      {
+       "value": "2",
+       "caption": "WITH DEPENDENTS",
+       "x": 0.0,
+       "y": 0.0,
+       "w": 25.4,
+       "h": 6.35
+      },
+      {
+       "value": "1",
+       "caption": "WITHOUT DEPENDENTS",
+       "x": 0.0,
+       "y": 6.35,
+       "w": 25.4,
+       "h": 6.35
+      }
+     ]
+    },
+    {
+     "x": 139.7,
+     "y": 88.9,
+     "w": 38.1,
+     "h": 12.7,
+     "index": 82,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 25.4,
+     "y": 127.0,
+     "w": 50.8,
+     "h": 12.7,
+     "index": 95,
+     "kind": "signature",
+     "caption": "(Signature of Marine)",
+     "va": "middle",
+     "capPlace": "bottom",
+     "capReserve": 3.511,
+     "capHa": "center"
+    },
+    {
+     "x": 85.72500000000001,
+     "y": 127.0,
+     "w": 50.8,
+     "h": 12.7,
+     "index": 96,
+     "kind": "textEdit",
+     "caption": "(EDIPI)",
+     "va": "middle",
+     "capPlace": "bottom",
+     "capReserve": 3.511,
+     "capHa": "center"
+    },
+    {
+     "x": 146.04999999999998,
+     "y": 127.0,
+     "w": 50.8,
+     "h": 12.7,
+     "index": 97,
+     "kind": "textEdit",
+     "caption": "(Grade)",
+     "va": "middle",
+     "capPlace": "bottom",
+     "capReserve": 3.511,
+     "capHa": "center"
+    },
+    {
+     "x": 146.04999999999998,
+     "y": 146.04999999999998,
+     "w": 57.15,
+     "h": 12.7,
+     "index": 98,
+     "kind": "signature",
+     "caption": "(Signature and Title of Attesting Officer)",
+     "va": "middle",
+     "capPlace": "bottom",
+     "capReserve": 6.35,
+     "capHa": "center"
+    },
+    {
+     "x": 95.25,
+     "y": 146.04999999999998,
+     "w": 31.75,
+     "h": 6.35,
+     "index": 83,
+     "kind": "choiceList",
+     "caption": "",
+     "va": "middle"
+    },
+    {
+     "x": 133.35,
+     "y": 146.04999999999998,
+     "w": 12.7,
+     "h": 6.35,
+     "index": 84,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle"
+    },
+    {
+     "x": 69.85,
+     "y": 146.04999999999998,
+     "w": 12.7,
+     "h": 6.35,
+     "index": 85,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle"
+    },
+    {
+     "x": 76.2,
+     "y": 177.79999999999998,
+     "w": 12.7,
+     "h": 6.35,
+     "index": 86,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle"
+    },
+    {
+     "x": 127.0,
+     "y": 184.14999999999998,
+     "w": 12.7,
+     "h": 6.35,
+     "index": 87,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle"
+    },
+    {
+     "x": 63.5,
+     "y": 209.54999999999998,
+     "w": 46.482,
+     "h": 6.35,
+     "index": 88,
+     "kind": "textEdit",
+     "caption": "No.",
+     "va": "middle",
+     "capReserve": 5.076
+    },
+    {
+     "x": 109.982,
+     "y": 209.54999999999998,
+     "w": 46.482,
+     "h": 6.35,
+     "index": 89,
+     "kind": "dateTimeEdit",
+     "caption": "DATED",
+     "va": "middle",
+     "capReserve": 10.636
+    },
+    {
+     "x": 156.464,
+     "y": 209.54999999999998,
+     "w": 46.736,
+     "h": 6.35,
+     "index": 90,
+     "kind": "textEdit",
+     "caption": "RUC",
+     "va": "middle",
+     "capReserve": 7.227
+    },
+    {
+     "x": 149.225,
+     "y": 190.5,
+     "w": 50.8,
+     "h": 12.7,
+     "index": 99,
+     "kind": "textEdit",
+     "caption": "(Unit Designation)",
+     "va": "middle",
+     "capPlace": "bottom",
+     "capReserve": 3.511,
+     "capHa": "center"
+    },
+    {
+     "x": 76.2,
+     "y": 190.5,
+     "w": 69.85,
+     "h": 12.7,
+     "index": 100,
+     "kind": "textEdit",
+     "caption": "(Typed Name and Grade of Commanding Officer)",
+     "va": "middle",
+     "capPlace": "bottom",
+     "capReserve": 3.511,
+     "capHa": "center"
+    },
+    {
+     "x": 22.225,
+     "y": 190.5,
+     "w": 50.8,
+     "h": 12.7,
+     "index": 101,
+     "kind": "signature",
+     "caption": "(Signature of Commanding Officer)",
+     "va": "middle",
+     "capPlace": "bottom",
+     "capReserve": 3.511,
+     "capHa": "center"
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 215.89999999999998,
+     "w": 184.15,
+     "h": 19.05,
+     "index": 91,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle"
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 241.29999999999998,
+     "w": 184.15,
+     "h": 19.05,
+     "index": 92,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle",
+     "edges": [
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 50.8,
+     "y": 158.75,
+     "w": 152.4,
+     "h": 6.35,
+     "index": 93,
+     "kind": "textEdit",
+     "caption": "",
+     "va": "middle"
+    }
+   ],
+   "checkboxes": [
+    {
+     "x": 19.049999999999997,
+     "y": 171.45,
+     "w": 184.15,
+     "h": 6.35,
+     "caption": "APPROVED AS CLAIMED",
+     "edges": [
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 177.79999999999998,
+     "w": 57.15,
+     "h": 6.35,
+     "caption": "APPROVED FOR DEPENDENT NUMBERS:",
+     "edges": [
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 184.14999999999998,
+     "w": 107.95,
+     "h": 6.35,
+     "caption": "FORWARDED TO CMC (CODE MFP-1) FOR APPROVAL FOR DEPENDENT NUMBERS:",
+     "edges": [
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       false,
+       0.175
+      ],
+      [
+       true,
+       0.175
+      ]
+     ]
+    },
+    {
+     "x": 19.049999999999997,
+     "y": 158.75,
+     "w": 31.75,
+     "h": 6.35,
+     "caption": "Document Viewed"
+    }
+   ]
+  },
+  {
+   "labels": [
+    {
+     "x": 12.7,
+     "y": 12.7,
+     "w": 190.5,
+     "h": 6.35,
+     "text": "PRIVACY ACT STATEMENT",
+     "size": 8.0,
+     "ha": "center",
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.353
+      ],
+      [
+       true,
+       0.528
+      ]
+     ]
+    },
+    {
+     "x": 12.7,
+     "y": 19.049999999999997,
+     "w": 190.5,
+     "h": 44.45,
+     "text": "In accordance with the Privacy Act of 1974 (Public Law 93-579), this notice informs you of the purpose for collection of information on this form. Please\nread it before completing the form.\nAUTHORITY: 10 U.S.C. 5041, Headquarters, Marine Corps; 42 U.S.C. 10606 as implemented by DoD Instruction 1030.2, Victim and Witness Assistance Procedures; and E.O. 9397 (SSN) as amended; MCO 1751.3; and SORN M01070-6.\nPURPOSE: To manage the Dependency Determination Program. Information will be used to facilitate eligible dependency claims for spouses, children (born of a marriage), stepchildren and adopted children.\nROUTINE USES: Information will be accessed by Dependency Determination Program authorized personnel with a need-to-know to meet the purpose. The complete list and explanation of applicable Routine Uses are published in the authorizing SORN accessible at https://dpcld.defense.gov/Privacy/SORNsIndex/DOD-wide-SORN-Article-View/Article/570626/m01070-6/.\nDISCLOSURE: Voluntary; however, failure to provide required information may adversely impact the processing of dependency claims.\nRECORD MANAGEMENT: This form shall be managed in accordance with record schedule 1000-47, \u201cGRS 3.1 050 - Data Administration Records (Permanent)\u201d of SECNAV M-5210.1.",
+     "size": 8.0,
+     "va": "middle",
+     "edges": [
+      [
+       true,
+       0.353
+      ],
+      [
+       true,
+       0.528
+      ],
+      [
+       true,
+       0.353
+      ],
+      [
+       true,
+       0.528
+      ]
+     ]
+    }
+   ],
+   "cells": [],
+   "checkboxes": []
+  }
+ ]
+}

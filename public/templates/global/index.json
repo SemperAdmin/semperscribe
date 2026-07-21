@@ -404,5 +404,47 @@
     "description": "OBS counseling entry for redesignation to First Sergeant.",
     "documentType": "page11",
     "url": "/templates/global/page11-redesignation-firstsgt.nldp"
+  },
+  {
+    "id": "navmc10922-marriage",
+    "title": "NAVMC 10922 - Marriage (No Priors)",
+    "description": "GAIN of spouse by US ceremonial marriage. Pre-filled with sample data - replace before use.",
+    "documentType": "navmc10922",
+    "url": "/templates/global/navmc10922-marriage.nldp"
+  },
+  {
+    "id": "navmc10922-marriage-priors",
+    "title": "NAVMC 10922 - Marriage With Prior Marriages",
+    "description": "GAIN of spouse with a completed prior-marriage dissolution row. Sample data - replace before use.",
+    "documentType": "navmc10922",
+    "url": "/templates/global/navmc10922-marriage-priors.nldp"
+  },
+  {
+    "id": "navmc10922-birth",
+    "title": "NAVMC 10922 - Birth of a Child",
+    "description": "Married Marine acquires a child by birth; lists all dependents. Sample data - replace before use.",
+    "documentType": "navmc10922",
+    "url": "/templates/global/navmc10922-birth.nldp"
+  },
+  {
+    "id": "navmc10922-stepchild",
+    "title": "NAVMC 10922 - Marriage With Stepchild",
+    "description": "GAIN of spouse and stepchild with the spouse prior-marriage dissolution completed. Sample data - replace before use.",
+    "documentType": "navmc10922",
+    "url": "/templates/global/navmc10922-stepchild.nldp"
+  },
+  {
+    "id": "navmc10922-loss-divorce",
+    "title": "NAVMC 10922 - Loss of Spouse (Divorce)",
+    "description": "LOSS after a final divorce decree with the Section 7 loss narrative completed. Sample data - replace before use.",
+    "documentType": "navmc10922",
+    "url": "/templates/global/navmc10922-loss-divorce.nldp"
+  },
+  {
+    "id": "navmc10922-marriage-proxy",
+    "title": "NAVMC 10922 - Proxy Marriage",
+    "description": "GAIN of spouse by proxy marriage - CO cannot approve, routes to CMC (MFP-1). Sample data - replace before use.",
+    "documentType": "navmc10922",
+    "url": "/templates/global/navmc10922-marriage-proxy.nldp"
   }
 ]

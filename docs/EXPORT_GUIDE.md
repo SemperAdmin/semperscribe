@@ -39,6 +39,30 @@ If you want to skip the dialog configuration:
 2. Immediately click "Export Package" in the dialog (uses default settings)
 3. File downloads with minimal configuration
 
+## Official NAVMC Form Exports (XFA)
+
+Three document types export onto the OFFICIAL fillable NAVMC form
+instead of a redrawn PDF: NAVMC 10274 (AA Form), NAVMC 118(11)
+(Page 11), and NAVMC 10922 (Dependency Application).
+
+- **Open the file in Adobe Acrobat or Reader.** Browsers and most
+  viewers show a "Please wait" placeholder page - the form is a
+  dynamic LiveCycle XFA document and only Adobe renders it. The fields
+  stay editable after export.
+- **Signature fields or bound enclosure files force the flattened
+  path** - the XFA renderer ignores drawn annotations and appended
+  pages, so they would silently vanish from the official form.
+- **NAVMC 10922 specifics:**
+  - The export gate blocks on the dependency-application validators
+    (self-attestation, dissolution dates, capacity, Section 7 line
+    length) - each blocker states its MCO/FMR citation.
+  - The START reason box cannot be checked on the editable form (the
+    checkbox is unbindable in the form's own data layer). Check it in
+    Adobe after export, or use the flattened export once available.
+  - The official form's own artwork marks it "CUI (when filled in)".
+    The app adds no markings; handle the filled file accordingly.
+  - Rule sources and the full field map: `docs/NAVMC_10922_SPEC.md`.
+
 ## File Locations
 - Downloads go to your browser's default download folder
 - Filenames follow the format: `[SSIC] [SUBJECT].[extension]`

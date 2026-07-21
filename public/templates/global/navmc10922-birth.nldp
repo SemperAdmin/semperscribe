@@ -1,0 +1,139 @@
+{
+  "metadata": {
+    "packageId": "navmc10922-birth",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-20T00:00:00.000Z",
+    "author": {
+      "name": "SemperScribe"
+    },
+    "package": {
+      "title": "NAVMC 10922 - Birth of a Child",
+      "description": "Married Marine acquires a child by birth. Lists ALL dependents; the child's allowance runs from the date of birth (FMR para 10.3, Table 26-1 rule 5). Pre-filled with SAMPLE data - replace before use.",
+      "subject": "",
+      "documentType": "navmc10922"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "navmc10922",
+      "reason": "gain",
+      "dateOfApplication": "2026-07-01",
+      "lifeEventDate": "2026-06-08",
+      "nameOfMarine": "MARINE, ALONZO DEAN",
+      "edipi": "1234567890",
+      "grade": "SGT",
+      "typeOfService": "usmc",
+      "organizationStation": "1ST BN 6TH MARINES 2D MARDIV\nCAMP LEJEUNE NC 28547",
+      "unitRuc": "12160",
+      "ecc": "2027-06-13",
+      "dateEnlistmentOrAd": "2024-06-13",
+      "dateLastDischarge": "",
+      "futureAddressEta": "",
+      "dependents": [
+        {
+          "name": "TONYA CAROL MARINE",
+          "address": "123 FOURTH ST JACKSONVILLE NC 28540",
+          "relationship": "SPOUSE",
+          "dateOfBirth": "1997-07-07",
+          "allowanceClaimedFrom": "2024-06-15",
+          "previouslyApproved": true
+        },
+        {
+          "name": "JUSTIN DAVID MARINE",
+          "address": "SAME AS ABOVE",
+          "relationship": "SON",
+          "dateOfBirth": "2026-06-08",
+          "allowanceClaimedFrom": "2026-06-08"
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        },
+        {
+          "name": "",
+          "address": "",
+          "relationship": "",
+          "dateOfBirth": "",
+          "allowanceClaimedFrom": ""
+        }
+      ],
+      "custodian": {
+        "depNo": "",
+        "name": "",
+        "relationship": "",
+        "address": ""
+      },
+      "marriageDate": "2024-06-15",
+      "marriagePlace": "ONSLOW, NC",
+      "marriageSpouseName": "TONYA CAROL GRAY",
+      "memberPrevMarried": "no",
+      "memberPrevMarriedTimes": "",
+      "spousePrevMarried": "no",
+      "spousePrevMarriedTimes": "",
+      "dissolutions": [
+        {
+          "formerMarriageOf": "",
+          "spouseName": "",
+          "dateOfDissolution": "",
+          "placeOfDissolution": "",
+          "reason": ""
+        },
+        {
+          "formerMarriageOf": "",
+          "spouseName": "",
+          "dateOfDissolution": "",
+          "placeOfDissolution": "",
+          "reason": ""
+        },
+        {
+          "formerMarriageOf": "",
+          "spouseName": "",
+          "dateOfDissolution": "",
+          "placeOfDissolution": "",
+          "reason": ""
+        },
+        {
+          "formerMarriageOf": "",
+          "spouseName": "",
+          "dateOfDissolution": "",
+          "placeOfDissolution": "",
+          "reason": ""
+        }
+      ],
+      "courtOrderInEffect": "no",
+      "courtOrderDatePlace": "",
+      "naturalParentArmedForces": "no",
+      "naturalParentInfo": "",
+      "spouseArmedForces": "no",
+      "spouseEdipi": "",
+      "spouseGrade": "",
+      "spouseTypeOfService": "",
+      "spouseBranch": "",
+      "spouseServiceDates": "",
+      "spouseBaq": "",
+      "documentsViewed": "BIRTH CERTIFICATE (JUSTIN)",
+      "swornDay": "1",
+      "swornMonth": "July",
+      "swornYear2Digit": "26",
+      "attestingOfficerName": "STEWART, THOMAS J",
+      "reasonMode": "auto"
+    }
+  }
+}
