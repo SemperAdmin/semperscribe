@@ -84,7 +84,7 @@ export const DISCLAIMERS = {
   },
   LEGAL_WARRANTY: `THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`,
   OPSEC: {
-    localProcessing: "This application is designed to run entirely client-side (in the browser) to minimize data leakage. No document data is sent to a central server for processing.",
+    localProcessing: "Document formatting runs entirely client-side in the browser, and the formatter sends no document data to any central server. The optional GunnyBot assistant is the one exception: when you supply your own provider API key and use a GunnyBot feature, the text you submit to it leaves your browser and goes directly to the provider you chose, under your key. GunnyBot stays off until you add a key. Do not submit CUI, PII, or classified text to GunnyBot.",
     userResponsibility: "The user assumes full responsibility for ensuring that the device and network used to access this application are authorized for the level of information being processed."
   }
 };

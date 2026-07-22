@@ -42,8 +42,12 @@ The following are explicit non-concerns for this PoC.
 
 - Cross-site scripting, prototype pollution, path traversal, or code injection in the active SemperScribe source under `src/`.
 - Supply chain integrity findings against direct dependencies in `package.json`.
-- Information leakage that would route input data (drafted correspondence content) to any third-party host.
+- Unintended information leakage that routes input data (drafted correspondence content) to any third-party host, outside the opt-in GunnyBot data flow described below. A GunnyBot code path that transmits content the user did not submit, targets a host the user did not configure, or fires when no key is set remains in scope.
 - License compliance gaps in the dependency tree.
+
+## Third-Party Data Flow (GunnyBot)
+
+SemperScribe includes an optional assistant, GunnyBot, disabled until the user supplies a personal LLM provider API key. When enabled and used, GunnyBot sends the text the user submits to it (a typed question, a draft paragraph, or the document body for a review) directly from the browser to the user-chosen provider (Anthropic or Google), under the user's own key. The provider processes that text under the provider's own terms, outside SemperScribe's control. The key is held in browser session memory only, clears when the tab closes, and is never written to disk or sent to any SemperScribe-controlled host. This is an opt-in, user-controlled data flow, documented in the Privacy and Security Notice. The application applies no attestation or content filtering before sending, so the user is solely responsible for not submitting CUI, PII, or classified text to GunnyBot. This intentional flow is not an information-leakage defect. See In Scope above for the GunnyBot behavior that remains reportable.
 
 ## Compliance References
 

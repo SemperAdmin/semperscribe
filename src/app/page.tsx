@@ -50,6 +50,7 @@ import {
 } from '@/lib/review-comments';
 import { DocumentLibraryDialog } from '@/components/DocumentLibraryDialog';
 import { SettingsDialog } from '@/components/SettingsDialog';
+import { GunnyBotPanel } from '@/components/gunnybot/GunnyBotPanel';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useLivePreview } from '@/hooks/useLivePreview';
 import { useDocumentExport } from '@/hooks/useDocumentExport';
@@ -1097,6 +1098,7 @@ function NavalLetterGeneratorInner() {
         savedLetterCount={savedLetters.length}
         onClearSavedLetters={handleClearSavedLetters}
       />
+      <GunnyBotPanel />
     </ModernAppShell>
   );
 }

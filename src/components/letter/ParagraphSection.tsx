@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import React, { useState } from 'react';
+import { GunnyBotDraftControl } from '@/components/gunnybot/GunnyBotDraftControl';
 
 interface ParagraphSectionProps {
   paragraphs: ParagraphData[];
@@ -134,6 +135,13 @@ export function ParagraphSection({
       5: 'bg-muted/90 border-border/20', // Deep indent
     };
     return colors[level as keyof typeof colors] || 'bg-background border-border';
+  };
+
+  const handleGunnyInsert = (text: string) => {
+    const newId = (paragraphs.length > 0 ? Math.max(...paragraphs.map(p => p.id)) : 0) + 1;
+    const lastId = paragraphs.length > 0 ? paragraphs[paragraphs.length - 1].id : 1;
+    addParagraph('main', lastId);
+    updateParagraphContent(newId, text);
   };
 
   return (
@@ -334,6 +342,8 @@ export function ParagraphSection({
           />
             );
           })}
+
+          <GunnyBotDraftControl documentType={documentType} onInsert={handleGunnyInsert} />
         </div>
       </CardContent>
     </Card>

@@ -26,7 +26,8 @@ import {
   BookOpen,
   BadgeCheck,
   GitCompare,
-  Layers
+  Layers,
+  Bot
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FEEDBACK_URL } from '@/lib/app-links';
@@ -55,6 +56,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { SavedLetter } from '@/types';
 import { useTemplates, Template } from '@/hooks/useTemplates';
+import { useGunnyStore } from '@/store/gunnyStore';
 
 function TemplateList({ templates, onSelect }: { templates: Template[]; onSelect: (url: string) => void }) {
   if (templates.length === 0) {
@@ -186,6 +188,8 @@ export function HeaderActions({
     setSearchQuery, 
   } = useTemplates({ documentType, currentUnitCode, currentUnitName });
   
+  const openGunnyBot = useGunnyStore((s) => s.setPanelOpen);
+
   // Helper to merge classes for buttons
   const buttonClass = (baseClass: string) => cn(baseClass, className ? "text-secondary-foreground hover:text-primary hover:bg-white/10" : "text-muted-foreground hover:text-foreground");
   const iconClass = className ? "text-secondary-foreground/80" : "text-muted-foreground";
@@ -270,6 +274,9 @@ export function HeaderActions({
           <Settings className={cn("w-4 h-4", iconClass)} />
         </Button>
       )}
+      <Button variant="ghost" size="sm" className={buttonClass("flex")} onClick={() => openGunnyBot(true)} title="GunnyBot assistant">
+        <Bot className={cn("w-4 h-4", iconClass)} />
+      </Button>
 
       {/* Templates Dialog */}
       <Dialog open={isTemplateOpen} onOpenChange={setIsTemplateOpen}>

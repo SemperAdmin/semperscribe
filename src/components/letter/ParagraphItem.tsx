@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { portionPrefix } from '@/lib/classification';
 import { ParagraphCommentButton } from '@/components/review/ParagraphCommentButton';
 import type { ReviewComment } from '@/lib/review-comments';
+import { GunnyBotRewriteControl } from '@/components/gunnybot/GunnyBotRewriteControl';
 
 interface ParagraphItemProps {
   paragraph: ParagraphData;
@@ -469,6 +470,11 @@ export function ParagraphItem({
             )}
           </div>
         </div>
+
+        <GunnyBotRewriteControl
+          content={localContent}
+          onAccept={(rewritten) => setLocalContent(rewritten)}
+        />
       </CardContent>
     </Card>
   );

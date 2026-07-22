@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   description: 'SemperScribe Privacy and Security Notice. Non-official Proof of Concept disclosures.',
 };
 
-const LAST_REVIEWED = '2026-05-23';
-const DOC_VERSION = '1.0';
+const LAST_REVIEWED = '2026-07-22';
+const DOC_VERSION = '1.1';
 
 export default function PrivacyAndSecurityNoticePage() {
   const home = getBasePath() || '/';
@@ -35,18 +35,21 @@ export default function PrivacyAndSecurityNoticePage() {
         <section>
           <h2 className="text-lg font-semibold mb-2">2. What the Application Processes</h2>
           <p>
-            SemperScribe processes only the text that the user enters or imports into the in-browser form. All processing occurs locally within the browser. The application performs no server-side processing of user input.
+            SemperScribe processes only the text that the user enters or imports into the in-browser form. All document formatting occurs locally within the browser, and the formatter performs no server-side processing of user input. The optional GunnyBot assistant is the sole exception, described in Section 5A.
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-semibold mb-2">3. What the Application Does Not Do</h2>
+          <p className="mb-2">
+            The following statements describe the document formatter. The optional GunnyBot assistant is the single exception and is covered in Section 5A.
+          </p>
           <ul className="list-disc list-inside space-y-1 pl-2">
-            <li>The application does not collect, store, or transmit Personally Identifiable Information (PII).</li>
-            <li>The application does not collect, process, or transmit Controlled Unclassified Information (CUI).</li>
+            <li>The formatter does not collect, store, or transmit Personally Identifiable Information (PII).</li>
+            <li>The formatter does not collect, process, or transmit Controlled Unclassified Information (CUI).</li>
             <li>The application emits no telemetry, no analytics, and no usage beacons to any third-party host at runtime.</li>
-            <li>The application does not call any backend, database, or external API at runtime.</li>
-            <li>The application sets no third-party cookies. Local browser storage is used only for the user's own draft persistence.</li>
+            <li>The formatter calls no backend, database, or external API at runtime. GunnyBot, when the user enables it, calls the user's chosen provider directly, per Section 5A.</li>
+            <li>The application sets no third-party cookies. Local browser storage is used only for the user's own draft persistence. The GunnyBot API key is held in session memory, not local storage, and clears when the tab closes.</li>
           </ul>
         </section>
 
@@ -60,7 +63,17 @@ export default function PrivacyAndSecurityNoticePage() {
         <section>
           <h2 className="text-lg font-semibold mb-2">5. Outbound Network Calls</h2>
           <p>
-            At build time, the static export downloads webfont files via Next.js's font/google loader and bundles them with the output. At runtime, the browser fetches only assets served from the same origin as the application. No third-party hosts are contacted during normal use. Reference: Phase 2 of <code>docs/COMPLIANCE_REMEDIATION_PLAN.md</code>.
+            At build time, the static export downloads webfont files via Next.js's font/google loader and bundles them with the output. At runtime, the browser fetches only assets served from the same origin as the application, with one exception: when the user enables GunnyBot, the browser also contacts the user's chosen LLM provider, per Section 5A. Reference: Phase 2 of <code>docs/COMPLIANCE_REMEDIATION_PLAN.md</code>.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold mb-2">5A. The GunnyBot Assistant</h2>
+          <p>
+            SemperScribe includes an optional AI assistant, GunnyBot, which stays off until the user supplies a personal LLM provider API key. When the user enables it and uses a GunnyBot feature (a format or policy question, a proofreading review, a paragraph rewrite, or a drafted paragraph), the text the user submits to it leaves the browser and goes directly to the user's chosen provider, Anthropic or Google, under the user's own key. The provider processes that text under the provider's own terms and privacy policy, outside SemperScribe's control.
+          </p>
+          <p className="mt-2">
+            The API key is held in browser session memory only. It clears when the tab closes, is never written to disk, and is never sent to any SemperScribe-controlled host. GunnyBot applies no attestation prompt and no content filtering before sending, so the user is solely responsible for not submitting CUI, PII, PHI, or classified text to GunnyBot. GunnyBot output is advisory only. The user reviews and accepts any change, and nothing is written to the document automatically.
           </p>
         </section>
 

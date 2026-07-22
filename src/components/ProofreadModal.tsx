@@ -31,6 +31,7 @@ import {
   CheckCategory,
   CheckStatus,
 } from '@/lib/proofread-checks';
+import { GunnyBotReviewSection } from '@/components/gunnybot/GunnyBotReviewSection';
 
 interface ProofreadModalProps {
   open: boolean;
@@ -274,6 +275,12 @@ export function ProofreadModal({
                 </div>
               );
             })}
+
+            <GunnyBotReviewSection
+              documentType={formData.documentType}
+              subject={typeof formData.subj === 'string' ? formData.subj : ''}
+              body={paragraphs.map(p => p.content).join('\n\n')}
+            />
           </div>
         </ScrollArea>
 

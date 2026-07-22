@@ -17,9 +17,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Search, User, Paintbrush, FileText, Database, Trash2, ShieldAlert, AlertTriangle, Scale, MessageSquare, ExternalLink } from 'lucide-react';
+import { Search, User, Paintbrush, FileText, Database, Trash2, ShieldAlert, AlertTriangle, Scale, MessageSquare, ExternalLink, Bot } from 'lucide-react';
 import { UserProfile, resolveUnit } from '@/hooks/useUserProfile';
 import { PlatformSettings } from '@/components/PlatformSettings';
+import { GunnyBotSettings } from '@/components/gunnybot/GunnyBotSettings';
 import { useUnits } from '@/hooks/useReferenceData';
 import { resetDisclaimer } from '@/lib/storage-utils';
 import { DISCLAIMERS } from '@/lib/security-utils';
@@ -70,11 +71,12 @@ export function SettingsDialog({
           <DialogTitle className="text-foreground">Settings</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="profile" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="mx-6 mt-2 grid w-auto grid-cols-4 bg-muted">
+          <TabsList className="mx-6 mt-2 grid w-auto grid-cols-5 bg-muted">
             <TabsTrigger value="profile" className="text-xs gap-1"><User className="w-3 h-3" />Profile</TabsTrigger>
             <TabsTrigger value="appearance" className="text-xs gap-1"><Paintbrush className="w-3 h-3" />Appearance</TabsTrigger>
             <TabsTrigger value="formatting" className="text-xs gap-1"><FileText className="w-3 h-3" />Formatting</TabsTrigger>
             <TabsTrigger value="data" className="text-xs gap-1"><Database className="w-3 h-3" />Data</TabsTrigger>
+            <TabsTrigger value="assistant" className="text-xs gap-1"><Bot className="w-3 h-3" />Assistant</TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1 px-6 pb-6">
@@ -543,6 +545,11 @@ export function SettingsDialog({
                   </Button>
                 </div>
               </div>
+            </TabsContent>
+
+            {/* ── Assistant Tab (GunnyBot) ── */}
+            <TabsContent value="assistant">
+              <GunnyBotSettings />
             </TabsContent>
           </ScrollArea>
         </Tabs>
