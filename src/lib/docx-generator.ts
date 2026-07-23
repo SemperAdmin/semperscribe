@@ -176,12 +176,19 @@ export async function generateDocxBlob(
         spacing: { after: 0 },
       }));
 
-      // Address Lines (line1b is an optional sub-name for the standard letter
-      // family: Basic Letter, Multiple-Address Letter, New-Page Endorsement)
+      // Address Lines. When the selected unit supplies spelled-out heading
+      // lines, they replace the abbreviated unitName heading on every document
+      // type. Otherwise line1b is an optional sub-name for the standard letter
+      // family: Basic Letter, Multiple-Address Letter, New-Page Endorsement.
+      const unitHeadingLines: string[] = Array.isArray(formData.headingLines)
+        ? formData.headingLines.filter((l: string) => l)
+        : [];
       const showUnitSubName = ['basic', 'multiple-address', 'endorsement'].includes(formData.documentType);
-      const addressLines = showUnitSubName
-        ? [formData.line1, formData.line1b, formData.line2, formData.line3]
-        : [formData.line1, formData.line2, formData.line3];
+      const addressLines = unitHeadingLines.length > 0
+        ? [...unitHeadingLines, formData.line2, formData.line3]
+        : showUnitSubName
+          ? [formData.line1, formData.line1b, formData.line2, formData.line3]
+          : [formData.line1, formData.line2, formData.line3];
       addressLines.forEach(line => {
         if (line) {
           letterheadParagraphs.push(new Paragraph({

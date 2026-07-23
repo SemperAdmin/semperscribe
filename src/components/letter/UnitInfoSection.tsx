@@ -36,12 +36,16 @@ export function UnitInfoSection({
   const { units, loading: unitsLoading } = useUnits();
 
   const handleUnitSelect = (unit: Unit) => {
+    const headingLines = unit.letterhead?.length
+      ? unit.letterhead.map(l => l.toUpperCase())
+      : undefined;
     setFormData(prev => ({
       ...prev,
-      line1: unit.unitName.toUpperCase(),
+      line1: (headingLines?.[0] ?? unit.unitName).toUpperCase(),
       line1b: '',
       line2: unit.streetAddress.toUpperCase(),
       line3: `${unit.cityState} ${unit.zip}`.toUpperCase(),
+      headingLines,
     }));
     setCurrentUnitCode(unit.ruc);
     setCurrentUnitName(unit.unitName.toUpperCase());
@@ -51,7 +55,7 @@ export function UnitInfoSection({
   };
 
   const clearUnitInfo = () => {
-    setFormData(prev => ({ ...prev, line1: '', line1b: '', line2: '', line3: '' }));
+    setFormData(prev => ({ ...prev, line1: '', line1b: '', line2: '', line3: '', headingLines: undefined }));
     setCurrentUnitCode(undefined);
     setCurrentUnitName(undefined);
     setIsEditing(false);

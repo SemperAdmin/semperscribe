@@ -6,6 +6,11 @@ export interface Unit {
     streetAddress: string;
     cityState: string;
     zip: string;
+    /** Optional spelled-out letterhead heading lines. When present, these
+     *  replace the abbreviated unitName in the rendered letterhead on every
+     *  document type. unitName stays abbreviated so unit search still matches
+     *  the standard abbreviation (for example "MWCS-28"). */
+    letterhead?: string[];
 }
 
 export const UNITS: Unit[] = [
@@ -2475,7 +2480,7 @@ export const UNITS: Unit[] = [
     {"ruc": "03009", "mcc": "S2B", "uic": "M01146", "unitName": "MTACS-48 MACG-48 4TH MAW", "streetAddress": "2205 DEPOT DR BLDG 3200 SUITE 200", "cityState": "GREAT LAKES IL", "zip": "60088-3404"},
     {"ruc": "88673", "mcc": "028", "uic": "M38600", "unitName": "MTN WARFARE TRNG CNTR MAGTFTC BRIDGEPORT CA", "streetAddress": "HC 83", "cityState": "BRIDGEPORT CA", "zip": "93517-9802"},
     {"ruc": "33610", "mcc": "028", "uic": "M38600", "unitName": "MTN WARFARE TRNG CNTR MAGTFTC BRIDGEPORT CA", "streetAddress": "HC 83", "cityState": "BRIDGEPORT CA", "zip": "93517-9802"},
-    {"ruc": "00207", "mcc": "1PB", "uic": "M00207", "unitName": "MWCS-28 MACG-28 2D MAW", "streetAddress": "PSC BOX 8071", "cityState": "CHERRY POINT NC", "zip": "28533-0071"},
+    {"ruc": "00207", "mcc": "1PB", "uic": "M00207", "unitName": "MWCS-28 MACG-28 2D MAW", "letterhead": ["MARINE WING COMMUNICATIONS SQUADRON 28", "MARINE AIR CONTROL GROUP 28", "2D MARINE AIRCRAFT WING"], "streetAddress": "PSC BOX 8071", "cityState": "CHERRY POINT NC", "zip": "28533-0071"},
     {"ruc": "00307", "mcc": "1XC", "uic": "M00307", "unitName": "MWCS-38 MACG-38 3D MAW", "streetAddress": "PO BOX 452053", "cityState": "MCAS MIRAMAR CA", "zip": "92145-2053"},
     {"ruc": "01027", "mcc": "145", "uic": "M01027", "unitName": "MWHS-1 HQTRS 1ST MAW", "streetAddress": "OPC 557 BOX 55", "cityState": "FPO AP", "zip": "96371-9001"},
     {"ruc": "88682", "mcc": "145", "uic": "M01027", "unitName": "MWHS-1 HQTRS 1ST MAW", "streetAddress": "OPC 557 BOX 55", "cityState": "FPO AP", "zip": "96371-9001"},
