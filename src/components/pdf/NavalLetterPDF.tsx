@@ -884,8 +884,14 @@ export function NavalLetterPDF({
                   ? 'UNITED STATES MARINE CORPS'
                   : 'DEPARTMENT OF THE NAVY'}
               </Text>
-              {formData.line1 && <Text style={styles.headerLine}>{formData.line1}</Text>}
-              {['basic', 'multiple-address', 'endorsement'].includes(formData.documentType) && formData.line1b && <Text style={styles.headerLine}>{formData.line1b}</Text>}
+              {Array.isArray(formData.headingLines) && formData.headingLines.length > 0
+                ? formData.headingLines.map((line: string, i: number) => (line ? <Text key={i} style={styles.headerLine}>{line}</Text> : null))
+                : (
+                  <>
+                    {formData.line1 && <Text style={styles.headerLine}>{formData.line1}</Text>}
+                    {['basic', 'multiple-address', 'endorsement'].includes(formData.documentType) && formData.line1b && <Text style={styles.headerLine}>{formData.line1b}</Text>}
+                  </>
+                )}
               {formData.line2 && <Text style={styles.headerLine}>{formData.line2}</Text>}
               {formData.line3 && <Text style={styles.headerLine}>{formData.line3}</Text>}
             </>
