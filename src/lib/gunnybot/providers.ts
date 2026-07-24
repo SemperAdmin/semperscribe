@@ -25,8 +25,13 @@ const GEMINI_MODELS: GunnyModel[] = [
   { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', contextWindow: 1000000 },
 ];
 
+const GENAI_MIL_MODELS: GunnyModel[] = [
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (via GenAI.mil)', contextWindow: 1000000 },
+];
+
 const ANTHROPIC_HOST = 'https://api.anthropic.com';
 const GEMINI_HOST = 'https://generativelanguage.googleapis.com';
+const GENAI_MIL_HOST = 'https://api.genai.mil';
 
 interface AnthropicBody {
   model: string;
@@ -189,11 +194,82 @@ export const geminiAdapter: ProviderAdapter = {
   },
 };
 
+interface OpenAiCompatBody {
+  model: string;
+  messages: { role: string; content: string }[];
+  max_tokens: number;
+  stream: boolean;
+}
+
+// GenAI.mil: the DoD GenAI gateway (OpenAI-compatible chat completions,
+// Bearer auth). CORS from a browser origin is UNVERIFIED against
+// api.genai.mil — the Authorization header forces a preflight. If the
+// gateway rejects it, the user can route through proxyBaseUrl like the
+// other adapters. Keys expire after 30 days per the GenAI.mil user
+// agreement, so a saved key going stale mid-session is expected behavior.
+export const genaiMilAdapter: ProviderAdapter = {
+  id: 'genai-mil',
+  label: 'GenAI.mil (U.S. DoD)',
+  models: GENAI_MIL_MODELS,
+  browserDirect: true,
+
+  validateKeyShape(key: string): boolean {
+    return key.startsWith('STARK_') && key.length > 20;
+  },
+
+  buildRequest(req: GunnyRequest): GunnyHttpRequest {
+    // OpenAI-compatible endpoints take system turns inline, so the
+    // message list passes through without the system split-out.
+    const body: OpenAiCompatBody = {
+      model: req.model,
+      messages: req.messages.map(m => ({ role: m.role, content: m.content })),
+      max_tokens: req.maxOutputTokens,
+      stream: true,
+    };
+    const host = req.proxyBaseUrl ?? GENAI_MIL_HOST;
+    return {
+      url: host + '/v1/chat/completions',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer ' + req.apiKey,
+      },
+      body: JSON.stringify(body),
+    };
+  },
+
+  parseStreamChunk(raw: string): GunnyStreamEvent[] {
+    const trimmed = raw.trim();
+    if (trimmed.length === 0 || trimmed === '[DONE]') {
+      return [];
+    }
+    let json: any;
+    try {
+      json = JSON.parse(trimmed);
+    } catch {
+      return [];
+    }
+    if (json.error) {
+      return [{ kind: 'error', message: String(json.error.message ?? 'stream error') }];
+    }
+    const events: GunnyStreamEvent[] = [];
+    const choice = json.choices?.[0];
+    const text = choice?.delta?.content;
+    if (typeof text === 'string' && text.length > 0) {
+      events.push({ kind: 'token', text });
+    }
+    if (choice?.finish_reason) {
+      events.push({ kind: 'done', stopReason: String(choice.finish_reason) });
+    }
+    return events;
+  },
+};
+
 // OpenAI and Azure are NO-GO for direct browser calls per the Phase 0
 // verdict. They stay null until the optional user-proxy path ships.
 export const PROVIDER_REGISTRY: Record<GunnyProviderId, ProviderAdapter | null> = {
   anthropic: anthropicAdapter,
   gemini: geminiAdapter,
+  'genai-mil': genaiMilAdapter,
   openai: null,
   azure: null,
 };
