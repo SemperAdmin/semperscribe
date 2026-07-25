@@ -1,7 +1,7 @@
 // GunnyBot shared types. Phase 0 skeleton, no runtime behavior.
 // Wiring lands in Phase 1. Nothing in the running app imports this yet.
 
-export type GunnyProviderId = 'anthropic' | 'gemini' | 'openai' | 'azure';
+export type GunnyProviderId = 'anthropic' | 'gemini' | 'genaimil' | 'openai' | 'azure';
 
 export type GunnyTask = 'proofread' | 'draft' | 'rewrite' | 'qa';
 

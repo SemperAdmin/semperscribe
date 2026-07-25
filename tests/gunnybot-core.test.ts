@@ -7,7 +7,7 @@
  * response stream are mocked.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { anthropicAdapter, geminiAdapter, getAdapter } from '@/lib/gunnybot/providers';
+import { anthropicAdapter, geminiAdapter, genaimilAdapter, getAdapter } from '@/lib/gunnybot/providers';
 import { streamChat } from '@/lib/gunnybot/client';
 import * as keyring from '@/lib/gunnybot/keyring';
 import { screenOutbound } from '@/lib/gunnybot/redaction';
@@ -131,6 +131,7 @@ describe('gunnybot registry', () => {
   it('exposes Anthropic and Gemini, leaves OpenAI and Azure null', () => {
     expect(getAdapter('anthropic')).toBe(anthropicAdapter);
     expect(getAdapter('gemini')).toBe(geminiAdapter);
+    expect(getAdapter('genaimil')).toBe(genaimilAdapter);
     expect(getAdapter('openai')).toBeNull();
     expect(getAdapter('azure')).toBeNull();
   });
@@ -150,22 +151,52 @@ describe('gunnybot client: streaming', () => {
     expect((dones[0] as { stopReason: string | null }).stopReason).toBe('end_turn');
   });
 
-  it('emits an error on a non-ok response and never leaks the key', async () => {
+  it('summarizes a non-ok response with a short reason and redacts the key', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
         ok: false,
         status: 401,
         body: null,
-        text: async () => 'invalid key sk-ant-TESTKEY0123456789 rejected',
+        text: async () => JSON.stringify({ error: { message: 'invalid key sk-ant-TESTKEY0123456789', status: 'UNAUTHENTICATED' } }),
       })),
     );
     const events = await collect(baseReq);
     const err = events.find(e => e.kind === 'error') as { message: string } | undefined;
     expect(err).toBeDefined();
-    expect(err!.message.startsWith('HTTP 401')).toBe(true);
+    expect(err!.message).toContain('API key invalid or not authorized');
+    expect(err!.message).toContain('HTTP 401');
     expect(err!.message).not.toContain('sk-ant-TESTKEY0123456789');
     expect(err!.message).toContain('[redacted-key]');
+  });
+
+  it('labels a Google 400 API_KEY_INVALID and a 429 quota clearly', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 400,
+        body: null,
+        text: async () =>
+          JSON.stringify({ error: { code: 400, message: 'API key not valid. Please pass a valid API key.', status: 'INVALID_ARGUMENT', details: [{ reason: 'API_KEY_INVALID' }] } }),
+      })),
+    );
+    const e1 = (await collect(baseReq)).find(e => e.kind === 'error') as { message: string };
+    expect(e1.message).toContain('API key invalid or not authorized');
+    expect(e1.message).toContain('API key not valid');
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 429,
+        body: null,
+        text: async () => JSON.stringify({ error: { code: 429, message: 'You exceeded your current quota.', status: 'RESOURCE_EXHAUSTED' } }),
+      })),
+    );
+    const e2 = (await collect(baseReq)).find(e => e.kind === 'error') as { message: string };
+    expect(e2.message).toContain('Rate limit or quota exceeded');
+    expect(e2.message).toContain('HTTP 429');
   });
 
   it('reports a clean done when the fetch aborts', async () => {
@@ -226,5 +257,45 @@ describe('gunnybot context-builder: egress surface', () => {
     expect(ctx.text).toContain('Question: why');
     expect(ctx.text).not.toContain('Subject:');
     expect(ctx.text).not.toContain('Draft:');
+  });
+});
+
+describe('gunnybot genaimil adapter (OpenAI-compatible)', () => {
+  it('builds a bearer-auth chat-completions request keeping system in messages', () => {
+    const http = genaimilAdapter.buildRequest({
+      provider: 'genaimil',
+      model: 'gemini-2.5-flash',
+      apiKey: 'STARK_TESTKEY0123456789',
+      messages: [
+        { role: 'system', content: 'SYS' },
+        { role: 'user', content: 'hi' },
+      ],
+      maxOutputTokens: 128,
+    });
+    const body = JSON.parse(http.body);
+    expect(http.url).toBe('https://api.genai.mil/v1/chat/completions');
+    expect(http.headers['authorization']).toBe('Bearer STARK_TESTKEY0123456789');
+    expect(body.stream).toBe(true);
+    expect(body.max_tokens).toBe(128);
+    expect(body.messages).toHaveLength(2);
+    expect(body.messages[0].role).toBe('system');
+  });
+
+  it('honors a proxy base URL', () => {
+    const http = genaimilAdapter.buildRequest({
+      provider: 'genaimil',
+      model: 'x',
+      apiKey: 'STARK_TESTKEY0123456789',
+      messages: [{ role: 'user', content: 'hi' }],
+      maxOutputTokens: 16,
+      proxyBaseUrl: 'https://proxy.example',
+    });
+    expect(http.url).toBe('https://proxy.example/v1/chat/completions');
+  });
+
+  it('parses OpenAI-style delta content and finish_reason, ignores [DONE]', () => {
+    expect(genaimilAdapter.parseStreamChunk('{"choices":[{"delta":{"content":"Hi"}}]}')).toEqual([{ kind: 'token', text: 'Hi' }]);
+    expect(genaimilAdapter.parseStreamChunk('{"choices":[{"delta":{},"finish_reason":"stop"}]}')).toEqual([{ kind: 'done', stopReason: 'stop' }]);
+    expect(genaimilAdapter.parseStreamChunk('[DONE]')).toEqual([]);
   });
 });
