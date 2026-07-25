@@ -1,0 +1,14 @@
+name: Semper Scribe CodeQL config
+
+# Same suites the workflow previously passed via the `queries` input.
+queries:
+  - uses: security-extended
+  - uses: security-and-quality
+
+# Test code never ships: the app deploys as a static client-side bundle,
+# and tests only assert on locally generated fixtures (e.g. stripping
+# tags from DOCX XML the test itself produced). Scanning them produced
+# dozens of incomplete-sanitization false positives with no security
+# surface. Production code in src/ remains fully scanned.
+paths-ignore:
+  - tests
