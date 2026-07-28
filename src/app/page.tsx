@@ -246,7 +246,7 @@ function NavalLetterGeneratorInner() {
   // Import/Export/Share via hook
   const {
     handleImport, handleLoadDraft, handleLoadTemplateUrl,
-    handleExportNldp, handleShareLink,
+    handleExportNldp, handleExportPolicyData, handleShareLink,
     handleCopyAMHS, handleExportAMHS,
   } = useImportExport({
     formData, setFormData,
@@ -874,6 +874,7 @@ function NavalLetterGeneratorInner() {
       currentUnitCode={currentUnitCode}
       currentUnitName={currentUnitName}
       onExportNldp={handleExportNldp}
+      onExportPolicyData={handleExportPolicyData}
       onShareLink={() => setShowShareDialog(true)}
       onUpdatePreview={updatePreview}
       onCopyAMHS={handleCopyAMHS}

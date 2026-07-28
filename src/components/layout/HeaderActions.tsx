@@ -112,6 +112,7 @@ interface HeaderActionsProps {
   currentUnitName?: string;
   isGenerating?: boolean;
   onExportNldp?: () => void;
+  onExportPolicyData?: () => void;
   onShareLink?: () => void;
   showPreview?: boolean;
   onTogglePreview?: () => void;
@@ -160,6 +161,7 @@ export function HeaderActions({
   currentUnitName,
   isGenerating,
   onExportNldp,
+  onExportPolicyData,
   onShareLink,
   showPreview,
   onTogglePreview,
@@ -402,6 +404,13 @@ export function HeaderActions({
             <Download className="w-4 h-4 mr-2" />
             Export Data Package (.nldp)
           </DropdownMenuItem>
+
+          {onExportPolicyData && (
+            <DropdownMenuItem onClick={onExportPolicyData} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <Download className="w-4 h-4 mr-2" />
+              Policy-as-Data (USLM)...
+            </DropdownMenuItem>
+          )}
 
           {onShareLink && (
             <>
