@@ -49,4 +49,8 @@ export interface ProviderAdapter {
   validateKeyShape(key: string): boolean;
   buildRequest(req: GunnyRequest): GunnyHttpRequest;
   parseStreamChunk(raw: string): GunnyStreamEvent[];
+  // When false, the client reads one full JSON response instead of an SSE
+  // stream and calls parseFullResponse. Omit for streaming providers.
+  streaming?: boolean;
+  parseFullResponse?(json: unknown): GunnyStreamEvent[];
 }

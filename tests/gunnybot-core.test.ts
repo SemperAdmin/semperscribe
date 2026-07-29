@@ -275,7 +275,7 @@ describe('gunnybot genaimil adapter (OpenAI-compatible)', () => {
     const body = JSON.parse(http.body);
     expect(http.url).toBe('https://api.genai.mil/v1/chat/completions');
     expect(http.headers['authorization']).toBe('Bearer STARK_TESTKEY0123456789');
-    expect(body.stream).toBe(true);
+    expect(body.stream).toBe(false);
     expect(body.max_tokens).toBe(128);
     expect(body.messages).toHaveLength(2);
     expect(body.messages[0].role).toBe('system');
@@ -297,5 +297,30 @@ describe('gunnybot genaimil adapter (OpenAI-compatible)', () => {
     expect(genaimilAdapter.parseStreamChunk('{"choices":[{"delta":{"content":"Hi"}}]}')).toEqual([{ kind: 'token', text: 'Hi' }]);
     expect(genaimilAdapter.parseStreamChunk('{"choices":[{"delta":{},"finish_reason":"stop"}]}')).toEqual([{ kind: 'done', stopReason: 'stop' }]);
     expect(genaimilAdapter.parseStreamChunk('[DONE]')).toEqual([]);
+  });
+
+  it('is non-streaming and parses a full JSON response', () => {
+    expect(genaimilAdapter.streaming).toBe(false);
+    const events = genaimilAdapter.parseFullResponse!({ choices: [{ message: { content: 'Hello' }, finish_reason: 'stop' }] });
+    expect(events).toEqual([{ kind: 'token', text: 'Hello' }, { kind: 'done', stopReason: 'stop' }]);
+  });
+
+  it('streamChat reads a non-streaming GenAI.mil response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: 'ready' }, finish_reason: 'stop' }] }),
+        text: async () => '',
+      })),
+    );
+    const events: GunnyStreamEvent[] = [];
+    await streamChat(
+      { provider: 'genaimil', model: 'gemini-2.5-flash', apiKey: 'STARK_TESTKEY0123456789', messages: [{ role: 'user', content: 'hi' }], maxOutputTokens: 64 },
+      { onEvent: e => events.push(e) },
+    );
+    expect(events.filter(e => e.kind === 'token').map(e => (e as { text: string }).text).join('')).toBe('ready');
+    expect(events.some(e => e.kind === 'done')).toBe(true);
   });
 });

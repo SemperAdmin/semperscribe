@@ -51,6 +51,21 @@ export async function streamChat(req: GunnyRequest, handlers: StreamHandlers): P
     return;
   }
 
+  // Non-streaming providers (GenAI.mil) return one JSON object, not SSE.
+  if (adapter.streaming === false && adapter.parseFullResponse) {
+    let json: unknown;
+    try {
+      json = await res.json();
+    } catch {
+      handlers.onEvent({ kind: 'error', message: 'Provider returned a non-JSON response.' });
+      return;
+    }
+    for (const event of adapter.parseFullResponse(json)) {
+      handlers.onEvent(event);
+    }
+    return;
+  }
+
   const body = res.body;
   if (!body) {
     handlers.onEvent({ kind: 'error', message: 'Provider returned no response stream.' });

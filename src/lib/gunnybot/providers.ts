@@ -212,6 +212,7 @@ export const genaimilAdapter: ProviderAdapter = {
   label: 'GenAI.mil',
   models: GENAIMIL_MODELS,
   browserDirect: true,
+  streaming: false,
 
   validateKeyShape(key: string): boolean {
     return key.trim().length > 20;
@@ -221,7 +222,7 @@ export const genaimilAdapter: ProviderAdapter = {
     const body: OpenAICompatibleBody = {
       model: req.model,
       messages: req.messages.map(m => ({ role: m.role, content: m.content })),
-      stream: true,
+      stream: false,
       max_tokens: req.maxOutputTokens,
     };
     const host = req.proxyBaseUrl ?? GENAIMIL_HOST;
@@ -255,6 +256,22 @@ export const genaimilAdapter: ProviderAdapter = {
     if (choice?.finish_reason) {
       events.push({ kind: 'done', stopReason: String(choice.finish_reason) });
     }
+    return events;
+  },
+
+  // GenAI.mil is used non-streaming (the working reference sends
+  // stream:false). The client calls this with the full parsed JSON.
+  parseFullResponse(json: unknown): GunnyStreamEvent[] {
+    const data = json as {
+      choices?: { message?: { content?: unknown }; finish_reason?: unknown }[];
+    };
+    const choice = data.choices?.[0];
+    const events: GunnyStreamEvent[] = [];
+    const content = choice?.message?.content;
+    if (typeof content === 'string' && content.length > 0) {
+      events.push({ kind: 'token', text: content });
+    }
+    events.push({ kind: 'done', stopReason: choice?.finish_reason ? String(choice.finish_reason) : null });
     return events;
   },
 };
