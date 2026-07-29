@@ -25,13 +25,15 @@ const GEMINI_MODELS: GunnyModel[] = [
   { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', contextWindow: 1000000 },
 ];
 
-const GENAI_MIL_MODELS: GunnyModel[] = [
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (via GenAI.mil)', contextWindow: 1000000 },
+// GenAI.mil grants access to a catalog of models per the user's key. Only
+// a known-good default is listed; the custom model field carries the rest.
+const GENAIMIL_MODELS: GunnyModel[] = [
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', contextWindow: 1000000 },
 ];
 
 const ANTHROPIC_HOST = 'https://api.anthropic.com';
 const GEMINI_HOST = 'https://generativelanguage.googleapis.com';
-const GENAI_MIL_HOST = 'https://api.genai.mil';
+const GENAIMIL_HOST = 'https://api.genai.mil';
 
 interface AnthropicBody {
   model: string;
@@ -50,6 +52,13 @@ interface GeminiBody {
   contents: GeminiContent[];
   generationConfig: { maxOutputTokens: number };
   systemInstruction?: { parts: { text: string } };
+}
+
+interface OpenAICompatibleBody {
+  model: string;
+  messages: { role: string; content: string }[];
+  stream: boolean;
+  max_tokens: number;
 }
 
 function joinSystem(req: GunnyRequest): string {
@@ -194,44 +203,34 @@ export const geminiAdapter: ProviderAdapter = {
   },
 };
 
-interface OpenAiCompatBody {
-  model: string;
-  messages: { role: string; content: string }[];
-  max_tokens: number;
-  stream: boolean;
-}
-
-// GenAI.mil: the DoD GenAI gateway (OpenAI-compatible chat completions,
-// Bearer auth). CORS from a browser origin is UNVERIFIED against
-// api.genai.mil — the Authorization header forces a preflight. If the
-// gateway rejects it, the user can route through proxyBaseUrl like the
-// other adapters. Keys expire after 30 days per the GenAI.mil user
-// agreement, so a saved key going stale mid-session is expected behavior.
-export const genaiMilAdapter: ProviderAdapter = {
-  id: 'genai-mil',
-  label: 'GenAI.mil (U.S. DoD)',
-  models: GENAI_MIL_MODELS,
+// GenAI.mil: the DoD GenAI gateway. OpenAI-compatible chat completions
+// (Bearer auth, POST /v1/chat/completions). Browser-direct reach is
+// unverified. Confirm with Test connection, and set proxyBaseUrl if the
+// endpoint refuses the browser origin or is network-gated.
+export const genaimilAdapter: ProviderAdapter = {
+  id: 'genaimil',
+  label: 'GenAI.mil',
+  models: GENAIMIL_MODELS,
   browserDirect: true,
+  streaming: false,
 
   validateKeyShape(key: string): boolean {
-    return key.startsWith('STARK_') && key.length > 20;
+    return key.trim().length > 20;
   },
 
   buildRequest(req: GunnyRequest): GunnyHttpRequest {
-    // OpenAI-compatible endpoints take system turns inline, so the
-    // message list passes through without the system split-out.
-    const body: OpenAiCompatBody = {
+    const body: OpenAICompatibleBody = {
       model: req.model,
       messages: req.messages.map(m => ({ role: m.role, content: m.content })),
+      stream: false,
       max_tokens: req.maxOutputTokens,
-      stream: true,
     };
-    const host = req.proxyBaseUrl ?? GENAI_MIL_HOST;
+    const host = req.proxyBaseUrl ?? GENAIMIL_HOST;
     return {
       url: host + '/v1/chat/completions',
       headers: {
         'content-type': 'application/json',
-        authorization: 'Bearer ' + req.apiKey,
+        'authorization': 'Bearer ' + req.apiKey,
       },
       body: JSON.stringify(body),
     };
@@ -248,18 +247,31 @@ export const genaiMilAdapter: ProviderAdapter = {
     } catch {
       return [];
     }
-    if (json.error) {
-      return [{ kind: 'error', message: String(json.error.message ?? 'stream error') }];
-    }
-    const events: GunnyStreamEvent[] = [];
     const choice = json.choices?.[0];
-    const text = choice?.delta?.content;
-    if (typeof text === 'string' && text.length > 0) {
-      events.push({ kind: 'token', text });
+    const events: GunnyStreamEvent[] = [];
+    const content = choice?.delta?.content;
+    if (typeof content === 'string' && content.length > 0) {
+      events.push({ kind: 'token', text: content });
     }
     if (choice?.finish_reason) {
       events.push({ kind: 'done', stopReason: String(choice.finish_reason) });
     }
+    return events;
+  },
+
+  // GenAI.mil is used non-streaming (the working reference sends
+  // stream:false). The client calls this with the full parsed JSON.
+  parseFullResponse(json: unknown): GunnyStreamEvent[] {
+    const data = json as {
+      choices?: { message?: { content?: unknown }; finish_reason?: unknown }[];
+    };
+    const choice = data.choices?.[0];
+    const events: GunnyStreamEvent[] = [];
+    const content = choice?.message?.content;
+    if (typeof content === 'string' && content.length > 0) {
+      events.push({ kind: 'token', text: content });
+    }
+    events.push({ kind: 'done', stopReason: choice?.finish_reason ? String(choice.finish_reason) : null });
     return events;
   },
 };
@@ -269,7 +281,7 @@ export const genaiMilAdapter: ProviderAdapter = {
 export const PROVIDER_REGISTRY: Record<GunnyProviderId, ProviderAdapter | null> = {
   anthropic: anthropicAdapter,
   gemini: geminiAdapter,
-  'genai-mil': genaiMilAdapter,
+  genaimil: genaimilAdapter,
   openai: null,
   azure: null,
 };

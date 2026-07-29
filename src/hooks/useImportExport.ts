@@ -10,6 +10,7 @@ import { getBasePath } from '@/lib/path-utils';
 import { findLetterById } from '@/lib/storage-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
 import { debugUserAction, debugFormChange } from '@/lib/console-utils';
+import { createPolicyDataRecord, createPolicyDataBlob, generatePolicyDataFilename } from '@/lib/policy-as-data';
 
 interface ImportExportDeps {
   formData: FormData;
@@ -158,6 +159,28 @@ export function useImportExport(deps: ImportExportDeps) {
     debugUserAction('Export Data', { format: 'nldp' });
   }, [formData, vias, references, enclosures, copyTos, distList, paragraphs]);
 
+  // Policy-as-Data export: convert the current document to the canonical
+  // 0.4.0 record consumed by the policy-as-data pipeline (USLM library,
+  // provision-grade citations, LLM corpus). Mirrors handleExportNldp.
+  const handleExportPolicyData = useCallback(() => {
+    const record = createPolicyDataRecord(
+      formData,
+      paragraphs,
+      references,
+      enclosures
+    );
+    const blob = createPolicyDataBlob(record);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = generatePolicyDataFilename(record);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    debugUserAction('Export Data', { format: 'policy-as-data' });
+  }, [formData, paragraphs, references, enclosures]);
+
   // P1.1 (DONDOCS_PARITY_PLAN): password-encrypted links by default,
   // legacy unprotected format behind an explicit opt-out.
   const handleShareLink = useCallback(async (options: ShareLinkOptions = {}) => {
@@ -234,6 +257,7 @@ export function useImportExport(deps: ImportExportDeps) {
     handleLoadDraft,
     handleLoadTemplateUrl,
     handleExportNldp,
+    handleExportPolicyData,
     handleShareLink,
     handleCopyAMHS,
     handleExportAMHS,

@@ -1,7 +1,7 @@
 // GunnyBot shared types. Phase 0 skeleton, no runtime behavior.
 // Wiring lands in Phase 1. Nothing in the running app imports this yet.
 
-export type GunnyProviderId = 'anthropic' | 'gemini' | 'genai-mil' | 'openai' | 'azure';
+export type GunnyProviderId = 'anthropic' | 'gemini' | 'genaimil' | 'openai' | 'azure';
 
 export type GunnyTask = 'proofread' | 'draft' | 'rewrite' | 'qa';
 
@@ -49,4 +49,8 @@ export interface ProviderAdapter {
   validateKeyShape(key: string): boolean;
   buildRequest(req: GunnyRequest): GunnyHttpRequest;
   parseStreamChunk(raw: string): GunnyStreamEvent[];
+  // When false, the client reads one full JSON response instead of an SSE
+  // stream and calls parseFullResponse. Omit for streaming providers.
+  streaming?: boolean;
+  parseFullResponse?(json: unknown): GunnyStreamEvent[];
 }

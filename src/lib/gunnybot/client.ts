@@ -47,8 +47,22 @@ export async function streamChat(req: GunnyRequest, handlers: StreamHandlers): P
     } catch {
       detail = '';
     }
-    const suffix = detail.length > 0 ? ': ' + truncate(redact(detail, req.apiKey), 500) : '';
-    handlers.onEvent({ kind: 'error', message: 'HTTP ' + res.status + suffix });
+    handlers.onEvent({ kind: 'error', message: summarizeHttpError(res.status, detail, req.apiKey) });
+    return;
+  }
+
+  // Non-streaming providers (GenAI.mil) return one JSON object, not SSE.
+  if (adapter.streaming === false && adapter.parseFullResponse) {
+    let json: unknown;
+    try {
+      json = await res.json();
+    } catch {
+      handlers.onEvent({ kind: 'error', message: 'Provider returned a non-JSON response.' });
+      return;
+    }
+    for (const event of adapter.parseFullResponse(json)) {
+      handlers.onEvent(event);
+    }
     return;
   }
 
@@ -139,7 +153,78 @@ function safeError(err: unknown, key: string): string {
     typeof err === 'object' && err !== null && typeof (err as { message?: unknown }).message === 'string'
       ? (err as { message: string }).message
       : String(err);
-  return redact(raw, key);
+  const redacted = redact(raw, key);
+  const lower = redacted.toLowerCase();
+  if (lower.includes('failed to fetch') || lower.includes('networkerror') || lower.includes('load failed')) {
+    return 'Could not reach the provider. This is usually a network block or a CORS restriction. (' + redacted + ')';
+  }
+  return redacted;
+}
+
+// Turns a non-2xx response into a short reason plus the provider's own
+// message, with the key redacted. Google, OpenAI, and Anthropic error
+// bodies all nest a message under `error`.
+function summarizeHttpError(status: number, body: string, key: string): string {
+  const redacted = redact(body, key);
+  let providerMessage = '';
+  let reason = '';
+  try {
+    const json = JSON.parse(redacted);
+    const err = json?.error ?? json;
+    if (typeof err?.message === 'string') {
+      providerMessage = err.message;
+    }
+    if (typeof err?.status === 'string') {
+      reason = err.status;
+    }
+    const details = err?.details;
+    if (Array.isArray(details)) {
+      for (const d of details) {
+        if (d && typeof d.reason === 'string') {
+          reason = d.reason;
+          break;
+        }
+      }
+    }
+    if (reason.length === 0 && typeof err?.type === 'string') {
+      reason = err.type;
+    }
+  } catch {
+    // Body is not JSON. The status label carries the message.
+  }
+  const label = shortLabel(status, reason + ' ' + providerMessage);
+  const detail = providerMessage.length > 0 ? '. ' + truncate(providerMessage, 240) : '';
+  return label + ' (HTTP ' + status + ')' + detail;
+}
+
+function shortLabel(status: number, hint: string): string {
+  const h = hint.toLowerCase();
+  if (
+    h.includes('api_key_invalid') ||
+    h.includes('api key not valid') ||
+    h.includes('invalid api key') ||
+    h.includes('unauthenticated') ||
+    status === 401 ||
+    status === 403
+  ) {
+    return 'API key invalid or not authorized';
+  }
+  if (h.includes('quota') || h.includes('rate limit') || h.includes('rate_limit') || status === 429) {
+    return 'Rate limit or quota exceeded';
+  }
+  if (h.includes('model') && (h.includes('not found') || h.includes('does not exist') || h.includes('permission'))) {
+    return 'Model not available for this key';
+  }
+  if (status === 404) {
+    return 'Not found';
+  }
+  if (status === 400) {
+    return 'Bad request, check the model ID and key';
+  }
+  if (status >= 500) {
+    return 'Provider server error';
+  }
+  return 'Request failed';
 }
 
 function truncate(text: string, max: number): string {

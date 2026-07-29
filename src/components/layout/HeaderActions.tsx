@@ -14,10 +14,8 @@ import {
   Eye,
   EyeOff,
   Link2,
-  Check,
   FileSpreadsheet,
   ClipboardCheck,
-  MoreVertical,
   Settings,
   MessageSquare,
   Undo2,
@@ -107,6 +105,8 @@ interface HeaderActionsProps {
   onClearForm: () => void;
   savedLetters: SavedLetter[];
   onLoadTemplateUrl: (url: string) => void;
+  /** R4b: exports the policy question/answer data. Accepted for prop parity. */
+  onExportPolicyData?: () => void;
   documentType: string;
   currentUnitCode?: string;
   currentUnitName?: string;
@@ -155,6 +155,7 @@ export function HeaderActions({
   onClearForm,
   savedLetters,
   onLoadTemplateUrl,
+  onExportPolicyData,
   documentType,
   currentUnitCode,
   currentUnitName,
@@ -187,12 +188,13 @@ export function HeaderActions({
     searchQuery, 
     setSearchQuery, 
   } = useTemplates({ documentType, currentUnitCode, currentUnitName });
-  
+
+  // GunnyBot opens from the store, the same wiring the header bot button used
+  // before the regrouping. No prop and no ModernAppShell change needed.
   const openGunnyBot = useGunnyStore((s) => s.setPanelOpen);
 
   // Helper to merge classes for buttons
   const buttonClass = (baseClass: string) => cn(baseClass, className ? "text-secondary-foreground hover:text-primary hover:bg-white/10" : "text-muted-foreground hover:text-foreground");
-  const iconClass = className ? "text-secondary-foreground/80" : "text-muted-foreground";
 
   const [isTemplateOpen, setIsTemplateOpen] = React.useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -248,6 +250,10 @@ export function HeaderActions({
     setIsTemplateOpen(false);
   };
 
+  // Review always offers GunnyBot Review; the document checks gate on their
+  // own handlers. hasOtherReview drives the divider above GunnyBot Review.
+  const hasOtherReview = Boolean(onProofread || onCompliance || onCompare || onFindReplace || onGuide);
+
   return (
     <div className="flex items-center space-x-2">
       {/* Hidden file inputs. These must live OUTSIDE the dropdown menu:
@@ -269,14 +275,6 @@ export function HeaderActions({
         className="hidden"
         accept=".docx,.pdf"
       />
-      {onSettings && (
-        <Button variant="ghost" size="sm" className={buttonClass("hidden sm:flex")} onClick={onSettings} title="Settings">
-          <Settings className={cn("w-4 h-4", iconClass)} />
-        </Button>
-      )}
-      <Button variant="ghost" size="sm" className={buttonClass("flex")} onClick={() => openGunnyBot(true)} title="GunnyBot assistant">
-        <Bot className={cn("w-4 h-4", iconClass)} />
-      </Button>
 
       {/* Templates Dialog */}
       <Dialog open={isTemplateOpen} onOpenChange={setIsTemplateOpen}>
@@ -349,7 +347,7 @@ export function HeaderActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56 bg-card border-border text-card-foreground">
-          <DropdownMenuLabel>Document Actions</DropdownMenuLabel>
+          <DropdownMenuLabel>Working project</DropdownMenuLabel>
           <DropdownMenuItem onClick={onSave} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
             <Save className="w-4 h-4 mr-2" />
             Save Draft
@@ -398,23 +396,8 @@ export function HeaderActions({
           )}
 
 
-          <DropdownMenuItem onClick={onExportNldp} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-            <Download className="w-4 h-4 mr-2" />
-            Export Data Package (.nldp)
-          </DropdownMenuItem>
-
-          {onShareLink && (
-            <>
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem onClick={onShareLink} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                <Link2 className="w-4 h-4 mr-2" />
-                Copy Share Link
-              </DropdownMenuItem>
-            </>
-          )}
-
           <DropdownMenuSeparator className="bg-border" />
-          
+
           <DropdownMenuItem onClick={onClearForm} className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer">
             <Trash2 className="w-4 h-4 mr-2" />
             Clear Form
@@ -422,9 +405,69 @@ export function HeaderActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <div className="h-4 w-px bg-border hidden md:block mx-2"></div>
+      {/* Review Menu - the old "Actions" catch-all, narrowed to check-and-
+          refine operations. Preview toggle, package, settings, and feedback
+          all moved out. GunnyBot Review always shows, so the menu always
+          renders. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "flex",
+              className ? "text-secondary-foreground hover:text-primary hover:bg-white/10" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <ClipboardCheck className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Review</span>
+            <ChevronDown className="w-3 h-3 ml-1 opacity-50 hidden sm:inline-flex" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56 bg-card border-border text-card-foreground">
+          <DropdownMenuLabel>Check and refine</DropdownMenuLabel>
+          {onProofread && (
+            <DropdownMenuItem onClick={onProofread} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <ClipboardCheck className="w-4 h-4 mr-2" />
+              Proofread
+            </DropdownMenuItem>
+          )}
+          {onCompliance && (
+            <DropdownMenuItem onClick={onCompliance} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <BadgeCheck className="w-4 h-4 mr-2" />
+              Compliance Issues
+            </DropdownMenuItem>
+          )}
+          {onCompare && (
+            <DropdownMenuItem onClick={onCompare} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <GitCompare className="w-4 h-4 mr-2" />
+              Compare Revisions
+            </DropdownMenuItem>
+          )}
+          {onFindReplace && (
+            <DropdownMenuItem onClick={onFindReplace} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <Replace className="w-4 h-4 mr-2" />
+              Find and Replace
+            </DropdownMenuItem>
+          )}
+          {onGuide && (
+            <DropdownMenuItem onClick={onGuide} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <BookOpen className="w-4 h-4 mr-2" />
+              Correspondence Guide
+            </DropdownMenuItem>
+          )}
+          {hasOtherReview && <DropdownMenuSeparator className="bg-border" />}
+          <DropdownMenuItem onClick={() => openGunnyBot(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+            <Bot className="w-4 h-4 mr-2" />
+            GunnyBot Review
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      {/* Export/Generate Buttons */}
+      {/* Export - every produce-an-output action: rendered documents, the
+          editable data files pulled from File, batch, and the distribution
+          actions pulled from the removed Share menu. AMHS keeps its own
+          Copy/Export pair. */}
       <div className="flex items-center space-x-1 sm:space-x-2">
 
         {documentType === 'amhs' ? (
@@ -453,137 +496,161 @@ export function HeaderActions({
             </Button>
           </>
         ) : (
-          <>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "flex",
-                    className
-                      ? "bg-transparent text-secondary-foreground border-secondary-foreground/30 hover:bg-white/10 hover:text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <span className="hidden sm:inline">Actions</span>
-                  <MoreVertical className="w-4 h-4 sm:hidden" />
-                  <ChevronDown className="w-3 h-3 ml-1 opacity-50 hidden sm:inline-flex" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-card border-border text-card-foreground">
-                {onOpenPreviewModal && (
-                  <DropdownMenuItem onClick={onOpenPreviewModal} className="cursor-pointer focus:bg-accent focus:text-accent-foreground xl:hidden">
-                    <Eye className="w-4 h-4 mr-2" />
-                    Preview (Modal)
-                  </DropdownMenuItem>
-                )}
-                {onTogglePreview && (
-                  <DropdownMenuItem onClick={onTogglePreview} className="cursor-pointer focus:bg-accent focus:text-accent-foreground hidden xl:flex">
-                    {showPreview ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                    {showPreview ? 'Hide Preview' : 'Show Preview'}
-                  </DropdownMenuItem>
-                )}
-                {onProofread && <DropdownMenuSeparator className="bg-border xl:hidden" />}
-                {onProofread && (
-                  <DropdownMenuItem onClick={onProofread} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                    <ClipboardCheck className="w-4 h-4 mr-2" />
-                    Proofread
-                  </DropdownMenuItem>
-                )}
-                {onCompliance && (
-                  <DropdownMenuItem onClick={onCompliance} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                    <BadgeCheck className="w-4 h-4 mr-2" />
-                    Compliance Issues
-                  </DropdownMenuItem>
-                )}
-                {onCompare && (
-                  <DropdownMenuItem onClick={onCompare} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                    <GitCompare className="w-4 h-4 mr-2" />
-                    Compare Revisions
-                  </DropdownMenuItem>
-                )}
-                {onPackage && (
-                  <DropdownMenuItem onClick={onPackage} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                    <Layers className="w-4 h-4 mr-2" />
-                    Assemble Package
-                  </DropdownMenuItem>
-                )}
-                {onFindReplace && (
-                  <DropdownMenuItem onClick={onFindReplace} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                    <Replace className="w-4 h-4 mr-2" />
-                    Find and Replace
-                  </DropdownMenuItem>
-                )}
-                {onGuide && (
-                  <DropdownMenuItem onClick={onGuide} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                    <BookOpen className="w-4 h-4 mr-2" />
-                    Correspondence Guide
-                  </DropdownMenuItem>
-                )}
-                {onSettings && <DropdownMenuSeparator className="bg-border" />}
-                {onSettings && (
-                  <DropdownMenuItem onClick={onSettings} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Settings
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem
-                  onClick={() => window.open(FEEDBACK_URL, '_blank', 'noopener,noreferrer')}
-                  className="cursor-pointer focus:bg-accent focus:text-accent-foreground"
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Send Feedback...
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                className="text-primary-foreground bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20 border border-primary-foreground/10"
+                disabled={isGenerating}
+              >
+                <Download className="mr-2 w-4 h-4" />
+                {isGenerating ? 'Generating...' : 'Export'}
+                <ChevronDown className="ml-2 w-4 h-4 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-card border-border text-card-foreground">
+              <DropdownMenuLabel>Export</DropdownMenuLabel>
+              <DropdownMenuItem onClick={onGeneratePdf} disabled={isGenerating} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                <Download className="w-4 h-4 mr-2" />
+                {isGenerating ? 'Generating PDF...' : 'PDF Document (.pdf)'}
+              </DropdownMenuItem>
+              {onAddSignature && (
+                <DropdownMenuItem onClick={onAddSignature} disabled={isGenerating} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF with Signature Fields
                 </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  className="text-primary-foreground bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20 border border-primary-foreground/10"
-                  disabled={isGenerating}
-                >
-                  <Download className="mr-2 w-4 h-4" />
-                  {isGenerating ? 'Generating...' : 'Export'}
-                  <ChevronDown className="ml-2 w-4 h-4 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-card border-border text-card-foreground">
-                <DropdownMenuItem onClick={onGeneratePdf} disabled={isGenerating} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              )}
+              {documentType !== 'page11' && documentType !== 'navmc10922' && (
+                <DropdownMenuItem onClick={onExportDocx} disabled={isGenerating} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Word Document (.docx)
+                </DropdownMenuItem>
+              )}
+              {/* F1 (SECTION_508_FINDINGS): PDF exports are untagged. */}
+              <div className="px-2 py-1.5 text-[11px] leading-snug text-muted-foreground" role="note">
+                Screen-reader accessible copy needed? Export DOCX - PDF exports carry no accessibility tags.
+              </div>
+
+              {/* Editable data files, moved out of File. */}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onExportNldp} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                <Save className="w-4 h-4 mr-2" />
+                Save as Data Package (.nldp)
+              </DropdownMenuItem>
+              {onExportPolicyData && (
+                <DropdownMenuItem onClick={onExportPolicyData} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
                   <Download className="w-4 h-4 mr-2" />
-                  {isGenerating ? 'Generating PDF...' : 'PDF Document (.pdf)'}
+                  Policy-as-Data (USLM)...
                 </DropdownMenuItem>
-                {onAddSignature && (
-                  <DropdownMenuItem onClick={onAddSignature} disabled={isGenerating} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                    <FileText className="w-4 h-4 mr-2" />
-                    PDF with Signature Fields
+              )}
+
+              {onBatchGenerate && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onBatchGenerate} disabled={isGenerating} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    Batch Generate (Mail Merge)
                   </DropdownMenuItem>
-                )}
-                {documentType !== 'page11' && documentType !== 'navmc10922' && (
-                  <DropdownMenuItem onClick={onExportDocx} disabled={isGenerating} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Word Document (.docx)
-                  </DropdownMenuItem>
-                )}
-                {/* F1 (SECTION_508_FINDINGS): PDF exports are untagged. */}
-                <div className="px-2 py-1.5 text-[11px] leading-snug text-muted-foreground" role="note">
-                  Screen-reader accessible copy needed? Export DOCX - PDF exports carry no accessibility tags.
-                </div>
-                {onBatchGenerate && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={onBatchGenerate} disabled={isGenerating} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                      <FileSpreadsheet className="w-4 h-4 mr-2" />
-                      Batch Generate (Mail Merge)
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
+                </>
+              )}
+
+              {/* Distribution, moved out of the removed Share menu. */}
+              {(onShareLink || onPackage) && <DropdownMenuSeparator />}
+              {onShareLink && (
+                <DropdownMenuItem onClick={onShareLink} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                  <Link2 className="w-4 h-4 mr-2" />
+                  Copy Share Link
+                </DropdownMenuItem>
+              )}
+              {onPackage && (
+                <DropdownMenuItem onClick={onPackage} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                  <Layers className="w-4 h-4 mr-2" />
+                  Assemble Package
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
+
+      <div className="h-4 w-px bg-border hidden md:block mx-2"></div>
+
+      {/* View - a visible toggle, not a menu item. Gold when the preview is
+          on. Below xl there is no preview pane, so the icon opens the modal. */}
+      {onOpenPreviewModal && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={buttonClass("h-8 w-8 xl:hidden")}
+          onClick={onOpenPreviewModal}
+          title="Preview"
+          aria-label="Open preview"
+        >
+          <Eye className="w-4 h-4" />
+        </Button>
+      )}
+      {onTogglePreview && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-8 w-8 hidden xl:flex",
+            showPreview
+              ? "text-primary bg-primary/10 hover:bg-primary/15"
+              : buttonClass("")
+          )}
+          onClick={onTogglePreview}
+          title={showPreview ? 'Hide preview' : 'Show preview'}
+          aria-label={showPreview ? 'Hide preview' : 'Show preview'}
+          aria-pressed={showPreview}
+        >
+          {showPreview ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+        </Button>
+      )}
+
+      {/* GunnyBot - opens the assistant panel from the store. */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className={buttonClass("h-8 w-8")}
+        onClick={() => openGunnyBot(true)}
+        title="GunnyBot assistant"
+        aria-label="Open GunnyBot assistant"
+      >
+        <Bot className="w-4 h-4" />
+      </Button>
+
+      {/* App - one Settings gear. Send Feedback lives here, out of the
+          document menus. */}
+      {onSettings && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={buttonClass("h-8 w-8")}
+              title="Settings"
+              aria-label="Settings and feedback"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48 bg-card border-border text-card-foreground">
+            <DropdownMenuItem onClick={onSettings} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-border" />
+            <DropdownMenuItem
+              onClick={() => window.open(FEEDBACK_URL, '_blank', 'noopener,noreferrer')}
+              className="cursor-pointer focus:bg-accent focus:text-accent-foreground"
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Send Feedback...
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }
