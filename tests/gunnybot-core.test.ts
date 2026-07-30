@@ -10,7 +10,8 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { anthropicAdapter, geminiAdapter, genaimilAdapter, getAdapter } from '@/lib/gunnybot/providers';
 import { streamChat } from '@/lib/gunnybot/client';
 import * as keyring from '@/lib/gunnybot/keyring';
-import { screenOutbound } from '@/lib/gunnybot/redaction';
+import { screenOutbound, clearedForEgress } from '@/lib/gunnybot/redaction';
+import { registerEgressAckHandler, hasEgressAckHandler, requestEgressAck } from '@/lib/gunnybot/egress-gate';
 import { buildContext } from '@/lib/gunnybot/context-builder';
 import type { GunnyRequest, GunnyStreamEvent } from '@/lib/gunnybot/types';
 
@@ -58,6 +59,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   keyring.clearAllKeys();
+  registerEgressAckHandler(null);
 });
 
 describe('gunnybot adapters: buildRequest', () => {
@@ -97,8 +99,29 @@ describe('gunnybot adapters: buildRequest', () => {
     expect(http.url).toContain('AIzaTESTKEY0123456789ABCDEFGHIJ');
     expect(Object.keys(http.headers)).toEqual(['content-type']);
     expect(body.contents[0].role).toBe('model');
-    expect(body.systemInstruction.parts.text).toBe('SYS');
+    // parts is a repeated field. The live endpoint coerces a single object
+    // too (verified 2026-07-30), but the array is the documented form.
+    expect(body.systemInstruction.parts).toEqual([{ text: 'SYS' }]);
     expect(body.generationConfig.maxOutputTokens).toBe(256);
+    // Reasoning stays on unless a caller opts out.
+    expect(body.generationConfig.thinkingConfig).toBeUndefined();
+  });
+
+  it('disables Gemini reasoning only when the caller asks', () => {
+    const off = JSON.parse(
+      geminiAdapter.buildRequest({
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+        apiKey: 'AIzaTESTKEY0123456789ABCDEFGHIJ',
+        messages: [{ role: 'user', content: 'hi' }],
+        maxOutputTokens: 256,
+        disableReasoning: true,
+      }).body,
+    );
+    // Measured 2026-07-30: gemini-2.5-flash spent 13 of a 16-token budget
+    // on reasoning and returned HTTP 200 with a zero-byte body.
+    expect(off.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
+    expect(off.generationConfig.maxOutputTokens).toBe(256);
   });
 });
 
@@ -108,6 +131,15 @@ describe('gunnybot adapters: validateKeyShape and parseStreamChunk', () => {
     expect(anthropicAdapter.validateKeyShape('sk-openai-xxxx')).toBe(false);
     expect(geminiAdapter.validateKeyShape('AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ012345')).toBe(true);
     expect(geminiAdapter.validateKeyShape('nope')).toBe(false);
+  });
+
+  it('accepts a non-AIza Google key and still rejects a wrong-provider key', () => {
+    // A working key measured 2026-07-30 was 53 chars with no AIza prefix.
+    // The old prefix rule warned on a valid key.
+    const modern = 'x'.repeat(53);
+    expect(geminiAdapter.validateKeyShape(modern)).toBe(true);
+    expect(geminiAdapter.validateKeyShape('sk-ant-' + 'a'.repeat(40))).toBe(false);
+    expect(geminiAdapter.validateKeyShape('short')).toBe(false);
   });
 
   it('parses Anthropic deltas, stop, and ignores ping', () => {
@@ -141,7 +173,13 @@ describe('gunnybot client: streaming', () => {
   it('assembles tokens across chunk boundaries and emits one done', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => ({ ok: true, status: 200, body: sseStream(ANTHROPIC_SSE), text: async () => '' })),
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: sseStream(ANTHROPIC_SSE),
+        text: async () => '',
+      })),
     );
     const events = await collect(baseReq);
     const text = events.filter(e => e.kind === 'token').map(e => (e as { text: string }).text).join('');
@@ -217,6 +255,66 @@ describe('gunnybot client: streaming', () => {
     expect(events).toHaveLength(1);
     expect(events[0].kind).toBe('error');
   });
+
+  // Regression: gemini-2.5-flash with maxOutputTokens 16 returns HTTP 200,
+  // content-type text/event-stream, and a zero-byte body once reasoning
+  // consumes the allowance. This used to emit nothing at all, and the only
+  // symptom the user ever saw was the words "No response."
+  it('reports a 2xx response that streams zero bytes', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: sseStream(''),
+        text: async () => '',
+      })),
+    );
+    const events = await collect(baseReq);
+    expect(events).toHaveLength(1);
+    const err = events[0] as { kind: string; message: string };
+    expect(err.kind).toBe('error');
+    expect(err.message).toContain('HTTP 200');
+    expect(err.message).toContain('empty body');
+    expect(err.message).toContain('text/event-stream');
+    expect(err.message).toContain('reasoning');
+  });
+
+  it('reports a 2xx stream whose frames carry nothing usable', async () => {
+    // Well-formed SSE, but no delta the adapter recognizes.
+    const noise = 'event: ping\ndata: {"type":"ping"}\n\n';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: sseStream(noise),
+        text: async () => '',
+      })),
+    );
+    const events = await collect(baseReq);
+    expect(events).toHaveLength(1);
+    const err = events[0] as { kind: string; message: string };
+    expect(err.kind).toBe('error');
+    expect(err.message).toContain('no readable content');
+  });
+
+  it('stays silent about the guard when the stream is healthy', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: sseStream(ANTHROPIC_SSE),
+        text: async () => '',
+      })),
+    );
+    const events = await collect(baseReq);
+    expect(events.some(e => e.kind === 'error')).toBe(false);
+  });
 });
 
 describe('gunnybot keyring: session only', () => {
@@ -234,12 +332,85 @@ describe('gunnybot keyring: session only', () => {
   });
 });
 
-describe('gunnybot redaction: pre-send gate', () => {
-  it('blocks an EDIPI and passes clean text', () => {
-    const flagged = screenOutbound('member EDIPI 1234567890 attached');
-    expect(flagged.blocked).toBe(true);
-    expect(flagged.findings.length).toBeGreaterThan(0);
-    expect(screenOutbound('This is a clean unclassified draft paragraph.').blocked).toBe(false);
+describe('gunnybot redaction: pre-send scan', () => {
+  it('flags an EDIPI and an SSN, passes clean text', () => {
+    const edipi = screenOutbound('member EDIPI 1234567890 attached');
+    expect(edipi.requiresAck).toBe(true);
+    expect(edipi.findings.length).toBeGreaterThan(0);
+
+    const ssn = screenOutbound('SSN 123-45-6789 on file');
+    expect(ssn.requiresAck).toBe(true);
+
+    expect(screenOutbound('This is a clean unclassified draft paragraph.').requiresAck).toBe(false);
+  });
+
+  it('no longer flags ordinary correspondence vocabulary', () => {
+    // These all hard-blocked under the old PHI substring list. Word
+    // boundaries were absent, so "hospitality" matched "hospital".
+    const benign = [
+      'Request support from Branch Health Clinic aboard the installation.',
+      'Naval Hospital Camp Lejeune will host the ceremony.',
+      'Thank the command for its hospitality during the visit.',
+      'All hands will complete annual medical readiness screening.',
+      'Coordinate with the water treatment facility on the schedule.',
+      'The outpatient appointment schedule is attached.',
+    ];
+    for (const text of benign) {
+      expect(screenOutbound(text).requiresAck).toBe(false);
+    }
+  });
+
+  it('leaves SSIC codes, UICs, DTGs, and formatted phone numbers alone', () => {
+    const safe = [
+      'SSIC 5216.5 refers.',
+      'Reference MCO 5215.1K, UIC 12345.',
+      'DTG 301200ZJUL25 applies.',
+      'Contact the office at 703-555-1234 or DSN 312-555-1234.',
+      'Effective 20250730 per the order.',
+    ];
+    for (const text of safe) {
+      expect(screenOutbound(text).requiresAck).toBe(false);
+    }
+  });
+});
+
+describe('gunnybot egress gate: consent, not a block', () => {
+  it('clears clean text without asking', async () => {
+    const handler = vi.fn(async () => true);
+    registerEgressAckHandler(handler);
+    expect(await clearedForEgress('a clean unclassified paragraph')).toBe(true);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('asks on a flagged payload and honors acknowledge', async () => {
+    const seen: string[][] = [];
+    registerEgressAckHandler(async (findings: string[]) => {
+      seen.push(findings);
+      return true;
+    });
+    expect(await clearedForEgress('EDIPI 1234567890')).toBe(true);
+    expect(seen).toHaveLength(1);
+    expect(seen[0].length).toBeGreaterThan(0);
+    expect(seen[0].join(' ')).toContain('EDIPI');
+  });
+
+  it('asks on a flagged payload and honors cancel', async () => {
+    registerEgressAckHandler(async () => false);
+    expect(await clearedForEgress('SSN 123-45-6789')).toBe(false);
+  });
+
+  it('fails closed when no gate is mounted', async () => {
+    expect(hasEgressAckHandler()).toBe(false);
+    expect(await clearedForEgress('EDIPI 1234567890')).toBe(false);
+    // An empty finding list still needs no consent.
+    expect(await requestEgressAck([])).toBe(true);
+  });
+
+  it('unregisters cleanly', async () => {
+    registerEgressAckHandler(async () => true);
+    expect(hasEgressAckHandler()).toBe(true);
+    registerEgressAckHandler(null);
+    expect(hasEgressAckHandler()).toBe(false);
   });
 });
 
@@ -305,14 +476,26 @@ describe('gunnybot genaimil adapter (OpenAI-compatible)', () => {
     expect(events).toEqual([{ kind: 'token', text: 'Hello' }, { kind: 'done', stopReason: 'stop' }]);
   });
 
+  it('reports an error, not a clean done, when a 200 carries no content', () => {
+    const empty = genaimilAdapter.parseFullResponse!({ choices: [{ message: { content: '' }, finish_reason: 'length' }] });
+    expect(empty.every(e => e.kind !== 'done')).toBe(true);
+    const err = empty.find(e => e.kind === 'error') as { message: string };
+    expect(err.message).toContain('no content');
+    expect(err.message).toContain('length');
+
+    const shapeless = genaimilAdapter.parseFullResponse!({});
+    expect(shapeless).toHaveLength(1);
+    expect(shapeless[0].kind).toBe('error');
+  });
+
   it('streamChat reads a non-streaming GenAI.mil response', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
         ok: true,
         status: 200,
-        json: async () => ({ choices: [{ message: { content: 'ready' }, finish_reason: 'stop' }] }),
-        text: async () => '',
+        headers: new Headers({ 'content-type': 'application/json' }),
+        text: async () => JSON.stringify({ choices: [{ message: { content: 'ready' }, finish_reason: 'stop' }] }),
       })),
     );
     const events: GunnyStreamEvent[] = [];

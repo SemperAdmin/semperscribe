@@ -12,9 +12,18 @@ export interface StreamHandlers {
  * AbortSignal. The user's key never appears in an emitted error.
  */
 export async function streamChat(req: GunnyRequest, handlers: StreamHandlers): Promise<void> {
+  // A successful HTTP response carrying nothing usable is a failure, and
+  // it used to end this function in silence. Every emit runs through the
+  // counter so the tail guard below reports the dead case instead.
+  let emitted = 0;
+  const emit = (event: GunnyStreamEvent): void => {
+    emitted += 1;
+    handlers.onEvent(event);
+  };
+
   const adapter = getAdapter(req.provider);
   if (adapter === null) {
-    handlers.onEvent({
+    emit({
       kind: 'error',
       message: 'Provider ' + req.provider + ' has no browser-direct adapter. Configure a proxy first.',
     });
@@ -33,10 +42,10 @@ export async function streamChat(req: GunnyRequest, handlers: StreamHandlers): P
     });
   } catch (err) {
     if (isAbort(err)) {
-      handlers.onEvent({ kind: 'done', stopReason: 'aborted' });
+      emit({ kind: 'done', stopReason: 'aborted' });
       return;
     }
-    handlers.onEvent({ kind: 'error', message: safeError(err, req.apiKey) });
+    emit({ kind: 'error', message: safeError(err, req.apiKey) });
     return;
   }
 
@@ -47,28 +56,42 @@ export async function streamChat(req: GunnyRequest, handlers: StreamHandlers): P
     } catch {
       detail = '';
     }
-    handlers.onEvent({ kind: 'error', message: summarizeHttpError(res.status, detail, req.apiKey) });
+    emit({ kind: 'error', message: summarizeHttpError(res.status, detail, req.apiKey) });
     return;
   }
 
+  const contentType = res.headers.get('content-type') ?? 'unknown';
+  let bytesRead = 0;
+
   // Non-streaming providers (GenAI.mil) return one JSON object, not SSE.
   if (adapter.streaming === false && adapter.parseFullResponse) {
+    let raw = '';
+    try {
+      raw = await res.text();
+    } catch {
+      emit({ kind: 'error', message: 'Provider returned an unreadable response body.' });
+      return;
+    }
+    bytesRead = raw.length;
     let json: unknown;
     try {
-      json = await res.json();
+      json = JSON.parse(raw);
     } catch {
-      handlers.onEvent({ kind: 'error', message: 'Provider returned a non-JSON response.' });
+      emit({ kind: 'error', message: 'Provider returned a non-JSON response.' });
       return;
     }
     for (const event of adapter.parseFullResponse(json)) {
-      handlers.onEvent(event);
+      emit(event);
+    }
+    if (emitted === 0) {
+      emit({ kind: 'error', message: describeSilentResponse(res.status, contentType, bytesRead) });
     }
     return;
   }
 
   const body = res.body;
   if (!body) {
-    handlers.onEvent({ kind: 'error', message: 'Provider returned no response stream.' });
+    emit({ kind: 'error', message: 'Provider returned no response stream.' });
     return;
   }
 
@@ -82,33 +105,61 @@ export async function streamChat(req: GunnyRequest, handlers: StreamHandlers): P
       if (chunk.done) {
         break;
       }
+      bytesRead += chunk.value.length;
       // Strip CR so both LF and CRLF frame on a blank line.
       buffer += decoder.decode(chunk.value, { stream: true }).replace(/\r/g, '');
       let sep = buffer.indexOf('\n\n');
       while (sep !== -1) {
         const block = buffer.slice(0, sep);
         buffer = buffer.slice(sep + 2);
-        emitBlock(adapter, block, handlers);
+        emitBlock(adapter, block, emit);
         sep = buffer.indexOf('\n\n');
       }
     }
     // Flush any trailing event with no closing blank line.
     if (buffer.length > 0) {
-      emitBlock(adapter, buffer, handlers);
+      emitBlock(adapter, buffer, emit);
     }
   } catch (err) {
     if (isAbort(err)) {
-      handlers.onEvent({ kind: 'done', stopReason: 'aborted' });
+      emit({ kind: 'done', stopReason: 'aborted' });
       return;
     }
-    handlers.onEvent({ kind: 'error', message: safeError(err, req.apiKey) });
+    emit({ kind: 'error', message: safeError(err, req.apiKey) });
+    return;
   }
+
+  if (emitted === 0) {
+    emit({ kind: 'error', message: describeSilentResponse(res.status, contentType, bytesRead) });
+  }
+}
+
+/**
+ * Turns a 2xx response carrying nothing usable into a message naming what
+ * came back. Measured case: gemini-2.5-flash with maxOutputTokens 16
+ * returns HTTP 200, content-type text/event-stream, and a zero-byte body
+ * once reasoning tokens consume the whole allowance.
+ */
+function describeSilentResponse(status: number, contentType: string, bytes: number): string {
+  const shape =
+    bytes === 0
+      ? 'an empty body'
+      : bytes + ' bytes carrying no readable content';
+  return (
+    'Provider returned HTTP ' +
+    status +
+    ' with ' +
+    shape +
+    ' (content-type ' +
+    contentType +
+    '). A short output token budget consumed entirely by server-side reasoning is the common cause. Raise the token limit, or pick a model without reasoning.'
+  );
 }
 
 function emitBlock(
   adapter: { parseStreamChunk(raw: string): GunnyStreamEvent[] },
   block: string,
-  handlers: StreamHandlers,
+  emit: (event: GunnyStreamEvent) => void,
 ): void {
   const data = extractSseData(block);
   if (data === null) {
@@ -116,7 +167,7 @@ function emitBlock(
   }
   const events = adapter.parseStreamChunk(data);
   for (const event of events) {
-    handlers.onEvent(event);
+    emit(event);
   }
 }
 

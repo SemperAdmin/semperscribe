@@ -48,10 +48,19 @@ interface GeminiContent {
   parts: { text: string }[];
 }
 
+interface GeminiGenerationConfig {
+  maxOutputTokens: number;
+  thinkingConfig?: { thinkingBudget: number };
+}
+
 interface GeminiBody {
   contents: GeminiContent[];
-  generationConfig: { maxOutputTokens: number };
-  systemInstruction?: { parts: { text: string } };
+  generationConfig: GeminiGenerationConfig;
+  // The Content schema declares parts as repeated. The live endpoint also
+  // accepts a single object and coerces it, verified against the API on
+  // 2026-07-30: both shapes returned identical output and an identical
+  // promptTokenCount. The array is the documented form, so use it.
+  systemInstruction?: { parts: { text: string }[] };
 }
 
 interface OpenAICompatibleBody {
@@ -142,8 +151,17 @@ export const geminiAdapter: ProviderAdapter = {
   models: GEMINI_MODELS,
   browserDirect: true,
 
+  // Google has issued more than one key format. A working key measured on
+  // 2026-07-30 was 53 characters and did not start with "AIza", so the old
+  // prefix requirement rejected a valid key and showed a misleading
+  // warning. Check only for length and for another provider's prefix.
   validateKeyShape(key: string): boolean {
-    return key.startsWith('AIza') && key.length >= 30;
+    const trimmed = key.trim();
+    if (trimmed.length < 30) {
+      return false;
+    }
+    // "sk-" covers Anthropic and OpenAI keys pasted into the wrong slot.
+    return !trimmed.startsWith('sk-');
   },
 
   buildRequest(req: GunnyRequest): GunnyHttpRequest {
@@ -154,12 +172,13 @@ export const geminiAdapter: ProviderAdapter = {
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }],
       }));
-    const body: GeminiBody = {
-      contents,
-      generationConfig: { maxOutputTokens: req.maxOutputTokens },
-    };
+    const generationConfig: GeminiGenerationConfig = { maxOutputTokens: req.maxOutputTokens };
+    if (req.disableReasoning === true) {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const body: GeminiBody = { contents, generationConfig };
     if (system.length > 0) {
-      body.systemInstruction = { parts: { text: system } };
+      body.systemInstruction = { parts: [{ text: system }] };
     }
     const host = req.proxyBaseUrl ?? GEMINI_HOST;
     const url =
@@ -261,18 +280,29 @@ export const genaimilAdapter: ProviderAdapter = {
 
   // GenAI.mil is used non-streaming (the working reference sends
   // stream:false). The client calls this with the full parsed JSON.
+  //
+  // A 200 carrying no content is a failure, not a silent success. Emitting
+  // an unconditional done here made an empty or unrecognized body look
+  // like a clean answer, which is how a broken provider passed Test
+  // connection. Report it instead.
   parseFullResponse(json: unknown): GunnyStreamEvent[] {
     const data = json as {
       choices?: { message?: { content?: unknown }; finish_reason?: unknown }[];
     };
     const choice = data.choices?.[0];
-    const events: GunnyStreamEvent[] = [];
     const content = choice?.message?.content;
     if (typeof content === 'string' && content.length > 0) {
-      events.push({ kind: 'token', text: content });
+      return [
+        { kind: 'token', text: content },
+        { kind: 'done', stopReason: choice?.finish_reason ? String(choice.finish_reason) : null },
+      ];
     }
-    events.push({ kind: 'done', stopReason: choice?.finish_reason ? String(choice.finish_reason) : null });
-    return events;
+    const finish = choice?.finish_reason ? String(choice.finish_reason) : '';
+    const why =
+      finish.length > 0
+        ? 'The provider stopped with finish_reason "' + finish + '".'
+        : 'The response carried no choices[0].message.content.';
+    return [{ kind: 'error', message: 'Provider returned no content. ' + why }];
   },
 };
 

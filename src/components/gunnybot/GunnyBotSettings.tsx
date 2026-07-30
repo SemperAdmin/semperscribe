@@ -75,7 +75,11 @@ export function GunnyBotSettings() {
       return;
     }
     setTesting(true);
-    let ok = false;
+    // Success requires real text back. A bare done event proves only that
+    // the transport closed, which is how an empty answer used to report
+    // "Connection good". The budget is generous so a reasoning model does
+    // not spend the whole allowance on thinking and return nothing.
+    let sawText = false;
     let errMsg = '';
     await streamChat(
       {
@@ -83,12 +87,14 @@ export function GunnyBotSettings() {
         model,
         apiKey: key,
         messages: [{ role: 'user', content: 'Reply with the single word: ready' }],
-        maxOutputTokens: 16,
+        maxOutputTokens: 256,
+        // Reasoning off for the probe only. Feature calls keep it on.
+        disableReasoning: true,
       },
       {
         onEvent: e => {
-          if (e.kind === 'token' || e.kind === 'done') {
-            ok = true;
+          if (e.kind === 'token' && e.text.trim().length > 0) {
+            sawText = true;
           }
           if (e.kind === 'error') {
             errMsg = e.message;
@@ -97,11 +103,15 @@ export function GunnyBotSettings() {
       },
     );
     setTesting(false);
-    if (ok && errMsg.length === 0) {
+    if (sawText && errMsg.length === 0) {
       toast({ title: 'Connection good', description: adapter?.label + ' answered.' });
-    } else {
-      toast({ title: 'Connection failed', description: errMsg || 'No response.', variant: 'destructive' });
+      return;
     }
+    const description =
+      errMsg.length > 0
+        ? errMsg
+        : 'The provider accepted the request and returned no text. Check the model ID against what your key supports.';
+    toast({ title: 'Connection failed', description, variant: 'destructive' });
   };
 
   return (

@@ -9,6 +9,7 @@ import { streamChat } from '@/lib/gunnybot/client';
 import { getSystemPrompt } from '@/lib/gunnybot/prompts';
 import { buildContext } from '@/lib/gunnybot/context-builder';
 import { getKey } from '@/lib/gunnybot/keyring';
+import { clearedForEgress } from '@/lib/gunnybot/redaction';
 import type { GunnyMessage } from '@/lib/gunnybot/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -47,11 +48,15 @@ export function GunnyBotDraftControl({ documentType, onInsert }: GunnyBotDraftCo
       toast({ title: 'Add your API key', description: 'Open Settings, then the Assistant tab.', variant: 'destructive' });
       return;
     }
+    const context = buildContext({ task: 'draft', documentType, subject: '', body: '', question: p });
+    if (!(await clearedForEgress(context.text))) {
+      toast({ title: 'Draft cancelled', description: 'Edit the flagged text, then generate again.' });
+      return;
+    }
     setProposal('');
     setStreaming(true);
     const controller = new AbortController();
     abortRef.current = controller;
-    const context = buildContext({ task: 'draft', documentType, subject: '', body: '', question: p });
     const outgoing: GunnyMessage[] = [
       { role: 'system', content: getSystemPrompt('draft') },
       { role: 'user', content: context.text },

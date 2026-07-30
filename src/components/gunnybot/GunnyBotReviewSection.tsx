@@ -9,6 +9,7 @@ import { streamChat } from '@/lib/gunnybot/client';
 import { getSystemPrompt } from '@/lib/gunnybot/prompts';
 import { buildContext } from '@/lib/gunnybot/context-builder';
 import { getKey } from '@/lib/gunnybot/keyring';
+import { clearedForEgress } from '@/lib/gunnybot/redaction';
 import type { GunnyMessage } from '@/lib/gunnybot/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -43,6 +44,12 @@ export function GunnyBotReviewSection({ documentType, subject, body }: GunnyBotR
       return;
     }
     const context = buildContext({ task: 'proofread', documentType, subject, body });
+    // Review ships the whole draft. It is the largest egress surface in
+    // the app and screens on the same gate as every other path.
+    if (!(await clearedForEgress(context.text))) {
+      toast({ title: 'Review cancelled', description: 'Edit the flagged text, then run the review again.' });
+      return;
+    }
     const outgoing: GunnyMessage[] = [
       { role: 'system', content: getSystemPrompt('proofread') },
       { role: 'user', content: context.text },

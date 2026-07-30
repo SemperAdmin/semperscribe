@@ -18,7 +18,7 @@ import { useGunnyStore } from '@/store/gunnyStore';
 import { streamChat } from '@/lib/gunnybot/client';
 import { getSystemPrompt } from '@/lib/gunnybot/prompts';
 import { getKey } from '@/lib/gunnybot/keyring';
-import { screenOutbound } from '@/lib/gunnybot/redaction';
+import { clearedForEgress } from '@/lib/gunnybot/redaction';
 import type { GunnyMessage } from '@/lib/gunnybot/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -48,9 +48,8 @@ export function GunnyBotPanel() {
       toast({ title: 'Add your API key', description: 'Open Settings, then the Assistant tab.', variant: 'destructive' });
       return;
     }
-    const screen = screenOutbound(question);
-    if (screen.blocked) {
-      toast({ title: 'Sensitive data detected', description: 'Remove ' + screen.findings.join(', ') + ' before sending.', variant: 'destructive' });
+    if (!(await clearedForEgress(question))) {
+      toast({ title: 'Send cancelled', description: 'Edit the flagged text, then send again.' });
       return;
     }
 

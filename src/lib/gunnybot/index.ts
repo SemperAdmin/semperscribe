@@ -12,10 +12,12 @@ export type {
   ProviderAdapter,
 } from './types';
 
-export { PROVIDER_REGISTRY, getAdapter, anthropicAdapter, geminiAdapter } from './providers';
+export { PROVIDER_REGISTRY, getAdapter, anthropicAdapter, geminiAdapter, genaimilAdapter } from './providers';
 export { setKey, getKey, hasKey, clearKey, clearAllKeys } from './keyring';
-export { screenOutbound } from './redaction';
+export { screenOutbound, clearedForEgress } from './redaction';
 export type { RedactionVerdict } from './redaction';
+export { registerEgressAckHandler, hasEgressAckHandler, requestEgressAck } from './egress-gate';
+export type { EgressAckHandler } from './egress-gate';
 export { getSystemPrompt } from './prompts';
 export { buildContext } from './context-builder';
 export type { GunnyContextInput, GunnyContext } from './context-builder';

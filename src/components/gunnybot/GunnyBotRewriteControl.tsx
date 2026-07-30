@@ -7,6 +7,7 @@ import { useGunnyStore } from '@/store/gunnyStore';
 import { streamChat } from '@/lib/gunnybot/client';
 import { getSystemPrompt } from '@/lib/gunnybot/prompts';
 import { getKey } from '@/lib/gunnybot/keyring';
+import { clearedForEgress } from '@/lib/gunnybot/redaction';
 import type { GunnyMessage } from '@/lib/gunnybot/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -41,6 +42,10 @@ export function GunnyBotRewriteControl({ content, onAccept }: GunnyBotRewriteCon
     const key = getKey(provider);
     if (!key) {
       toast({ title: 'Add your API key', description: 'Open Settings, then the Assistant tab.', variant: 'destructive' });
+      return;
+    }
+    if (!(await clearedForEgress(trimmed))) {
+      toast({ title: 'Rewrite cancelled', description: 'Edit the flagged text, then try again.' });
       return;
     }
     setProposal('');

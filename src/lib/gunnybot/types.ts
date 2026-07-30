@@ -27,6 +27,17 @@ export interface GunnyRequest {
   // Optional user-supplied proxy base URL for providers blocked on
   // direct browser CORS (OpenAI, Azure per the Phase 0 verdict).
   proxyBaseUrl?: string;
+  // Ask the provider to skip server-side reasoning for this call.
+  //
+  // Reasoning tokens bill against maxOutputTokens before any visible text.
+  // On gemini-2.5-flash, measured usage swung between 17 and 209 tokens on
+  // the same model, so a small budget returns HTTP 200 with an empty body
+  // and no text at all. Set this on short deterministic calls such as the
+  // Test connection ping. Leave it off for real work, where reasoning
+  // improves the answer and the budget is large enough to absorb it.
+  //
+  // Providers with no reasoning control ignore it.
+  disableReasoning?: boolean;
 }
 
 export type GunnyStreamEvent =
