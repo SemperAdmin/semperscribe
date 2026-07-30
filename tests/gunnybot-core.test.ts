@@ -100,39 +100,6 @@ describe('gunnybot adapters: buildRequest', () => {
     expect(body.systemInstruction.parts.text).toBe('SYS');
     expect(body.generationConfig.maxOutputTokens).toBe(256);
   });
-
-  it('builds the GenAI.mil OpenAI-compatible request with Bearer auth and inline system turn', () => {
-    const http = genaimilAdapter.buildRequest({
-      provider: 'genaimil',
-      model: 'gemini-2.5-flash',
-      apiKey: 'STARK_TESTKEY0123456789',
-      messages: [
-        { role: 'system', content: 'SYS' },
-        { role: 'user', content: 'hi' },
-      ],
-      maxOutputTokens: 256,
-    });
-    const body = JSON.parse(http.body);
-    expect(http.url).toBe('https://api.genai.mil/v1/chat/completions');
-    expect(http.headers['authorization']).toBe('Bearer STARK_TESTKEY0123456789');
-    expect(body.stream).toBe(true);
-    expect(body.model).toBe('gemini-2.5-flash');
-    expect(body.max_tokens).toBe(256);
-    expect(body.messages).toHaveLength(2);
-    expect(body.messages[0]).toEqual({ role: 'system', content: 'SYS' });
-  });
-
-  it('honors a proxy base URL for GenAI.mil', () => {
-    const http = genaimilAdapter.buildRequest({
-      provider: 'genaimil',
-      model: 'gemini-2.5-flash',
-      apiKey: 'STARK_TESTKEY0123456789',
-      messages: [{ role: 'user', content: 'hi' }],
-      maxOutputTokens: 16,
-      proxyBaseUrl: 'https://proxy.example',
-    });
-    expect(http.url).toBe('https://proxy.example/v1/chat/completions');
-  });
 });
 
 describe('gunnybot adapters: validateKeyShape and parseStreamChunk', () => {
@@ -141,18 +108,6 @@ describe('gunnybot adapters: validateKeyShape and parseStreamChunk', () => {
     expect(anthropicAdapter.validateKeyShape('sk-openai-xxxx')).toBe(false);
     expect(geminiAdapter.validateKeyShape('AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ012345')).toBe(true);
     expect(geminiAdapter.validateKeyShape('nope')).toBe(false);
-    expect(genaimilAdapter.validateKeyShape('STARK_TESTKEY0123456789')).toBe(true);
-    expect(genaimilAdapter.validateKeyShape('sk-ant-abcdefghijklmnop')).toBe(false);
-  });
-
-  it('parses GenAI.mil OpenAI-format deltas, finish_reason, [DONE], and error payloads', () => {
-    const tok = genaimilAdapter.parseStreamChunk('{"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}');
-    expect(tok).toEqual([{ kind: 'token', text: 'Hello' }]);
-    const fin = genaimilAdapter.parseStreamChunk('{"choices":[{"delta":{},"finish_reason":"stop"}]}');
-    expect(fin).toEqual([{ kind: 'done', stopReason: 'stop' }]);
-    expect(genaimilAdapter.parseStreamChunk('[DONE]')).toEqual([]);
-    const err = genaimilAdapter.parseStreamChunk('{"error":{"message":"key expired"}}');
-    expect(err).toEqual([{ kind: 'error', message: 'key expired' }]);
   });
 
   it('parses Anthropic deltas, stop, and ignores ping', () => {
@@ -173,7 +128,7 @@ describe('gunnybot adapters: validateKeyShape and parseStreamChunk', () => {
 });
 
 describe('gunnybot registry', () => {
-  it('exposes Anthropic, Gemini, and GenAI.mil, leaves OpenAI and Azure null', () => {
+  it('exposes Anthropic and Gemini, leaves OpenAI and Azure null', () => {
     expect(getAdapter('anthropic')).toBe(anthropicAdapter);
     expect(getAdapter('gemini')).toBe(geminiAdapter);
     expect(getAdapter('genaimil')).toBe(genaimilAdapter);

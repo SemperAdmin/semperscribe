@@ -176,17 +176,6 @@ export function GunnyBotSettings() {
         </Button>
       </div>
 
-      {provider === 'genai-mil' && (
-        <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3 flex gap-2">
-          <ShieldAlert className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-muted-foreground">
-            GenAI.mil is a U.S. Government information system: all usage is monitored and audited,
-            and classified information, PII, and PHI are prohibited. Keys expire after 30 days.
-            Report a suspected key compromise to osw.genai@mail.mil immediately.
-          </p>
-        </div>
-      )}
-
       <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 flex gap-2">
         <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
