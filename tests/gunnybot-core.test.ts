@@ -102,8 +102,8 @@ describe('gunnybot adapters: buildRequest', () => {
   });
 
   it('builds the GenAI.mil OpenAI-compatible request with Bearer auth and inline system turn', () => {
-    const http = genaiMilAdapter.buildRequest({
-      provider: 'genai-mil',
+    const http = genaimilAdapter.buildRequest({
+      provider: 'genaimil',
       model: 'gemini-2.5-flash',
       apiKey: 'STARK_TESTKEY0123456789',
       messages: [
@@ -123,8 +123,8 @@ describe('gunnybot adapters: buildRequest', () => {
   });
 
   it('honors a proxy base URL for GenAI.mil', () => {
-    const http = genaiMilAdapter.buildRequest({
-      provider: 'genai-mil',
+    const http = genaimilAdapter.buildRequest({
+      provider: 'genaimil',
       model: 'gemini-2.5-flash',
       apiKey: 'STARK_TESTKEY0123456789',
       messages: [{ role: 'user', content: 'hi' }],
@@ -141,17 +141,17 @@ describe('gunnybot adapters: validateKeyShape and parseStreamChunk', () => {
     expect(anthropicAdapter.validateKeyShape('sk-openai-xxxx')).toBe(false);
     expect(geminiAdapter.validateKeyShape('AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ012345')).toBe(true);
     expect(geminiAdapter.validateKeyShape('nope')).toBe(false);
-    expect(genaiMilAdapter.validateKeyShape('STARK_TESTKEY0123456789')).toBe(true);
-    expect(genaiMilAdapter.validateKeyShape('sk-ant-abcdefghijklmnop')).toBe(false);
+    expect(genaimilAdapter.validateKeyShape('STARK_TESTKEY0123456789')).toBe(true);
+    expect(genaimilAdapter.validateKeyShape('sk-ant-abcdefghijklmnop')).toBe(false);
   });
 
   it('parses GenAI.mil OpenAI-format deltas, finish_reason, [DONE], and error payloads', () => {
-    const tok = genaiMilAdapter.parseStreamChunk('{"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}');
+    const tok = genaimilAdapter.parseStreamChunk('{"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}');
     expect(tok).toEqual([{ kind: 'token', text: 'Hello' }]);
-    const fin = genaiMilAdapter.parseStreamChunk('{"choices":[{"delta":{},"finish_reason":"stop"}]}');
+    const fin = genaimilAdapter.parseStreamChunk('{"choices":[{"delta":{},"finish_reason":"stop"}]}');
     expect(fin).toEqual([{ kind: 'done', stopReason: 'stop' }]);
-    expect(genaiMilAdapter.parseStreamChunk('[DONE]')).toEqual([]);
-    const err = genaiMilAdapter.parseStreamChunk('{"error":{"message":"key expired"}}');
+    expect(genaimilAdapter.parseStreamChunk('[DONE]')).toEqual([]);
+    const err = genaimilAdapter.parseStreamChunk('{"error":{"message":"key expired"}}');
     expect(err).toEqual([{ kind: 'error', message: 'key expired' }]);
   });
 
