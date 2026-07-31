@@ -399,6 +399,13 @@
     "url": "/templates/global/aa-tour-curtailment.nldp"
   },
   {
+    "id": "aa-special-leave-accrual",
+    "title": "AA Form - Special Leave Accrual (SLA)",
+    "description": "Request SLA under the HFP/IDP qualifying category. Routes to the first Marine general officer in the administrative chain.",
+    "documentType": "aa-form",
+    "url": "/templates/global/aa-special-leave-accrual.nldp"
+  },
+  {
     "id": "page11-redesignation-firstsgt",
     "title": "Page 11 - Redesignation to First Sergeant",
     "description": "OBS counseling entry for redesignation to First Sergeant.",

@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_aa-special-leave-accrual",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-07-31T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "AA Form - Special Leave Accrual (SLA)",
+      "description": "Request Special Leave Accrual under the HFP/IDP exception, the only category open after MARADMIN 341/26 suspended SLA for deployable ships, mobile units, and other duty. Approval authority is the first Marine general officer in the administrative chain of command.",
+      "subject": "REQUEST FOR SPECIAL LEAVE ACCRUAL (SLA)",
+      "documentType": "aa-form",
+      "tags": [
+        "template",
+        "aa-form"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "aa-form",
+      "actionNo": "",
+      "orgStation": "Unit Name\nAddress\nCity, State Zip",
+      "from": "Rank First MI. Last, EDIPI/MOS, USMC",
+      "to": "Commanding General, (first Marine general officer in the administrative chain, e.g., 1st Marine Division)",
+      "subj": "REQUEST FOR SPECIAL LEAVE ACCRUAL (SLA)",
+      "date": "",
+      "sig": "",
+      "ssic": "1050",
+      "originatorCode": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0
+    },
+    "vias": [
+      "CO, Bn",
+      "CO, Reg"
+    ],
+    "references": [
+      "MCO 1050.3J",
+      "MARADMIN 341/26",
+      "MARADMIN 188/25"
+    ],
+    "enclosures": [
+      "Deployment/Travel Orders to HFP/IDP Area",
+      "Leave and Earnings Statement showing SLA Balance",
+      "Deployed Commander's Letter of Leave Denial"
+    ],
+    "copyTos": [
+      "OMPF"
+    ],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "Per references (a) through (c), I respectfully request authorization to accrue (NUMBER, 30 MAX) days of Special Leave Accrual (SLA) for Fiscal Year (YYYY).",
+        "isMandatory": true
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "Per reference (b), paragraph 4, this request is submitted under the Hostile Fire or Imminent Danger Pay (HFP/IDP) exception. From (START DATE) to (END DATE) I served (NUMBER, 120 MINIMUM) consecutive days in (LOCATION), a formally designated HFP/IDP area, as shown in enclosure (1). Reference (b), paragraph 3.a, suspends approval under paragraphs 6.b, 6.c, and 6.d of reference (c) until SECNAV publishes formal designations, so no other category applies."
+      },
+      {
+        "id": 3,
+        "level": 1,
+        "content": "Operational tempo prevented use of earned leave during this period. My deployed commander denied my leave request, as shown in enclosure (3). I was unable to reduce my leave balance to 60 days before the end of the Fiscal Year."
+      },
+      {
+        "id": 4,
+        "level": 1,
+        "content": "Per reference (c), paragraph 7.b, no additional SLA is authorized until the SLA balance falls below 30 days. My current SLA balance is (CURRENT SLA, UNDER 30) days, as shown on the Leave and Earnings Statement at enclosure (2)."
+      },
+      {
+        "id": 5,
+        "level": 1,
+        "content": "Per reference (c), paragraph 5.a, approval authority is the first Marine general officer in my administrative chain of command. Per paragraph 5.b, report approved SLA into Marine OnLine (MOL). Per paragraph 4, approved SLA is forfeited if unused by the end of the second Fiscal Year after the qualifying duty ends."
+      },
+      {
+        "id": 6,
+        "level": 1,
+        "content": "POC is (RANK NAME) at (PHONE) or (EMAIL)."
+      }
+    ]
+  }
+}
