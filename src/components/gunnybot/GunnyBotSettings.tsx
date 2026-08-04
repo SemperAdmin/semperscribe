@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { streamChat } from '@/lib/gunnybot/client';
 import { setKey as saveKey, clearKey, getKey } from '@/lib/gunnybot/keyring';
 import type { GunnyProviderId } from '@/lib/gunnybot/types';
 import { useToast } from '@/hooks/use-toast';
+import { isEdmsMode, EDMS_ALLOWED_PROVIDER } from '@/lib/edms-mode';
 
 export function GunnyBotSettings() {
   const provider = useGunnyStore(s => s.provider);
@@ -32,10 +33,31 @@ export function GunnyBotSettings() {
   const [keyInput, setKeyInput] = useState('');
   const [testing, setTesting] = useState(false);
 
+  // EDMS mode is read after mount, never during render. sessionStorage
+  // is unavailable during the static-export prerender, so reading it in
+  // the render body would hydrate to a different tree.
+  const [edmsLocked, setEdmsLocked] = useState(false);
+  useEffect(() => {
+    if (!isEdmsMode()) return;
+    setEdmsLocked(true);
+    // Snap the selection to the only cleared provider. This is a
+    // convenience so the panel matches what the gate will allow. The
+    // control itself is in lib/gunnybot/client.ts.
+    if (provider !== EDMS_ALLOWED_PROVIDER) {
+      setProvider(EDMS_ALLOWED_PROVIDER);
+      const first = getAdapter(EDMS_ALLOWED_PROVIDER)?.models[0]?.id;
+      if (first) setModel(first);
+      setKeyPresent(getKey(EDMS_ALLOWED_PROVIDER) !== null);
+    }
+    // Mount-only. EDMS mode does not change within a tab's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const adapter = getAdapter(provider);
   const models = adapter?.models ?? [];
 
   const handleProviderChange = (value: string) => {
+    if (edmsLocked) return;
     const next = value as GunnyProviderId;
     setProvider(next);
     const first = getAdapter(next)?.models[0]?.id;
@@ -122,13 +144,23 @@ export function GunnyBotSettings() {
 
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Provider</h3>
-        <Select value={provider} onValueChange={handleProviderChange}>
+        {edmsLocked && (
+          <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3 flex gap-2">
+            <ShieldAlert className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground">
+              EDMS mode. This draft is bound for an EDMS request, so GunnyBot is locked to GenAI.mil.
+              Commercial providers are blocked at the send path, not only here. Draft outside EDMS in a
+              new tab to use them.
+            </p>
+          </div>
+        )}
+        <Select value={provider} onValueChange={handleProviderChange} disabled={edmsLocked}>
           <SelectTrigger className="bg-background border-input">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="anthropic">Anthropic</SelectItem>
-            <SelectItem value="gemini">Google Gemini</SelectItem>
+            <SelectItem value="anthropic" disabled={edmsLocked}>Anthropic</SelectItem>
+            <SelectItem value="gemini" disabled={edmsLocked}>Google Gemini</SelectItem>
             <SelectItem value="genaimil">GenAI.mil (DoD)</SelectItem>
             <SelectItem value="openai" disabled>OpenAI (needs a proxy - later)</SelectItem>
             <SelectItem value="azure" disabled>Azure OpenAI (needs a proxy - later)</SelectItem>

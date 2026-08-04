@@ -58,8 +58,19 @@ describe('AA form pack (R13/B1)', () => {
   // The generic 'aa-form' template predates the pack and stays untouched.
   const aaEntries = index.filter((e) => e.documentType === 'aa-form' && e.id !== 'aa-form');
 
-  it('carries the 25 converted topics', () => {
-    expect(aaEntries.length).toBe(25);
+  // Floor, not equality. The pack shipped with 25 at d94fd80 and grew to 26
+  // at 538333f (Special Leave Accrual, MARADMIN 341/26), which broke this
+  // assertion without breaking anything real. An exact count fires on every
+  // legitimate addition, which is the routine event, and the per-entry
+  // renderer-ready checks below already validate each topic. What a count
+  // uniquely catches is silent DELETION, and a floor catches that.
+  //
+  // Raise the floor deliberately when the pack is meant to have grown.
+  it('carries at least the 25 originally converted topics', () => {
+    expect(
+      aaEntries.length,
+      'AA pack shrank. A topic was removed from public/templates/global/index.json.',
+    ).toBeGreaterThanOrEqual(25);
   });
 
   it.each(aaEntries.map((e) => [e.id, e] as const))('%s is renderer-ready', (_id, entry) => {

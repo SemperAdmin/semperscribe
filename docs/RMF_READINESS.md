@@ -2,8 +2,8 @@
 
 Pre-draft of artifacts an RMF Security Control Assessor would request, prepared voluntarily ahead of any DoD sponsorship. This is not an authorization package and does not substitute for one.
 
-- Last reviewed: 2026-05-23
-- Document version: 1.0
+- Last reviewed: 2026-08-04
+- Document version: 2.0
 - System: SemperScribe Proof of Concept
 - Repo: https://github.com/SemperAdmin/semperscribe
 - Current ATO status: None. Not under RMF scope per DoDI 8510.01 paragraph 1.1.
@@ -14,17 +14,31 @@ Pre-draft of artifacts an RMF Security Control Assessor would request, prepared 
 
 SemperScribe is a client-side single-page application that helps users draft, format, and export USMC correspondence documents (letters, memoranda, directives, AMHS messages). The application processes only data the user enters in the browser. It performs no server-side processing. It maintains no system of records. It has no users in the access-control sense; anyone with a web browser can access the deployed static site.
 
+Two facts postdate version 1.0 of this document and change the assessment.
+
+**GunnyBot.** An optional AI assistant, off unless the user supplies an API key. When invoked it transmits selected correspondence text to a user-chosen provider: Anthropic, Google Gemini, or GenAI.mil. This is the system's only runtime egress path and its only interconnection. Implementation in `src/lib/gunnybot/`, single `fetch` call site in `client.ts`.
+
+**EDMS handoff mode.** The USMC EDMS Power App, hosted on a DoD IL5 tenant, launches SemperScribe with a scalar-only prefill in a URL fragment. The handoff is inbound and one-way. The drafted document returns to EDMS as a file the user uploads by hand. SemperScribe holds no credential for EDMS, makes no call to it, and gains no access to it. EDMS remains outside the authorization boundary, per Section 8.
+
 ### FIPS 199 Categorization
 
 Per FIPS PUB 199, "Standards for Security Categorization of Federal Information and Information Systems," and NIST SP 800-60.
 
 | Security Objective | Potential Impact | Justification |
 |--------------------|------------------|---------------|
-| Confidentiality | Low | The system processes only user-entered text. By design, it does not collect, store, or transmit PII, CUI, or other sensitive information. Disclosure of compromise of in-browser session data would have a limited adverse effect on the user. |
+| Confidentiality | Low | The system processes only user-entered text and stores none of it server-side. By design it does not collect PII or CUI. The GunnyBot egress path transmits user-selected text to a provider under the user's own key and credentials, on explicit action. That is a user-initiated disclosure to a third party the user selected, not a system-held aggregation, so it does not raise the confidentiality impact of this system. It is documented as an interconnection under SC-7 and as an accepted risk in Section 9. |
 | Integrity | Low | The system processes a document draft on behalf of the user. Unauthorized modification would result in a malformed draft, not corruption of an authoritative record. Federal records are created downstream when the user uses the output officially; that record handling is out of scope for this system. |
 | Availability | Low | The system is static and reproducible from source. Loss of availability of the GitHub Pages deployment would not prevent users from generating documents using a local clone or alternative deployment. |
 
 **Overall Categorization. Low.**
+
+Retained at Low after the GunnyBot and EDMS-mode reassessment. The reasoning is that this system aggregates and stores nothing. It has no backend, no database, and no persistent government data. GunnyBot moves text the user chose, to a provider the user chose, under a key the user supplied. EDMS mode carries five non-sensitive scalars inbound and nothing outbound.
+
+The categorization holds only while the following stay true. Each is a control, not an assumption.
+
+1. The EDMS handoff payload stays scalar. Adding the subject line, the letter body, or any free-text field would place CUI in a URL and force reassessment at Moderate. Enforced by per-field validation in `src/lib/edms-handoff.ts` and by `tests/edms-handoff.test.ts`.
+2. No direct write path to EDMS is built. A credential for an IL5 system held by this application would place it inside that system's boundary.
+3. GunnyBot egress stays restricted to GenAI.mil under EDMS mode. Enforced in `src/lib/gunnybot/client.ts` and by `tests/edms-egress-gate.test.ts`.
 
 ### Information Types
 
@@ -115,6 +129,7 @@ NIST SP 800-53 Rev 5 Low baseline control selection. The status column indicates
 |---------|--------|-------|
 | PT-1 Policy and Procedures | Compliant | Privacy Notice covers PII posture. |
 | PT-2 Authority to Process PII | N/A | System does not process PII by design. |
+| PT-4 Consent | Compliant | GunnyBot is inert without a user-supplied key. The pre-send scan routes structured-identifier findings through an explicit consent dialog and fails closed when no handler is mounted (`lib/gunnybot/egress-gate.ts`). |
 | PT-5 Privacy Notice | Compliant | /privacy route plus SECURITY.md. |
 
 ### Risk Assessment (RA)
@@ -131,7 +146,8 @@ NIST SP 800-53 Rev 5 Low baseline control selection. The status column indicates
 |---------|--------|-------|
 | SA-1 Policy and Procedures | Compliant | OSS Guidance compliance documented in LICENSES.md. |
 | SA-4 Acquisition Process | Compliant | OSS acquisition via npm with license review. |
-| SA-8 Security and Privacy Engineering Principles | Compliant | User-responsibility framing, no telemetry, no backend, build-time-only external touch. |
+| SA-8 Security and Privacy Engineering Principles | Compliant | User-responsibility framing, no telemetry, no backend. Runtime external touch is limited to the opt-in GunnyBot path with a single enforcement point, and the EDMS handoff is scalar-only and inbound. |
+| SA-9 External System Services | Partial | GunnyBot providers are external services the user contracts with directly under their own key. No maintainer-side agreement, SLA, or data-processing terms exist with any provider. Disclosed in the settings panel and in `docs/PRIVACY_POSTURE.md` sections 8 and 9. Users with a residency or retention obligation select GenAI.mil. |
 | SA-22 Unsupported System Components | Tracked | inflight memory leak and old glob versions documented as accepted residual where applicable. |
 
 ### System and Communications Protection (SC)
@@ -140,7 +156,11 @@ NIST SP 800-53 Rev 5 Low baseline control selection. The status column indicates
 |---------|--------|-------|
 | SC-1 Policy and Procedures | Compliant | Architecture is static SPA with no backend. |
 | SC-5 Denial of Service Protection | N/A | Static export, no compute to exhaust. |
-| SC-7 Boundary Protection | Compliant | Boundary is the user's browser plus the github.io static origin. No external runtime hosts contacted. |
+| SC-7 Boundary Protection | Partial | Boundary is the user's browser plus the static origin. One runtime egress path exists: GunnyBot to a user-selected provider, on explicit user action with a user-supplied key. Single enforcement point at `streamChat` in `lib/gunnybot/client.ts`. Under EDMS mode, commercial providers are blocked there and only GenAI.mil is reachable. The gate fails closed on an unrecognised provider. |
+| SC-7(5) Deny by Default | Compliant, EDMS mode only | Provider allowlist of one under EDMS mode. Anything not on it is refused before `fetch`. `tests/edms-egress-gate.test.ts`. |
+| SC-8 Transmission Confidentiality and Integrity | Compliant | All three provider endpoints are HTTPS. Inbound EDMS prefill rides the URL fragment, which browsers do not transmit to the server, so it does not appear in host access logs. |
+| SC-18 Mobile Code | Compliant | Client-side JavaScript only, served from the static origin. No dynamic code loading at runtime. |
+| SC-28 Protection of Information at Rest | Partial | Drafts rest in browser `localStorage` and IndexedDB. Encrypted share links use AES-256-GCM (`lib/crypto-utils.ts`). EDMS mode state is `sessionStorage` and expires with the tab. Provider-side retention of text sent through GunnyBot is outside this system's control and is disclosed to the user before a key is saved. |
 | SC-13 Cryptographic Protection | Compliant | HTTPS only via GitHub Pages. No app-level crypto required. |
 | SC-23 Session Authenticity | N/A | No sessions. |
 
@@ -153,7 +173,7 @@ NIST SP 800-53 Rev 5 Low baseline control selection. The status column indicates
 | SI-3 Malicious Code Protection | Partial | Browser native sandboxing plus CodeQL. No app-layer scanning. |
 | SI-4 System Monitoring | Compliant | GitHub Security tab plus weekly CodeQL plus workflow run logs. |
 | SI-7 Software and Firmware Integrity | Compliant | Git commit SHAs plus SBOM hashes. |
-| SI-10 Information Input Validation | Partial | Form schemas via Zod for typed inputs. No CUI scrubbing because none expected. |
+| SI-10 Information Input Validation | Partial | Form schemas via Zod for typed inputs. Inbound EDMS prefill is validated field by field against explicit patterns, and a single malformed field drops the entire payload rather than half-populating the form (`lib/edms-handoff.ts`). Outbound GunnyBot text is screened for the SSN and EDIPI patterns only, routed through a consent gate. No CUI detection exists, by design and by disclosure. |
 
 ### Supply Chain Risk Management (SR)
 
@@ -218,8 +238,20 @@ Text representation of the system boundary.
 |   |  static bundle  |<------>|  (user drafts only)  |      |
 |   |  (HTML/JS/CSS)  |        +----------------------+      |
 |   +-----------------+                                      |
-|           ^                                                |
-+-----------|------------------------------------------------+
+|           ^     |                                          |
+|           |     | GunnyBot only, opt-in, user's own key    |
+|           |     +---------------------------------------+  |
++-----------|-----------------------------------------|------+
+            |                                         |
+            |                                         v
+            |               +-----------------------------------------+
+            |               | User-selected AI provider (HTTPS)       |
+            |               |  api.anthropic.com                      |
+            |               |  generativelanguage.googleapis.com      |
+            |               |  api.genai.mil                          |
+            |               | OUTSIDE the boundary. Under EDMS mode,  |
+            |               | only api.genai.mil is reachable.        |
+            |               +-----------------------------------------+
             |
             | HTTPS (same origin)
             |
@@ -230,6 +262,8 @@ Text representation of the system boundary.
 |  No backend logic. No database. No API endpoint.           |
 +------------------------------------------------------------+
 ```
+
+Inbound, outside the boundary: the USMC EDMS Power App launches this application with a scalar-only `#edms=` fragment. One-way. The drafted document returns to EDMS as a file the user uploads by hand. No network path from this application to EDMS exists.
 
 Build-time only. The CI/CD pipeline contacts the npm registry, fonts.googleapis.com (via next/font/google self-host), and GitHub Actions infrastructure. None of these are contacted at runtime by users.
 
@@ -247,6 +281,8 @@ Out of the boundary.
 - The user's workstation operating system.
 - Any network the user is on.
 - Any downstream system the user routes a generated document through (e.g., email, EDMS, official records repositories).
+- Any AI provider a user selects in GunnyBot. The user contracts with the provider directly under their own key. Provider-side handling, retention, and residency are governed by that provider's own posture.
+- The USMC EDMS Power App and its SharePoint document library, which carry their own DoD IL5 authorization. The handoff is a URL launch and a manual file upload, not an interconnection this system holds credentials for.
 
 ## 9. Risks Accepted
 
@@ -256,6 +292,10 @@ Out of the boundary.
 | MPL-2.0 axe-core transitive | Low | Dev-only dependency, not in production bundle. Approval gap closes if PoC moves to formal release. |
 | No formal SLA for vulnerability response | Low | Personal PoC. Documented in SECURITY.md. |
 | No coordinated disclosure process | Low | Documented in SECURITY.md. Best-effort triage. |
+| GunnyBot transmits user-entered text to a commercial provider outside EDMS mode | Moderate | Opt-in, requires a user-supplied key, disclosed in the settings panel, the privacy notice, and `docs/PRIVACY_POSTURE.md` section 1. Users under a residency or retention obligation select GenAI.mil. Under EDMS mode, commercial providers are blocked in code. |
+| The pre-send scan detects SSN and EDIPI patterns only | Moderate | Names, ranks, units, subject lines, and body text pass untouched. Keyword matching was removed because bare-substring matches flagged ordinary correspondence vocabulary constantly, producing alert fatigue. The control is informed consent, not filtering, and it is documented as such rather than overclaimed. |
+| No maintainer-side agreement with any AI provider | Moderate | The user is the contracting party. No maintainer-side data-processing terms exist or are claimed. |
+| A user pastes CUI into the form and invokes a commercial provider | Moderate | No technical control detects CUI. Mitigated by the persistent banner, the settings-panel warning, and the EDMS-mode restriction on the workflow where CUI is most likely. Residual risk accepted and disclosed. |
 
 ## 10. Conditions for Authorization
 

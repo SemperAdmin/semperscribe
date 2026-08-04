@@ -1,5 +1,6 @@
 import type { GunnyRequest, GunnyStreamEvent } from './types';
 import { getAdapter } from './providers';
+import { isEdmsMode, EDMS_ALLOWED_PROVIDER } from '@/lib/edms-mode';
 
 export interface StreamHandlers {
   onEvent(event: GunnyStreamEvent): void;
@@ -20,6 +21,27 @@ export async function streamChat(req: GunnyRequest, handlers: StreamHandlers): P
     emitted += 1;
     handlers.onEvent(event);
   };
+
+  // EDMS egress restriction.
+  //
+  // While EDMS mode is active the draft is bound for a DoD IL5 records
+  // system. Egress is restricted to GenAI.mil. The check lives HERE, not
+  // in GunnyBotSettings, because this function is the only place
+  // GunnyBot calls fetch. Every caller passes through it: draft,
+  // rewrite, proofread, QA, and the Test connection probe. A default in
+  // the settings UI is a preference, not a control.
+  //
+  // Fail closed. An unrecognised provider is blocked, not allowed.
+  if (isEdmsMode() && req.provider !== EDMS_ALLOWED_PROVIDER) {
+    emit({
+      kind: 'error',
+      message:
+        'Blocked. This draft is bound for an EDMS request, so GunnyBot is restricted to ' +
+        'GenAI.mil. Switch the provider to GenAI.mil in Settings, or draft outside EDMS ' +
+        'in a new tab.',
+    });
+    return;
+  }
 
   const adapter = getAdapter(req.provider);
   if (adapter === null) {
