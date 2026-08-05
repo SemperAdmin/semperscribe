@@ -1,0 +1,83 @@
+name: Mirror to GitLab
+
+# One-way full mirror: GitHub is the source of truth, web.git.mil is the replica.
+# Pushes every branch and tag with --prune, so GitLab becomes an exact copy.
+# Never pulls from GitLab.
+#
+# Required repository secret, either name works:
+#   GITLAB_MIRROR_TOKEN or GITLAB_SYNC_TOKEN
+#   GitLab project access token, Maintainer role, write_repository scope.
+#
+# No competing mirror exists on this project.
+#
+
+on:
+  push:
+    branches: ['**']
+    tags: ['**']
+  delete:
+  workflow_dispatch:
+  schedule:
+    # Nightly drift backstop, 09:00 UTC (23:00 HST previous day)
+    - cron: '0 9 * * *'
+
+concurrency:
+  group: gitlab-mirror
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GITLAB_HOST: web.git.mil
+      GITLAB_PATH: semper_admin/semperscribe
+    steps:
+      - name: Verify GitLab endpoint is reachable
+        run: |
+          set -euo pipefail
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+            "https://${GITLAB_HOST}/${GITLAB_PATH}.git/info/refs?service=git-upload-pack" || echo 000)
+          echo "Anonymous probe returned HTTP ${code}"
+          if [ "$code" = "000" ]; then
+            echo "::error::No route to ${GITLAB_HOST} from this runner. Mirror cannot proceed."
+            exit 1
+          fi
+
+      - name: Bare clone from GitHub
+        run: |
+          set -euo pipefail
+          git clone --bare "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" mirror.git
+          cd mirror.git
+          echo "Branches: $(git for-each-ref --format='%(refname)' refs/heads | wc -l)"
+          echo "Tags:     $(git for-each-ref --format='%(refname)' refs/tags | wc -l)"
+
+      - name: Push all refs to GitLab
+        working-directory: mirror.git
+        env:
+          TOKEN_A: ${{ secrets.GITLAB_MIRROR_TOKEN }}
+          TOKEN_B: ${{ secrets.GITLAB_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          TOKEN="${TOKEN_A:-$TOKEN_B}"
+          if [ -z "${TOKEN}" ]; then
+            echo "::error::Neither GITLAB_MIRROR_TOKEN nor GITLAB_SYNC_TOKEN is set."
+            exit 1
+          fi
+          remote="https://github-mirror-bot:${TOKEN}@${GITLAB_HOST}/${GITLAB_PATH}.git"
+
+          # --prune deletes GitLab refs with no GitHub counterpart.
+          # -o ci.skip stops the mirrored .gitlab-ci.yml from spawning pipelines.
+          git push --prune --force "$remote" \
+            "+refs/heads/*:refs/heads/*" \
+            "+refs/tags/*:refs/tags/*" \
+            -o ci.skip
+
+      - name: Report tip SHA for verification
+        working-directory: mirror.git
+        run: |
+          echo "GitHub default tip: $(git rev-parse HEAD)"
+          echo "Compare against https://${GITLAB_HOST}/${GITLAB_PATH}/-/commits/main"
