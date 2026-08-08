@@ -165,7 +165,11 @@ export async function hashSignedArtifact(file: File): Promise<NLDPSignedArtifact
   if (!format) {
     throw new Error('The signed artifact must be a .pdf or .docx file.');
   }
-  const bytes = await file.arrayBuffer();
+  // Copy into a local-realm view before digesting: jsdom's
+  // File.arrayBuffer() returns a buffer from another JS realm, and
+  // Node 20's WebCrypto rejects cross-realm buffers (browsers and
+  // Node 22 accept them).
+  const bytes = new Uint8Array(await file.arrayBuffer()).slice();
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   const sha256 = Array.from(new Uint8Array(digest))
     .map(b => b.toString(16).padStart(2, '0'))
