@@ -21,7 +21,6 @@ import {
   backupAll,
 } from '@/lib/auto-backup';
 import { canPromptInstall, promptInstall, isStandalone } from '@/lib/install-prompt';
-
 export function PlatformSettings() {
   const { toast } = useToast();
   const [status, setStatus] = useState<BackupStatus>({ state: isBackupSupported() ? 'off' : 'unsupported' });

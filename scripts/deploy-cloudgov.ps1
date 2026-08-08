@@ -122,7 +122,7 @@ try {
       Write-Host '  DROPPED FROM THIS RUN: tests/golden' -ForegroundColor Yellow
       Write-Host '  Those cover PDF vs DOCX pagination parity and need LibreOffice.' -ForegroundColor Yellow
       Write-Host '  Nothing below this line was checked against a rendered DOCX.' -ForegroundColor Yellow
-      npx vitest run --exclude "tests/golden/**"
+      npm run test:nogolden
     } else {
       $soffice = $env:SOFFICE_PATH
       if (-not $soffice) { $soffice = 'C:\Program Files\LibreOffice\program\soffice.exe' }
@@ -178,8 +178,23 @@ try {
   $target = (cf target) 2>&1 | Out-String
   $ErrorActionPreference = $prevEap
   if ($LASTEXITCODE -ne 0 -or $target -match 'Not logged in') {
-    Write-Host "  Not logged in. Run this, then re-run the script:" -ForegroundColor Yellow
+    Write-Host '  Not logged in to cloud.gov. Do this, then re-run the script:' -ForegroundColor Yellow
+    Write-Host '' 
     Write-Host "    cf login -a $CfApi --sso" -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host '  The CLI then prints a passcode URL. Open it, authenticate, copy the' -ForegroundColor Yellow
+    Write-Host '  One Time Code, and paste it at the prompt:' -ForegroundColor Yellow
+    Write-Host '' 
+    Write-Host '    https://login.fr.cloud.gov/passcode' -ForegroundColor Cyan
+    Write-Host ''
+    Write-Host '  The code expires in 5 MINUTES. Fetch it after cf prompts, not before,' -ForegroundColor Yellow
+    Write-Host '  or you will be pasting a dead code and reading it as a rejected login.' -ForegroundColor Yellow
+    Write-Host '  A code is single use. Re-running cf login needs a fresh one.' -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host '  Then pick the org and space this app deploys into:' -ForegroundColor Yellow
+    Write-Host '    cf orgs' -ForegroundColor Yellow
+    Write-Host '    cf spaces' -ForegroundColor Yellow
+    Write-Host '    cf target -o YOUR-ORG -s YOUR-SPACE' -ForegroundColor Yellow
     Fail 'No active cf session.'
   }
   Write-Host $target

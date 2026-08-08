@@ -12,7 +12,7 @@
  * detail beyond what the caller returns.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Lock, Link2, AlertTriangle, LockOpen } from 'lucide-react';
+import { isEdmsMode } from '@/lib/edms-mode';
 
 export interface ShareLinkOptions {
   /** Absent only when the user explicitly opted out of protection. */
@@ -45,6 +46,10 @@ interface ShareLinkDialogProps {
 }
 
 export function ShareLinkDialog({ open, onOpenChange, onCreate }: ShareLinkDialogProps) {
+  // EDMS mode: encrypted links only. Read after mount, not during render.
+  const [edmsLocked, setEdmsLocked] = useState(false);
+  useEffect(() => { if (isEdmsMode()) { setEdmsLocked(true); setNoPassword(false); } }, []);
+
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [noPassword, setNoPassword] = useState(false);
@@ -141,7 +146,16 @@ export function ShareLinkDialog({ open, onOpenChange, onCreate }: ShareLinkDialo
           </div>
         )}
 
-        <div className="flex items-start gap-2 pt-1">
+        {edmsLocked && (
+          <p className="text-xs text-muted-foreground border-l-2 border-primary pl-2">
+            EDMS draft. Only password-protected links are available: the
+            encrypted payload rides in the URL fragment, which browsers never
+            send to a server. An unprotected link puts the whole letter in a
+            query string and therefore in server logs.
+          </p>
+        )}
+
+        <div className={`flex items-start gap-2 pt-1${edmsLocked ? ' hidden' : ''}`}>
           <Checkbox
             id="share-no-password"
             checked={noPassword}

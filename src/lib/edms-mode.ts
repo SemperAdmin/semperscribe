@@ -102,9 +102,18 @@ export function resetEdmsCacheForTests(): void {
  * applies a CAC signature in Acrobat. EDMS reads the suffix to set the
  * library Category column.
  */
+/**
+ * DRAFT  - the unsigned export.
+ * SIGNED - what returns after the signer applies a CAC signature.
+ * LINK   - a reopen link, so the draft is resumable from another machine.
+ *          The on-device library only exists on the workstation it was
+ *          drafted on, which is the gap this fills.
+ */
+export type EdmsArtifactState = 'DRAFT' | 'SIGNED' | 'LINK';
+
 export function edmsBaseFilename(
   ctx: EdmsContext,
-  state: 'DRAFT' | 'SIGNED',
+  state: EdmsArtifactState,
   now: Date = new Date(),
 ): string {
   const y = now.getFullYear();
@@ -112,13 +121,14 @@ export function edmsBaseFilename(
   const d = String(now.getDate()).padStart(2, '0');
   const stamp = String(y) + m + d;
 
-  // With a request ID, lead with it. EDMS tests the leading digits to warn
-  // when a file is attached to a request whose ID does not match.
+  // Every SemperScribe artifact leads with SS_, present or absent request
+  // ID. The _Inbox move flow needs a positive marker: a Marine's synced
+  // folder will also hold files they dragged in for unrelated reasons, and
+  // a flow that processes anything it finds is a flow that quarantines
+  // someone's tax return.
   //
-  // Without one, lead with the literal SS, not the SSIC. An SSIC is four
-  // or five digits, so an SSIC-led name would satisfy that same
-  // leading-digits test and false-warn on every SemperScribe file. The two
-  // prefixes have to be distinguishable, not merely different.
-  const head = ctx.requestId ? ctx.requestId : 'SS';
-  return head + '_' + ctx.ssic + '_' + stamp + '_' + ctx.docType + '_' + state;
+  // NA fills the slot when no request exists yet, so the segment count is
+  // fixed and the parser never has to guess which field it is looking at.
+  const rid = ctx.requestId ? ctx.requestId : 'NA';
+  return 'SS_' + rid + '_' + ctx.ssic + '_' + stamp + '_' + ctx.docType + '_' + state;
 }

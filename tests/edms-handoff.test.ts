@@ -155,11 +155,11 @@ describe('edmsBaseFilename', () => {
   const ctx = { requestId: '482', ruc: '12345', ssic: '1650', docType: 'basic' };
 
   it('builds the DRAFT name', () => {
-    expect(edmsBaseFilename(ctx, 'DRAFT', new Date(2026, 7, 4))).toBe('482_1650_20260804_basic_DRAFT');
+    expect(edmsBaseFilename(ctx, 'DRAFT', new Date(2026, 7, 4))).toBe('SS_482_1650_20260804_basic_DRAFT');
   });
 
   it('builds the SIGNED name', () => {
-    expect(edmsBaseFilename(ctx, 'SIGNED', new Date(2026, 7, 5))).toBe('482_1650_20260805_basic_SIGNED');
+    expect(edmsBaseFilename(ctx, 'SIGNED', new Date(2026, 7, 5))).toBe('SS_482_1650_20260805_basic_SIGNED');
   });
 
   it('zero-pads single-digit months and days', () => {
@@ -168,23 +168,25 @@ describe('edmsBaseFilename', () => {
 
   // EDMS reads the leading request ID to warn when a Marine attaches a
   // file to the wrong request.
-  it('leads with the request ID', () => {
-    expect(edmsBaseFilename(ctx, 'DRAFT', new Date(2026, 7, 4)).startsWith('482_')).toBe(true);
+  it('always leads with SS_, so the flow can reject anything else', () => {
+    expect(edmsBaseFilename(ctx, 'DRAFT', new Date(2026, 7, 4)).startsWith('SS_')).toBe(true);
   });
 
   // The EDMS guardrail tests /^\d+_/ on the filename. An SSIC is four or
   // five digits, so leading with the SSIC when no request ID exists would
   // false-warn on every SemperScribe file. This is the regression test for
   // that collision.
-  it('leads with SS_ when no request ID exists, never with the SSIC', () => {
+  it('uses NA in the request-ID slot when none exists', () => {
     const noId = { ruc: '12345', ssic: '1650', docType: 'basic' };
     const name = edmsBaseFilename(noId, 'DRAFT', new Date(2026, 7, 4));
-    expect(name).toBe('SS_1650_20260804_basic_DRAFT');
-    expect(/^\d+_/.test(name)).toBe(false);
+    expect(name).toBe('SS_NA_1650_20260804_basic_DRAFT');
   });
 
-  it('still trips the guardrail pattern when a request ID IS present', () => {
-    expect(/^\d+_/.test(edmsBaseFilename(ctx, 'DRAFT', new Date(2026, 7, 4)))).toBe(true);
+  // Fixed segment count either way, so the flow parser never guesses.
+  it('keeps the same segment count with and without a request ID', () => {
+    const withId = edmsBaseFilename(ctx, 'DRAFT', new Date(2026, 7, 4)).split('_').length;
+    const noId = edmsBaseFilename({ ruc: '1', ssic: '1650', docType: 'basic' }, 'DRAFT', new Date(2026, 7, 4)).split('_').length;
+    expect(withId).toBe(noId);
   });
 });
 
@@ -197,5 +199,36 @@ describe('EDMS docType contract', () => {
     for (const key of ['basic', 'endorsement']) {
       expect(DOCUMENT_TYPES[key], key + ' is missing from DOCUMENT_TYPES').toBeDefined();
     }
+  });
+});
+
+/**
+ * EDMS mode changes the EXPORT FILENAME, not the destination.
+ *
+ * The file downloads normally and the Marine attaches it through the EDMS
+ * attachment control, which is what correlates it to the request. The name
+ * exists so the Power App's upload guardrail can warn when a letter is
+ * attached to a request it does not belong to.
+ */
+describe('EDMS export naming contract', () => {
+  const ctx = { requestId: '482', ruc: '12345', ssic: '1650', docType: 'basic' };
+
+  it('produces a name the Power App guardrail recognises', () => {
+    const name = edmsBaseFilename(ctx, 'DRAFT', new Date(2026, 7, 4)) + '.pdf';
+    // btnUpload tests: StartsWith(raw,"SS_") and StartsWith(raw,"SS_"&ID&"_")
+    expect(name.startsWith('SS_')).toBe(true);
+    expect(name.startsWith('SS_482_')).toBe(true);
+  });
+
+  it('does not trip the guardrail for a request with no ID', () => {
+    const name = edmsBaseFilename({ ruc: '1', ssic: '1650', docType: 'basic' }, 'DRAFT', new Date(2026, 7, 4));
+    expect(name.startsWith('SS_NA_')).toBe(true);
+  });
+
+  it('a file for a different request is distinguishable by prefix alone', () => {
+    const mine = edmsBaseFilename(ctx, 'DRAFT', new Date(2026, 7, 4));
+    const theirs = edmsBaseFilename({ ...ctx, requestId: '481' }, 'DRAFT', new Date(2026, 7, 4));
+    expect(mine.startsWith('SS_482_')).toBe(true);
+    expect(theirs.startsWith('SS_482_')).toBe(false);
   });
 });

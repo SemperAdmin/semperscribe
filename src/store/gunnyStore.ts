@@ -23,11 +23,14 @@ interface GunnyState {
   resetConversation: () => void;
 }
 
-const DEFAULT_MODEL = 'claude-opus-4-7';
+// GenAI.mil is the default. It is the DoD-hosted gateway and the only
+// provider cleared for EDMS-bound drafts, so a first-run user lands on
+// the government path rather than a commercial API.
+const DEFAULT_MODEL = 'gemini-2.5-flash';
 
 export const useGunnyStore = create<GunnyState>((set) => ({
   panelOpen: false,
-  provider: 'anthropic',
+  provider: 'genaimil',
   model: DEFAULT_MODEL,
   keyPresent: false,
   streaming: false,

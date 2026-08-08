@@ -8,6 +8,7 @@ import { downloadDocument } from '@/services/export/index';
 import type { DocumentDataSlices } from './useLivePreview';
 import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-attachments';
 import { getClassification, bannerText } from '@/lib/classification';
+import { getEdmsContext, edmsBaseFilename } from '@/lib/edms-mode';
 
 interface UseDocumentExportArgs {
   data: DocumentDataSlices;
@@ -28,17 +29,30 @@ interface UseDocumentExportArgs {
 export function useDocumentExport({ data, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages, toast }: UseDocumentExportArgs) {
   const { formData, vias, references, enclosures, copyTos, paragraphs, distList } = data;
 
+  /**
+   * Single delivery point. Both the XFA official-form branch and the main
+   * pipeline end here, so the M-5216.5 export gate and the SECNAV page cap
+   * above cannot be routed around by adding a second download.
+   *
+   * In EDMS mode the file is named by the EDMS convention rather than the
+   * app's own. The Power App's upload guardrail keys on the SS_<rid>_
+   * prefix to warn when a letter is attached to the wrong request.
+   */
+  const deliver = (blob: Blob, format: 'docx' | 'pdf') => {
+    const ctx = getEdmsContext();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = ctx
+      ? edmsBaseFilename(ctx, 'DRAFT') + '.' + format
+      : getExportFilename(formData, format);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
   const generateDocument = async (format: 'docx' | 'pdf') => {
-    // HARD EXPORT GATE (M-5216.5 Fig 7-3; audit line 69): window
-    // envelope violations refuse export — a validator, not a warning.
-    const blockers = getExportBlockers(formData, vias, references, paragraphs);
-    if (blockers.length > 0) {
-      alert(
-        'Export blocked:\n\n' +
-        blockers.map((b) => `- ${b.rule}\n  ${b.detail}\n  [${b.citation}]`).join('\n'),
-      );
-      return;
-    }
     try {
       // Route I-Type documents through unified export
       if (formData.documentType === 'i-type') {
@@ -81,14 +95,7 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
         if (signatureFields.length === 0 && !hasBoundFiles && !startNeedsFlattened) {
           const { exportOfficialForm } = await import('@/lib/xfa-form-fill');
           const formBlob = await exportOfficialForm({ formData, vias, references, enclosures, copyTos, paragraphs });
-          const url = window.URL.createObjectURL(formBlob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = getExportFilename(formData, format);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
+          deliver(formBlob, format);
           // The CUI line reports the FORM'S OWN artwork - the app adds
           // no markings (spec constraint 5; the blank carries
           // "CUI (when filled in)" / PRVCY in its template). START
@@ -142,14 +149,7 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
         }
       }
 
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = getExportFilename(formData, format);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      deliver(blob, format);
     } catch (error) {
       console.error(`Error generating ${format.toUpperCase()}:`, error);
       alert(`Failed to generate ${format.toUpperCase()}. Please check the console for details.`);

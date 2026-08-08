@@ -12,23 +12,14 @@
  */
 
 import { SavedLetter } from '@/types';
-import { openDb, txDone, SETTINGS_STORE, libLoadAll } from '@/lib/document-library';
+import { libLoadAll } from '@/lib/document-library';
+import {
+  settingsGet, settingsPut, settingsDelete,
+  isDirectoryPickerSupported,
+  type DirectoryPickerWindow, type PermissionCapableHandle,
+} from '@/lib/idb-settings';
 
 const BACKUP_DIR_KEY = 'backupDir';
-
-// ---------------------------------------------------------------------------
-// Minimal ambient types - showDirectoryPicker and the permission API
-// are not in lib.dom yet.
-// ---------------------------------------------------------------------------
-
-interface DirectoryPickerWindow {
-  showDirectoryPicker?: (options?: { id?: string; mode?: 'read' | 'readwrite' }) => Promise<FileSystemDirectoryHandle>;
-}
-
-interface PermissionCapableHandle extends FileSystemDirectoryHandle {
-  queryPermission?: (descriptor: { mode: 'read' | 'readwrite' }) => Promise<PermissionState>;
-  requestPermission?: (descriptor: { mode: 'read' | 'readwrite' }) => Promise<PermissionState>;
-}
 
 export type BackupStatus =
   | { state: 'unsupported' }
@@ -37,44 +28,7 @@ export type BackupStatus =
   | { state: 'permission-needed'; folderName: string };
 
 export function isBackupSupported(): boolean {
-  return typeof window !== 'undefined' && typeof (window as DirectoryPickerWindow).showDirectoryPicker === 'function';
-}
-
-async function settingsGet<T>(key: string): Promise<T | null> {
-  const db = await openDb();
-  try {
-    const tx = db.transaction(SETTINGS_STORE, 'readonly');
-    const store = tx.objectStore(SETTINGS_STORE);
-    return await new Promise<T | null>((resolve, reject) => {
-      const req = store.get(key);
-      req.onsuccess = () => resolve((req.result as T | undefined) ?? null);
-      req.onerror = () => reject(req.error ?? new Error('IndexedDB read failed'));
-    });
-  } finally {
-    db.close();
-  }
-}
-
-async function settingsPut(key: string, value: unknown): Promise<void> {
-  const db = await openDb();
-  try {
-    const tx = db.transaction(SETTINGS_STORE, 'readwrite');
-    tx.objectStore(SETTINGS_STORE).put(value, key);
-    await txDone(tx);
-  } finally {
-    db.close();
-  }
-}
-
-async function settingsDelete(key: string): Promise<void> {
-  const db = await openDb();
-  try {
-    const tx = db.transaction(SETTINGS_STORE, 'readwrite');
-    tx.objectStore(SETTINGS_STORE).delete(key);
-    await txDone(tx);
-  } finally {
-    db.close();
-  }
+  return isDirectoryPickerSupported();
 }
 
 /**

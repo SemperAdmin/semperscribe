@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { ParagraphData, SavedLetter, ValidationState, FormData, AdminSubsections, ReportData } from '@/types';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
-import { getLoadedUnits } from '@/lib/reference-data';
+import { getLoadedUnits, loadUnits } from '@/lib/reference-data';
+import { resolveUnit } from '@/hooks/useUserProfile';
+import { isEdmsMode, getEdmsContext, type EdmsContext } from '@/lib/edms-mode';
 import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename } from '@/lib/naval-format-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
@@ -831,6 +833,12 @@ function NavalLetterGeneratorInner() {
   const handleToggleComment = (id: string) => setComments((prev) => toggleResolved(prev, id));
   const handleRemoveComment = (id: string) => setComments((prev) => removeComment(prev, id));
 
+  // EDMS mode drives the Save to EDMS menu item. Read after mount, never
+  // during render: sessionStorage does not exist in the static-export
+  // prerender, so a render-body read hydrates to a different tree.
+  const [edmsCtx, setEdmsCtx] = useState<EdmsContext | null>(null);
+  useEffect(() => { if (isEdmsMode()) setEdmsCtx(getEdmsContext()); }, []);
+
   // Share-link intake (?share= legacy, #es= encrypted) and S2 routing slip
   const {
     routingRequest, setRoutingRequest,
@@ -838,6 +846,29 @@ function NavalLetterGeneratorInner() {
   } = useShareLinkLoader({
     handleImport,
     toast,
+    // EDMS handoff. Scalars only: no subject, no names, no body. See
+    // lib/edms-handoff.ts for why the payload is deliberately narrow.
+    onEdmsPrefill: (p) => {
+      setEdmsCtx(getEdmsContext());
+      setFormData(prev => ({
+        ...prev,
+        documentType: p.docType || prev.documentType,
+        ssic: p.ssic || prev.ssic,
+      }));
+      // Units are lazy-loaded, and this runs on mount, so resolveUnit()
+      // would read an empty snapshot if called synchronously here.
+      void loadUnits().then(() => {
+        const unit = resolveUnit(p.ruc);
+        if (!unit.line1) return;
+        setFormData(prev => ({ ...prev, line1: unit.line1, line2: unit.line2, line3: unit.line3 }));
+      });
+      toast({
+        title: 'Drafting for EDMS',
+        description: p.requestId
+          ? `Request ${p.requestId}. Export the PDF, then attach it in EDMS.`
+          : 'Export the PDF, then attach it to your EDMS request.',
+      });
+    },
     onComments: (incoming) => {
       setComments(incoming);
       toast({

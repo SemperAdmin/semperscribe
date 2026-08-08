@@ -159,9 +159,9 @@ export function GunnyBotSettings() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="genaimil">GenAI.mil (DoD)</SelectItem>
             <SelectItem value="anthropic" disabled={edmsLocked}>Anthropic</SelectItem>
             <SelectItem value="gemini" disabled={edmsLocked}>Google Gemini</SelectItem>
-            <SelectItem value="genaimil">GenAI.mil (DoD)</SelectItem>
             <SelectItem value="openai" disabled>OpenAI (needs a proxy - later)</SelectItem>
             <SelectItem value="azure" disabled>Azure OpenAI (needs a proxy - later)</SelectItem>
           </SelectContent>

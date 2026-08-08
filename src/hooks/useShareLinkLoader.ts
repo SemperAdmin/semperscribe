@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { consumeEdmsPrefill, clearEdmsHash, type EdmsPrefill } from '@/lib/edms-handoff';
 import {
   getStateFromUrl,
   clearShareParam,
@@ -17,6 +18,12 @@ interface UseShareLinkLoaderArgs {
   toast: ReturnType<typeof useToast>['toast'];
   /** R1: receives comments arriving on a shared link. */
   onComments?: (comments: import('@/lib/review-comments').ReviewComment[]) => void;
+  /**
+   * EDMS handoff. Receives the scalar prefill from a `#edms=` link and
+   * seeds the form. This is NOT an import: there is no document in the
+   * payload, only RUC, SSIC, document type, and section.
+   */
+  onEdmsPrefill?: (prefill: EdmsPrefill) => void;
 }
 
 /**
@@ -28,7 +35,7 @@ interface UseShareLinkLoaderArgs {
  * - Encrypted `#es=` fragment: held until the user supplies the
  *   password through the UnlockShareDialog, then imported.
  */
-export function useShareLinkLoader({ handleImport, toast, onComments }: UseShareLinkLoaderArgs) {
+export function useShareLinkLoader({ handleImport, toast, onComments, onEdmsPrefill }: UseShareLinkLoaderArgs) {
   // S2: routing slip arriving on a request-for-signature link
   const [routingRequest, setRoutingRequest] = useState<SignatureRouting | null>(null);
 
@@ -56,7 +63,18 @@ export function useShareLinkLoader({ handleImport, toast, onComments }: UseShare
 
   // Load shared state from URL on mount
   useEffect(() => {
-    // Encrypted fragment takes priority - it is the current format.
+    // EDMS handoff first. It latches EDMS mode, which gates GunnyBot
+    // egress in lib/gunnybot/client.ts, so it has to run before anything
+    // else can reach a provider. consumeEdmsPrefill() sets the mode; the
+    // callback seeds the form. There is no document to import.
+    const prefill = consumeEdmsPrefill();
+    if (prefill) {
+      onEdmsPrefill?.(prefill);
+      clearEdmsHash();
+      return;
+    }
+
+    // Encrypted fragment takes priority over the legacy query param.
     const payload = getEncryptedPayloadFromHash();
     if (payload) {
       setEncryptedPayload(payload);
