@@ -180,7 +180,8 @@ export function runProofreadChecks(
     }
 
     let enclStatus: CheckStatus = 'pass';
-    let enclDetail = '';
+    // Assigned in every branch below (the chain ends in a plain else).
+    let enclDetail: string;
 
     if (enclsWithContent.length === 0 && referencedEncls.size > 0) {
       enclStatus = 'fail';

@@ -752,7 +752,7 @@ export function NavalLetterPDF({
   let structuralPageIndex = 0;
   const locatorSheetPageNum = formData.showLocatorSheet ? romanNumerals[structuralPageIndex++] : '';
   const recordOfChangesPageNum = formData.showRecordOfChanges ? romanNumerals[structuralPageIndex++] : '';
-  const tocPageNum = formData.showStructuralPages ? romanNumerals[structuralPageIndex++] : '';
+  const tocPageNum = formData.showStructuralPages ? romanNumerals[structuralPageIndex] : '';
 
   // Pre-compute distribution statement text for use in fixed footer
   // P3.6: shared resolver — both emitters resolve fill-ins through

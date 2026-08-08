@@ -72,7 +72,7 @@ export async function streamChat(req: GunnyRequest, handlers: StreamHandlers): P
   }
 
   if (!res.ok) {
-    let detail = '';
+    let detail: string;
     try {
       detail = await res.text();
     } catch {
@@ -87,7 +87,7 @@ export async function streamChat(req: GunnyRequest, handlers: StreamHandlers): P
 
   // Non-streaming providers (GenAI.mil) return one JSON object, not SSE.
   if (adapter.streaming === false && adapter.parseFullResponse) {
-    let raw = '';
+    let raw: string;
     try {
       raw = await res.text();
     } catch {

@@ -497,7 +497,8 @@ function NavalLetterGeneratorInner() {
     const newFeatures = DOCUMENT_TYPES[newType]?.features;
     const oldFeatures = DOCUMENT_TYPES[formData.documentType]?.features;
 
-    let newParagraphs: ParagraphData[] = [{ id: 1, level: 1, content: '', acronymError: '' }];
+    // Every branch below assigns (the chain ends in a plain else).
+    let newParagraphs: ParagraphData[];
     const template = newFeatures?.paragraphTemplate;
     if (template === 'mco') {
       newParagraphs = getMCOParagraphs();

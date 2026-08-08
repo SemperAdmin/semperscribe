@@ -52,7 +52,7 @@ export async function disableAutoBackup(): Promise<void> {
  */
 export async function getBackupStatus(): Promise<BackupStatus> {
   if (!isBackupSupported()) return { state: 'unsupported' };
-  let handle: PermissionCapableHandle | null = null;
+  let handle: PermissionCapableHandle | null;
   try {
     handle = await settingsGet<PermissionCapableHandle>(BACKUP_DIR_KEY);
   } catch {

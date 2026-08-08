@@ -23,7 +23,7 @@ export function validateSSIC(value: string): ValidationResult {
     return { isValid: true, message: 'Valid SSIC format' };
   }
 
-  let message = 'SSIC must be 4-5 digits';
+  let message: string;
   if (value.length < 4) {
     message = `SSIC must be 4-5 digits (currently ${value.length})`;
   } else if (value.length > 5) {

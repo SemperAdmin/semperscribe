@@ -402,7 +402,7 @@ export async function generateDocxBlob(
     const subjLines = splitSubject((formData.subj || '').toUpperCase(), 57);
     
     subjLines.forEach((line, index) => {
-      let children: TextRun[] = [];
+      let children: TextRun[];
       if (index === 0) {
           children = [
               new TextRun({ text: subjLabel, font, size: FONT_SIZE_BODY }),
@@ -838,7 +838,7 @@ export async function generateDocxBlob(
        } else {
           // Toggle OFF: list recipients directly under To
           recipientsWithContent.forEach((recipient: string, index: number) => {
-              let children: TextRun[] = [];
+              let children: TextRun[];
 
               if (index === 0) {
                  const toLabel = getFromToSpacing('To', formData.bodyFont as 'times' | 'courier');
@@ -925,7 +925,7 @@ export async function generateDocxBlob(
     const subjLines = splitSubject((formData.subj || '').toUpperCase(), 57);
     
     subjLines.forEach((line, index) => {
-      let children: TextRun[] = [];
+      let children: TextRun[];
       if (index === 0) {
           children = [
               new TextRun({ text: subjLabel, font, size: FONT_SIZE_BODY }),
@@ -2300,7 +2300,7 @@ export async function generateDocxBlob(
     let structuralPageIndex = 0;
     const locatorNum = formData.showLocatorSheet ? romanNumerals[structuralPageIndex++] : '';
     const rocNum = formData.showRecordOfChanges ? romanNumerals[structuralPageIndex++] : '';
-    const tocNum = formData.showStructuralPages ? romanNumerals[structuralPageIndex++] : '';
+    const tocNum = formData.showStructuralPages ? romanNumerals[structuralPageIndex] : '';
 
     const structuralPageProps = {
       page: {

@@ -98,8 +98,9 @@ export async function createDecisionPaperPdf(data: DecisionPaperData): Promise<U
     content: discussionContent,
   });
 
-  // Recommendation Section
-  y = await drawSection({
+  // Recommendation Section. Last section on the page - the returned
+  // cursor has no further reader.
+  await drawSection({
     page,
     font,
     y,

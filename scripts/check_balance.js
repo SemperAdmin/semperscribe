@@ -35,23 +35,23 @@ function analyze(text) {
       if (prev === '/' && ch === '*') { inBlockComment = true; continue; }
     }
 
-    if (!inLineComment && !inBlockComment) {
-      if (!inDouble && !inTemplate && ch === "'") { inSingle = !inSingle; continue; }
-      if (!inSingle && !inTemplate && ch === '"') { inDouble = !inDouble; continue; }
-      if (!inSingle && !inDouble && ch === '`') { inTemplate = !inTemplate; continue; }
+    // No comment-state guard needed here: the continues above already
+    // skip every character inside a line or block comment.
+    if (!inDouble && !inTemplate && ch === "'") { inSingle = !inSingle; continue; }
+    if (!inSingle && !inTemplate && ch === '"') { inDouble = !inDouble; continue; }
+    if (!inSingle && !inDouble && ch === '`') { inTemplate = !inTemplate; continue; }
 
-      if (inSingle || inDouble || inTemplate) continue;
+    if (inSingle || inDouble || inTemplate) continue;
 
-      if (opening.includes(ch)) {
-        stack.push({ char: ch, line, col, index: i });
-      } else if (closing.includes(ch)) {
-        const expectedOpen = opening[closing.indexOf(ch)];
-        const last = stack[stack.length-1];
-        if (!last || last.char !== expectedOpen) {
-          return { ok: false, message: `Unmatched closing '${ch}' at line ${line}, col ${col}. Expected matching '${pairs[last ? last.char : '?']}'.`, line, col, index: i };
-        }
-        stack.pop();
+    if (opening.includes(ch)) {
+      stack.push({ char: ch, line, col, index: i });
+    } else if (closing.includes(ch)) {
+      const expectedOpen = opening[closing.indexOf(ch)];
+      const last = stack[stack.length-1];
+      if (!last || last.char !== expectedOpen) {
+        return { ok: false, message: `Unmatched closing '${ch}' at line ${line}, col ${col}. Expected matching '${pairs[last ? last.char : '?']}'.`, line, col, index: i };
       }
+      stack.pop();
     }
   }
   if (stack.length > 0) {
