@@ -139,9 +139,9 @@ export function UnitInfoSection({
                     No units found matching &quot;{searchQuery}&quot;
                   </div>
                 )}
-                {filteredUnits.map((unit) => (
+                {filteredUnits.map((unit, index) => (
                   <button
-                    key={`${unit.ruc}-${unit.mcc}`}
+                    key={`${unit.ruc}-${unit.mcc}-${index}`}
                     onClick={() => handleUnitSelect(unit)}
                     className="w-full text-left p-3 rounded-lg hover:bg-secondary/5 hover:text-secondary-foreground transition-colors border border-transparent hover:border-secondary/20 flex flex-col gap-1 group"
                   >
