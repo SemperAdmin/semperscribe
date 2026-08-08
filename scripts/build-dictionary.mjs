@@ -45,7 +45,7 @@ function buildWordSet(allTerms) {
     }
 
     // Split term into individual words and add each
-    const termWords = termClean.split(/[\s/,\-]+/);
+    const termWords = termClean.split(/[\s/,-]+/);
     for (const w of termWords) {
       const clean = w.replace(/[^A-Za-z0-9&']/g, '');
       if (clean.length >= 2) {
@@ -58,7 +58,7 @@ function buildWordSet(allTerms) {
     if (meaningClean.length >= 2) {
       words.add(meaningClean.toUpperCase());
     }
-    const meaningWords = meaningClean.split(/[\s/,\-]+/);
+    const meaningWords = meaningClean.split(/[\s/,-]+/);
     for (const w of meaningWords) {
       const clean = w.replace(/[^A-Za-z0-9&']/g, '');
       if (clean.length >= 2) {

@@ -9,6 +9,11 @@ queries:
 # and tests only assert on locally generated fixtures (e.g. stripping
 # tags from DOCX XML the test itself produced). Scanning them produced
 # dozens of incomplete-sanitization false positives with no security
-# surface. Production code in src/ remains fully scanned.
+# surface. The same reasoning covers docs/ (design prototypes such as
+# docs/prototypes/landing.html) and examples/ (sample data packages):
+# none of it is deployed or executed. Production code in src/, public/,
+# and scripts/ remains fully scanned.
 paths-ignore:
   - tests
+  - docs
+  - examples

@@ -483,7 +483,7 @@ export function validateAcronymFirstUse(paragraphs: ParagraphData[]): Map<number
   // Trailing separator class matches the in-word separator class so a run of
   // whitespace/hyphens has one parse — avoids polynomial backtracking
   // (CodeQL js/polynomial-redos) on imported document text.
-  const definitionRegex = /[A-Z][a-z]+(?:[\s\-\/]+[A-Za-z]+)*[\s\-\/]*\(([A-Z]{3,})\)/g;
+  const definitionRegex = /[A-Z][a-z]+(?:[\s/-]+[A-Za-z]+)*[\s/-]*\(([A-Z]{3,})\)/g;
 
   // Track where each acronym is first defined and all uses
   const definedAt: Map<string, number> = new Map();
