@@ -1,7 +1,7 @@
 # UI Migration Plan: Naval Letter Formatter Modernization
 
 ## 1. Executive Summary
-This document outlines the strategy to transition the **Naval Letter Formatter** from its current single-column, dark-themed interface to a modern, three-pane, light-themed productivity suite. The new design prioritizes document structure visibility, ease of editing, and real-time preview, aligning with the prototype developed in `public/landing.html`.
+This document outlines the strategy to transition the **Naval Letter Formatter** from its current single-column, dark-themed interface to a modern, three-pane, light-themed productivity suite. The new design prioritizes document structure visibility, ease of editing, and real-time preview, aligning with the prototype developed in `docs/prototypes/landing.html`.
 
 ## 2. Phase 1: Discovery & Analysis (Completed)
 

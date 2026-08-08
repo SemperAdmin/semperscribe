@@ -48,7 +48,7 @@ const MONTH_BY_ABBREV: Record<string, string> = {
 };
 
 /** The reference-clause matcher - MUST mirror validateReferences. */
-const REF_CLAUSE = /\brefs?(?:erences?)?\s*((?:\([a-z]+\)(?:\s*(?:,|and|through|thru)?\s*)?)+)/gi;
+const REF_CLAUSE = /\brefs?(?:erences?)?\s*((?:\([a-z]+\)(?:\s*(?:,|and|through|thru))*\s*)+)/gi;
 
 function mapParagraphs(
   paragraphs: ParagraphData[],

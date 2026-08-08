@@ -592,7 +592,7 @@ function ParagraphItem({
 }
 
 export function NavalLetterPDF({
-  formData,
+  formData: formDataProp,
   vias,
   references,
   enclosures,
@@ -602,10 +602,10 @@ export function NavalLetterPDF({
 }: NavalLetterPDFProps) {
   // P3.1 (G7): archetype font policy — directives coerce to Courier.
   // Letterhead guard: directives never carry DLA letterhead.
-  formData = {
-    ...formData,
-    bodyFont: resolveBodyFont(formData.documentType, formData.bodyFont),
-    headerType: resolveHeaderType(formData.documentType, formData.headerType) as FormData['headerType'],
+  const formData: FormData = {
+    ...formDataProp,
+    bodyFont: resolveBodyFont(formDataProp.documentType, formDataProp.bodyFont),
+    headerType: resolveHeaderType(formDataProp.documentType, formDataProp.headerType) as FormData['headerType'],
   };
   const styles = createStyles(
     formData.bodyFont || 'times',

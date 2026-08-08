@@ -55,7 +55,11 @@ export function useUndoHistory({
 
   const current: DocumentSnapshot = { formData, paragraphs, vias, references, enclosures, copyTos, distList };
   const currentRef = useRef(current);
-  currentRef.current = current;
+  // Sync after commit — refs must not be written during render. Declared
+  // before the snapshot effect so it runs first on every render.
+  useEffect(() => {
+    currentRef.current = current;
+  });
 
   const syncFlags = () => {
     setCanUndo(past.current.length > 0);

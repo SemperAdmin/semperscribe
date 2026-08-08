@@ -95,9 +95,10 @@ describe('gunnybot adapters: buildRequest', () => {
       maxOutputTokens: 256,
     });
     const body = JSON.parse(http.body);
-    expect(http.url).toContain(':streamGenerateContent?alt=sse&key=');
-    expect(http.url).toContain('AIzaTESTKEY0123456789ABCDEFGHIJ');
-    expect(Object.keys(http.headers)).toEqual(['content-type']);
+    expect(http.url).toContain(':streamGenerateContent?alt=sse');
+    expect(http.url).not.toContain('AIzaTESTKEY0123456789ABCDEFGHIJ');
+    expect(Object.keys(http.headers)).toEqual(['content-type', 'x-goog-api-key']);
+    expect(http.headers['x-goog-api-key']).toBe('AIzaTESTKEY0123456789ABCDEFGHIJ');
     expect(body.contents[0].role).toBe('model');
     // parts is a repeated field. The live endpoint coerces a single object
     // too (verified 2026-07-30), but the array is the documented form.

@@ -185,11 +185,13 @@ export const geminiAdapter: ProviderAdapter = {
       host +
       '/v1beta/models/' +
       req.model +
-      ':streamGenerateContent?alt=sse&key=' +
-      encodeURIComponent(req.apiKey);
+      ':streamGenerateContent?alt=sse';
     return {
       url,
-      headers: { 'content-type': 'application/json' },
+      // Key rides a header, not the query string, so it stays out of
+      // proxy/access logs. content-type already forces a CORS preflight,
+      // so x-goog-api-key adds no extra round trip.
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': req.apiKey },
       body: JSON.stringify(body),
     };
   },
