@@ -1,11 +1,12 @@
 /**
- * GunnyBotRuntime: key-presence rehydration and the egress consent gate.
+ * GunnyBotRuntime: key-presence sync and the egress consent gate.
  *
- * The rehydration case is the regression this file exists for. The
- * keyring mirrors to sessionStorage, so a key survives a same-tab
- * reload, but the store mirror `keyPresent` reset to false. Every
- * control gated on it (Draft, Rewrite, Review, Test connection) then
- * rendered permanently disabled while the key was still usable.
+ * The keyring is memory-only — keys deliberately do not survive a
+ * reload — but the store mirror `keyPresent` can still drift from it
+ * (provider change, stale store state). Every control gated on it
+ * (Draft, Rewrite, Review, Test connection) renders disabled on a
+ * false negative, or enabled without a key on a false positive, so
+ * the runtime must re-sync the mirror on mount and provider change.
  */
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import React from 'react';
@@ -28,11 +29,9 @@ afterEach(() => {
   window.sessionStorage.clear();
 });
 
-describe('GunnyBotRuntime: key presence survives a reload', () => {
-  it('rehydrates keyPresent from sessionStorage on mount', async () => {
-    // Exactly the post-reload state: in-memory map empty, sessionStorage
-    // still holding the key from before the refresh.
-    window.sessionStorage.setItem('gunnybot-key-anthropic', 'sk-ant-TESTKEY0123456789');
+describe('GunnyBotRuntime: key presence syncs with the keyring', () => {
+  it('syncs keyPresent from the in-memory keyring on mount', async () => {
+    keyring.setKey('anthropic', 'sk-ant-TESTKEY0123456789');
     expect(useGunnyStore.getState().keyPresent).toBe(false);
 
     render(<GunnyBotRuntime />);
@@ -42,7 +41,11 @@ describe('GunnyBotRuntime: key presence survives a reload', () => {
     });
   });
 
-  it('reports no key when sessionStorage is empty', async () => {
+  it('reports no key after a reload, even if the old sessionStorage mirror lingers', async () => {
+    // Post-reload state: in-memory map empty. A stale entry from the
+    // retired sessionStorage mirror must NOT rehydrate — keys are
+    // memory-only now and a reload forgets them by design.
+    window.sessionStorage.setItem('gunnybot-key-anthropic', 'sk-ant-TESTKEY0123456789');
     useGunnyStore.setState({ keyPresent: true });
     render(<GunnyBotRuntime />);
     await waitFor(() => {
@@ -51,7 +54,7 @@ describe('GunnyBotRuntime: key presence survives a reload', () => {
   });
 
   it('re-syncs when the provider changes to one with no key', async () => {
-    window.sessionStorage.setItem('gunnybot-key-anthropic', 'sk-ant-TESTKEY0123456789');
+    keyring.setKey('anthropic', 'sk-ant-TESTKEY0123456789');
     render(<GunnyBotRuntime />);
     await waitFor(() => expect(useGunnyStore.getState().keyPresent).toBe(true));
 
