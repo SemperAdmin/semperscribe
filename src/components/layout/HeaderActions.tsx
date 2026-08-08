@@ -25,7 +25,8 @@ import {
   BadgeCheck,
   GitCompare,
   Layers,
-  Bot
+  Bot,
+  MoreVertical
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FEEDBACK_URL } from '@/lib/app-links';
@@ -255,7 +256,7 @@ export function HeaderActions({
   const hasOtherReview = Boolean(onProofread || onCompliance || onCompare || onFindReplace || onGuide);
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex items-center gap-1 sm:gap-2 min-w-0 overflow-x-auto md:overflow-visible">
       {/* Hidden file inputs. These must live OUTSIDE the dropdown menu:
           Radix unmounts DropdownMenuContent when the menu closes, and
           clicking an import item closes the menu while the OS file
@@ -340,8 +341,8 @@ export function HeaderActions({
       {/* File Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-            <File className="w-4 h-4 mr-2" />
+          <Button variant="ghost" size="sm" className="px-2 sm:px-3 text-muted-foreground hover:text-foreground">
+            <File className="w-4 h-4 mr-2 hidden sm:inline-flex" />
             File
             <ChevronDown className="w-3 h-3 ml-1 opacity-50" />
           </Button>
@@ -415,7 +416,7 @@ export function HeaderActions({
             variant="ghost"
             size="sm"
             className={cn(
-              "flex",
+              "flex px-2 sm:px-3",
               className ? "text-secondary-foreground hover:text-primary hover:bg-white/10" : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -502,10 +503,11 @@ export function HeaderActions({
                 size="sm"
                 className="text-primary-foreground bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20 border border-primary-foreground/10"
                 disabled={isGenerating}
+                aria-label="Export"
               >
-                <Download className="mr-2 w-4 h-4" />
-                {isGenerating ? 'Generating...' : 'Export'}
-                <ChevronDown className="ml-2 w-4 h-4 opacity-50" />
+                <Download className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">{isGenerating ? 'Generating...' : 'Export'}</span>
+                <ChevronDown className="ml-1 sm:ml-2 w-4 h-4 opacity-50" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 bg-card border-border text-card-foreground">
@@ -581,7 +583,7 @@ export function HeaderActions({
         <Button
           variant="ghost"
           size="icon"
-          className={buttonClass("h-8 w-8 xl:hidden")}
+          className={buttonClass("h-8 w-8 hidden md:flex xl:hidden")}
           onClick={onOpenPreviewModal}
           title="Preview"
           aria-label="Open preview"
@@ -612,7 +614,7 @@ export function HeaderActions({
       <Button
         variant="ghost"
         size="icon"
-        className={buttonClass("h-8 w-8")}
+        className={buttonClass("h-8 w-8 hidden md:flex")}
         onClick={() => openGunnyBot(true)}
         title="GunnyBot assistant"
         aria-label="Open GunnyBot assistant"
@@ -628,7 +630,7 @@ export function HeaderActions({
             <Button
               variant="ghost"
               size="icon"
-              className={buttonClass("h-8 w-8")}
+              className={buttonClass("h-8 w-8 hidden md:flex")}
               title="Settings"
               aria-label="Settings and feedback"
             >
@@ -651,6 +653,51 @@ export function HeaderActions({
           </DropdownMenuContent>
         </DropdownMenu>
       )}
+
+      {/* Mobile overflow - below md the trailing icon buttons (Preview,
+          GunnyBot, Settings) fall off the right edge of a phone screen,
+          so they collapse into this single always-visible menu. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={buttonClass("h-8 w-8 md:hidden shrink-0")}
+            title="More"
+            aria-label="More options"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52 bg-card border-border text-card-foreground">
+          {onOpenPreviewModal && (
+            <DropdownMenuItem onClick={onOpenPreviewModal} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <Eye className="w-4 h-4 mr-2" />
+              Preview
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={() => openGunnyBot(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+            <Bot className="w-4 h-4 mr-2" />
+            GunnyBot Assistant
+          </DropdownMenuItem>
+          {onSettings && (
+            <>
+              <DropdownMenuSeparator className="bg-border" />
+              <DropdownMenuItem onClick={onSettings} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => window.open(FEEDBACK_URL, '_blank', 'noopener,noreferrer')}
+                className="cursor-pointer focus:bg-accent focus:text-accent-foreground"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Send Feedback...
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

@@ -143,8 +143,8 @@ export function ModernAppShell({
         <Link href="/privacy" className="ml-2 underline font-semibold hover:no-underline">Privacy and Security Notice</Link>
       </div>
       {/* Top Header / Toolbar */}
-      <header className="h-16 bg-secondary text-primary-foreground border-b border-secondary-foreground/10 flex items-center justify-between px-4 z-20 shrink-0 shadow-md">
-        <div className="flex items-center space-x-4">
+      <header className="h-16 bg-secondary text-primary-foreground border-b border-secondary-foreground/10 flex items-center justify-between gap-2 px-2 sm:px-4 z-20 shrink-0 shadow-md">
+        <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
           {/* Mobile-only hamburger. Opens the Sidebar as a slide-out drawer below the md breakpoint. */}
           <button
             type="button"
@@ -165,7 +165,9 @@ export function ModernAppShell({
               />
             </div>
             
-            <div className="flex flex-col">
+            {/* Wordmark hidden on phones: the actions row needs the width,
+                and the seal + page hero carry the brand there. */}
+            <div className="hidden sm:flex flex-col">
               <h1 className="text-primary font-bold text-lg leading-tight tracking-tight font-headline">Semper Scribe</h1>
             </div>
           </div>
