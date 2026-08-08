@@ -32,6 +32,7 @@ import { ImportPayload } from '@/services/import/extractionTypes';
 import { ProofreadModal } from '@/components/ProofreadModal';
 import { BatchGenerateModal } from '@/components/BatchGenerateModal';
 import { ShareLinkDialog, UnlockShareDialog, ConfirmShareDialog } from '@/components/ShareLinkDialog';
+import { ReleaseNLDPDialog } from '@/components/ReleaseNLDPDialog';
 import { FindReplaceDialog } from '@/components/FindReplaceDialog';
 import { GuidanceDialog } from '@/components/GuidanceDialog';
 import { FindReplaceResult } from '@/lib/find-replace';
@@ -211,6 +212,7 @@ function NavalLetterGeneratorInner() {
 
   // P1.1: share-link creation dialog state
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showReleaseDialog, setShowReleaseDialog] = useState(false);
 
   // P1.2: document library dialog state
   const [showLibrary, setShowLibrary] = useState(false);
@@ -249,7 +251,7 @@ function NavalLetterGeneratorInner() {
   // Import/Export/Share via hook
   const {
     handleImport, handleLoadDraft, handleLoadTemplateUrl,
-    handleExportNldp, handleExportPolicyData, handleShareLink,
+    handleExportNldp, handleShareLink,
     handleCopyAMHS, handleExportAMHS,
   } = useImportExport({
     formData, setFormData,
@@ -907,7 +909,7 @@ function NavalLetterGeneratorInner() {
       currentUnitCode={currentUnitCode}
       currentUnitName={currentUnitName}
       onExportNldp={handleExportNldp}
-      onExportPolicyData={handleExportPolicyData}
+      onReleaseNldp={() => setShowReleaseDialog(true)}
       onShareLink={() => setShowShareDialog(true)}
       onUpdatePreview={updatePreview}
       onCopyAMHS={handleCopyAMHS}
@@ -1045,6 +1047,16 @@ function NavalLetterGeneratorInner() {
         open={showShareDialog}
         onOpenChange={setShowShareDialog}
         onCreate={handleShareLink}
+      />
+      <ReleaseNLDPDialog
+        open={showReleaseDialog}
+        onOpenChange={setShowReleaseDialog}
+        formData={formData}
+        vias={vias}
+        references={references}
+        enclosures={enclosures}
+        copyTos={copyTos}
+        paragraphs={paragraphs}
       />
       <DocumentLibraryDialog
         open={showLibrary}

@@ -1,4 +1,9 @@
 /**
+ * @deprecated Retired with lib/policy-as-data.ts per
+ * docs/POLICY_AS_DATA_HANDOFF.md section 3. Kept compiling (and green)
+ * for one release so the retirement is a clean two-step; delete both
+ * files in the next release.
+ *
  * Policy-as-Data (USLM) canonical export — unit tests.
  *
  * Covers the flat-list -> hierarchy conversion (path/label/number

@@ -3,14 +3,18 @@
  * Core functions for creating, validating, and importing NLDP files
  */
 
-import { 
-  NLDPFile, 
-  NLDPData, 
-  NLDPExportConfig, 
-  NLDPImportResult, 
+import {
+  NLDPFile,
+  NLDPData,
+  NLDPExportConfig,
+  NLDPImportResult,
+  NLDPRelease,
   NLDPValidationResult,
-  NLDP_CONSTANTS 
+  NLDP_CONSTANTS
 } from './nldp-format';
+import { generateCitation } from './citation';
+import { parseCitedIssuance } from './nldp-citations';
+import { version as APP_VERSION } from '../../package.json';
 
 /**
  * Calculate SHA-256 hash of a string
@@ -168,6 +172,9 @@ export function validateNLDPFile(fileData: any): NLDPValidationResult {
 
 /**
  * Create an NLDP file from application data
+ *
+ * The optional release block is built by lib/release.ts AFTER its gates
+ * pass; this function only carries it into the file.
  */
 export async function createNLDPFile(
   formData: any,
@@ -176,27 +183,39 @@ export async function createNLDPFile(
   enclosures: string[],
   copyTos: string[],
   paragraphs: any[],
-  config: NLDPExportConfig = {}
+  config: NLDPExportConfig = {},
+  release?: NLDPRelease
 ): Promise<NLDPFile> {
-  
+
   // Prepare the data structure
   const nldpData: NLDPData = {
     formData: { ...formData },
-    paragraphs: paragraphs.map(p => ({
+    // 1.1: designator comes from lib/citation.ts — the standard naval
+    // letter scheme, the numbering rule's single implementation.
+    paragraphs: paragraphs.map((p, index) => ({
       id: p.id,
       level: p.level,
       content: p.content || '',
       isMandatory: p.isMandatory,
       title: p.title,
-      acronymError: p.acronymError
+      acronymError: p.acronymError,
+      designator: generateCitation(p, index, paragraphs).citation
     })),
-    references: references.map((text, index) => ({ text, order: index + 1 })),
+    // 1.1: cited is best-effort; parseCitedIssuance never guesses, so
+    // parsed: false with cited: null is an expected, correct answer.
+    references: references.map((text, index) => {
+      const { parsed, cited } = parseCitedIssuance(text);
+      return { text, order: index + 1, cited, parsed };
+    }),
     enclosures: enclosures.map((text, index) => ({ text, order: index + 1 })),
     vias: vias.map((text, index) => ({ text, order: index + 1 })),
     copyTos: copyTos.map((text, index) => ({ text, order: index + 1 })),
     directiveMetadata: {
-      lastModified: new Date().toISOString(),
-      status: 'draft'
+      // lastModified only when the caller supplies one: a wall-clock
+      // stamp inside `data` would make re-export non-deterministic and
+      // break idempotent ingest (round-trip requirement).
+      ...(config.lastModified ? { lastModified: config.lastModified } : {}),
+      status: config.status ?? 'draft'
     }
   };
 
@@ -224,6 +243,7 @@ export async function createNLDPFile(
       createdAt: new Date().toISOString(),
       formatVersion: NLDP_CONSTANTS.CURRENT_VERSION,
       createdBy: NLDP_CONSTANTS.CREATOR_APP,
+      generator: { appVersion: APP_VERSION },
       author: config.includePersonalInfo ? config.author : undefined,
       package: config.package
     },
@@ -232,7 +252,8 @@ export async function createNLDPFile(
       crc32,
       recordCount
     },
-    data: sanitizedData
+    data: sanitizedData,
+    ...(release ? { release } : {})
   };
 
   return nldpFile;
@@ -280,6 +301,7 @@ export async function importNLDPFile(fileContent: string): Promise<NLDPImportRes
       success: true,
       data: parsedData.data,
       metadata: parsedData.metadata,
+      release: parsedData.release,
       warnings: validation.warnings
     };
 
@@ -314,6 +336,14 @@ export function generateNLDPFilename(formData: any, config: NLDPExportConfig): s
   }
   
   return filename;
+}
+
+/**
+ * Filename for a Release export: same base as the working export with a
+ * ".release.nldp" extension, so the two are unmistakable side by side.
+ */
+export function generateReleaseNLDPFilename(formData: any, config: NLDPExportConfig = {}): string {
+  return generateNLDPFilename(formData, config).replace(/\.nldp$/, '.release.nldp');
 }
 
 /**

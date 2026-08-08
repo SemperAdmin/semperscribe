@@ -19,8 +19,8 @@
     }
   },
   "integrity": {
-    "dataHash": "c7c18d7ed4732c40f64a21dba99f4aa09ef6fb67599bdf99b23ad7be8ffccf56",
-    "crc32": "446a62d2",
+    "dataHash": "b478eaf401b2f8a60718f76991d7795388517e97b9a44936b413b4c83b22000c",
+    "crc32": "d59eca04",
     "recordCount": 8
   },
   "data": {
@@ -103,7 +103,22 @@
     "vias": [],
     "copyTos": [],
     "directiveMetadata": {
-      "status": "draft"
+      "status": "promulgated"
     }
+  },
+  "release": {
+    "released": true,
+    "releasedAt": "2026-08-08T12:00:00.000Z",
+    "releasedBy": "Adjutant, Training Demo Command (sample data)",
+    "lifecycle": "promulgated",
+    "signedArtifact": {
+      "filename": "sample-directive-signed.pdf",
+      "format": "pdf",
+      "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "byteLength": 123456,
+      "hashedAt": "2026-08-08T12:00:00.000Z"
+    },
+    "affirmation": "I confirm this package corresponds to the document that was signed and promulgated, that the attached file is that signed document, and that the text in this package matches it. I understand this package may be ingested into a policy corpus and rendered as policy after independent verification.",
+    "affirmationVersion": "1"
   }
 }

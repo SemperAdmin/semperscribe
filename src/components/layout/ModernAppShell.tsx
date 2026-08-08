@@ -35,7 +35,7 @@ interface ModernAppShellProps {
   currentUnitCode?: string;
   currentUnitName?: string;
   onExportNldp: () => void;
-  onExportPolicyData?: () => void;
+  onReleaseNldp?: () => void;
   onUpdatePreview: () => void;
   customRightPanel?: React.ReactNode;
   // AMHS Actions
@@ -88,7 +88,7 @@ export function ModernAppShell({
   currentUnitCode,
   currentUnitName,
   onExportNldp,
-  onExportPolicyData,
+  onReleaseNldp,
   onUpdatePreview,
   customRightPanel,
   onCopyAMHS,
@@ -215,7 +215,7 @@ export function ModernAppShell({
             currentUnitName={currentUnitName}
             isGenerating={isGeneratingPreview}
             onExportNldp={onExportNldp}
-            onExportPolicyData={onExportPolicyData}
+            onReleaseNldp={onReleaseNldp}
             onShareLink={documentType ? onShareLink : undefined}
             showPreview={showPreview}
             onTogglePreview={() => setShowPreview(!showPreview)}

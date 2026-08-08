@@ -1,224 +1,156 @@
-# Naval Letter Data Package (NLDP) Feature
+# NLDP Feature Guide
 
-## Overview
+NLDP (Naval Letter Data Package) is SemperScribe's data interchange
+format: a single JSON file with the `.nldp` extension carrying a
+directive's form data, paragraphs, references, enclosures, vias, and
+copy-to lines, plus integrity hashes.
 
-The Naval Letter Data Package (NLDP) feature enables users to share correspondence data between instances of the Naval Letter Formatter application. This functionality allows for collaborative editing, template sharing, and data backup/restore operations.
+**`src/lib/nldp-format.ts` is the specification. This guide is derived
+from it.** When the module and this guide disagree, the module is right
+and this guide must be fixed — never the module. (An earlier revision of
+this guide documented a `packageId` / `metadata.checksums` shape that the
+module never had; that is the failure this rule exists to prevent.)
 
-## File Format Specification
+## File shape (version 1.1)
 
-### File Extension
-- **Extension**: `.nldp`
-- **MIME Type**: `application/json`
-- **Format**: JSON-based structured data
-
-### File Structure
-
-```json
+```jsonc
 {
+  "format": "NLDP",
+  "version": "1.1",              // "1.0" files still import
   "metadata": {
-    "packageId": "unique_identifier",
-    "formatVersion": "1.0.0",
-    "createdAt": "2024-08-30T14:30:00.000Z",
-    "author": {
-      "name": "Author Name",
-      "unit": "Organization",
-      "email": "author@example.com"
-    },
-    "package": {
-      "title": "Package Title",
-      "description": "Package Description",
-      "subject": "Letter Subject",
-      "documentType": "basic|endorsement",
-      "tags": ["tag1", "tag2"]
-    },
-    "checksums": {
-      "dataHash": "sha256_hash",
-      "crc32": "crc32_checksum"
-    }
+    "createdAt": "2026-08-08T12:00:00.000Z",
+    "formatVersion": "1.1",
+    "createdBy": "Marine Corps Directives Formatter",
+    "generator": { "appVersion": "0.1.0" },   // 1.1: build traceability
+    "author": { "name": "...", "unit": "...", "email": "..." },  // opt-in only
+    "package": { "title": "...", "description": "...", "tags": [] }
+  },
+  "integrity": {
+    "dataHash": "<sha-256 of the serialized data section>",
+    "crc32": "<crc32 of the same>",
+    "recordCount": 8
   },
   "data": {
-    "formData": { /* All form fields */ },
-    "vias": ["via entries"],
-    "references": ["reference entries"],
-    "enclosures": ["enclosure entries"],
-    "copyTos": ["copy-to entries"],
-    "paragraphs": [{ /* paragraph objects */ }]
-  }
+    "formData": { /* document fields; see NLDPFormData */ },
+    "paragraphs": [
+      {
+        "id": 1, "level": 1, "content": "...",
+        "designator": "1."       // 1.1: printed designator, from lib/citation.ts
+      }
+    ],
+    "references": [
+      {
+        "text": "MCO 5215.1K W/CH-3",
+        "order": 1,
+        "parsed": true,           // 1.1: best-effort structured citation
+        "cited": { "docType": "MCO", "number": "5215.1K", "edition": "CH-3" }
+      },
+      {
+        "text": "Verbal guidance, CO conf 12 Aug",
+        "order": 2,
+        "parsed": false,          // unparseable is a correct answer —
+        "cited": null             // the exporter NEVER guesses a citation
+      }
+    ],
+    "enclosures": [ { "text": "...", "order": 1 } ],
+    "vias":       [ { "text": "...", "order": 1 } ],
+    "copyTos":    [ { "text": "...", "order": 1 } ],
+    "pocs": [],                   // 1.1: explicit contacts; empty today
+    "directiveMetadata": {
+      "status": "draft"           // 1.1 lifecycle enum, see below
+    }
+  },
+  "release": { /* Release exports only — absent on a working export */ }
 }
 ```
 
-## Features
+## Lifecycle
 
-### Data Integrity
-- **SHA-256 Hashing**: Ensures data hasn't been corrupted
-- **CRC32 Checksums**: Quick integrity verification
-- **Format Validation**: Comprehensive structure validation
+`draft → review → final → signed → promulgated` (plus `cancelled`).
 
-### Version Control
-- **Format Versioning**: Supports backward compatibility
-- **Migration Support**: Handles format updates gracefully
-- **Compatibility Checking**: Warns about version mismatches
+`final` means **drafting is complete** — it does not mean a commander
+signed the document. The `signed` and `promulgated` states were added in
+1.1 precisely so a package cannot claim to be policy without saying who
+attested to that and on what evidence. Only `signed` or `promulgated`
+packages can be Released, and only Release packages are eligible for
+policy-as-data ingest.
 
-### Security
-- **Data Sanitization**: Cleans imported data to prevent issues
-- **Optional Personal Info**: Control over sensitive data inclusion
-- **Input Validation**: Prevents malformed data injection
+## The two exports
 
-### User Experience
-- **Drag & Drop Support**: Easy file import (future enhancement)
-- **Progress Indicators**: Loading states for import/export
-- **Error Handling**: Clear error messages and recovery options
-- **Metadata Management**: Rich package information
+| | Working export (`.nldp`) | Release export (`.release.nldp`) |
+|---|---|---|
+| Purpose | move a draft between machines/people | hand a signed directive to the policy-as-data pipeline |
+| `release` block | absent | present |
+| Requirements | none | gates G1–G7 below |
+| Menu action | "Save as Data Package (.nldp)" | "Release Package (.release.nldp)..." |
 
-## Usage
+### Release gates
 
-### Exporting Data
+A Release export is refused unless every condition holds, and every
+failing condition is listed at once, by name:
 
-1. Click "Export Data Package" button
-2. Fill in package information:
-   - **Title**: Descriptive name for the package
-   - **Description**: Optional detailed description
-   - **Author Info**: Your name and unit (optional)
-   - **Personal Info**: Choose whether to include contact details
-3. Click "Export" to download the .nldp file
+| # | Condition |
+|---|---|
+| G1 | lifecycle is `signed` or `promulgated` (chosen in the dialog — `final` fails) |
+| G2 | the signed PDF/DOCX was supplied and its SHA-256 computed in-browser |
+| G3 | `date_signed` is present and not in the future |
+| G4 | a signature block (`sig`) is present |
+| G5 | the paragraph tree is non-empty and every paragraph has a `designator` |
+| G6 | a distribution statement code is present |
+| G7 | the human accepted the affirmation text, shown in full |
 
-### Importing Data
+The affirmation text and its version are recorded verbatim in the
+`release` block (`lib/release.ts` owns both). `releasedBy` records a
+**role or billet, never a personal name**.
 
-1. Click "Import Data Package" button
-2. Select a .nldp file from your computer
-3. The system will:
-   - Validate the file format
-   - Check data integrity
-   - Load the data into your interface
-   - Display any warnings or errors
+The signed file itself is read, hashed with `crypto.subtle`, and
+discarded. Only the hash travels in the package; nothing is uploaded.
 
-### File Management
+**The release block is not tamper-proof, by design.** Anyone can
+hand-edit JSON. The real control sits on the receiving side, where a
+human verifies the encoding against the authoritative source and the
+artifact hash is checked independently. Release is evidence for that
+verification, not a substitute for it.
 
-**Recommended Practices:**
-- Use descriptive filenames: `LETTER_Training_Schedule_2024-08-30.nldp`
-- Include version info in descriptions for important documents
-- Backup important letters as NLDP files before major edits
-- Share NLDP files via secure channels only
+## Designators and citations
 
-## Integration with Existing Workflows
+- `paragraphs[].designator` is the printed designator from
+  `lib/citation.ts` — the standard naval-letter scheme (`1.`, `a.`,
+  `(1)`, `(a)`, …). It is emitted so the numbering ladder has exactly
+  one implementation. Do not add a second ladder.
+- `references[].cited` is best-effort structured parsing
+  (`lib/nldp-citations.ts`). `parsed: false` with `cited: null` is a
+  correct, expected answer for anything not confidently matched. Never
+  widen the parser to guess: a wrong citation becomes a false authority
+  edge downstream, which is worse than none.
 
-### Save/Load System
-- NLDP complements the existing localStorage save system
-- Provides portable backup option
-- Enables sharing between different computers/users
+## Determinism
 
-### Document Generation
-- Import NLDP → Edit → Generate DOCX workflow
-- Template sharing for standardized correspondence
-- Collaboration on complex multi-endorsement packages
+Export → import → export is byte-identical apart from
+`metadata.createdAt`. Nothing inside `data` carries a wall-clock stamp
+(`directiveMetadata.lastModified` is written only when a caller supplies
+one), because the receiving pipeline requires idempotent ingest.
 
-### Data Migration
-- Export from old systems via NLDP format
-- Bulk import of correspondence templates
-- Archive storage with full metadata
+## Importing
 
-## API Reference
+`importNLDPFile` (lib/nldp-utils.ts) accepts versions `1.0` and `1.1`.
+Integrity mismatches are reported as warnings, not failures — the hashes
+detect corruption, they are not a security control. The app's import
+path also still accepts the legacy ad-hoc export shape that predates the
+canonical module.
 
-### Core Functions
+## Samples
 
-```typescript
-// Create NLDP file from current data
-createNLDPFile(formData, vias, references, enclosures, copyTos, paragraphs, config): Promise<string>
+- `sample-directive.nldp` — working export, regenerated through the real
+  module (genuine hashes).
+- `examples/sample-directive.release.nldp` — Release export with a fake
+  but well-formed signed-artifact hash.
+- Regenerate both with
+  `npx vite-node --config vitest.config.ts scripts/generate-nldp-samples.mts`.
 
-// Import and validate NLDP file
-importNLDPFile(fileContent: string): NLDPImportResult
+## Retired: Policy-as-Data (USLM) export
 
-// Validate file structure
-validateNLDPFile(fileContent: string): NLDPValidationResult
-
-// Generate safe filename
-generateNLDPFilename(subject: string, documentType: string): string
-```
-
-### React Hook
-
-```typescript
-const {
-  exportToNLDP,
-  importFromNLDP,
-  triggerFileImport,
-  isExporting,
-  isImporting,
-  lastError,
-  lastSuccess,
-  clearMessages
-} = useNLDP();
-```
-
-### Component Integration
-
-```tsx
-<NLDPFileManager
-  formData={formData}
-  vias={vias}
-  references={references}
-  enclosures={enclosures}
-  copyTos={copyTos}
-  paragraphs={paragraphs}
-  onDataImported={(data) => { /* handle import */ }}
-/>
-```
-
-## Error Handling
-
-### Common Errors
-- **Invalid File Format**: File is not valid JSON or missing required fields
-- **Version Incompatibility**: File format is newer than supported version
-- **Data Corruption**: Checksum mismatch indicating corrupted data
-- **Missing Required Fields**: Essential data fields are empty or missing
-
-### Recovery Strategies
-- **Partial Import**: Import valid portions of corrupted files
-- **Data Sanitization**: Clean problematic data during import
-- **Fallback Values**: Provide defaults for missing required fields
-- **User Guidance**: Clear instructions for resolving issues
-
-## Security Considerations
-
-### Data Privacy
-- Personal information (email) is optional in exports
-- No automatic transmission of data to external services
-- Local file-based sharing only
-
-### Data Validation
-- All imported data is sanitized before use
-- Paragraph levels are clamped to valid ranges (1-8)
-- Array fields are validated for proper structure
-- Required fields are checked and defaulted if missing
-
-### File Integrity
-- SHA-256 hashing prevents silent corruption
-- CRC32 provides quick integrity checks
-- Format validation ensures structural correctness
-
-## Future Enhancements
-
-### Planned Features
-- **Drag & Drop Import**: Direct file drop onto interface
-- **Batch Operations**: Import/export multiple files
-- **Template Gallery**: Shared repository of common templates
-- **Version History**: Track changes to shared documents
-- **Digital Signatures**: Cryptographic verification of authorship
-
-### API Extensions
-- **Cloud Storage Integration**: Direct save/load from cloud services
-- **Real-time Collaboration**: Multiple users editing simultaneously
-- **Audit Trails**: Track who made what changes when
-- **Automated Backups**: Scheduled NLDP exports
-
-## Examples
-
-See `examples/sample-training-schedule.nldp` for a complete example of the NLDP format with realistic naval correspondence data.
-
-## Support
-
-For issues with NLDP functionality:
-1. Check file format validation errors
-2. Verify data integrity checksums
-3. Review browser console for detailed error messages
-4. Report persistent issues with sample files for reproduction
+`lib/policy-as-data.ts` is deprecated and its menu entry removed
+(docs/POLICY_AS_DATA_HANDOFF.md section 3). SemperScribe emits NLDP and
+nothing else; the policy-as-data repository derives its canonical record
+from NLDP 1.1 Release packages.

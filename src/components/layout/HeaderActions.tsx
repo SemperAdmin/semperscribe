@@ -105,8 +105,8 @@ interface HeaderActionsProps {
   onClearForm: () => void;
   savedLetters: SavedLetter[];
   onLoadTemplateUrl: (url: string) => void;
-  /** R4b: exports the policy question/answer data. Accepted for prop parity. */
-  onExportPolicyData?: () => void;
+  /** Opens the NLDP Release dialog (docs/POLICY_AS_DATA_HANDOFF.md §5). */
+  onReleaseNldp?: () => void;
   documentType: string;
   currentUnitCode?: string;
   currentUnitName?: string;
@@ -155,7 +155,7 @@ export function HeaderActions({
   onClearForm,
   savedLetters,
   onLoadTemplateUrl,
-  onExportPolicyData,
+  onReleaseNldp,
   documentType,
   currentUnitCode,
   currentUnitName,
@@ -537,10 +537,10 @@ export function HeaderActions({
                 <Save className="w-4 h-4 mr-2" />
                 Save as Data Package (.nldp)
               </DropdownMenuItem>
-              {onExportPolicyData && (
-                <DropdownMenuItem onClick={onExportPolicyData} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              {onReleaseNldp && (
+                <DropdownMenuItem onClick={onReleaseNldp} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
                   <Download className="w-4 h-4 mr-2" />
-                  Policy-as-Data (USLM)...
+                  Release Package (.release.nldp)...
                 </DropdownMenuItem>
               )}
 

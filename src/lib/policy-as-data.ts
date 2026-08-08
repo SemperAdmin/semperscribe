@@ -1,4 +1,12 @@
 /**
+ * @deprecated Retired per docs/POLICY_AS_DATA_HANDOFF.md section 3. This
+ * module reimplements canonical rules that live in the policy-as-data
+ * repository (identifier grammar, publishability gate, schema version,
+ * provenance stamp) and breaks all four. Do not fix it in place and do
+ * not re-wire it into the UI: SemperScribe emits NLDP and nothing else,
+ * and the receiving side derives its canonical record from NLDP 1.1
+ * Release packages. Kept compiling for one release; delete in the next.
+ *
  * Policy-as-Data (USLM) canonical export.
  *
  * Converts the SemperScribe authoring model (a FLAT paragraph list plus

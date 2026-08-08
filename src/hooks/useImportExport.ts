@@ -10,7 +10,7 @@ import { getBasePath } from '@/lib/path-utils';
 import { findLetterById } from '@/lib/storage-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
 import { debugUserAction, debugFormChange } from '@/lib/console-utils';
-import { createPolicyDataRecord, createPolicyDataBlob, generatePolicyDataFilename } from '@/lib/policy-as-data';
+import { createNLDPFile, generateNLDPFilename } from '@/lib/nldp-utils';
 
 interface ImportExportDeps {
   formData: FormData;
@@ -59,6 +59,17 @@ export function useImportExport(deps: ImportExportDeps) {
       const data = inputData.data ? inputData.data : inputData;
       let formDataToMerge = data.formData || data;
 
+      // Canonical NLDP files carry list items as {text, order} objects;
+      // the editor state uses plain strings. Accept both shapes.
+      const toStrings = (arr: unknown): string[] | null =>
+        Array.isArray(arr)
+          ? arr.map((item: any) =>
+              typeof item === 'string' ? item
+              : item && typeof item.text === 'string' ? item.text
+              : ''
+            )
+          : null;
+
       if (formDataToMerge.type && !formDataToMerge.documentType) {
         formDataToMerge.documentType = formDataToMerge.type.toLowerCase();
       }
@@ -89,11 +100,15 @@ export function useImportExport(deps: ImportExportDeps) {
       setFormData(prev => ({ ...prev, ...formDataToMerge }));
 
       if (data.paragraphs) setParagraphs(data.paragraphs);
-      if (data.vias) setVias(data.vias);
-      if (data.references) setReferences(data.references);
-      if (data.enclosures) setEnclosures(data.enclosures);
-      if (data.copyTos) setCopyTos(data.copyTos);
-      if (data.distList) setDistList(data.distList);
+      if (data.vias) setVias(toStrings(data.vias)!);
+      if (data.references) setReferences(toStrings(data.references)!);
+      if (data.enclosures) setEnclosures(toStrings(data.enclosures)!);
+      if (data.copyTos) setCopyTos(toStrings(data.copyTos)!);
+      // Canonical exports tuck distList inside formData; the ad-hoc
+      // legacy shape carried it at the data level. Accept both.
+      const distListIn = data.distList ?? formDataToMerge.distList;
+      if (distListIn) setDistList(toStrings(distListIn)!);
+      if ('distList' in formDataToMerge) delete formDataToMerge.distList;
       // ENC: bindings override the plain title reconcile above.
       if (data.enclosureBindings && onEnclosureBindings) onEnclosureBindings(data.enclosureBindings);
 
@@ -142,56 +157,38 @@ export function useImportExport(deps: ImportExportDeps) {
     }
   }, [handleImport]);
 
-  const handleExportNldp = useCallback(() => {
-    const exportData = {
-      metadata: {
-        packageId: `export_${Date.now()}`,
-        formatVersion: "1.0.0",
-        createdAt: new Date().toISOString(),
-        author: { name: formData.from || "Unknown" },
+  // Canonical NLDP export (lib/nldp-utils.ts). The previous ad-hoc
+  // shape (packageId / formatVersion "1.0.0") bypassed the spec module
+  // entirely; the module is the specification, so the app now emits it.
+  const handleExportNldp = useCallback(async () => {
+    const nldpFile = await createNLDPFile(
+      // distList is app-local UI state, not part of the NLDP contract;
+      // it rides inside formData-adjacent app exports only.
+      { ...formData, distList },
+      vias,
+      references,
+      enclosures,
+      copyTos,
+      paragraphs,
+      {
         package: {
-          title: formData.subj || "Untitled Package",
-          description: "Exported from Naval Letter Formatter",
-          subject: formData.subj,
-          documentType: formData.documentType,
+          title: formData.subj || 'Untitled Package',
+          description: 'Exported from Naval Letter Formatter',
         },
-      },
-      data: { formData, vias, references, enclosures, copyTos, distList, paragraphs },
-    };
+      }
+    );
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(nldpFile, null, 2)], { type: 'application/json' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Naval_Package_${formData.ssic || 'Draft'}.nldp`;
+    link.download = generateNLDPFilename(formData, {});
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
     debugUserAction('Export Data', { format: 'nldp' });
   }, [formData, vias, references, enclosures, copyTos, distList, paragraphs]);
-
-  // Policy-as-Data export: convert the current document to the canonical
-  // 0.4.0 record consumed by the policy-as-data pipeline (USLM library,
-  // provision-grade citations, LLM corpus). Mirrors handleExportNldp.
-  const handleExportPolicyData = useCallback(() => {
-    const record = createPolicyDataRecord(
-      formData,
-      paragraphs,
-      references,
-      enclosures
-    );
-    const blob = createPolicyDataBlob(record);
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = generatePolicyDataFilename(record);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    debugUserAction('Export Data', { format: 'policy-as-data' });
-  }, [formData, paragraphs, references, enclosures]);
 
   // P1.1 (DONDOCS_PARITY_PLAN): password-encrypted links by default,
   // legacy unprotected format behind an explicit opt-out.
@@ -269,7 +266,6 @@ export function useImportExport(deps: ImportExportDeps) {
     handleLoadDraft,
     handleLoadTemplateUrl,
     handleExportNldp,
-    handleExportPolicyData,
     handleShareLink,
     handleCopyAMHS,
     handleExportAMHS,
