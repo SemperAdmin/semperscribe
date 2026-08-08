@@ -31,7 +31,7 @@ import { DocumentImportModal } from '@/components/import/DocumentImportModal';
 import { ImportPayload } from '@/services/import/extractionTypes';
 import { ProofreadModal } from '@/components/ProofreadModal';
 import { BatchGenerateModal } from '@/components/BatchGenerateModal';
-import { ShareLinkDialog, UnlockShareDialog } from '@/components/ShareLinkDialog';
+import { ShareLinkDialog, UnlockShareDialog, ConfirmShareDialog } from '@/components/ShareLinkDialog';
 import { FindReplaceDialog } from '@/components/FindReplaceDialog';
 import { GuidanceDialog } from '@/components/GuidanceDialog';
 import { FindReplaceResult } from '@/lib/find-replace';
@@ -843,6 +843,7 @@ function NavalLetterGeneratorInner() {
   const {
     routingRequest, setRoutingRequest,
     hasEncryptedPending, unlockEncrypted, dismissEncrypted,
+    sharedPending, confirmShared, dismissShared,
   } = useShareLinkLoader({
     handleImport,
     toast,
@@ -1058,6 +1059,11 @@ function NavalLetterGeneratorInner() {
         open={hasEncryptedPending}
         onUnlock={unlockEncrypted}
         onDismiss={dismissEncrypted}
+      />
+      <ConfirmShareDialog
+        pending={sharedPending}
+        onConfirm={confirmShared}
+        onDismiss={dismissShared}
       />
       <RecoveryDialog
         copy={recovery}

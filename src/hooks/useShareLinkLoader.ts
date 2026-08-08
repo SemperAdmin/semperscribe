@@ -31,9 +31,14 @@ interface UseShareLinkLoaderArgs {
  * routing slip when the link is a request for signature.
  *
  * Two inbound formats (P1.1, DONDOCS_PARITY_PLAN):
- * - Legacy `?share=` query param: plain lz-string, imported directly.
+ * - Legacy `?share=` query param: plain lz-string, held until the user
+ *   confirms through the ConfirmShareDialog, then imported. The link is
+ *   attacker-constructable (no password, no integrity), so nothing from
+ *   it may load silently — a fabricated letter with a routing slip would
+ *   otherwise render an authentic-looking signature request unprompted.
  * - Encrypted `#es=` fragment: held until the user supplies the
- *   password through the UnlockShareDialog, then imported.
+ *   password through the UnlockShareDialog, then imported. Entering the
+ *   password IS the consent step for this format.
  */
 export function useShareLinkLoader({ handleImport, toast, onComments, onEdmsPrefill }: UseShareLinkLoaderArgs) {
   // S2: routing slip arriving on a request-for-signature link
@@ -41,6 +46,9 @@ export function useShareLinkLoader({ handleImport, toast, onComments, onEdmsPref
 
   // P1.1: encrypted payload waiting for a password
   const [encryptedPayload, setEncryptedPayload] = useState<string | null>(null);
+
+  // Decoded `?share=` state waiting for the user's go-ahead
+  const [pendingShared, setPendingShared] = useState<ShareableState | null>(null);
 
   const applyImportedState = useCallback((sharedState: ShareableState) => {
     handleImport(sharedState);
@@ -83,11 +91,25 @@ export function useShareLinkLoader({ handleImport, toast, onComments, onEdmsPref
 
     const sharedState = getStateFromUrl();
     if (sharedState) {
-      applyImportedState(sharedState);
-      clearShareParam();
+      // Held, not imported: the user confirms first (ConfirmShareDialog).
+      setPendingShared(sharedState);
     }
     // Mount-only by design: the share param is consumed exactly once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** User confirmed the plain share link: import it and consume the param. */
+  const confirmShared = useCallback(() => {
+    if (!pendingShared) return;
+    applyImportedState(pendingShared);
+    setPendingShared(null);
+    clearShareParam();
+  }, [pendingShared, applyImportedState]);
+
+  /** Discards a pending plain share link and opens the blank editor. */
+  const dismissShared = useCallback(() => {
+    setPendingShared(null);
+    clearShareParam();
   }, []);
 
   /**
@@ -132,5 +154,12 @@ export function useShareLinkLoader({ handleImport, toast, onComments, onEdmsPref
     hasEncryptedPending: encryptedPayload !== null,
     unlockEncrypted,
     dismissEncrypted,
+    /** Pending plain `?share=` link awaiting user confirmation. */
+    sharedPending: pendingShared === null ? null : {
+      subject: pendingShared.formData?.subj || undefined,
+      requestsSignature: Boolean(pendingShared.routing),
+    },
+    confirmShared,
+    dismissShared,
   };
 }

@@ -318,18 +318,27 @@ describe('gunnybot client: streaming', () => {
   });
 });
 
-describe('gunnybot keyring: session only', () => {
-  it('stores in sessionStorage and never in localStorage', () => {
-    const lsSpy = vi.spyOn(window.localStorage, 'setItem');
+describe('gunnybot keyring: memory only', () => {
+  it('never writes keys to sessionStorage or localStorage', () => {
+    const storageSpy = vi.spyOn(Storage.prototype, 'setItem');
     keyring.setKey('anthropic', 'k1');
     expect(keyring.getKey('anthropic')).toBe('k1');
     expect(keyring.hasKey('anthropic')).toBe(true);
-    expect(window.sessionStorage.getItem('gunnybot-key-anthropic')).toBe('k1');
+    expect(storageSpy).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem('gunnybot-key-anthropic')).toBeNull();
     expect(window.localStorage.getItem('gunnybot-key-anthropic')).toBeNull();
-    expect(lsSpy).not.toHaveBeenCalled();
     keyring.clearKey('anthropic');
     expect(keyring.getKey('anthropic')).toBeNull();
+    storageSpy.mockRestore();
+  });
+
+  it('purges keys left behind by the old sessionStorage mirror on load', async () => {
+    window.sessionStorage.setItem('gunnybot-key-anthropic', 'stale-key');
+    window.sessionStorage.setItem('unrelated', 'kept');
+    vi.resetModules();
+    await import('@/lib/gunnybot/keyring');
     expect(window.sessionStorage.getItem('gunnybot-key-anthropic')).toBeNull();
+    expect(window.sessionStorage.getItem('unrelated')).toBe('kept');
   });
 });
 

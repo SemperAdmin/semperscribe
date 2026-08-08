@@ -255,3 +255,55 @@ export function UnlockShareDialog({ open, onUnlock, onDismiss }: UnlockShareDial
     </Dialog>
   );
 }
+
+interface ConfirmShareDialogProps {
+  /** Preview of the pending link, or null when nothing is pending. */
+  pending: { subject?: string; requestsSignature: boolean } | null;
+  /** Imports the pending document into the editor. */
+  onConfirm: () => void;
+  /** Discards the pending link and opens the blank editor. */
+  onDismiss: () => void;
+}
+
+/**
+ * Consent gate for legacy unprotected `?share=` links. These links are
+ * constructable by anyone (no password, no integrity), so the document —
+ * and especially a signature-request routing slip — must never load
+ * without the user seeing where it came from and agreeing.
+ */
+export function ConfirmShareDialog({ pending, onConfirm, onDismiss }: ConfirmShareDialogProps) {
+  return (
+    <Dialog open={pending !== null} onOpenChange={(o) => { if (!o) onDismiss(); }}>
+      <DialogContent className="sm:max-w-[440px] bg-card border-border">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-foreground">
+            <LockOpen className="w-4 h-4" /> Load shared document?
+          </DialogTitle>
+          <DialogDescription>
+            This link carries a document written by whoever created the link.
+            Only load it if you were expecting it and trust the sender.
+          </DialogDescription>
+        </DialogHeader>
+        {pending?.subject && (
+          <p className="text-sm text-foreground">
+            <span className="font-semibold">Subj:</span> {pending.subject}
+          </p>
+        )}
+        {pending?.requestsSignature && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 flex gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground">
+              This link asks you to sign the document and send it back.
+              Anyone can construct such a request — verify the sender before
+              signing anything.
+            </p>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onDismiss}>Discard Link</Button>
+          <Button onClick={onConfirm}>Load Document</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

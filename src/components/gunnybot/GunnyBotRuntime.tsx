@@ -19,13 +19,14 @@ import { registerEgressAckHandler } from '@/lib/gunnybot/egress-gate';
  * Always-mounted GunnyBot session runtime. Two jobs, both of which have
  * to survive a page reload and cannot live inside the Settings dialog:
  *
- * 1. Key presence. The keyring mirrors to sessionStorage, so a key
- *    survives a same-tab reload. The store mirror did not, so after F5
- *    keyPresent read false while the key was still usable, and every
+ * 1. Key presence. The keyring is memory-only (keys deliberately do not
+ *    survive a reload), but the store mirror `keyPresent` can still
+ *    drift from it — e.g. on provider change, or persisted store state
+ *    claiming a key that is no longer held. When they drift, every
  *    control gated on it (Draft, Rewrite, Review, Test connection)
- *    rendered permanently disabled behind a false "add your API key"
- *    hint. This effect re-syncs the mirror on mount and on provider
- *    change.
+ *    renders permanently disabled behind a false "add your API key"
+ *    hint — or worse, enabled without a key. This effect re-syncs the
+ *    mirror on mount and on provider change.
  *
  * 2. The egress consent gate. Registers the acknowledgment handler that
  *    lib/gunnybot/egress-gate calls when a pre-send scan flags a

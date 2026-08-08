@@ -81,7 +81,7 @@ export function GunnyBotSettings() {
     saveKey(provider, trimmed);
     setKeyPresent(true);
     setKeyInput('');
-    toast({ title: 'Key saved for this session', description: 'Cleared when you close the tab.' });
+    toast({ title: 'Key saved for this session', description: 'Kept in memory only — re-enter it after a reload.' });
   };
 
   const handleClearKey = () => {
@@ -139,7 +139,7 @@ export function GunnyBotSettings() {
   return (
     <div className="mt-4 space-y-6">
       <p className="text-sm text-muted-foreground">
-        GunnyBot uses your own provider API key. The key stays in this browser tab only and clears when you close it.
+        GunnyBot uses your own provider API key. The key is held in memory only — it never touches browser storage and is forgotten when you reload or close the tab.
       </p>
 
       <div className="space-y-4">
