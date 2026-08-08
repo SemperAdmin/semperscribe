@@ -480,7 +480,10 @@ export function validateAcronymFirstUse(paragraphs: ParagraphData[]): Map<number
   const acronymRegex = /\b([A-Z]{3,})\b/g;
 
   // Detect definitions: "Words In Mixed Case (ACRONYM)" pattern
-  const definitionRegex = /[A-Z][a-z]+(?:[\s\-\/]+[A-Za-z]+)*\s*\(([A-Z]{3,})\)/g;
+  // Trailing separator class matches the in-word separator class so a run of
+  // whitespace/hyphens has one parse — avoids polynomial backtracking
+  // (CodeQL js/polynomial-redos) on imported document text.
+  const definitionRegex = /[A-Z][a-z]+(?:[\s\-\/]+[A-Za-z]+)*[\s\-\/]*\(([A-Z]{3,})\)/g;
 
   // Track where each acronym is first defined and all uses
   const definedAt: Map<string, number> = new Map();

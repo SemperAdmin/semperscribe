@@ -76,6 +76,8 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
   const [signedFile, setSignedFile] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const savedHandle = useRef<SavedHandle | null>(null);
+  // Mirrors savedHandle for rendering — refs must not be read during render.
+  const [hasSavedHandle, setHasSavedHandle] = useState(false);
 
   const signedName = fileName.replace(/\.pdf$/i, '') + '_SIGNED.pdf';
 
@@ -84,6 +86,7 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
     try {
       const blob = await generateSignReadyPdf();
       savedHandle.current = await saveBlob(blob, fileName);
+      setHasSavedHandle(savedHandle.current !== null);
       setStep(2);
     } catch (e) {
       if ((e as DOMException)?.name !== 'AbortError') {
@@ -146,10 +149,17 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
         // fall through to mailto
       }
     }
-    if (routing.returnEmail) {
+    // routing arrives via share links, so treat returnEmail as untrusted:
+    // require a plain addr-spec and percent-encode it so it cannot smuggle
+    // extra mailto header fields (cc=, bcc=, body=) into the URL.
+    const returnEmail =
+      routing.returnEmail && /^[^\s@?&=,;<>()[\]\\"]+@[^\s@?&=,;<>()[\]\\"]+\.[A-Za-z]{2,}$/.test(routing.returnEmail)
+        ? routing.returnEmail
+        : undefined;
+    if (returnEmail) {
       const subject = encodeURIComponent(`SIGNED: ${signedName}`);
       const body = encodeURIComponent('Signed document attached. (Attach the signed PDF you saved before sending.)');
-      window.location.href = `mailto:${routing.returnEmail}?subject=${subject}&body=${body}`;
+      window.location.href = `mailto:${encodeURIComponent(returnEmail)}?subject=${subject}&body=${body}`;
     } else {
       // S2c: the request arrives by e-mail (ruling) — reply to it.
       setDone('Reply to the request e-mail with the signed file attached.');
@@ -193,7 +203,7 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
             <span className="font-semibold">3. Check the signature.</span>
             {step === 3 && (
               <div className="mt-2 space-y-2">
-                {savedHandle.current && (
+                {hasSavedHandle && (
                   <Button size="sm" disabled={busy} onClick={handleCheckSaved} data-testid="ceremony-check">
                     {busy ? 'Checking…' : 'Check the signed file'}
                   </Button>
@@ -205,7 +215,7 @@ export function SignatureCeremonyPanel({ routing, fileName, generateSignReadyPdf
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => { e.preventDefault(); void handleFiles(e.dataTransfer.files); }}
                 >
-                  {savedHandle.current
+                  {hasSavedHandle
                     ? 'Saved it somewhere else? Drag the signed PDF here, or click to browse.'
                     : 'Drag the signed PDF here, or click to browse.'}
                   <input ref={fileInput} type="file" accept="application/pdf" className="hidden"

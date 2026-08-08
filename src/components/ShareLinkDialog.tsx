@@ -48,14 +48,13 @@ interface ShareLinkDialogProps {
 export function ShareLinkDialog({ open, onOpenChange, onCreate }: ShareLinkDialogProps) {
   // EDMS mode: encrypted links only. Read after mount, not during render.
   const [edmsLocked, setEdmsLocked] = useState(false);
-  useEffect(() => { if (isEdmsMode()) { setEdmsLocked(true); setNoPassword(false); } }, []);
-
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [noPassword, setNoPassword] = useState(false);
   const [expiresDays, setExpiresDays] = useState<string>('none');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => { if (isEdmsMode()) { setEdmsLocked(true); setNoPassword(false); } }, []);
 
   const reset = () => {
     setPassword('');

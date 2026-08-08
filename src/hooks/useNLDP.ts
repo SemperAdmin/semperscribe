@@ -132,7 +132,10 @@ export function useNLDP(): UseNLDPReturn {
         try {
           const url = URL.createObjectURL(blob);
           const newWindow = window.open(url, '_blank');
-          
+          // Sever the reverse handle; assigning opener (rather than passing
+          // the 'noopener' feature) keeps the popup-blocked null check valid.
+          if (newWindow) newWindow.opener = null;
+
           if (newWindow) {
             // Clean up after delay
             setTimeout(() => URL.revokeObjectURL(url), 1000);

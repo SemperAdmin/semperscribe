@@ -55,7 +55,10 @@ export function validateReferences(
   // every parenthesized letter group following a ref keyword, including
   // list continuations like "and (c)".
   const cited: string[] = [];
-  const refClause = /\brefs?(?:erences?)?\s*((?:\([a-z]+\)(?:\s*(?:,|and|through|thru)?\s*)?)+)/gi;
+  // Separators are required tokens inside the starred group (no bare `\s*`
+  // alternative), so whitespace has a single parse — avoids polynomial
+  // backtracking (CodeQL js/polynomial-redos) on imported document text.
+  const refClause = /\brefs?(?:erences?)?\s*((?:\([a-z]+\)(?:\s*(?:,|and|through|thru))*\s*)+)/gi;
   let m: RegExpExecArray | null;
   while ((m = refClause.exec(allText)) !== null) {
     const letters = m[1].matchAll(/\(([a-z]+)\)/g);
