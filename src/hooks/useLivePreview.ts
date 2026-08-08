@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { FormData, ParagraphData, SignaturePosition } from '@/types';
-import { DOCUMENT_TYPES } from '@/lib/schemas';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { getClassification, bannerText } from '@/lib/classification';
 import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-attachments';
@@ -58,13 +57,8 @@ export function useLivePreview(data: DocumentDataSlices, enclosureArgs: PreviewE
   const updatePreview = useCallback(async () => {
     setIsGeneratingPreview(true);
     try {
-      const features = DOCUMENT_TYPES[formData.documentType]?.features;
-      const isStaffingPaper = features?.category === 'staffing-papers';
-      if (features?.pdfPipeline === 'standard' && !isStaffingPaper && !formData.subj && !formData.from) {
-        setIsGeneratingPreview(false);
-        return;
-      }
-
+      // Eager preview: render on any change, no subject-or-from gate
+      // (Stephen 2026-08: the preview should appear as soon as any field is set).
       let blob = await applySignatureFields(
         await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
       );

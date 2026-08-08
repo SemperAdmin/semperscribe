@@ -122,6 +122,18 @@ export function useImportExport(deps: ImportExportDeps) {
       const res = await fetch(fullUrl);
       if (!res.ok) throw new Error(`Failed to load template: ${res.statusText}`);
       const data = await res.json();
+      // Header preservation: a template with no letterhead of its own ships
+      // empty line fields. Drop the empty ones so the merge keeps the unit the
+      // user already selected instead of blanking it. A template that carries
+      // its own letterhead keeps its non-empty values and applies them.
+      const inner = data?.data ?? data;
+      const fd = inner?.formData ?? inner;
+      if (fd && typeof fd === 'object') {
+        for (const k of ['line1', 'line1b', 'line2', 'line3', 'headingLines']) {
+          const v = fd[k];
+          if (v == null || v === '' || (Array.isArray(v) && v.length === 0)) delete fd[k];
+        }
+      }
       handleImport(data);
       debugUserAction('Load Template', { url: fullUrl });
     } catch (error) {
