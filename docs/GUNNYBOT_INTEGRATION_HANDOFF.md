@@ -1,5 +1,7 @@
 # GunnyBot Integration Handoff
 
+> **NOTE FOR IMPLEMENTERS, 2026-08-10.** SemperScribe removed the Anthropic adapter on a policy ruling specific to its DoD adoption path, not on any technical defect. The Anthropic code in this document still works and is still a valid reference shape for a non-OpenAI protocol. Keep it or drop it based on your own provider policy. SemperScribe's shipped set is Google Gemini and GenAI.mil. Also note that api.genai.mil answers the anonymous CORS preflight with HTTP 401, so it is unreachable from any browser client until the gateway is reconfigured.
+
 Audience: an implementing LLM/coding agent adding GunnyBot to another web app.
 Source of truth: this document. Every file below is verbatim from the working SemperScribe build (typechecked strict, 19 vitest cases green).
 Goal: drop a bring-your-own-key, session-only, streaming, multi-provider LLM assistant into a target app with minimal coupling.

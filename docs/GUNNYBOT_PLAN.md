@@ -1,5 +1,7 @@
 # GunnyBot Implementation Plan
 
+> **SUPERSEDED IN PART, 2026-08-10.** Ruling 2 below ("multi-provider cloud. Anthropic, OpenAI, Google, Azure OpenAI") no longer holds. Anthropic was removed from the code on a policy ruling: a commercial US vendor is not an acceptable egress destination on the DoD adoption path. OpenAI and Azure were never implemented. The shipped provider set is Google Gemini and GenAI.mil. Everything else in this plan stands. This document is kept as the original decision record and is not rewritten.
+
 Status: PLAN ONLY. No source changes authorized by this document. Execution waits on your gate approvals per the SemperScribe workflow rules.
 
 Date drafted: 2026-07-22

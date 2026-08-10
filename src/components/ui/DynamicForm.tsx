@@ -224,7 +224,7 @@ export function DynamicForm({ documentType, onSubmit, defaultValues, children }:
               ) : field.type === 'textarea' ? (
                 <Textarea placeholder={field.placeholder} rows={field.rows} {...formField} value={formField.value ?? ''} />
               ) : field.type === 'autosuggest' ? (
-                <AutoSuggestInput placeholder={field.placeholder} {...formField} />
+                <AutoSuggestInput placeholder={field.placeholder} preserveCase={field.preserveCase} {...formField} />
               ) : field.type === 'number' ? (
                  <Input type="number" placeholder={field.placeholder} {...formField} value={formField.value ?? ''} />
               ) : field.type === 'select' ? (

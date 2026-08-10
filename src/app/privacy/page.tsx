@@ -70,7 +70,7 @@ export default function PrivacyAndSecurityNoticePage() {
         <section>
           <h2 className="text-lg font-semibold mb-2">5A. The GunnyBot Assistant</h2>
           <p>
-            SemperScribe includes an optional AI assistant, GunnyBot, which stays off until the user supplies a personal LLM provider API key. When the user enables it and uses a GunnyBot feature (a format or policy question, a proofreading review, a paragraph rewrite, or a drafted paragraph), the text the user submits to it leaves the browser and goes directly to the user's chosen provider, Anthropic, Google, or GenAI.mil, under the user's own key. The provider processes that text under the provider's own terms and privacy policy, outside SemperScribe's control.
+            SemperScribe includes an optional AI assistant, GunnyBot, which stays off until the user supplies a personal LLM provider API key. When the user enables it and uses a GunnyBot feature (a format or policy question, a proofreading review, a paragraph rewrite, or a drafted paragraph), the text the user submits to it leaves the browser and goes directly to the user's chosen provider, Google or GenAI.mil, under the user's own key. The provider processes that text under the provider's own terms and privacy policy, outside SemperScribe's control.
           </p>
           <p className="mt-2">
             The API key is held in browser session memory only. It clears when the tab closes, is never written to disk, and is never sent to any SemperScribe-controlled host. GunnyBot output is advisory only. The user reviews and accepts any change, and nothing is written to the document automatically.

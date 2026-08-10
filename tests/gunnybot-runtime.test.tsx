@@ -20,7 +20,7 @@ import { hasEgressAckHandler } from '@/lib/gunnybot/egress-gate';
 beforeEach(() => {
   keyring.clearAllKeys();
   window.sessionStorage.clear();
-  useGunnyStore.setState({ provider: 'anthropic', keyPresent: false });
+  useGunnyStore.setState({ provider: 'gemini', keyPresent: false });
 });
 
 afterEach(() => {
@@ -31,7 +31,7 @@ afterEach(() => {
 
 describe('GunnyBotRuntime: key presence syncs with the keyring', () => {
   it('syncs keyPresent from the in-memory keyring on mount', async () => {
-    keyring.setKey('anthropic', 'sk-ant-TESTKEY0123456789');
+    keyring.setKey('gemini', 'AIzaTESTKEY0123456789ABCDEFGHIJ');
     expect(useGunnyStore.getState().keyPresent).toBe(false);
 
     render(<GunnyBotRuntime />);
@@ -54,11 +54,14 @@ describe('GunnyBotRuntime: key presence syncs with the keyring', () => {
   });
 
   it('re-syncs when the provider changes to one with no key', async () => {
-    keyring.setKey('anthropic', 'sk-ant-TESTKEY0123456789');
+    keyring.setKey('gemini', 'AIzaTESTKEY0123456789ABCDEFGHIJ');
     render(<GunnyBotRuntime />);
     await waitFor(() => expect(useGunnyStore.getState().keyPresent).toBe(true));
 
-    useGunnyStore.setState({ provider: 'gemini' });
+    // Switch to a provider with no key in storage. Gemini holds the only
+    // key here, so GenAI.mil is the keyless target now that Anthropic is
+    // gone.
+    useGunnyStore.setState({ provider: 'genaimil' });
     await waitFor(() => expect(useGunnyStore.getState().keyPresent).toBe(false));
   });
 });

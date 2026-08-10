@@ -21,9 +21,10 @@ Providers are enumerated in `src/lib/gunnybot/providers.ts`.
 
 | Provider | Endpoint | Operator |
 |----------|----------|----------|
-| Anthropic | `https://api.anthropic.com` | Commercial |
 | Google Gemini | `https://generativelanguage.googleapis.com` | Commercial |
 | GenAI.mil | `https://api.genai.mil` | DoD |
+
+Anthropic (`https://api.anthropic.com`) was a listed provider through 2026-08-09 and was removed from the code on 2026-08-10 on a policy ruling: a commercial US vendor is not an acceptable egress destination on the DoD adoption path. No `api.anthropic.com` request is reachable from any build after that date.
 
 No other runtime transmission exists. Telemetry, analytics, and third-party CDN fetches were removed in Phase 1 (commits 01237ec, 354c2a4) and have not returned.
 
@@ -111,7 +112,7 @@ No cookies are set by SemperScribe. No third-party cookies are loaded. No finger
 
 The application transfers no user data across a network boundary except through GunnyBot, and only on explicit user action with a user-supplied key.
 
-Where that data comes to rest is a property of the provider the user selected, not of this application. Anthropic and Google operate globally distributed infrastructure. Neither this application nor its maintainer controls or attests to the residency, retention, or training use of text a user sends to a commercial provider. Users with a data-residency obligation select GenAI.mil, or do not use GunnyBot.
+Where that data comes to rest is a property of the provider the user selected, not of this application. Google operates globally distributed infrastructure. Neither this application nor its maintainer controls or attests to the residency, retention, or training use of text a user sends to a commercial provider. Users with a data-residency obligation select GenAI.mil, or do not use GunnyBot.
 
 Build-time external touches (npm registry, Google Fonts API for the build-time download, GitHub Actions infrastructure) are developer-side and involve no user data.
 

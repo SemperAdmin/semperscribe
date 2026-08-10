@@ -16,7 +16,7 @@ SemperScribe is a client-side single-page application that helps users draft, fo
 
 Two facts postdate version 1.0 of this document and change the assessment.
 
-**GunnyBot.** An optional AI assistant, off unless the user supplies an API key. When invoked it transmits selected correspondence text to a user-chosen provider: Anthropic, Google Gemini, or GenAI.mil. This is the system's only runtime egress path and its only interconnection. Implementation in `src/lib/gunnybot/`, single `fetch` call site in `client.ts`.
+**GunnyBot.** An optional AI assistant, off unless the user supplies an API key. When invoked it transmits selected correspondence text to a user-chosen provider: Google Gemini or GenAI.mil. Anthropic was removed 2026-08-10 on a policy ruling and is no longer reachable. This is the system's only runtime egress path and its only interconnection. Implementation in `src/lib/gunnybot/`, single `fetch` call site in `client.ts`.
 
 **EDMS handoff mode.** The USMC EDMS Power App, hosted on a DoD IL5 tenant, launches SemperScribe with a scalar-only prefill in a URL fragment. The handoff is inbound and one-way. The drafted document returns to EDMS as a file the user uploads by hand. SemperScribe holds no credential for EDMS, makes no call to it, and gains no access to it. EDMS remains outside the authorization boundary, per Section 8.
 
@@ -246,7 +246,6 @@ Text representation of the system boundary.
             |                                         v
             |               +-----------------------------------------+
             |               | User-selected AI provider (HTTPS)       |
-            |               |  api.anthropic.com                      |
             |               |  generativelanguage.googleapis.com      |
             |               |  api.genai.mil                          |
             |               | OUTSIDE the boundary. Under EDMS mode,  |

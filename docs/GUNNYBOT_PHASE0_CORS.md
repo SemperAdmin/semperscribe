@@ -1,5 +1,7 @@
 # GunnyBot Phase 0: Browser-Direct CORS Verdict
 
+> **SUPERSEDED IN PART, 2026-08-10.** The Anthropic GO verdict below is no longer actionable. The adapter was removed on a policy ruling, not on a technical finding: the CORS analysis here was correct and Anthropic did answer browser-direct calls. Separately, the GenAI.mil "UNVERIFIED" row was resolved on 2026-08-06 and is a NO for any browser client, because the gateway answers the anonymous CORS preflight with HTTP 401. See docs/GENAI_MIL_DIAGNOSIS.md. This document is kept as the original Phase 0 gate artifact and is not rewritten.
+
 Status: PHASE 0 GATE ARTIFACT. Research complete. No source changed.
 Date: 2026-07-22
 Method: current official docs and provider community reports, July 2026.

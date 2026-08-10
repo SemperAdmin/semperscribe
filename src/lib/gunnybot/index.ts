@@ -12,7 +12,7 @@ export type {
   ProviderAdapter,
 } from './types';
 
-export { PROVIDER_REGISTRY, getAdapter, anthropicAdapter, geminiAdapter, genaimilAdapter } from './providers';
+export { PROVIDER_REGISTRY, getAdapter, geminiAdapter, genaimilAdapter } from './providers';
 export { setKey, getKey, hasKey, clearKey, clearAllKeys } from './keyring';
 export { screenOutbound, clearedForEgress } from './redaction';
 export type { RedactionVerdict } from './redaction';

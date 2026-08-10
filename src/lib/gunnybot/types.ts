@@ -1,7 +1,11 @@
 // GunnyBot shared types. Phase 0 skeleton, no runtime behavior.
 // Wiring lands in Phase 1. Nothing in the running app imports this yet.
 
-export type GunnyProviderId = 'anthropic' | 'gemini' | 'genaimil' | 'openai' | 'azure';
+// Anthropic was removed 2026-08-10 on a policy ruling: a commercial US
+// vendor is not an acceptable egress destination on the DoD adoption
+// path. The adapter worked and was browser-direct. Do not re-add it
+// without a new ruling.
+export type GunnyProviderId = 'gemini' | 'genaimil' | 'openai' | 'azure';
 
 export type GunnyTask = 'proofread' | 'draft' | 'rewrite' | 'qa';
 

@@ -34,6 +34,10 @@ export interface FieldDefinition {
   className?: string; // Layout hints (e.g., 'col-span-1', 'md:col-span-2')
   rows?: number; // For textareas
   required?: boolean;
+  // Autosuggest only. Keeps dictionary suggestions in the source ALL
+  // CAPS. Required on any field the schema validates as all-caps, or
+  // selecting a suggestion writes a value that fails validation.
+  preserveCase?: boolean;
   
   // Dynamic behavior
   condition?: (formData: any) => boolean; 
@@ -282,6 +286,7 @@ export const BasicLetterDefinition: DocumentTypeDefinition = {
           name: 'subj',
           label: 'Subject',
           type: 'autosuggest',
+          preserveCase: true,
           placeholder: 'SUBJECT LINE (ALL CAPS)',
           description: 'Brief topic in ALL CAPS — do not use abbreviations unless widely recognized',
           required: true,

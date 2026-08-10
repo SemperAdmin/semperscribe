@@ -235,8 +235,8 @@ function safeError(err: unknown, key: string): string {
 }
 
 // Turns a non-2xx response into a short reason plus the provider's own
-// message, with the key redacted. Google, OpenAI, and Anthropic error
-// bodies all nest a message under `error`.
+// message, with the key redacted. Google and OpenAI-compatible error
+// bodies both nest a message under `error`.
 function summarizeHttpError(status: number, body: string, key: string): string {
   const redacted = redact(body, key);
   let providerMessage = '';

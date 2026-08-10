@@ -42,7 +42,10 @@ describe('EDMS egress restriction', () => {
     vi.unstubAllGlobals();
   });
 
-  it.each<GunnyProviderId>(['anthropic', 'gemini'])(
+  // Gemini is the only commercial provider left in the registry after the
+  // 2026-08-10 Anthropic removal. The list form stays so a re-added
+  // provider inherits the assertion instead of shipping untested.
+  it.each<GunnyProviderId>(['gemini'])(
     'blocks %s before any network call in EDMS mode',
     async provider => {
       setEdmsContext({ requestId: '482', ruc: '12345', ssic: '1650', docType: 'basic-letter' });
@@ -74,7 +77,7 @@ describe('EDMS egress restriction', () => {
   it('leaves commercial providers reachable outside EDMS mode', async () => {
     fetchSpy.mockResolvedValue(new Response('', { status: 500 }));
     const h = collect();
-    await streamChat(req('anthropic'), h);
+    await streamChat(req('gemini'), h);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -96,7 +99,7 @@ describe('EDMS egress restriction', () => {
     resetEdmsCacheForTests();
     fetchSpy.mockResolvedValue(new Response('', { status: 500 }));
     const h = collect();
-    await streamChat(req('anthropic'), h);
+    await streamChat(req('gemini'), h);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });
