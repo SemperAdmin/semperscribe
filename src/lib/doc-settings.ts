@@ -1,4 +1,3 @@
-﻿import { Paragraph, TextRun, AlignmentType, TabStopType } from "docx";
 // Constants for SECNAV M-5216.5 compliance
 export const DOC_SETTINGS = {
   font: "Times New Roman",

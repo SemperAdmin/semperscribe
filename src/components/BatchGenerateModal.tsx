@@ -33,7 +33,7 @@ import {
   getMergeableFieldsForDocType,
   detectMergeFields,
 } from '@/lib/merge-utils';
-import { useBatchGenerate, BatchStatus } from '@/hooks/useBatchGenerate';
+import { useBatchGenerate } from '@/hooks/useBatchGenerate';
 import { CsvParseResult } from '@/lib/merge-utils';
 
 interface BatchGenerateModalProps {

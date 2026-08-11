@@ -1,4 +1,3 @@
-import React from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { ITypePDF } from '@/components/pdf/ITypePDF';
 import { FormData } from '@/types';

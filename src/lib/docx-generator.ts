@@ -43,7 +43,6 @@ import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirect
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from "./font-policy";
 import { getClassification, bannerText, needsCuiBlock, cuiBlockLines, portionPrefix, paragraphLevel } from "./classification";
 import { parseAndFormatDate, formatBusinessDate } from "./date-utils";
-import { DISTRIBUTION_STATEMENTS } from "@/lib/constants";
 import { DOC_SETTINGS, TAB_STOPS, INDENTS } from "./doc-settings";
 
 // Constants for layout (in twips)
@@ -1928,10 +1927,7 @@ export async function generateDocxBlob(
   }
 
   // --- Staffing Paper Footer ---
-  let staffingFooter: Footer | undefined;
   let staffingFooterLines: Paragraph[] | undefined;
-  // Keep variable to avoid breaking children array until updated
-  const staffingFooterParagraphs: Paragraph[] = []; 
 
   if (isStaffingPaper) {
       const footerLines: Paragraph[] = [];
@@ -2030,9 +2026,6 @@ export async function generateDocxBlob(
       }
       
       staffingFooterLines = footerLines;
-      staffingFooter = new Footer({
-          children: footerLines
-      });
   }
 
   // --- Header for First Page (Seal) ---

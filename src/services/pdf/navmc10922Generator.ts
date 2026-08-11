@@ -34,7 +34,6 @@ const LABEL_SIZE = 5.4;
 const TITLE_SIZE = 11;
 const VALUE_SIZE = 8;
 const CAPTION_SIZE = 4.6;
-const GRID = rgb(0.55, 0.55, 0.55);
 const INK = rgb(0, 0, 0);
 
 type EdgeSpec = [visible: boolean, thicknessMm: number];

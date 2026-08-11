@@ -7,7 +7,6 @@ import { DynamicForm } from '@/components/ui/DynamicForm';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function DynamicFormsDemo() {
   const [selectedType, setSelectedType] = useState<string>('basic');

@@ -18,7 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Search, User, Paintbrush, FileText, Database, Trash2, ShieldAlert, AlertTriangle, Scale, MessageSquare, ExternalLink, Bot } from 'lucide-react';
-import { UserProfile, resolveUnit } from '@/hooks/useUserProfile';
+import { UserProfile } from '@/hooks/useUserProfile';
 import { PlatformSettings } from '@/components/PlatformSettings';
 import { GunnyBotSettings } from '@/components/gunnybot/GunnyBotSettings';
 import { useUnits } from '@/hooks/useReferenceData';

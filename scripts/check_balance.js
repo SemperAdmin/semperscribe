@@ -69,8 +69,6 @@ if (!result.ok) {
       const start = Math.max(0, d.index - 120);
       const end = Math.min(content.length, d.index + 120);
       const ctx = content.slice(start, end);
-      const beforeLines = content.slice(0, d.index).split('\n');
-      const lineNum = beforeLines.length;
       console.log(`\nContext for unclosed '${d.char}' near line ${d.line}, col ${d.col} (approx global index ${d.index}):\n`);
       console.log(ctx);
     });

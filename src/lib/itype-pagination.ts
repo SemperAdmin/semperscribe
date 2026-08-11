@@ -4,20 +4,6 @@ export interface PageSection {
   data?: any;
 }
 
-const SECTION_HEIGHTS = {
-  header: 80,
-  title: 100,
-  titleBlock: 120,
-  timeCompliance: 40,
-  seal: 180,
-  metadata: 120,
-  nomenclature: 60,
-  headerTable: 100,
-  table: 40,
-  signature: 120,
-  footerNote: 30,
-};
-
 export function calculatePageBreaks(
   sections: PageSection[],
   maxHeightPerPage: number = 900

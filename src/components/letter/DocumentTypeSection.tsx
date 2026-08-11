@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
-import { FileText, FileSignature, ClipboardList, ScrollText, AlertCircle, Building2, Type, FileCheck, MessageSquare, Users, Notebook, Handshake, Lightbulb, Mic, BookOpen, Flag, Plane, Briefcase, Landmark } from 'lucide-react';
+import { FileText, FileSignature, ClipboardList, ScrollText, AlertCircle, Building2, Type, FileCheck, MessageSquare, Users, Notebook, Handshake, Lightbulb, Flag, Briefcase, Landmark } from 'lucide-react';
 
 interface DocumentTypeSectionProps {
   formData: FormData;

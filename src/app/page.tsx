@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
-import { ParagraphData, SavedLetter, ValidationState, FormData, AdminSubsections, ReportData } from '@/types';
+import { ParagraphData, SavedLetter, ValidationState, FormData, ReportData } from '@/types';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
 import { getLoadedUnits, loadUnits } from '@/lib/reference-data';
@@ -9,7 +9,6 @@ import { resolveUnit } from '@/hooks/useUserProfile';
 import { isEdmsMode, getEdmsContext, type EdmsContext } from '@/lib/edms-mode';
 import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename } from '@/lib/naval-format-utils';
-import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
 import { loadSavedLetters, clearSavedLetters } from '@/lib/storage-utils';
 import {
   libLoadAll, libPut, libDelete, libClear, migrateLegacyDrafts,
@@ -114,7 +113,9 @@ function NavalLetterGeneratorInner() {
     debugFormChange('Dynamic Form Update', data);
   }, []);
 
-  const [validation, setValidation] = useState<ValidationState>({
+  // Only the setter is consumed (child sections read their own state);
+  // useImportExport writes through setValidation on import.
+  const [, setValidation] = useState<ValidationState>({
     ssic: { isValid: false, message: '' },
     subj: { isValid: false, message: '' },
     from: { isValid: false, message: '' },
@@ -458,40 +459,6 @@ function NavalLetterGeneratorInner() {
       setITypeFormData(formData);
     }
   }, [formData, setITypeFormData]);
-
-  // Validation Handlers
-  const handleValidateSSIC = (value: string) => {
-    setValidation(prev => ({ ...prev, ssic: validateSSIC(value) }));
-  };
-
-  const handleValidateSubject = (value: string) => {
-    setValidation(prev => ({ ...prev, subj: validateSubject(value) }));
-  };
-
-  const handleValidateFromTo = (value: string, field: 'from' | 'to') => {
-    setValidation(prev => ({ ...prev, [field]: validateFromTo(value) }));
-  };
-
-  const handleUpdateAdminSubsection = (key: keyof AdminSubsections, field: 'show' | 'content' | 'order', value: any) => {
-    setFormData(prev => {
-        const currentSubsections = prev.adminSubsections || {
-            recordsManagement: { show: false, content: '', order: 0 },
-            privacyAct: { show: false, content: '', order: 0 },
-            reportsRequired: { show: false, content: 'None.', order: 0 }
-        };
-
-        return {
-            ...prev,
-            adminSubsections: {
-                ...currentSubsections,
-                [key]: {
-                    ...currentSubsections[key],
-                    [field]: value
-                }
-            }
-        };
-    });
-  };
 
   const handleDocumentTypeChange = (newType: string) => {
     const newFeatures = DOCUMENT_TYPES[newType]?.features;
@@ -839,7 +806,7 @@ function NavalLetterGeneratorInner() {
   // EDMS mode drives the Save to EDMS menu item. Read after mount, never
   // during render: sessionStorage does not exist in the static-export
   // prerender, so a render-body read hydrates to a different tree.
-  const [edmsCtx, setEdmsCtx] = useState<EdmsContext | null>(null);
+  const [, setEdmsCtx] = useState<EdmsContext | null>(null);
   useEffect(() => { if (isEdmsMode()) setEdmsCtx(getEdmsContext()); }, []);
 
   // Share-link intake (?share= legacy, #es= encrypted) and S2 routing slip

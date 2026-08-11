@@ -11,13 +11,9 @@ import { ParagraphItem } from './ParagraphItem';
 import { 
   Indent,
   AlertTriangle,
-  FileText,
-  ShieldAlert,
-  BookOpen,
-  FileWarning
+  BookOpen
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';

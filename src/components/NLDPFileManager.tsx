@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { useNLDP } from '../hooks/useNLDP';
 import { NLDPExportConfig } from '../lib/nldp-format';
-import { estimateNLDPFileSize } from '../lib/nldp-utils';
 // Removed saveAs import - using manual download methods for better Next.js compatibility
 
 interface NLDPFileManagerProps {

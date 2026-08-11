@@ -72,7 +72,7 @@ export function probeSignature(bytes: Uint8Array): SignatureProbeResult {
   }
 
   // Post-signature bytes: the signed range must cover the file end.
-  const [, len1, off2, len2] = result.byteRange;
+  const [, , off2, len2] = result.byteRange;
   result.bytesAfterSignedRange = off2 + len2 < bytes.length;
 
   // Signer/CA hints from CMS printable strings — UNVERIFIED, display

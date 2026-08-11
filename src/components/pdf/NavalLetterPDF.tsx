@@ -10,15 +10,12 @@ import {
 import { FormData, ParagraphData } from '@/types';
 import { getPDFBodyFont, PDF_FONTS } from '@/lib/pdf-fonts';
 import {
-  PDF_PAGE,
   PDF_MARGINS,
   PDF_FONT_SIZES,
-  PDF_COLORS,
   PDF_INDENTS,
   PDF_PARAGRAPH_TABS,
   PDF_SEAL,
   PDF_SUBJECT,
-  PDF_CONTENT_WIDTH,
   PDF_SPACING,
   LINE_HEIGHT_12PT,
 } from '@/lib/pdf-settings';
@@ -38,7 +35,6 @@ const CONTINUATION_HEADER_HEIGHT = 48; // directive/civilian legacy, retuned in 
 import { getPDFSealDataUrl } from '@/lib/pdf-seal';
 import { parseAndFormatDate, formatBusinessDate } from '@/lib/date-utils';
 import { splitSubject, formatCancellationDate, getDirectiveDesignation, buildDirectiveTitle, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose, getSignatureBlankLines, resolveDistributionStatement } from '@/lib/naval-format-utils';
-import { DISTRIBUTION_STATEMENTS } from '@/lib/constants';
 import { parseFormattedText } from '@/lib/pdf-text-parser';
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from '@/lib/indent-engine';
 import { getClassification, bannerText, needsCuiBlock, cuiBlockLines, portionPrefix, paragraphLevel } from '@/lib/classification';
@@ -383,9 +379,6 @@ function ParagraphItem({
   const tabs = PDF_PARAGRAPH_TABS[level as keyof typeof PDF_PARAGRAPH_TABS] || PDF_PARAGRAPH_TABS[1];
   const isUnderlined = level >= 5 && level <= 8;
 
-  // Calculate left margin for this paragraph level
-  const leftMargin = tabs.citation;
-  
   const titleText = shouldUppercaseTitle && paragraph.title ? paragraph.title.toUpperCase() : paragraph.title;
 
   if (documentType === 'business-letter' || documentType === 'executive-correspondence') {
@@ -416,9 +409,8 @@ function ParagraphItem({
         const textOffset = 18; // Space between citation and text
         
         // Level 2 starts at 36pt. Level 3 at 72pt.
-        const baseIndent = (level - 1) * indentStep; 
-        const totalLeftMargin = baseIndent + textOffset; // Where text starts
-        
+        const baseIndent = (level - 1) * indentStep;
+
         return (
           <View style={{ flexDirection: 'row', marginLeft: baseIndent, marginBottom: isLast ? 0 : PDF_SPACING.paragraph }}>
              <View style={{ width: textOffset }}>
@@ -685,8 +677,6 @@ export function NavalLetterPDF({
   // Logic to determine if we are in "Multiple Address" mode with MANY recipients (automatic list)
   // If true, we use the automatic list and HIDE the manual list to avoid duplication.
   const hasMultipleTo = formData.documentType === 'multiple-address' || formData.documentType === 'from-to-memo';
-  const isMultipleAddressMany = hasMultipleTo &&
-                               (formData.distribution?.recipients?.filter((r: string) => r && r.trim()).length || 0) > 1;
   const isToDistribution = hasMultipleTo && !!formData.distribution?.toDistribution;
 
   const getFromToSpacing = (label: string): string => {
@@ -1398,13 +1388,6 @@ export function NavalLetterPDF({
               const enclIndicator = isPositionPaper ? String.fromCharCode(65 + i) : `(${enclNum})`;
 
               if (formData.bodyFont === 'courier') {
-                // Adjust spacing for "Tab:" (4 chars) vs "Encl:" (5 chars)
-                // Actually "Tab:" is 4, "Encl:" is 5.
-                // Standard letter uses 2 spaces after colon.
-                const labelStr = i === 0 ? enclLabel : '';
-                const padding = i === 0
-                    ? (isPositionPaper ? '\u00A0\u00A0' : '\u00A0\u00A0')
-                    : (isPositionPaper ? '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0' : '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0');
 
                 // For Courier, we need precise alignment.
                 // Tab:  (A)  Item

@@ -2,14 +2,13 @@
 
 import { useCallback } from 'react';
 import { FormData, ParagraphData, ValidationState } from '@/types';
-import { getExportFilename } from '@/lib/naval-format-utils';
-import { generateShareableUrl, generateEncryptedShareUrl, getStateFromUrl, clearShareParam, copyToClipboard, ShareableState } from '@/lib/url-state';
+import { generateShareableUrl, generateEncryptedShareUrl, copyToClipboard, ShareableState } from '@/lib/url-state';
 import type { ShareLinkOptions } from '@/components/ShareLinkDialog';
 import { generateFullMessage, validateAMHSMessage } from '@/services/amhs/amhsFormatter';
 import { getBasePath } from '@/lib/path-utils';
 import { findLetterById } from '@/lib/storage-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
-import { debugUserAction, debugFormChange } from '@/lib/console-utils';
+import { debugUserAction } from '@/lib/console-utils';
 import { createNLDPFile, generateNLDPFilename } from '@/lib/nldp-utils';
 
 interface ImportExportDeps {

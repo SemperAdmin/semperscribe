@@ -1,4 +1,3 @@
-import { LetterFormData } from '@/lib/schemas';
 
 // FormData is a permissive type covering all document form fields.
 // The strict discriminated union is LetterFormData; FormData is used

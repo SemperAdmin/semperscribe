@@ -1,7 +1,7 @@
 'use client';
 
 import { DOCUMENT_TYPES } from '@/lib/schemas';
-import { getExportBlockers, secnavPageCapIssue } from '@/lib/letter-validators';
+import { secnavPageCapIssue } from '@/lib/letter-validators';
 import { getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { downloadDocument } from '@/services/export/index';

@@ -22,7 +22,7 @@ const drawSection = async (context: {
   title: string;
   content: string;
 }) => {
-  const { page, font, y, width, margin, fontSize, lineHeight, title, content } = context;
+  const { page, font, y, margin, fontSize, lineHeight, title, content } = context;
   let currentY = y;
 
   page.drawText(title, {
