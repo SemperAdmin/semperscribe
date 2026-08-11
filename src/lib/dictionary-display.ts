@@ -44,7 +44,7 @@ function capitalize(word: string): string {
 }
 
 function caseToken(token: string, isFirst: boolean, isLast: boolean): string {
-  const match = token.match(/^([^A-Za-z0-9]*)(.*?)([^A-Za-z0-9]*)$/s);
+  const match = token.match(/^([^A-Za-z0-9]*)(.*?)([^A-Za-z0-9]*)$/);
   if (!match) {
     return token;
   }
