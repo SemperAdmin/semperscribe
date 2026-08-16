@@ -154,10 +154,25 @@ export async function generateDocxBlob(
   
   // Indentation logic
   // For Directives: Block style (1440 left, 1440 hanging to align wrapped text)
-  // For Letters: No indent, just tabs (Legacy behavior)
-  const addressIndent = isDirective 
+  // For Letters: the same block style at the 0.5" tab. M-5216.5 7-2 para 6
+  // (From), 8 (Via) and 9 (Subj): "If the entry is longer than one line,
+  // start the second line under the first word after the heading." A tab
+  // stop positions the FIRST line only, so before 2026-08-16 a wrapped
+  // From/To/Via line fell back to the left margin, under its own label,
+  // while the preview aligned it correctly. Subj, Ref and Encl already
+  // carried a hanging indent, which is why only these three diverged.
+  // Courier is a fixed 7.2pt per character, and the heading labels pad
+  // to 7 characters ("From:" + 2 spaces, "To:" + 4, "Via:" + 3), so its
+  // text column is 7 x 7.2 = 50.4pt = 1008 twips. Times reaches the same
+  // place through the 0.5" tab stop. Using the tab value for both left a
+  // courier wrap 14pt short of its own text.
+  const COURIER_HEADING_INDENT = 1008;
+  const letterAddressIndent = formData.bodyFont === 'courier'
+    ? { left: COURIER_HEADING_INDENT, hanging: COURIER_HEADING_INDENT }
+    : { left: tabPosition, hanging: tabPosition };
+  const addressIndent = isDirective
     ? { left: 1440, hanging: 1440 }
-    : undefined;
+    : letterAddressIndent;
     
   const subjectIndent = isDirective
     ? { left: 1440, hanging: 1440 }
@@ -849,7 +864,7 @@ export async function generateDocxBlob(
         new TextRun({ text: formData.from || '', font, size: FONT_SIZE_BODY }),
       ],
       tabStops: [{ type: TabStopType.LEFT, position: tabPosition }],
-      indent: isDirective ? addressIndent : undefined,
+      indent: addressIndent,
       spacing: { after: addressSpacing },
     }));
 
@@ -871,7 +886,7 @@ export async function generateDocxBlob(
                 new TextRun({ text: "Distribution", font, size: FONT_SIZE_BODY }),
              ],
              tabStops: [{ type: TabStopType.LEFT, position: tabPosition }],
-             indent: isDirective ? addressIndent : undefined,
+             indent: addressIndent,
              spacing: { after: addressSpacing },
           }));
        } else {
@@ -897,7 +912,7 @@ export async function generateDocxBlob(
               addressParagraphs.push(new Paragraph({
                   children,
                   tabStops: [{ type: TabStopType.LEFT, position: tabPosition }],
-                  indent: isDirective ? addressIndent : undefined,
+                  indent: addressIndent,
                   spacing: { after: index === recipientsWithContent.length - 1 ? addressSpacing : 0 },
               }));
           });
@@ -917,7 +932,7 @@ export async function generateDocxBlob(
             new TextRun({ text: formData.to || '', font, size: FONT_SIZE_BODY }),
           ],
           tabStops: [{ type: TabStopType.LEFT, position: tabPosition }],
-          indent: isDirective ? addressIndent : undefined,
+          indent: addressIndent,
           spacing: { after: addressSpacing },
         }));
     }
@@ -951,7 +966,7 @@ export async function generateDocxBlob(
               addressParagraphs.push(new Paragraph({
                   children,
                   tabStops: tabs.length > 0 ? tabs : [{ type: TabStopType.LEFT, position: tabPosition }],
-                  indent: isDirective ? addressIndent : undefined,
+                  indent: addressIndent,
                   spacing: { after: addressSpacing },
               }));
           });

@@ -448,3 +448,144 @@ describe('FOUO is retired from the form, kept for legacy documents', () => {
     expect(issues.find(i => i.id === 'fouo-retired')).toBeUndefined();
   });
 });
+
+describe('From, To and Via wrap to the text column on both surfaces', () => {
+  // M-5216.5 7-2 para 6 (From), 8 (Via), 9 (Subj): "If the entry is
+  // longer than one line, start the second line under the first word
+  // after the heading." Measured 2026-08-16: the export sent every
+  // wrapped line back to the left margin, under its own label, because
+  // the paragraphs carried a tab stop and no hanging indent. The
+  // preview aligned correctly but its column DRIFTED, since a
+  // fixed-width label inside a flex row shrinks when the row overflows.
+  const LONG_FROM = 'Commanding Officer, Naval Recruiting District Minneapolis, 212 3rd Avenue South, Minneapolis, MN 55401-2592';
+  const LONG_TO = 'Commander, Navy Personnel Command, Attn Assistant Commander for Career Management, 5720 Integrity Drive, Millington, TN 38055-0000';
+  const LONG_VIA = 'Commander, Carrier Strike Group NINE, Naval Station Norfolk, 1530 Gilbert Street, Norfolk, VA 23511-2797';
+  /** 720 twips = 0.5 inch = the 36pt column the preview uses. */
+  const HANGING = '<w:ind w:left="720" w:hanging="720"/>';
+  const LETTER = { ...BASE, documentType: 'basic', date: '14 Aug 26', from: LONG_FROM, to: LONG_TO };
+
+  async function headingParagraphs(formData: any, vias: string[] = []) {
+    const blob = await generateDocxBlob(formData, vias, [], [], [], PARAGRAPHS, []);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file('word/document.xml')!.async('string');
+    return (xml.match(/<w:p\b[^>]*>[\s\S]*?<\/w:p>/g) ?? []).filter(p =>
+      /^(From:|To:|Via:)/.test(p.replace(/<[^>]+>/g, '').trim()),
+    );
+  }
+
+  it('the export gives every From/To/Via paragraph a hanging indent', async () => {
+    const paragraphs = await headingParagraphs(LETTER, [LONG_VIA]);
+    expect(paragraphs).toHaveLength(3);
+    for (const paragraph of paragraphs) {
+      expect(paragraph).toContain(HANGING);
+    }
+  });
+
+  it('the preview holds one column whatever the entry length', async () => {
+    // Absolute points are font-dependent (the suite mocks the embedded
+    // fonts), so this asserts the INVARIANT instead: every heading value
+    // starts on the same column, and that column does not move with the
+    // length of the entry. Both were false before the fix.
+    const lengths = [
+      { from: 'Commanding Officer', to: 'Commandant' },
+      { from: 'Commanding Officer, Headquarters Battalion, Camp Smith', to: 'Commandant of the Marine Corps' },
+      { from: LONG_FROM, to: LONG_TO },
+    ];
+    const columns: number[] = [];
+    for (const entry of lengths) {
+      const blob = await generateBasePDFBlob({ ...LETTER, ...entry }, [LONG_VIA], [], [], [], PARAGRAPHS, []);
+      const layout = await extractPdfTextLayout(blob);
+      const margin = Math.min(...layout.map(i => i.x));
+      for (const label of ['From:', 'To:', 'Via:']) {
+        const line = layout.find(i => i.text.trim().startsWith(label));
+        expect(line, `${label} line must render`).toBeDefined();
+        const value = layout
+          .filter(i => Math.abs(i.y - line!.y) < 1 && i.x > line!.x && i.text.trim() !== '')
+          .sort((a, b) => a.x - b.x)[0];
+        expect(value, `${label} value must render`).toBeDefined();
+        // 0.5 inch from the left margin, the column the DOCX tab and
+        // hanging indent both use (720 twips).
+        expect(value!.x - margin, `${label} column`).toBeCloseTo(36, 1);
+        columns.push(value!.x);
+      }
+    }
+    const first = columns[0];
+    for (const column of columns) {
+      expect(column, `column drifted: ${columns.join(', ')}`).toBeCloseTo(first, 1);
+    }
+  });
+
+  it('a wrapped line starts under the first word, not at the margin', async () => {
+    const blob = await generateBasePDFBlob(LETTER, [LONG_VIA], [], [], [], PARAGRAPHS, []);
+    const layout = await extractPdfTextLayout(blob);
+    const margin = Math.min(...layout.map(i => i.x));
+    const from = layout.find(i => i.text.trim().startsWith('From:'))!;
+    const value = layout
+      .filter(i => Math.abs(i.y - from.y) < 1 && i.x > from.x && i.text.trim() !== '')
+      .sort((a, b) => a.x - b.x)[0];
+    // The next line down belongs to the same entry: it must sit on the
+    // value column, never back at the margin under the label.
+    const wrapped = layout
+      .filter(i => i.y < from.y - 1 && i.y > from.y - 20 && i.text.trim() !== '')
+      .sort((a, b) => a.x - b.x)[0];
+    expect(wrapped, 'the From entry must wrap for this test to mean anything').toBeDefined();
+    expect(wrapped!.x).toBeCloseTo(value.x, 1);
+    expect(wrapped!.x).toBeGreaterThan(margin + 20);
+  });
+});
+
+describe('Courier headings hang to their own 7-character column', () => {
+  // Courier is 7.2pt per character and the labels pad to 7 characters
+  // ("From:" + 2 spaces, "To:" + 4, "Via:" + 3, "Subj:" + 2), so the
+  // text column is 50.4pt, not the 36pt Times reaches through its tab.
+  // Measured 2026-08-16: the preview sent courier wraps to the margin,
+  // and the first pass at the export hung them to 36pt, 14pt short of
+  // their own text.
+  const COURIER_COLUMN = 50.4;
+  const COURIER = {
+    ...BASE,
+    documentType: 'basic',
+    bodyFont: 'courier',
+    date: '10 Feb 26',
+    subj: 'STANDARD NAVAL LETTER TEMPLATE STANDARD NAVAL LETTER TEMPLATE STANDARD NAVAL LETTER TEMPLATE',
+    from: 'Commanding Officer, Unit Name, City, State Zip Commanding Officer, Unit Name, City, State Zip',
+    to: 'Commanding Officer, Destination Unit, City, State Zip Commanding Officer, Destination Unit, City, State Zip',
+  };
+  const COURIER_VIA = ['Commanding Officer, Destination Unit, City, State Zip Commanding Officer, Destination Unit, City, State Zip'];
+
+  it('the export hangs to 1008 twips, the courier column', async () => {
+    const blob = await generateDocxBlob(COURIER, COURIER_VIA, [], [], [], PARAGRAPHS, []);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file('word/document.xml')!.async('string');
+    const headings = (xml.match(/<w:p\b[^>]*>[\s\S]*?<\/w:p>/g) ?? []).filter(p =>
+      /^(From:|To:|Via:)/.test(p.replace(/<[^>]+>/g, '').trim()),
+    );
+    expect(headings).toHaveLength(3);
+    for (const heading of headings) {
+      expect(heading).toContain('<w:ind w:left="1008" w:hanging="1008"/>');
+    }
+  });
+
+  it('Times still hangs to 720 twips', async () => {
+    const blob = await generateDocxBlob({ ...COURIER, bodyFont: 'times' }, COURIER_VIA, [], [], [], PARAGRAPHS, []);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file('word/document.xml')!.async('string');
+    expect(xml).toContain('<w:ind w:left="720" w:hanging="720"/>');
+    expect(xml).not.toContain('<w:ind w:left="1008" w:hanging="1008"/>');
+  });
+
+  it('the preview wraps every courier heading to the same column', async () => {
+    const blob = await generateBasePDFBlob(COURIER, COURIER_VIA, [], [], [], PARAGRAPHS, []);
+    const layout = await extractPdfTextLayout(blob);
+    const margin = Math.min(...layout.map(i => i.x));
+    for (const label of ['From:', 'To:', 'Via:', 'Subj:']) {
+      const line = layout.find(i => i.text.trim().startsWith(label));
+      expect(line, `${label} must render`).toBeDefined();
+      const wrapped = layout
+        .filter(i => i.y < line!.y - 1 && i.y > line!.y - 20 && i.text.trim() !== '')
+        .sort((a, b) => a.x - b.x)[0];
+      expect(wrapped, `${label} must wrap for this test to mean anything`).toBeDefined();
+      expect(wrapped!.x - margin, `${label} wrap column`).toBeCloseTo(COURIER_COLUMN, 1);
+    }
+  });
+});

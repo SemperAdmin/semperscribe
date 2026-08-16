@@ -52,6 +52,10 @@ export const PDF_SEAL = {
 // Indentation positions in points
 export const PDF_INDENTS = {
   tabStop1: 36,      // 0.5" for From/To/Subj labels
+  // Courier heading column: the labels pad to 7 characters and courier
+  // is 7.2pt per character, so From/To/Via text starts at 50.4pt. The
+  // DOCX hangs to the same column (1008 twips).
+  courierHeading: 50.4,
   tabStop2: 52.3,
   
   // SSIC block - PUSHED RIGHT by ~1 inch

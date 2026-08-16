@@ -114,6 +114,7 @@
 <w:tab w:val="left" w:pos="720"/>
 </w:tabs>
 <w:spacing w:after="0"/>
+<w:ind w:left="720" w:hanging="720"/>
 </w:pPr>
 <w:r>
 <w:rPr>
@@ -138,6 +139,7 @@
 <w:tab w:val="left" w:pos="720"/>
 </w:tabs>
 <w:spacing w:after="0"/>
+<w:ind w:left="720" w:hanging="720"/>
 </w:pPr>
 <w:r>
 <w:rPr>
@@ -162,6 +164,7 @@
 <w:tab w:val="left" w:pos="720"/>
 </w:tabs>
 <w:spacing w:after="0"/>
+<w:ind w:left="720" w:hanging="720"/>
 </w:pPr>
 <w:r>
 <w:rPr>

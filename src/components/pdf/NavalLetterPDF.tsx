@@ -116,8 +116,23 @@ const createStyles = (bodyFont: 'times' | 'courier', accentColor?: string, isSho
       fontFamily: fontFamily,
       fontSize: PDF_FONT_SIZES.body,
     },
+    // Courier renders each heading as ONE Text (label and value in the
+    // same string), so a wrapped line returns to the left edge of the
+    // block unless the paragraph carries a hanging indent. 50.4pt is the
+    // 7-character courier column, the same place the DOCX hangs to.
+    courierHeadingLine: {
+      paddingLeft: PDF_INDENTS.courierHeading,
+      textIndent: -PDF_INDENTS.courierHeading,
+    },
     fromToLabel: {
       width: PDF_INDENTS.tabStop1,
+      // minWidth AND flexShrink pin the column. Without them yoga
+      // shrinks this box when the row overflows, so a From: entry long
+      // enough to wrap moved its own text column from 36pt to 33.43pt
+      // while short entries sat at 36pt on the same page (measured
+      // 2026-08-16). The DOCX and the Subj line both use 36pt.
+      minWidth: PDF_INDENTS.tabStop1,
+      flexShrink: 0,
     },
     
     // Subject - uses sectionGap for spacing before and after
@@ -132,6 +147,8 @@ const createStyles = (bodyFont: 'times' | 'courier', accentColor?: string, isSho
     },
     subjectLabel: {
       width: PDF_INDENTS.tabStop1,
+      minWidth: PDF_INDENTS.tabStop1,
+      flexShrink: 0,
     },
     subjectContinuation: {
       marginLeft: PDF_INDENTS.tabStop1,
@@ -148,6 +165,8 @@ const createStyles = (bodyFont: 'times' | 'courier', accentColor?: string, isSho
     },
     refEnclLabel: {
       width: PDF_INDENTS.tabStop1,
+      minWidth: PDF_INDENTS.tabStop1,
+      flexShrink: 0,
     },
     refEnclContent: {
       flex: 1,
@@ -252,6 +271,8 @@ const createStyles = (bodyFont: 'times' | 'courier', accentColor?: string, isSho
     },
     continuationSubjLabel: {
       width: PDF_INDENTS.tabStop1,
+      minWidth: PDF_INDENTS.tabStop1,
+      flexShrink: 0,
     },
     continuationSubjLine: {
       flexDirection: 'row',
@@ -652,6 +673,16 @@ export function NavalLetterPDF({
       : undefined;
 
   const formattedSubjLines = splitSubject((formData.subj || '').toUpperCase(), PDF_SUBJECT.maxLineLength);
+  /**
+   * Column for a wrapped Subj line. Courier heading labels pad to 7
+   * characters at 7.2pt, Times reaches 0.5" through its tab. The
+   * courier branches used to prefix literal spaces here, which
+   * react-pdf trims at the start of a line, so the indent came only
+   * from the Times-sized margin and sat 14pt short of the DOCX.
+   */
+  const subjContinuationIndent = formData.bodyFont === 'courier'
+    ? PDF_INDENTS.courierHeading
+    : PDF_INDENTS.tabStop1;
   const isFromToMemo = formData.documentType === 'from-to-memo';
   const isMfr = formData.documentType === 'mfr';
   const isMoaOrMou = formData.documentType === 'moa' || formData.documentType === 'mou';
@@ -824,7 +855,7 @@ export function NavalLetterPDF({
                       <Text style={styles.continuationSubjText}>{formattedSubjLines[0]}</Text>
                     </View>
                     {formattedSubjLines.slice(1).map((line, i) => (
-                      <Text key={i} style={{ marginLeft: PDF_INDENTS.tabStop1 }}>{line}</Text>
+                      <Text key={i} style={{ marginLeft: subjContinuationIndent }}>{line}</Text>
                     ))}
                   </View>
                 )}
@@ -1189,9 +1220,7 @@ export function NavalLetterPDF({
               <>
                 <Text>Subj:  {formattedSubjLines[0]}</Text>
                 {formattedSubjLines.slice(1).map((line, i) => (
-                  <Text key={i} style={styles.subjectContinuation}>
-                    {'       '}{line}
-                  </Text>
+                  <Text key={i} style={{ marginLeft: subjContinuationIndent }}>{line}</Text>
                 ))}
               </>
             ) : (
@@ -1201,7 +1230,7 @@ export function NavalLetterPDF({
                   <Text>{formattedSubjLines[0] || ''}</Text>
                 </View>
                 {formattedSubjLines.slice(1).map((line, i) => (
-                  <Text key={i} style={{ marginLeft: PDF_INDENTS.tabStop1 }}>{line}</Text>
+                  <Text key={i} style={{ marginLeft: subjContinuationIndent }}>{line}</Text>
                 ))}
               </>
             )}
@@ -1264,7 +1293,7 @@ export function NavalLetterPDF({
         <View style={styles.fromToSection}>
           {/* From Line - Common */}
           {formData.bodyFont === 'courier' ? (
-             <Text style={styles.addressLine}>{getFromToSpacing('From')}{formData.from}</Text>
+             <Text style={[styles.addressLine, styles.courierHeadingLine]}>{getFromToSpacing('From')}{formData.from}</Text>
           ) : (
              <View style={styles.fromToLine}>
                 <Text style={styles.fromToLabel}>From:</Text>
@@ -1283,7 +1312,7 @@ export function NavalLetterPDF({
                 if (isToDistribution) {
                     // "To Distribution" toggle is ON: To line says "Distribution"
                     return formData.bodyFont === 'courier' ? (
-                         <Text style={styles.addressLine}>{getFromToSpacing('To')}Distribution</Text>
+                         <Text style={[styles.addressLine, styles.courierHeadingLine]}>{getFromToSpacing('To')}Distribution</Text>
                     ) : (
                          <View style={styles.fromToLine}>
                             <Text style={styles.fromToLabel}>To:</Text>
@@ -1301,7 +1330,7 @@ export function NavalLetterPDF({
                         </Text>
                       ) : (
                         <View key={i} style={styles.fromToLine}>
-                          <Text style={{ width: PDF_INDENTS.tabStop1, minWidth: PDF_INDENTS.tabStop1 }}>{i === 0 ? 'To:' : '\u00A0'}</Text>
+                          <Text style={{ width: PDF_INDENTS.tabStop1, minWidth: PDF_INDENTS.tabStop1, flexShrink: 0 }}>{i === 0 ? 'To:' : '\u00A0'}</Text>
                           <Text>{r}</Text>
                         </View>
                       )
@@ -1315,7 +1344,7 @@ export function NavalLetterPDF({
           ) : (
              // Standard Logic
              formData.bodyFont === 'courier' ? (
-                <Text style={styles.addressLine}>{getFromToSpacing('To')}{formData.to}</Text>
+                <Text style={[styles.addressLine, styles.courierHeadingLine]}>{getFromToSpacing('To')}{formData.to}</Text>
              ) : (
                 <View style={styles.fromToLine}>
                     <Text style={styles.fromToLabel}>To:</Text>
@@ -1327,7 +1356,7 @@ export function NavalLetterPDF({
           {/* Via Lines */}
           {viasWithContent.map((via, i) => (
             formData.bodyFont === 'courier' ? (
-              <Text key={i} style={styles.addressLine}>
+              <Text key={i} style={[styles.addressLine, styles.courierHeadingLine]}>
                 {getViaSpacing(i, viasWithContent.length)}{via}
               </Text>
             ) : (
@@ -1352,9 +1381,7 @@ export function NavalLetterPDF({
             <>
               <Text>Subj:  {formattedSubjLines[0] || ''}</Text>
               {formattedSubjLines.slice(1).map((line, i) => (
-                <Text key={i} style={styles.subjectContinuation}>
-                  {'       '}{line}
-                </Text>
+                <Text key={i} style={{ marginLeft: subjContinuationIndent }}>{line}</Text>
               ))}
             </>
           ) : (
@@ -1364,7 +1391,7 @@ export function NavalLetterPDF({
                 <Text>{formattedSubjLines[0] || ''}</Text>
               </View>
               {formattedSubjLines.slice(1).map((line, i) => (
-                <Text key={i} style={{ marginLeft: PDF_INDENTS.tabStop1 }}>{line}</Text>
+                <Text key={i} style={{ marginLeft: subjContinuationIndent }}>{line}</Text>
               ))}
             </>
           )}
