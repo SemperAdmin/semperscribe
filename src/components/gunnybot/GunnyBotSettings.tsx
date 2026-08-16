@@ -12,11 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { KeyRound, Check, Loader2, ShieldAlert } from 'lucide-react';
+import { KeyRound, Check, Loader2, ShieldAlert, Server, XCircle } from 'lucide-react';
 import { useGunnyStore } from '@/store/gunnyStore';
 import { getAdapter } from '@/lib/gunnybot/providers';
 import { streamChat } from '@/lib/gunnybot/client';
 import { setKey as saveKey, clearKey, getKey } from '@/lib/gunnybot/keyring';
+import {
+  getProxyUrl,
+  setProxyUrl,
+  clearProxyUrl,
+} from '@/lib/gunnybot/proxy-config';
 import type { GunnyProviderId } from '@/lib/gunnybot/types';
 import { useToast } from '@/hooks/use-toast';
 import { isEdmsMode, EDMS_ALLOWED_PROVIDER } from '@/lib/edms-mode';
@@ -33,11 +38,22 @@ export function GunnyBotSettings() {
   const [keyInput, setKeyInput] = useState('');
   const [testing, setTesting] = useState(false);
 
+  // Proxy base URL for the selected provider. Read after mount only:
+  // localStorage does not exist during the static-export prerender, and
+  // reading it in the render body would hydrate to a different tree, the
+  // same trap the EDMS flag below avoids.
+  const [proxyInput, setProxyInput] = useState('');
+  const [proxySaved, setProxySaved] = useState<string | null>(null);
+
   // EDMS mode is read after mount, never during render. sessionStorage
   // is unavailable during the static-export prerender, so reading it in
   // the render body would hydrate to a different tree.
   const [edmsLocked, setEdmsLocked] = useState(false);
   useEffect(() => {
+    // Proxy settings live in localStorage, which the static-export
+    // prerender does not have. Read once here, then keep the value in
+    // step from handleProviderChange rather than from a second effect.
+    setProxySaved(getProxyUrl(useGunnyStore.getState().provider));
     if (!isEdmsMode()) return;
     setEdmsLocked(true);
     // Snap the selection to the only cleared provider. This is a
@@ -48,6 +64,7 @@ export function GunnyBotSettings() {
       const first = getAdapter(EDMS_ALLOWED_PROVIDER)?.models[0]?.id;
       if (first) setModel(first);
       setKeyPresent(getKey(EDMS_ALLOWED_PROVIDER) !== null);
+      setProxySaved(getProxyUrl(EDMS_ALLOWED_PROVIDER));
     }
     // Mount-only. EDMS mode does not change within a tab's lifetime.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -55,6 +72,11 @@ export function GunnyBotSettings() {
 
   const adapter = getAdapter(provider);
   const models = adapter?.models ?? [];
+
+  // True when the provider is known to refuse direct browser calls. The
+  // flag is measured per provider in lib/gunnybot/providers.ts.
+  const proxyRequired = adapter !== null && !adapter.browserDirect;
+  const proxyMissing = proxyRequired && proxySaved === null;
 
   const handleProviderChange = (value: string) => {
     if (edmsLocked) return;
@@ -65,6 +87,8 @@ export function GunnyBotSettings() {
       setModel(first);
     }
     setKeyPresent(getKey(next) !== null);
+    setProxySaved(getProxyUrl(next));
+    setProxyInput('');
   };
 
   const handleSaveKey = () => {
@@ -88,6 +112,28 @@ export function GunnyBotSettings() {
     clearKey(provider);
     setKeyPresent(false);
     toast({ title: 'Key cleared' });
+  };
+
+  const handleSaveProxy = () => {
+    const normalized = setProxyUrl(provider, proxyInput);
+    if (normalized === null) {
+      toast({
+        title: 'Proxy URL rejected',
+        description:
+          'Give a full http or https base URL with no query string, for example http://127.0.0.1:8443',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setProxySaved(normalized);
+    setProxyInput('');
+    toast({ title: 'Proxy saved', description: normalized });
+  };
+
+  const handleClearProxy = () => {
+    clearProxyUrl(provider);
+    setProxySaved(null);
+    toast({ title: 'Proxy cleared' });
   };
 
   const handleTest = async () => {
@@ -188,6 +234,67 @@ export function GunnyBotSettings() {
         </div>
       </div>
 
+      {proxyRequired && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Provider proxy</h3>
+
+          {proxyMissing && (
+            <div className="rounded-md border border-red-500/40 bg-red-500/5 p-3 flex gap-2">
+              <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p className="font-semibold text-foreground">
+                  {adapter?.label} will not work until you set a proxy URL.
+                </p>
+                <p>
+                  This gateway refuses browser calls. Measured on a government workstation: the
+                  network path is healthy, and the server sends no CORS headers, so the browser
+                  discards the answer before your key is ever presented. No setting in this app
+                  changes that.
+                </p>
+                {edmsLocked && (
+                  <p className="text-red-600 dark:text-red-400">
+                    EDMS mode restricts GunnyBot to this provider, so GunnyBot stays unavailable for
+                    this draft until the proxy is running. Switching providers is not permitted here.
+                  </p>
+                )}
+                <p>
+                  Run the SemperScribe local proxy, then paste its address below. Prefer the
+                  127.0.0.1 form over localhost.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {proxySaved !== null && (
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 font-mono text-[10px]">
+                <Server className="w-3 h-3 mr-1" /> {proxySaved}
+              </Badge>
+              <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearProxy}>Clear proxy</Button>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Input
+              value={proxyInput}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProxyInput(e.target.value)}
+              placeholder={proxySaved !== null ? 'Replace the proxy URL...' : 'http://127.0.0.1:8443'}
+              autoComplete="off"
+              spellCheck={false}
+              className="bg-background border-input font-mono text-xs"
+            />
+            <Button variant="outline" size="sm" onClick={handleSaveProxy} disabled={proxyInput.trim().length === 0}>
+              <Server className="w-3 h-3 mr-1" /> Save proxy
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Requests go to this address instead of the provider. The proxy runs on your machine, holds
+            no key, and forwards the one you set below. It is not a secret, so unlike your key it is
+            remembered across reloads.
+          </p>
+        </div>
+      )}
+
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">API Key</h3>
         {keyPresent && (
@@ -211,10 +318,16 @@ export function GunnyBotSettings() {
             <KeyRound className="w-3 h-3 mr-1" /> Save
           </Button>
         </div>
-        <Button variant="outline" size="sm" onClick={handleTest} disabled={!keyPresent || testing}>
+        <Button variant="outline" size="sm" onClick={handleTest} disabled={!keyPresent || testing || proxyMissing}>
           {testing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}
           Test connection
         </Button>
+        {proxyMissing && keyPresent && (
+          <p className="text-[10px] text-muted-foreground">
+            Test connection is unavailable until the proxy URL is set. Sending now would fail with an
+            unreadable browser error rather than tell you anything.
+          </p>
+        )}
       </div>
 
       <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 flex gap-2">

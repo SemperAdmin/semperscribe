@@ -117,7 +117,16 @@ export async function generateDocxBlob(
   // P4.3: SECNAV instruction/notice join the directive path (SECNAV
   // M-5215.1 delegates margins/letter geometry like MCO 5215.1K does).
   const isSecnav = isSecnavDirective(formData.documentType);
-  const isDirective = formData.documentType === 'mco' || formData.documentType === 'bulletin' || isSecnav;
+  // change-transmittal belongs in this set: the preview has always
+  // counted it as a directive (NavalLetterPDF isDirective), and its
+  // absence here meant the export dropped the designation line, reports,
+  // PCN distribution, record of changes and the structural pages, while
+  // adding a Copy to / Distribution block the preview never showed.
+  const isDirective =
+    formData.documentType === 'mco' ||
+    formData.documentType === 'bulletin' ||
+    formData.documentType === 'change-transmittal' ||
+    isSecnav;
   const isStaffingPaper = ['position-paper', 'information-paper', 'decision-paper'].includes(formData.documentType);
   const isPositionPaper = formData.documentType === 'position-paper';
   const isDecisionPaper = formData.documentType === 'decision-paper';
@@ -210,8 +219,12 @@ export async function generateDocxBlob(
 
   if (isFromToMemo || isMfr) {
        // From-To Memo & MFR: Date Flush Right, Top of page (simulated 1 inch margin)
+       // No 'Date Placeholder' fallback: the PDF preview prints nothing
+       // for an empty date, so a fallback here wrote text the drafter
+       // never saw. The empty required field is reported by the schema
+       // pass in letter-validators.
        ssicParagraphs.push(new Paragraph({
-          children: [new TextRun({ text: formattedDate || 'Date Placeholder', font, size: FONT_SIZE_BODY })],
+          children: [new TextRun({ text: formattedDate, font, size: FONT_SIZE_BODY })],
           alignment: AlignmentType.RIGHT,
           spacing: { before: 1440, after: 0 } // 1 inch top spacing
        }));
@@ -225,7 +238,7 @@ export async function generateDocxBlob(
           }));
       }
       ssicParagraphs.push(new Paragraph({
-          children: [new TextRun({ text: formattedDate || 'Date Placeholder', font, size: FONT_SIZE_BODY })],
+          children: [new TextRun({ text: formattedDate, font, size: FONT_SIZE_BODY })],
           alignment: AlignmentType.RIGHT,
           spacing: { after: 240 }
       }));
@@ -257,7 +270,11 @@ export async function generateDocxBlob(
       }
 
       if (formData.originatorCode) ssicBlock.push(formData.originatorCode);
-      ssicBlock.push(formattedDate || 'Date Placeholder');
+      // Ch 12-3 para 3: an executive letter may be dated by Admin after
+      // signature, so the drafter omits it here. The preview honored the
+      // flag and the export ignored it.
+      const omitExecDate = isExecLetter && Boolean(formData.omitDate);
+      if (formattedDate && !omitExecDate) ssicBlock.push(formattedDate);
 
       // SSIC Block: right-aligned table so the longest line's right edge
       // touches the right margin, with all lines left-aligned within the block.
@@ -437,6 +454,20 @@ export async function generateDocxBlob(
       const title = isPositionPaper ? 'POSITION PAPER'
         : isDecisionPaper ? 'DECISION PAPER'
         : 'INFORMATION PAPER';
+
+      // Top classification banner. The preview stamps it above the
+      // title on every staffing paper; the export marked the footer
+      // only, so the exported page lost its top marking.
+      staffingHeaderParagraphs.push(new Paragraph({
+          children: [new TextRun({
+              text: formData.classification || 'UNCLASSIFIED',
+              font,
+              bold: true,
+              size: FONT_SIZE_BODY,
+          })],
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 120 }
+      }));
 
       staffingHeaderParagraphs.push(new Paragraph({
           children: [new TextRun({
@@ -753,10 +784,16 @@ export async function generateDocxBlob(
       });
     }
     addressParagraphs.push(createEmptyLine(font));
-    addressParagraphs.push(new Paragraph({
-      children: [new TextRun({ text: formData.salutation || 'Dear Sir or Madam:', font, size: FONT_SIZE_BODY })],
-      spacing: { after: 240 },
-    }));
+    // Salutation. No placeholder fallback: the other two business-letter
+    // emitters omit an empty salutation, and a default here would write
+    // text the drafter never typed. Empty is flagged by
+    // validateSalutation (letter-validators).
+    if (formData.salutation) {
+      addressParagraphs.push(new Paragraph({
+        children: [new TextRun({ text: formData.salutation, font, size: FONT_SIZE_BODY })],
+        spacing: { after: 240 },
+      }));
+    }
 
     if (formData.subj) {
       addressParagraphs.push(new Paragraph({
@@ -806,7 +843,10 @@ export async function generateDocxBlob(
     addressParagraphs.push(new Paragraph({
       children: [
         new TextRun({ text: fromLabel, font, size: FONT_SIZE_BODY }),
-        new TextRun({ text: formData.from || "Commanding Officer", font, size: FONT_SIZE_BODY }),
+        // No "Commanding Officer" fallback: fabricating a signing
+        // authority the drafter never typed, on a surface the preview
+        // leaves blank, is the salutation defect in another field.
+        new TextRun({ text: formData.from || '', font, size: FONT_SIZE_BODY }),
       ],
       tabStops: [{ type: TabStopType.LEFT, position: tabPosition }],
       indent: isDirective ? addressIndent : undefined,
@@ -871,7 +911,10 @@ export async function generateDocxBlob(
         addressParagraphs.push(new Paragraph({
           children: [
             new TextRun({ text: toLabel, font, size: FONT_SIZE_BODY }),
-            new TextRun({ text: formData.to || "Addressee", font, size: FONT_SIZE_BODY }),
+            // No "Addressee" fallback here: the PDF prints nothing for
+            // an empty To on this branch. The multiple-address branch
+            // above defaults on BOTH surfaces, so it stays as is.
+            new TextRun({ text: formData.to || '', font, size: FONT_SIZE_BODY }),
           ],
           tabStops: [{ type: TabStopType.LEFT, position: tabPosition }],
           indent: isDirective ? addressIndent : undefined,
@@ -955,7 +998,15 @@ export async function generateDocxBlob(
   // --- References ---
   const refParagraphs: Paragraph[] = [];
   const refs = references.filter(r => r.trim());
-  if (refs.length > 0 && !isStaffingPaper) {
+  // M-5216.5 11-2.9 (References and Enclosures): a business letter
+  // refers to previous communications "in the body of the letter only,
+  // without calling them references or enclosures", so the civilian
+  // types carry no Ref: list. The preview already suppressed it and the
+  // export did not, which put a Ref: block in Word that the drafter
+  // never saw. DLA correspondence keeps its list (DLA Corr Manual), and
+  // the exclusion below mirrors the preview's gate exactly.
+  const civilianNoRefs = isCivilianStyle && !isDLAType;
+  if (refs.length > 0 && !isStaffingPaper && !civilianNoRefs) {
     const startCharCode = (formData.startingReferenceLevel || 'a').charCodeAt(0);
     
     refs.forEach((ref, index) => {
@@ -986,6 +1037,8 @@ export async function generateDocxBlob(
   // --- Enclosures ---
   const enclParagraphs: Paragraph[] = [];
   const encls = enclosures.filter(e => e.trim());
+  /** Civilian (non-DLA) enclosure lines are placed after the signature. */
+  const civilianEnclosuresBelowSignature = isCivilianStyle && !isDLAType;
   if (encls.length > 0 && !isStaffingPaper) {
     if (isDLAType) {
         // DLA uses "Attachments" (not "Enclosures") per DLA Corr Manual Ch.3 Para 19
@@ -1079,16 +1132,21 @@ export async function generateDocxBlob(
 
   paragraphsWithContent.forEach((p, index) => {
     // Custom handling for Position/Decision Paper Multiple Recs - Paragraph 4
+    // Gate matches the preview exactly: the TITLE decides, never the
+    // position. The old "index === 3" clause hijacked whatever the 4th
+    // paragraph happened to be, replacing its title with the literal
+    // "Recommendation" and dropping its body text.
     if ((isPositionPaper || isDecisionPaper) &&
         formData.decisionMode === 'MULTIPLE_RECS' &&
-        (index === 3 || (p.title && p.title.toLowerCase().includes('recommendation')))) {
+        Boolean(p.title && p.title.toLowerCase().includes('recommendation'))) {
 
         // 1. Header: 4. Recommendation.
         const { citation } = generateCitation(p, index, paragraphsWithContent);
         bodyParagraphs.push(new Paragraph({
              children: [
                  new TextRun({ text: citation + "\t", font, size: FONT_SIZE_BODY }),
-                 new TextRun({ text: (p.title || 'Recommendation') + ".", font, size: FONT_SIZE_BODY })
+                 // No fallback: the gate above guarantees a title.
+                 new TextRun({ text: p.title + ".", font, size: FONT_SIZE_BODY })
              ],
              tabStops: [{ type: TabStopType.LEFT, position: 720 }],
              spacing: { after: 120 }
@@ -1112,7 +1170,10 @@ export async function generateDocxBlob(
              const tableRows: TableRow[] = [];
              
              // Recommenders - signature line format per MCO 5216.20B
-             formData.decisionGrid?.recommenders.forEach((rec: { id: string; role: string; options: string[] }) => {
+             // Optional chain on BOTH links: a decisionGrid carrying
+             // recommendationItems but no recommenders threw here and
+             // failed the whole export.
+             formData.decisionGrid?.recommenders?.forEach((rec: { id: string; role: string; options: string[] }) => {
                  const optsText = rec.options.map((opt: string) => {
                      let display = opt;
                      if (opt === 'Approve') display = 'Approval';
@@ -1156,12 +1217,17 @@ export async function generateDocxBlob(
                 }));
              }
 
-             bodyParagraphs.push(new Table({
-                 rows: tableRows,
-                 width: { size: 80, type: WidthType.PERCENTAGE },
-                 indent: { size: 1440, type: WidthType.DXA }, 
-                 borders: { top: { style: BorderStyle.NONE, size: 0, color: "auto" }, bottom: { style: BorderStyle.NONE, size: 0, color: "auto" }, left: { style: BorderStyle.NONE, size: 0, color: "auto" }, right: { style: BorderStyle.NONE, size: 0, color: "auto" }, insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" }, insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" } }
-             }));
+             // A zero-row Table throws "Invalid array length" inside docx
+             // and fails the whole export, so a grid with no recommenders
+             // and no final decision emits no table at all.
+             if (tableRows.length > 0) {
+                 bodyParagraphs.push(new Table({
+                     rows: tableRows,
+                     width: { size: 80, type: WidthType.PERCENTAGE },
+                     indent: { size: 1440, type: WidthType.DXA },
+                     borders: { top: { style: BorderStyle.NONE, size: 0, color: "auto" }, bottom: { style: BorderStyle.NONE, size: 0, color: "auto" }, left: { style: BorderStyle.NONE, size: 0, color: "auto" }, right: { style: BorderStyle.NONE, size: 0, color: "auto" }, insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" }, insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" } }
+                 }));
+             }
              bodyParagraphs.push(createEmptyLine(font));
         });
 
@@ -1247,7 +1313,7 @@ export async function generateDocxBlob(
       
       if (formData.decisionMode === 'MULTIPLE_CHOICE') {
           // Mode B: Stacked COAs (Vertical)
-          formData.decisionGrid.recommenders.forEach((rec: { id: string; role: string; options: string[] }) => {
+          formData.decisionGrid.recommenders?.forEach((rec: { id: string; role: string; options: string[] }) => {
               const coaRows = rec.options.map((opt: string) =>
                   new Paragraph({
                       children: [
@@ -1328,7 +1394,7 @@ export async function generateDocxBlob(
       } else {
           // Mode A: Single Recommendation - signature line format per MCO 5216.20B
           // Recommenders: "Role recommends:   Approval _______ Disapproval _______"
-          formData.decisionGrid.recommenders.forEach((rec: { id: string; role: string; options: string[] }) => {
+          formData.decisionGrid.recommenders?.forEach((rec: { id: string; role: string; options: string[] }) => {
               const optionsText = rec.options.map((opt: string) => {
                   let display = opt;
                   if (opt === 'Approve') display = 'Approval';
@@ -1452,8 +1518,10 @@ export async function generateDocxBlob(
       // Add spacer
       decisionGridParagraphs.push(createEmptyLine(font));
 
-      // Recommenders
-      formData.decisionGrid.recommenders.forEach((rec: { id: string; role: string; options: string[] }) => {
+      // Recommenders. Optional chain: a grid built from an imported or
+      // library document need not carry this array, and an unguarded
+      // forEach failed the entire export.
+      formData.decisionGrid.recommenders?.forEach((rec: { id: string; role: string; options: string[] }) => {
           // Role line
           decisionGridParagraphs.push(new Paragraph({
               children: [new TextRun({ text: `${rec.role} recommends:`, font, size: FONT_SIZE_BODY })],
@@ -1487,8 +1555,10 @@ export async function generateDocxBlob(
           }));
       });
 
-      // Final Decision
+      // Final Decision. Guarded like the recommenders above: a grid
+      // without this block used to throw on ".role" and fail the export.
       const final = formData.decisionGrid.finalDecision;
+      if (final) {
       decisionGridParagraphs.push(new Paragraph({
           children: [new TextRun({ text: `${final.role} decision:`, font, size: FONT_SIZE_BODY })],
           spacing: { after: 120, before: 240 }
@@ -1517,6 +1587,7 @@ export async function generateDocxBlob(
           ],
           spacing: { after: 240 }
       }));
+      }
   }
 
   // --- Signature ---
@@ -1724,6 +1795,18 @@ export async function generateDocxBlob(
           if (formData.signerTitle) {
               signatureParagraphs.push(new Paragraph({
                   children: [new TextRun({ text: formData.signerTitle, font, size: FONT_SIZE_BODY })],
+                  indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
+                  spacing: { after: 0 }
+              }));
+          }
+
+          // Delegation of signature authority ("By direction", "Acting",
+          // "For"). The preview renders it here (NavalLetterPDF, civilian
+          // closing block) and this branch used to drop it, so the export
+          // understated the authority the letter was signed under.
+          if (formData.delegationText) {
+              signatureParagraphs.push(new Paragraph({
+                  children: [new TextRun({ text: formData.delegationText, font, size: FONT_SIZE_BODY })],
                   indent: { left: INDENTS.signature }, // start at page center, left-aligned (G4)
                   spacing: { after: 0 }
               }));
@@ -2124,12 +2207,16 @@ export async function generateDocxBlob(
       }
       const dateText = isCivilianStyle
         ? formatBusinessDate(formData.date || '')
-        : parseAndFormatDate(formData.date || 'Date Placeholder');
+        : parseAndFormatDate(formData.date || '');
 
-      subsequentHeaderParagraphs.push(new Paragraph({ 
-          children: [new TextRun({ text: dateText, font, size: FONT_SIZE_BODY })],
-          spacing: { after: 0 }
-      }));
+      // The preview drops the continuation-header date for any civilian
+      // style when omitDate is set; the export repeated it on page 2.
+      if (!(isCivilianStyle && formData.omitDate)) {
+          subsequentHeaderParagraphs.push(new Paragraph({
+              children: [new TextRun({ text: dateText, font, size: FONT_SIZE_BODY })],
+              spacing: { after: 0 }
+          }));
+      }
       
       subsequentHeaderParagraphs.push(createEmptyLine(font));
   } else if (isDirective) {
@@ -2139,7 +2226,7 @@ export async function generateDocxBlob(
       // hot spot, audit line 126). Designation on line 1, date on the
       // next line; blocked left inside a right-anchored borderless
       // table so the longest line touches the right margin.
-      const contStack = [getDirectiveDesignation(formData), parseAndFormatDate(formData.date || 'Date Placeholder')]
+      const contStack = [getDirectiveDesignation(formData), parseAndFormatDate(formData.date || '')]
         .filter(Boolean);
       // P4.2 (audit line 160): the stack sits 1 INCH from the page
       // top. The header band originates at 720 twips; a 720-twip
@@ -2251,8 +2338,14 @@ export async function generateDocxBlob(
   // --- Footer (Page Numbers) ---
   const footerChildren: Paragraph[] = [];
 
-  // DLA FOUO footer line
-  if (isDLAType && formData.fouoDesignation && formData.fouoDesignation !== '') {
+  // FOUO footer line, every page. DLA per DLA Corr Manual Ch.1 Para 15.
+  // Directives per SECNAV M-5216.5 Figure 7-7 (page 7-22): "Internal
+  // pages of the document that contain FOUO information shall be marked
+  // 'FOR OFFICIAL USE ONLY' at the bottom." Para 7-3 itself states no
+  // page pattern and delegates to DoDM 5200.01 Vol 4, Encl 3, Sec 2.c.
+  // The DOCX dropped the marking entirely before 2026-08-16; the
+  // preview now marks every page too, so the two agree.
+  if ((isDLAType || isDirective) && formData.fouoDesignation && formData.fouoDesignation !== '') {
       footerChildren.push(new Paragraph({
           children: [new TextRun({ text: 'FOR OFFICIAL USE ONLY', font, size: FONT_SIZE_BODY })],
           alignment: AlignmentType.CENTER,
@@ -2405,6 +2498,16 @@ export async function generateDocxBlob(
     : (showPageNumberOnFirstPage ? footerChildren : []);
   const baseHasBanner = markingsOn && showPageNumberOnFirstPage && !(isStaffingPaper && staffingFooterLines);
   const firstFooterChildren: Paragraph[] = [...cuiBlockParagraphs, ...baseFirstFooter];
+  // Directive FOUO on page 1: the default footer covers pages 2+, and
+  // page 1 uses this footer, which drops the page-number children when
+  // numbering starts at 1 (MCO 5215.1K para 10).
+  if (isDirective && formData.fouoDesignation && formData.fouoDesignation !== '') {
+      firstFooterChildren.push(new Paragraph({
+          children: [new TextRun({ text: 'FOR OFFICIAL USE ONLY', font, size: FONT_SIZE_BODY })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 0 },
+      }));
+  }
   if (markingsOn && !baseHasBanner) firstFooterChildren.push(classificationBannerParagraph());
   const firstPageFooter = new Footer({ children: firstFooterChildren });
 
@@ -2450,11 +2553,16 @@ export async function generateDocxBlob(
         ...directiveTitleParagraphs,
         ...addressParagraphs,
         ...refParagraphs,
-        ...enclParagraphs,
+        // M-5216.5 11-2 (Enclosure Line): on a business letter the
+        // enclosure line is typed "on the second line below the
+        // signature line", which is where the preview puts it. Naval
+        // types keep theirs above the body with the Ref: block.
+        ...(civilianEnclosuresBelowSignature ? [] : enclParagraphs),
         ...reportsParagraphs,
         ...bodyParagraphs,
         ...decisionGridParagraphs,
         ...signatureParagraphs,
+        ...(civilianEnclosuresBelowSignature ? enclParagraphs : []),
         ...distributionParagraphs,
         ...reportsPageParagraphs,
       ],

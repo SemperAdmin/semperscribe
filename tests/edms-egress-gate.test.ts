@@ -59,6 +59,9 @@ describe('EDMS egress restriction', () => {
     },
   );
 
+  // GenAI.mil needs a proxy since 2026-08-11 (browserDirect false), so
+  // this case supplies one. Without it the send path stops on the proxy
+  // requirement and never reaches the EDMS decision under test.
   it('lets GenAI.mil through in EDMS mode', async () => {
     setEdmsContext({ requestId: '482', ruc: '12345', ssic: '1650', docType: 'basic-letter' });
     resetEdmsCacheForTests();
@@ -69,7 +72,7 @@ describe('EDMS egress restriction', () => {
       }),
     );
     const h = collect();
-    await streamChat(req('genaimil'), h);
+    await streamChat({ ...req('genaimil'), proxyBaseUrl: 'http://127.0.0.1:8443' }, h);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(h.events.some(e => e.kind === 'error' && e.message.includes('Blocked'))).toBe(false);
   });

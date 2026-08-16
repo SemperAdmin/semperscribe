@@ -550,21 +550,16 @@ export const MCODefinition: DocumentTypeDefinition = {
     {
       id: 'directive-options',
       title: 'Directive Options',
-      description: 'FOUO, numbering, and structural page options per MCO 5215.1K',
+      description: 'Numbering and structural page options per MCO 5215.1K',
       fields: [
-        {
-          name: 'fouoDesignation',
-          label: 'FOUO Designation',
-          type: 'select',
-          options: [
-            { label: 'None', value: '' },
-            { label: 'Full FOUO (all information)', value: 'full' },
-            { label: 'Partial FOUO (specific portions)', value: 'partial' }
-          ],
-          defaultValue: '',
-          className: 'md:col-span-1',
-          description: 'Per MCO 5215.1K para 10 — marks "FOR OFFICIAL USE ONLY" on pages'
-        },
+        // FOUO Designation retired from the form 2026-08-16. DoDI
+        // 5200.48 (6 March 2020) cancelled DoDM 5200.01 Vol 4 and ended
+        // FOUO on newly created documents; USMC implemented it in
+        // MARADMIN 664/20. CUI replaces it, and this type already has
+        // showClassification: true, so the marking engine covers it.
+        // The schema field and both emitters still render a saved
+        // fouoDesignation so a legacy document keeps its marking, and
+        // validateRetiredFouo reports it.
         {
           name: 'fourDigitNumbering',
           label: '4-Digit Numbering',
@@ -719,21 +714,16 @@ export const BulletinDefinition: DocumentTypeDefinition = {
     {
       id: 'directive-options',
       title: 'Directive Options',
-      description: 'FOUO designation per MCO 5215.1K',
+      description: 'Structural page options per MCO 5215.1K',
       fields: [
-        {
-          name: 'fouoDesignation',
-          label: 'FOUO Designation',
-          type: 'select',
-          options: [
-            { label: 'None', value: '' },
-            { label: 'Full FOUO (all information)', value: 'full' },
-            { label: 'Partial FOUO (specific portions)', value: 'partial' }
-          ],
-          defaultValue: '',
-          className: 'md:col-span-1',
-          description: 'Per MCO 5215.1K para 10 — marks "FOR OFFICIAL USE ONLY" on pages'
-        },
+        // FOUO Designation retired from the form 2026-08-16. DoDI
+        // 5200.48 (6 March 2020) cancelled DoDM 5200.01 Vol 4 and ended
+        // FOUO on newly created documents; USMC implemented it in
+        // MARADMIN 664/20. CUI replaces it, and this type already has
+        // showClassification: true, so the marking engine covers it.
+        // The schema field and both emitters still render a saved
+        // fouoDesignation so a legacy document keeps its marking, and
+        // validateRetiredFouo reports it.
         {
           name: 'showLocatorSheet',
           label: 'Locator Sheet',
@@ -2409,18 +2399,14 @@ export const ChangeTransmittalDefinition: DocumentTypeDefinition = {
           className: 'md:col-span-1',
           description: 'Sequential change number (Ch 1, Ch 2, etc.)'
         },
-        {
-          name: 'fouoDesignation',
-          label: 'FOUO Designation',
-          type: 'select',
-          options: [
-            { label: 'None', value: '' },
-            { label: 'Full FOUO', value: 'full' },
-            { label: 'Partial FOUO', value: 'partial' }
-          ],
-          defaultValue: '',
-          className: 'md:col-span-1'
-        }
+        // FOUO Designation retired from the form 2026-08-16. DoDI
+        // 5200.48 (6 March 2020) cancelled DoDM 5200.01 Vol 4 and ended
+        // FOUO on newly created documents; USMC implemented it in
+        // MARADMIN 664/20. CUI replaces it, and this type already has
+        // showClassification: true, so the marking engine covers it.
+        // The schema field and both emitters still render a saved
+        // fouoDesignation so a legacy document keeps its marking, and
+        // validateRetiredFouo reports it.
       ]
     }
   ]
@@ -2567,18 +2553,14 @@ export const DLAMemorandumDefinition: DocumentTypeDefinition = {
           placeholder: 'e.g., By direction',
           className: 'md:col-span-1'
         },
-        {
-          name: 'fouoDesignation',
-          label: 'FOUO Designation',
-          type: 'select',
-          options: [
-            { label: 'None', value: '' },
-            { label: 'FOR OFFICIAL USE ONLY', value: 'full' },
-          ],
-          description: 'Stamps classification at top and bottom of each page (DLA Ch.1 Para 15)',
-          defaultValue: '',
-          className: 'md:col-span-1'
-        }
+        // FOUO Designation retired from the form 2026-08-16. DoDI
+        // 5200.48 (6 March 2020) cancelled DoDM 5200.01 Vol 4 and ended
+        // FOUO on newly created documents; USMC implemented it in
+        // MARADMIN 664/20. CUI replaces it, and this type already has
+        // showClassification: true, so the marking engine covers it.
+        // The schema field and both emitters still render a saved
+        // fouoDesignation so a legacy document keeps its marking, and
+        // validateRetiredFouo reports it.
       ]
     }
   ]
@@ -2712,18 +2694,14 @@ export const DLABusinessLetterDefinition: DocumentTypeDefinition = {
           placeholder: 'e.g., By direction',
           className: 'md:col-span-1'
         },
-        {
-          name: 'fouoDesignation',
-          label: 'FOUO Designation',
-          type: 'select',
-          options: [
-            { label: 'None', value: '' },
-            { label: 'FOR OFFICIAL USE ONLY', value: 'full' },
-          ],
-          description: 'Stamps classification at top and bottom of each page (DLA Ch.1 Para 15)',
-          defaultValue: '',
-          className: 'md:col-span-1'
-        }
+        // FOUO Designation retired from the form 2026-08-16. DoDI
+        // 5200.48 (6 March 2020) cancelled DoDM 5200.01 Vol 4 and ended
+        // FOUO on newly created documents; USMC implemented it in
+        // MARADMIN 664/20. CUI replaces it, and this type already has
+        // showClassification: true, so the marking engine covers it.
+        // The schema field and both emitters still render a saved
+        // fouoDesignation so a legacy document keeps its marking, and
+        // validateRetiredFouo reports it.
       ]
     }
   ]

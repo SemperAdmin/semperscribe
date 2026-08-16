@@ -1,6 +1,7 @@
 import type { GunnyRequest, GunnyStreamEvent } from './types';
 import { getAdapter } from './providers';
 import { isEdmsMode, EDMS_ALLOWED_PROVIDER } from '@/lib/edms-mode';
+import { getProxyUrl } from './proxy-config';
 
 export interface StreamHandlers {
   onEvent(event: GunnyStreamEvent): void;
@@ -52,7 +53,33 @@ export async function streamChat(req: GunnyRequest, handlers: StreamHandlers): P
     return;
   }
 
-  const httpReq = adapter.buildRequest(req);
+  // Proxy requirement.
+  //
+  // Resolved HERE and nowhere else, for the same reason the EDMS gate
+  // lives here: this function is GunnyBot's only fetch. Five call sites
+  // build their own GunnyRequest, and threading a proxy through each of
+  // them means five places to forget it. A caller-supplied value still
+  // wins so tests keep their seam, and the stored setting fills the gap
+  // for every real call.
+  //
+  // browserDirect false means the provider is known to refuse direct
+  // browser calls. Failing here produces a readable sentence instead of
+  // the bare "Failed to fetch" a CORS abort throws, which carries no
+  // detail by design and told the user nothing for months.
+  const proxyBaseUrl = req.proxyBaseUrl ?? getProxyUrl(req.provider) ?? undefined;
+  if (!adapter.browserDirect && proxyBaseUrl === undefined) {
+    emit({
+      kind: 'error',
+      message:
+        adapter.label + ' does not answer direct browser calls, so it needs a proxy. ' +
+        'Open Settings, then the Assistant tab, and set the proxy URL for this provider.',
+    });
+    return;
+  }
+
+  const httpReq = adapter.buildRequest(
+    proxyBaseUrl === req.proxyBaseUrl ? req : { ...req, proxyBaseUrl },
+  );
 
   let res: Response;
   try {

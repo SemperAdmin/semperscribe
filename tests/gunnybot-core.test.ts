@@ -9,10 +9,11 @@
  * Anthropic was removed 2026-08-10 on a policy ruling. Gemini is now the
  * streaming fixture everywhere the Anthropic adapter used to be one.
  */
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { geminiAdapter, genaimilAdapter, getAdapter } from '@/lib/gunnybot/providers';
 import { streamChat } from '@/lib/gunnybot/client';
 import * as keyring from '@/lib/gunnybot/keyring';
+import { setProxyUrl, clearAllProxyUrls, normalizeProxyUrl } from '@/lib/gunnybot/proxy-config';
 import { screenOutbound, clearedForEgress } from '@/lib/gunnybot/redaction';
 import { registerEgressAckHandler, hasEgressAckHandler, requestEgressAck } from '@/lib/gunnybot/egress-gate';
 import { buildContext } from '@/lib/gunnybot/context-builder';
@@ -491,6 +492,9 @@ describe('gunnybot genaimil adapter (OpenAI-compatible)', () => {
   });
 
   it('streamChat reads a non-streaming GenAI.mil response', async () => {
+    // A proxy URL is mandatory for this provider now. browserDirect is
+    // false, measured 2026-08-11, so the send path refuses without one.
+    // Passing it on the request keeps this case about response parsing.
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
@@ -502,10 +506,91 @@ describe('gunnybot genaimil adapter (OpenAI-compatible)', () => {
     );
     const events: GunnyStreamEvent[] = [];
     await streamChat(
-      { provider: 'genaimil', model: 'gemini-2.5-flash', apiKey: 'STARK_TESTKEY0123456789', messages: [{ role: 'user', content: 'hi' }], maxOutputTokens: 64 },
+      { provider: 'genaimil', model: 'gemini-2.5-flash', apiKey: 'STARK_TESTKEY0123456789', messages: [{ role: 'user', content: 'hi' }], maxOutputTokens: 64, proxyBaseUrl: 'http://127.0.0.1:8443' },
       { onEvent: e => events.push(e) },
     );
     expect(events.filter(e => e.kind === 'token').map(e => (e as { text: string }).text).join('')).toBe('ready');
     expect(events.some(e => e.kind === 'done')).toBe(true);
+  });
+});
+
+// The proxy requirement. GenAI.mil refuses every browser client, measured
+// on a government workstation 2026-08-11 with controls. browserDirect
+// false makes that refusal a readable message instead of the bare
+// "Failed to fetch" a CORS abort produces.
+describe('gunnybot proxy requirement', () => {
+  beforeEach(() => {
+    clearAllProxyUrls();
+  });
+
+  afterEach(() => {
+    clearAllProxyUrls();
+    vi.unstubAllGlobals();
+  });
+
+  it('marks GenAI.mil as needing a proxy and Gemini as not', () => {
+    expect(genaimilAdapter.browserDirect).toBe(false);
+    expect(geminiAdapter.browserDirect).toBe(true);
+  });
+
+  it('refuses to send to a proxy-required provider with no proxy set', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const events: GunnyStreamEvent[] = [];
+    await streamChat(
+      { provider: 'genaimil', model: 'gemini-2.5-flash', apiKey: 'STARK_TESTKEY0123456789', messages: [{ role: 'user', content: 'hi' }], maxOutputTokens: 64 },
+      { onEvent: e => events.push(e) },
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(events).toHaveLength(1);
+    const err = events[0] as { kind: string; message: string };
+    expect(err.kind).toBe('error');
+    expect(err.message).toContain('needs a proxy');
+  });
+
+  it('routes through the stored proxy when no proxy rides on the request', async () => {
+    setProxyUrl('genaimil', 'http://127.0.0.1:8443/');
+    const fetchSpy = vi.fn(async (_url: string, _init?: RequestInit) => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      text: async () => JSON.stringify({ choices: [{ message: { content: 'ready' }, finish_reason: 'stop' }] }),
+    }));
+    vi.stubGlobal('fetch', fetchSpy);
+    const events: GunnyStreamEvent[] = [];
+    await streamChat(
+      { provider: 'genaimil', model: 'gemini-2.5-flash', apiKey: 'STARK_TESTKEY0123456789', messages: [{ role: 'user', content: 'hi' }], maxOutputTokens: 64 },
+      { onEvent: e => events.push(e) },
+    );
+    // Trailing slash normalised away, so no doubled slash in the route.
+    expect(fetchSpy.mock.calls[0][0]).toBe('http://127.0.0.1:8443/v1/chat/completions');
+    expect(events.some(e => e.kind === 'token')).toBe(true);
+  });
+
+  it('leaves a browser-direct provider on its own host when a proxy is stored for another', async () => {
+    setProxyUrl('genaimil', 'http://127.0.0.1:8443');
+    const fetchSpy = vi.fn(async (_url: string, _init?: RequestInit) => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'text/event-stream' }),
+      body: null,
+    }));
+    vi.stubGlobal('fetch', fetchSpy);
+    await streamChat(
+      { provider: 'gemini', model: 'gemini-2.5-flash', apiKey: 'AIzaTESTKEY0123456789', messages: [{ role: 'user', content: 'hi' }], maxOutputTokens: 64 },
+      { onEvent: () => {} },
+    );
+    expect(String(fetchSpy.mock.calls[0][0])).toContain('generativelanguage.googleapis.com');
+    expect(String(fetchSpy.mock.calls[0][0])).not.toContain('127.0.0.1');
+  });
+
+  it('rejects a proxy URL that is not a usable http base', () => {
+    expect(normalizeProxyUrl('')).toBeNull();
+    expect(normalizeProxyUrl('127.0.0.1:8443')).toBeNull();
+    expect(normalizeProxyUrl('ftp://127.0.0.1:8443')).toBeNull();
+    expect(normalizeProxyUrl('http://127.0.0.1:8443?a=1')).toBeNull();
+    expect(normalizeProxyUrl('http://127.0.0.1:8443#x')).toBeNull();
+    expect(normalizeProxyUrl('  http://127.0.0.1:8443///  ')).toBe('http://127.0.0.1:8443');
+    expect(normalizeProxyUrl('https://proxy.example/gw/')).toBe('https://proxy.example/gw');
   });
 });

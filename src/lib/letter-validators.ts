@@ -12,6 +12,12 @@ import { validateClassification } from '@/lib/classification';
 import { validateSignature } from '@/lib/signature-validators';
 import { validateAcronyms } from '@/lib/acronym-validators';
 import { runNavmc10922Validators } from '@/lib/navmc10922-validators';
+import {
+  validateSchemaFields,
+  validateSalutation,
+  validateCivilianReferences,
+  validateRetiredFouo,
+} from '@/lib/schema-validators';
 
 export type ValidatorSeverity = 'block' | 'fail' | 'warn';
 
@@ -800,6 +806,14 @@ export function runLetterValidators(
     // NAVMC 10922 dependency-application rules - no-op for every other
     // documentType (docs/NAVMC_10922_SPEC.md section 9).
     ...runNavmc10922Validators(formData),
+    // Salutation presence, then the generic schema pass. Order matters
+    // only for reading: the cited rule precedes the schema echo, and
+    // the schema pass suppresses the salutation path to avoid a
+    // duplicate.
+    ...validateSalutation(formData),
+    ...validateCivilianReferences(formData, references),
+    ...validateRetiredFouo(formData),
+    ...validateSchemaFields(formData),
   ];
 }
 

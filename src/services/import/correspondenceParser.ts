@@ -39,6 +39,14 @@ const LEVEL3_RE = /^\((\d{1,2})\)\s+(\S.*)$/;
 const LEVEL4_RE = /^\(([a-z])\)\s+(\S.*)$/;
 const NAME_LINE_RE = /^[A-Z][A-Z.'’-]*(?:\s+[A-Z][A-Z.'’-]*){1,3}$/;
 const DELEGATION_RE = /^(by direction\b.*|acting)$/i;
+/** Civilian salutation (SECNAV M-5216.5 Fig 11-1). Mirrors docTypeDetector. */
+const SALUTATION_RE = /^(dear\s+[A-Za-z][A-Za-z.'’\- ]{0,58}|to whom it may concern)\s*[:,]$/i;
+/** Complimentary close, the line above the signature on a civilian letter. */
+const CLOSE_RE = /^(sincerely(\s+yours)?|respectfully|very respectfully|all the best|regards|best regards)\s*,?$/i;
+/** A street line: house number, PO box, or unit/suite designator. */
+const STREET_RE = /^(\d+\s+\S|p\.?\s?o\.?\s+box\b|post office box\b|\d+[A-Za-z]?\s)/i;
+/** "Washington, DC 20374" or "Camp Smith, HI 96861-5000". */
+const CITY_STATE_ZIP_RE = /,\s*[A-Za-z]{2}\.?\s+\d{5}(-\d{4})?$/;
 
 type AnchorKey = 'from' | 'to' | 'via' | 'subj' | 'ref' | 'encl';
 
@@ -125,6 +133,11 @@ function isNameLine(s: string): boolean {
 }
 
 export function parseCorrespondence(text: ExtractedText, documentType: string = 'basic'): ExtractionResult {
+  // Business letters use civilian conventions throughout: a spelled-out
+  // date, an inside address, a salutation, unnumbered paragraphs, and a
+  // complimentary close. Each of those needs different handling from the
+  // naval standard letter, so the flag is threaded through the parse.
+  const isCivilian = documentType === 'business-letter';
   const lines = text.lines.map(l => l.trim());
   const claimed = new Array<boolean>(lines.length).fill(false);
   const fields: ExtractedFieldMap = {};
@@ -224,8 +237,16 @@ export function parseCorrespondence(text: ExtractedText, documentType: string = 
       continue;
     }
     if (isDateLike(s) && !fields.date) {
+      // A business letter keeps the civilian date verbatim ("August 14,
+      // 2026"); converting it to 14 Aug 26 would be wrong for the type.
       const navalDate = parseAndFormatDate(s);
-      setField('date', navalDate, dateConfidence(navalDate), [i]);
+      const civilianDate = /^[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4}$/.test(s);
+      setField(
+        'date',
+        isCivilian ? s : navalDate,
+        isCivilian ? (civilianDate ? 'high' : 'low') : dateConfidence(navalDate),
+        [i],
+      );
       expectAddress = 0;
       flushAddress();
       claim(i);
@@ -262,6 +283,68 @@ export function parseCorrespondence(text: ExtractedText, documentType: string = 
         setField('ssic', embedded[1], 'low', [i]);
         break;
       }
+    }
+  }
+
+  // --- Inside address and salutation (business letter only) ------------------
+  // Sits between the ID block and the SUBJECT line. Everything here is
+  // unclaimed by the letterhead pass, which stops after the sender's own
+  // address lines. Mapping follows Fig 11-1 order: name, title, business,
+  // then the street and city/state/zip lines.
+  if (isCivilian) {
+    const salutationIdx = lines.findIndex(l => SALUTATION_RE.test(l));
+    if (salutationIdx !== -1) {
+      setField('salutation', lines[salutationIdx], 'high', [salutationIdx]);
+      claim(salutationIdx);
+
+      const block: { value: string; idx: number }[] = [];
+      for (let i = 0; i < salutationIdx; i++) {
+        if (claimed[i] || !lines[i]) continue;
+        block.push({ value: lines[i], idx: i });
+      }
+
+      if (block.length > 0) {
+        // Address lines are identified by shape, from the bottom up: the
+        // city/state/zip line and any street lines. What remains above is
+        // the recipient's name, then title, then business name.
+        let addressStart = block.length;
+        for (let n = block.length - 1; n >= 1; n--) {
+          const v = block[n].value;
+          if (CITY_STATE_ZIP_RE.test(v) || STREET_RE.test(v)) addressStart = n;
+          else break;
+        }
+        const identity = block.slice(0, addressStart);
+        const address = block.slice(addressStart);
+
+        const identityNames: ExtractedFieldName[] =
+          identity.length >= 3 ? ['recipientName', 'recipientTitle', 'businessName']
+          : identity.length === 2 ? ['recipientName', 'recipientTitle']
+          : ['recipientName'];
+        identity.forEach((entry, n) => {
+          const name = identityNames[n];
+          if (!name) return;
+          // Only the first line is certain; title versus business name is
+          // a positional guess the reviewer confirms.
+          setField(name, entry.value, n === 0 ? 'high' : 'low', [entry.idx]);
+          claim(entry.idx);
+        });
+        if (identity.length > identityNames.length) {
+          warnings.push('More inside-address lines than the recipient fields hold; check the Address field.');
+        }
+        if (address.length > 0) {
+          setField(
+            'recipientAddress',
+            address.map(a => a.value).join('\n'),
+            address.some(a => CITY_STATE_ZIP_RE.test(a.value)) ? 'high' : 'low',
+            address.map(a => a.idx),
+          );
+          address.forEach(a => claim(a.idx));
+        } else {
+          warnings.push('No recipient address found above the salutation.');
+        }
+      }
+    } else {
+      warnings.push('No salutation found; a business letter requires one.');
     }
   }
 
@@ -358,6 +441,15 @@ export function parseCorrespondence(text: ExtractedText, documentType: string = 
         currentParagraph = null;
         state = 'closing';
         // fall through to closing handling below
+      } else if (isCivilian && CLOSE_RE.test(s)) {
+        // The complimentary close ends the body on a civilian letter; the
+        // signature block follows.
+        currentParagraph = null;
+        setField('complimentaryClose', s.endsWith(',') ? s : `${s},`, 'high', [i]);
+        claim(i);
+        state = 'closing';
+        prevBlank = false;
+        continue;
       } else if (prevBlank && isNameLine(s)) {
         currentParagraph = null;
         setField('sig', s, 'high', [i]);
@@ -384,7 +476,11 @@ export function parseCorrespondence(text: ExtractedText, documentType: string = 
           currentParagraph.content = joinLine(currentParagraph.content, s);
         } else {
           currentParagraph = startParagraph(1, s);
-          warnings.push(`Unnumbered text at line ${i + 1} was imported as a new paragraph.`);
+          // Business-letter paragraphs are unnumbered by format
+          // (M-5216.5 Fig 11-1), so the warning would fire on every one.
+          if (!isCivilian) {
+            warnings.push(`Unnumbered text at line ${i + 1} was imported as a new paragraph.`);
+          }
         }
         claim(i);
         prevBlank = false;
@@ -401,6 +497,11 @@ export function parseCorrespondence(text: ExtractedText, documentType: string = 
         claim(i);
       } else if (awaitingDelegation && DELEGATION_RE.test(s)) {
         setField('delegationText', s, 'high', [i]);
+        claim(i);
+      } else if (isCivilian && fields.sig && !fields.signerTitle && !activeClosingList && !ANCHOR_RE.test(s)) {
+        // The line under the signature on a civilian letter is the
+        // signer's title ("Head, FOIA Branch"), not a delegation line.
+        setField('signerTitle', s, 'low', [i]);
         claim(i);
       } else if (activeClosingList) {
         activeClosingList.push(s);

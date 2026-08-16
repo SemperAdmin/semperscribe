@@ -14,6 +14,13 @@ export type {
 
 export { PROVIDER_REGISTRY, getAdapter, geminiAdapter, genaimilAdapter } from './providers';
 export { setKey, getKey, hasKey, clearKey, clearAllKeys } from './keyring';
+export {
+  getProxyUrl,
+  setProxyUrl,
+  clearProxyUrl,
+  clearAllProxyUrls,
+  normalizeProxyUrl,
+} from './proxy-config';
 export { screenOutbound, clearedForEgress } from './redaction';
 export type { RedactionVerdict } from './redaction';
 export { registerEgressAckHandler, hasEgressAckHandler, requestEgressAck } from './egress-gate';

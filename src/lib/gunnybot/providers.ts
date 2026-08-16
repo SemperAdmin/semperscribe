@@ -145,14 +145,30 @@ export const geminiAdapter: ProviderAdapter = {
 };
 
 // GenAI.mil: the DoD GenAI gateway. OpenAI-compatible chat completions
-// (Bearer auth, POST /v1/chat/completions). Browser-direct reach is
-// unverified. Confirm with Test connection, and set proxyBaseUrl if the
-// endpoint refuses the browser origin or is network-gated.
+// (Bearer auth, POST /v1/chat/completions).
+//
+// browserDirect is FALSE. This is measured, not assumed. From a
+// government workstation on 2026-08-11, with a reachable-host control
+// and an unroutable-host control both behaving:
+//   no-cors GET  api.genai.mil/          -> opaque, 652 ms
+//   no-cors POST /v1/chat/completions    -> opaque, 212 ms
+//   cors    POST /v1/chat/completions    -> rejected, 212 ms
+//   cors    GET  api.genai.mil/          -> rejected, 210 ms
+// The opaque rows prove transport, TLS and the site proxy are healthy.
+// The last row generates NO preflight at all and still fails, so the
+// gateway omits Access-Control-Allow-Origin on ordinary responses on top
+// of refusing the anonymous OPTIONS. Two independent defects, either one
+// fatal to a browser client. Full evidence in
+// docs/GENAI_MIL_CORS_DEFECT_REPORT.md.
+//
+// A proxy URL is therefore required. client.ts refuses to send without
+// one. Do not flip this back without a re-run showing both cors rows
+// passing from the deployed origin.
 export const genaimilAdapter: ProviderAdapter = {
   id: 'genaimil',
   label: 'GenAI.mil',
   models: GENAIMIL_MODELS,
-  browserDirect: true,
+  browserDirect: false,
   streaming: false,
 
   validateKeyShape(key: string): boolean {

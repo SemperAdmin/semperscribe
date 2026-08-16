@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GenAI.mil transport vs CORS probe</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 14px/1.5 "Segoe UI", system-ui, sans-serif; margin: 0; padding: 24px; background:#0f1115; color:#e6e8ec; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 24px 0 8px; color:#9aa4b2; text-transform: uppercase; letter-spacing:.06em; }
+  .sub { color:#9aa4b2; margin: 0 0 20px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #262b34; vertical-align: top; }
+  th { color:#9aa4b2; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing:.05em; }
+  td.id { font-family: Consolas, monospace; white-space: nowrap; color:#9aa4b2; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-weight:700; font-size:12px; font-family: Consolas, monospace; }
+  .OPAQUE  { background:#14532d; color:#bbf7d0; }
+  .REJECTED{ background:#7f1d1d; color:#fecaca; }
+  .OK      { background:#14532d; color:#bbf7d0; }
+  .ERROR   { background:#78350f; color:#fed7aa; }
+  .TIMEOUT { background:#78350f; color:#fed7aa; }
+  .PENDING { background:#1e293b; color:#94a3b8; }
+  .detail { font-family: Consolas, monospace; font-size: 12px; color:#c3c9d4; word-break: break-word; }
+  .verdict { border:1px solid #2b313c; border-radius:8px; padding:16px; margin: 20px 0; background:#151922; }
+  .verdict b { color:#fff; }
+  button { font: inherit; padding: 8px 16px; border-radius:6px; border:1px solid #3a424f; background:#1c2230; color:#e6e8ec; cursor:pointer; margin-right:8px; }
+  button:hover { background:#252d3d; }
+  textarea { width:100%; height:220px; margin-top:12px; background:#0b0e13; color:#c3c9d4; border:1px solid #2b313c; border-radius:6px; font-family: Consolas, monospace; font-size:12px; padding:10px; }
+  .warn { border-left:3px solid #b45309; padding-left:12px; color:#fcd34d; margin:16px 0; }
+</style>
+</head>
+<body>
+<h1>GenAI.mil transport vs CORS probe</h1>
+<p class="sub">Run this on the government laptop, in Chrome. It separates a transport failure from a CORS preflight failure. No console needed.</p>
+
+<div class="warn">
+  <b>Opening this from disk is fine for the transport question.</b> A file:// page is allowed to issue no-cors cross-origin requests and gets a normal opaque response, verified. Rows T1 and T2 are valid either way. Rows T3 and T4 send <code>Origin: null</code> instead of the real app origin, so a failure there is meaningful and a success there does not prove the deployed origin passes. For a full answer, serve this page from the same origin as the app.
+</div>
+
+<div class="warn">
+  <b>Read the controls first.</b> C1 and C2 prove the harness itself works. If C1 does not come back OPAQUE, this page is being blocked as a whole and every other row is void. Report the controls with the results.
+</div>
+
+<div>
+  <button id="run">Re-run all probes</button>
+  <button id="copy">Copy results</button>
+</div>
+
+<h2>Controls</h2>
+<table><thead><tr><th style="width:60px">ID</th><th style="width:130px">Result</th><th style="width:80px">ms</th><th>Test and detail</th></tr></thead><tbody id="controls"></tbody></table>
+
+<h2>GenAI.mil</h2>
+<table><thead><tr><th style="width:60px">ID</th><th style="width:130px">Result</th><th style="width:80px">ms</th><th>Test and detail</th></tr></thead><tbody id="targets"></tbody></table>
+
+<div class="verdict" id="verdict">Running.</div>
+
+<h2>Copyable report</h2>
+<textarea id="report" readonly></textarea>
+
+<script>
+const TARGET = 'https://api.genai.mil';
+const CHAT   = TARGET + '/v1/chat/completions';
+
+// Each test resolves to {id, kind, cls, ms, detail}.
+// cls is one of OPAQUE, OK, REJECTED, ERROR. REJECTED means the promise threw,
+// which is the ONLY signal of a transport, DNS, TLS, or proxy failure.
+// OPAQUE means the request completed and the browser hid the body by design.
+async function probe(id, kind, url, init) {
+  const t0 = performance.now();
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 10000);
+  try {
+    const res = await fetch(url, Object.assign({ signal: ctl.signal }, init));
+    clearTimeout(timer);
+    const ms = Math.round(performance.now() - t0);
+    if (res.type === 'opaque') {
+      return { id, kind, cls: 'OPAQUE', ms,
+        detail: 'Promise RESOLVED. response.type=opaque, status=' + res.status + ', ok=' + res.ok +
+                '. The request reached the network and a response came back. Body hidden by design. NOT a transport failure.' };
+    }
+    let hdr = '';
+    try { hdr = 'access-control-allow-origin=' + (res.headers.get('access-control-allow-origin') || '(absent)'); } catch (e) { hdr = '(headers unreadable)'; }
+    return { id, kind, cls: 'OK', ms,
+      detail: 'Promise RESOLVED. type=' + res.type + ', status=' + res.status + ', ok=' + res.ok + '. ' + hdr };
+  } catch (err) {
+    clearTimeout(timer);
+    const ms = Math.round(performance.now() - t0);
+    const name = err && err.name;
+    if (name === 'AbortError') {
+      return { id, kind, cls: 'TIMEOUT', ms,
+        detail: 'No answer within 10000 ms. A hang points at a proxy swallowing the connection or a dropped SYN, not at a refusal.' };
+    }
+    return { id, kind, cls: 'REJECTED', ms,
+      detail: 'Promise REJECTED. ' + name + ': ' + (err && err.message) +
+              '. Chrome gives the same bare TypeError for transport, DNS, TLS, proxy, and CORS-abort failures, so read this row against the controls and against T1 and T2.' };
+  }
+}
+
+const TESTS = [
+  { group:'controls', id:'C1', kind:'Control, reachable host. no-cors GET to generativelanguage.googleapis.com. Expect OPAQUE.',
+    run: () => probe('C1','', 'https://generativelanguage.googleapis.com/', { method:'GET', mode:'no-cors', cache:'no-store' }) },
+  { group:'controls', id:'C2', kind:'Control, unroutable host. no-cors GET to an .invalid name. Expect REJECTED.',
+    run: () => probe('C2','', 'https://probe-control-does-not-exist.invalid/', { method:'GET', mode:'no-cors', cache:'no-store' }) },
+
+  { group:'targets', id:'T1', kind:'no-cors GET to api.genai.mil root. Safelisted headers only, no preflight. OPAQUE proves transport works.',
+    run: () => probe('T1','', TARGET + '/', { method:'GET', mode:'no-cors', cache:'no-store' }) },
+  { group:'targets', id:'T2', kind:'no-cors POST to /v1/chat/completions with content-type text/plain. No preflight. OPAQUE proves transport works.',
+    run: () => probe('T2','', CHAT, { method:'POST', mode:'no-cors', cache:'no-store',
+      headers: { 'content-type':'text/plain' }, body: '{"probe":true}' }) },
+  { group:'targets', id:'T3', kind:'cors POST to /v1/chat/completions with content-type application/json. Forces a preflight, no Authorization sent. REJECTED here plus OPAQUE on T1 and T2 means the preflight is the blocker.',
+    run: () => probe('T3','', CHAT, { method:'POST', mode:'cors', cache:'no-store',
+      headers: { 'content-type':'application/json' }, body: '{"probe":true}' }) },
+  { group:'targets', id:'T4', kind:'cors GET to api.genai.mil root. No custom headers, so no preflight. Result depends only on Access-Control-Allow-Origin on the response.',
+    run: () => probe('T4','', TARGET + '/', { method:'GET', mode:'cors', cache:'no-store' }) }
+];
+
+const results = {};
+
+function row(t, r) {
+  const cls = r ? r.cls : 'PENDING';
+  const ms  = r ? r.ms : '';
+  const det = r ? r.detail : '';
+  return '<tr><td class="id">' + t.id + '</td>' +
+         '<td><span class="tag ' + cls + '">' + cls + '</span></td>' +
+         '<td class="detail">' + ms + '</td>' +
+         '<td><div>' + t.kind + '</div><div class="detail">' + det + '</div></td></tr>';
+}
+
+function render() {
+  for (const g of ['controls','targets']) {
+    document.getElementById(g).innerHTML =
+      TESTS.filter(t => t.group === g).map(t => row(t, results[t.id])).join('');
+  }
+}
+
+function verdict() {
+  const g = id => results[id] && results[id].cls;
+  const v = document.getElementById('verdict');
+  if (g('C1') !== 'OPAQUE') {
+    v.innerHTML = '<b>VOID.</b> Control C1 did not return OPAQUE, so this browser cannot reach a known-good commercial host either. The machine has no general egress right now, or an extension or policy is intercepting every request. Nothing below distinguishes GenAI.mil from anything else. Fix the control, then re-run. A file:// origin is NOT the cause: no-cors from file:// was verified working.';
+    return;
+  }
+  if (g('C2') !== 'REJECTED') {
+    v.innerHTML = '<b>VOID.</b> Control C2 did not reject against an unroutable host. The harness cannot tell success from failure. Do not read the GenAI.mil rows.';
+    return;
+  }
+  const transportOk = g('T1') === 'OPAQUE' || g('T2') === 'OPAQUE';
+  if (transportOk && g('T3') === 'REJECTED') {
+    v.innerHTML = '<b>CORS PREFLIGHT IS THE BLOCKER.</b> Transport to api.genai.mil works from this browser (T1 or T2 came back opaque). The request only fails once a preflight is required (T3). This confirms the 2026-08-06 server-side measurement of an anonymous OPTIONS returning 401. A local proxy fixes it. A transport or truststore theory does not apply to the browser.';
+    return;
+  }
+  if (transportOk && g('T3') !== 'REJECTED') {
+    v.innerHTML = '<b>UNEXPECTED.</b> Transport works AND the cors-mode request did not reject. Read the T3 and T4 detail lines carefully and report them verbatim. The gateway behavior has changed since 2026-08-06.';
+    return;
+  }
+  if (g('T1') === 'TIMEOUT' || g('T2') === 'TIMEOUT') {
+    v.innerHTML = '<b>TRANSPORT HANGS.</b> A no-cors request to api.genai.mil got no answer inside 10 seconds while control C1 came back opaque. A hang is a proxy or firewall swallowing the connection, not a refusal and not CORS. Capture the PAC file and the WinINET proxy setting next.';
+    return;
+  }
+  v.innerHTML = '<b>TRANSPORT IS THE BLOCKER.</b> Both T1 and T2 rejected while control C1 returned opaque, so this browser cannot reach api.genai.mil at all, independent of CORS. Next step is the proxy path and the TLS interception chain, not the preflight. Record the T1 and T2 elapsed times: a fast reject points at a proxy or policy block, a slow one points at a timeout.';
+}
+
+function report() {
+  const lines = [];
+  lines.push('GENAI.MIL TRANSPORT VS CORS PROBE');
+  lines.push('page origin : ' + window.location.origin);
+  lines.push('page url    : ' + window.location.href);
+  lines.push('user agent  : ' + navigator.userAgent);
+  lines.push('run at      : ' + new Date().toISOString());
+  lines.push('');
+  for (const t of TESTS) {
+    const r = results[t.id];
+    lines.push(t.id + '  ' + (r ? r.cls : 'PENDING') + '  ' + (r ? r.ms + 'ms' : ''));
+    lines.push('    test   : ' + t.kind);
+    lines.push('    result : ' + (r ? r.detail : ''));
+  }
+  lines.push('');
+  lines.push('VERDICT: ' + document.getElementById('verdict').innerText);
+  document.getElementById('report').value = lines.join('\n');
+}
+
+async function runAll() {
+  for (const k of Object.keys(results)) delete results[k];
+  render();
+  document.getElementById('verdict').innerHTML = 'Running.';
+  await Promise.all(TESTS.map(async t => {
+    results[t.id] = await t.run();
+    render();
+  }));
+  verdict();
+  report();
+}
+
+document.getElementById('run').addEventListener('click', runAll);
+document.getElementById('copy').addEventListener('click', () => {
+  const ta = document.getElementById('report');
+  ta.select();
+  document.execCommand('copy');
+});
+
+runAll();
+</script>
+</body>
+</html>

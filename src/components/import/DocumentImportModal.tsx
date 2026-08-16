@@ -37,6 +37,7 @@ const IMPORTABLE_TYPES: { id: string; label: string }[] = [
   { id: 'mfr', label: 'Memorandum for the Record' },
   { id: 'letterhead-memo', label: 'Letterhead Memo' },
   { id: 'from-to-memo', label: 'From-To Memo' },
+  { id: 'business-letter', label: 'Business Letter' },
 ];
 
 const FIELD_ROWS: { name: ExtractedFieldName; label: string }[] = [
@@ -51,6 +52,31 @@ const FIELD_ROWS: { name: ExtractedFieldName; label: string }[] = [
   { name: 'line2', label: 'Address' },
   { name: 'line3', label: 'City, State Zip' },
   { name: 'sig', label: 'Signature Name' },
+  { name: 'delegationText', label: 'Delegation Text' },
+];
+
+/**
+ * Business letters carry an inside address and a salutation instead of
+ * From/To, so the review grid swaps those rows for the civilian ones
+ * (SECNAV M-5216.5 Fig 11-1).
+ */
+const CIVILIAN_FIELD_ROWS: { name: ExtractedFieldName; label: string }[] = [
+  { name: 'ssic', label: 'SSIC' },
+  { name: 'originatorCode', label: 'Originator Code' },
+  { name: 'date', label: 'Date' },
+  { name: 'recipientName', label: 'Recipient Name' },
+  { name: 'recipientTitle', label: 'Recipient Title' },
+  { name: 'businessName', label: 'Business Name' },
+  { name: 'recipientAddress', label: 'Recipient Address' },
+  { name: 'salutation', label: 'Salutation' },
+  { name: 'subj', label: 'Subject' },
+  { name: 'line1', label: 'Unit Name' },
+  { name: 'line1b', label: 'Unit Sub-Name' },
+  { name: 'line2', label: 'Address' },
+  { name: 'line3', label: 'City, State Zip' },
+  { name: 'complimentaryClose', label: 'Complimentary Close' },
+  { name: 'sig', label: 'Signature Name' },
+  { name: 'signerTitle', label: 'Signer Title' },
   { name: 'delegationText', label: 'Delegation Text' },
 ];
 
@@ -79,11 +105,26 @@ interface EditableState {
   lists: Record<ListKey, string>;
 }
 
+/**
+ * Fields whose value spans lines. A single-line <input> silently strips
+ * the newlines, so an inside address came back as
+ * "1234 Industrial ParkwayHonolulu, HI 96819" and that corrupted value
+ * would overwrite the parsed one on confirm.
+ */
+const MULTILINE_FIELDS = new Set<ExtractedFieldName>(['recipientAddress']);
+
+/** The review grid's row set for a document type. */
+function rowsFor(documentType: string): { name: ExtractedFieldName; label: string }[] {
+  return documentType === 'business-letter' ? CIVILIAN_FIELD_ROWS : FIELD_ROWS;
+}
+
 function stateFromResult(result: ExtractionResult): EditableState {
   const fields: EditableState['fields'] = {};
-  for (const { name } of FIELD_ROWS) {
-    const field = result.fields[name];
-    if (field) fields[name] = field.value;
+  // Seed from every parsed field, not from one fixed row list: the
+  // business-letter rows (recipient, salutation, close) live outside
+  // FIELD_ROWS and rendered EMPTY while the parser had their values.
+  for (const [name, field] of Object.entries(result.fields)) {
+    if (field) fields[name as ExtractedFieldName] = field.value;
   }
   return {
     fields,
@@ -142,12 +183,15 @@ export function DocumentImportModal({
     const fields: ExtractionResult['fields'] = {};
     // Non-visual fields recovered by the parser (e.g. headerType) pass
     // through untouched; visual fields take the user's edited values.
+    const activeRows = rowsFor(result.documentType);
     for (const [name, field] of Object.entries(result.fields)) {
-      if (field && !FIELD_ROWS.some(row => row.name === name)) {
+      if (field && !activeRows.some(row => row.name === name)) {
         fields[name as ExtractedFieldName] = field;
       }
     }
-    for (const { name } of FIELD_ROWS) {
+    // Edits to a visible row must win. Keyed off the ACTIVE rows, so an
+    // edited salutation on a business letter is no longer discarded.
+    for (const { name } of activeRows) {
       const value = edited.fields[name]?.trim();
       if (value) {
         fields[name] = {
@@ -215,7 +259,7 @@ export function DocumentImportModal({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {FIELD_ROWS.map(({ name, label }) => {
+              {rowsFor(result.documentType).map(({ name, label }) => {
                 const flagged = lowConfidence.has(name) && edited.fields[name] === result.fields[name]?.value;
                 return (
                   <div key={name} className="space-y-1">
@@ -227,12 +271,22 @@ export function DocumentImportModal({
                         </Badge>
                       )}
                     </Label>
-                    <Input
-                      id={`import-${name}`}
-                      value={edited.fields[name] ?? ''}
-                      onChange={e => setField(name, e.target.value)}
-                      className={cn(flagged && 'border-amber-500/60 focus-visible:ring-amber-500/40')}
-                    />
+                    {MULTILINE_FIELDS.has(name) ? (
+                      <Textarea
+                        id={`import-${name}`}
+                        rows={3}
+                        value={edited.fields[name] ?? ''}
+                        onChange={e => setField(name, e.target.value)}
+                        className={cn('text-sm', flagged && 'border-amber-500/60 focus-visible:ring-amber-500/40')}
+                      />
+                    ) : (
+                      <Input
+                        id={`import-${name}`}
+                        value={edited.fields[name] ?? ''}
+                        onChange={e => setField(name, e.target.value)}
+                        className={cn(flagged && 'border-amber-500/60 focus-visible:ring-amber-500/40')}
+                      />
+                    )}
                   </div>
                 );
               })}

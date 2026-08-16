@@ -41,7 +41,16 @@ export type ExtractedFieldName =
   | 'line2'
   | 'line3'
   | 'sig'
-  | 'delegationText';
+  | 'delegationText'
+  // Business-letter (civilian style) fields. Only the business-letter
+  // parse path sets these; naval types leave them undefined.
+  | 'recipientName'
+  | 'recipientTitle'
+  | 'businessName'
+  | 'recipientAddress'
+  | 'salutation'
+  | 'complimentaryClose'
+  | 'signerTitle';
 
 export type ExtractedFieldMap = Partial<Record<ExtractedFieldName, ExtractedField>>;
 

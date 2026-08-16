@@ -5,7 +5,8 @@ import { Confidence, ExtractedText } from './extractionTypes';
  *
  * Scans the first ~30 lines of extracted text for the headings and anchors
  * that distinguish the standard-letter family (basic letter, MFR,
- * letterhead memo, from-to memo). Types the importer does not support yet
+ * letterhead memo, from-to memo) and the civilian business letter, which
+ * is identified by its salutation. Types the importer does not support yet
  * (endorsements, directives, bulletins, NAVMC forms, AMHS messages) are
  * still recognized so the user gets a clear "importing as Basic Letter"
  * warning instead of a silent misclassification.
@@ -31,6 +32,15 @@ const MEMO_RE = /^MEMORANDUM\b/i;
 const FROM_RE = /^from\s*[:.]/i;
 const TO_RE = /^to\s*[:.]/i;
 const SUBJ_RE = /^subj(?:ect)?\s*[:.]/i;
+/**
+ * Civilian salutation, the one anchor unique to the business-letter
+ * family (SECNAV M-5216.5 Fig 11-1). "Dear Mr. Smith:", "Dear Sir or
+ * Madam:", "To Whom It May Concern:". Bounded length keeps a body
+ * sentence beginning with "Dear" from matching.
+ */
+const SALUTATION_RE = /^(dear\s+[A-Za-z][A-Za-z.'’\- ]{0,58}|to whom it may concern)\s*[:,]$/i;
+/** Civilian date, "August 14, 2026" - business letters never use 14 Aug 26. */
+const CIVILIAN_DATE_RE = /^[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4}$/;
 
 /** Recognized-but-unsupported headings, with a label for the warning. */
 const UNSUPPORTED_SIGNALS: { re: RegExp; label: string }[] = [
@@ -48,6 +58,8 @@ export function detectDocumentType(text: ExtractedText): DocTypeDetection {
   const hasFrom = window.some(l => FROM_RE.test(l));
   const hasTo = window.some(l => TO_RE.test(l));
   const hasSubj = window.some(l => SUBJ_RE.test(l));
+  const hasSalutation = window.some(l => SALUTATION_RE.test(l));
+  const hasCivilianDate = window.some(l => CIVILIAN_DATE_RE.test(l));
 
   // Heading-based signals first: they are more specific than the From/To/Subj
   // anchors, which unsupported types (e.g. endorsements) also contain.
@@ -81,6 +93,33 @@ export function detectDocumentType(text: ExtractedText): DocTypeDetection {
       }
       return { documentType: 'letterhead-memo', confidence: 'low', warnings: [] };
     }
+  }
+
+  // Business letter. The salutation is decisive, and its absence from the
+  // naval standard letter is what makes it safe: a From/To letter never
+  // carries one. Checked after the heading loop so a MEMORANDUM or an
+  // unsupported heading still wins.
+  if (hasSalutation && !hasFrom && !hasTo) {
+    return { documentType: 'business-letter', confidence: 'high', warnings: [] };
+  }
+  if (hasSalutation) {
+    // Both a salutation and From/To: contradictory. The naval anchors are
+    // structural, the salutation is one line, so the naval read wins with
+    // the conflict surfaced.
+    return {
+      documentType: 'basic',
+      confidence: 'low',
+      warnings: ['This document has both a salutation and From/To lines; importing as a Basic Letter. Switch to Business Letter if the salutation is correct.'],
+    };
+  }
+  if (hasCivilianDate && hasSubj && !hasFrom && !hasTo) {
+    // Civilian date and a SUBJECT line with no naval anchors: the
+    // business-letter shape with the salutation missing or unrecognized.
+    return {
+      documentType: 'business-letter',
+      confidence: 'low',
+      warnings: ['No salutation found; verify the document type and add a salutation.'],
+    };
   }
 
   if (hasFrom && hasTo && hasSubj) {

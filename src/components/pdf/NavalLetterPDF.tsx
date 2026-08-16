@@ -862,7 +862,18 @@ export function NavalLetterPDF({
           {/* DLA letterhead: 12pt bold agency name, 10pt sub-lines per DLA Correspondence Manual Ch.1 Para 17.f.(4) */}
           {isDLAType ? (
             <>
-              <Text style={[styles.headerTitle, { fontSize: 12 }]}>DEFENSE LOGISTICS AGENCY</Text>
+              {/* The agency name follows headerType, as the DOCX emitter
+                  does; only the DLA typography (12pt title, 10pt lines,
+                  DLA Corr Manual Ch.1 Para 17.f.(4)) is keyed to the
+                  document type. Hardcoding the name here printed DLA on
+                  the preview and the selected department in Word. */}
+              <Text style={[styles.headerTitle, { fontSize: 12 }]}>
+                {formData.headerType === 'USMC'
+                  ? 'UNITED STATES MARINE CORPS'
+                  : formData.headerType === 'DON'
+                  ? 'DEPARTMENT OF THE NAVY'
+                  : 'DEFENSE LOGISTICS AGENCY'}
+              </Text>
               {formData.line1 && <Text style={[styles.headerLine, { fontSize: 10 }]}>{formData.line1}</Text>}
               {formData.line2 && <Text style={[styles.headerLine, { fontSize: 10 }]}>{formData.line2}</Text>}
               {formData.line3 && <Text style={[styles.headerLine, { fontSize: 10 }]}>{formData.line3}</Text>}
@@ -923,7 +934,12 @@ export function NavalLetterPDF({
                   {isDirective ? getDirectiveDesignation(formData) : (formData.ssic || '')}
                 </Text>
                 <Text style={styles.addressLine}>{formData.originatorCode || ''}</Text>
-                <Text style={styles.addressLine}>{formattedDate}</Text>
+                {/* The executive letter carries its date in its own block
+                    below (Ch 12-3 para 3), which also honors omitDate.
+                    Printing it here too put the date on the page twice and
+                    left one copy visible with omitDate set, which the DOCX
+                    never did. */}
+                {!isExecLetter && <Text style={styles.addressLine}>{formattedDate}</Text>}
              </View>
           </View>
         )}
@@ -948,9 +964,15 @@ export function NavalLetterPDF({
                      </Text>
                  )}
 
-                 <Text style={[styles.addressLine, { marginTop: 24 }]}>
-                     {formData.salutation || 'Dear Sir or Madam:'}
-                 </Text>
+                 {/* Salutation. No placeholder fallback: the DOCX emitter
+                     omits an empty salutation, so a preview-only default
+                     printed text the export never wrote. Empty is flagged
+                     by validateSalutation (letter-validators). */}
+                 {formData.salutation ? (
+                     <Text style={[styles.addressLine, { marginTop: 24 }]}>
+                         {formData.salutation}
+                     </Text>
+                 ) : null}
 
                  {/* Subject Line (Optional) */}
                  {formData.subj && (
@@ -982,9 +1004,13 @@ export function NavalLetterPDF({
                      <Text key={i} style={styles.addressLine}>{line}</Text>
                  ))}
 
-                 <Text style={[styles.addressLine, { marginTop: 24 }]}>
-                     {formData.salutation || 'Dear Sir or Madam:'}
-                 </Text>
+                 {/* Salutation: preview matches the DOCX emitter, which
+                     omits an empty salutation (see business-letter note). */}
+                 {formData.salutation ? (
+                     <Text style={[styles.addressLine, { marginTop: 24 }]}>
+                         {formData.salutation}
+                     </Text>
+                 ) : null}
 
                  {formData.subj && (
                     <View style={{ flexDirection: 'row', marginTop: 12 }}>
@@ -1052,10 +1078,13 @@ export function NavalLetterPDF({
                 <Text key={i} style={styles.addressLine}>{line}</Text>
               ))}
             </View>
-            {/* Salutation */}
-            <Text style={[styles.addressLine, { marginBottom: PDF_SPACING.sectionGap }]}>
-              {formData.salutation || 'Dear Sir or Madam:'}
-            </Text>
+            {/* Salutation: preview matches the DOCX emitter, which omits
+                an empty salutation (see business-letter note). */}
+            {formData.salutation ? (
+              <Text style={[styles.addressLine, { marginBottom: PDF_SPACING.sectionGap }]}>
+                {formData.salutation}
+              </Text>
+            ) : null}
             {/* SUBJECT */}
             {formData.subj && (
               <View style={{ flexDirection: 'row', marginBottom: PDF_SPACING.sectionGap }}>
@@ -1901,8 +1930,20 @@ export function NavalLetterPDF({
         {classificationBanner}
         {cuiDesignationBlock}
 
-        {/* FOUO Footer - Per MCO 5215.1K para 10 */}
-        {/* "FOR OFFICIAL USE ONLY" centered at bottom of pages for FOUO-designated directives */}
+        {/* FOUO footer, every page.
+            SECNAV M-5216.5 para 7-3 states no page pattern of its own -
+            it delegates to DoDM 5200.01 Vol 4, Encl 3, Sec 2.c. The only
+            per-page text in the manual is Figure 7-7 (page 7-22):
+            "Internal pages of the document that contain FOUO information
+            shall be marked 'FOR OFFICIAL USE ONLY' at the bottom." The
+            front-cover / title-page / back-cover rule in the same figure
+            applies to BOUND documents, and a letter has no cover, so the
+            earlier page-1-and-last behavior was that rule misapplied.
+            A designated document carries FOUO content throughout, so
+            every page is marked, which also matches the DOCX emitter
+            (Word footers cannot target a last page). "partial" marks
+            every page too until paragraph-level "(FOUO)" portion marks
+            exist to say which pages qualify. */}
         {isDirective && formData.fouoDesignation && formData.fouoDesignation !== '' && (
           <Text
             style={{
@@ -1915,20 +1956,9 @@ export function NavalLetterPDF({
               fontFamily: fontFamily,
             }}
             fixed
-            render={({ pageNumber, totalPages }) => {
-              // Full FOUO: show on letterhead (page 1) and last page
-              if (formData.fouoDesignation === 'full') {
-                if (pageNumber === 1 || pageNumber === totalPages) {
-                  return 'FOR OFFICIAL USE ONLY';
-                }
-              }
-              // Partial FOUO: show on all pages (user decides which pages have FOUO content)
-              if (formData.fouoDesignation === 'partial') {
-                return 'FOR OFFICIAL USE ONLY';
-              }
-              return '';
-            }}
-          />
+          >
+            FOR OFFICIAL USE ONLY
+          </Text>
         )}
 
         {/* DLA FOUO - Per DLA Correspondence Manual Ch.1 Para 15 */}
@@ -2004,8 +2034,12 @@ export function NavalLetterPDF({
                     </View>
                     <View style={{ flexDirection: 'row' }}>
                         <Text style={styles.infoPaperFooterLeft}>Approved by: </Text>
+                        {/* No 'Rank Name, Code, Phone' fallback: the DOCX
+                            footer writes the empty fields, so the preview
+                            showed an approval line the export did not
+                            contain. */}
                         <Text style={styles.infoPaperFooterLeft}>
-                            {formData.approverRank || 'Rank'} {formData.approverName || 'Name'}, {formData.approverOfficeCode || 'Code'}, {formData.approverPhone || 'Phone'}
+                            {formData.approverRank || ''} {formData.approverName || ''}, {formData.approverOfficeCode || ''}, {formData.approverPhone || ''}
                         </Text>
                     </View>
                  </View>
