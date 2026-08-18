@@ -27,7 +27,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertTriangle, FileCheck2, ShieldCheck } from 'lucide-react';
 import type { NLDPLifecycle, NLDPSignedArtifact } from '@/lib/nldp-format';
 import {
@@ -156,7 +155,7 @@ export function ReleaseNLDPDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-3">
+        <div className="max-h-[60vh] overflow-y-auto pr-3 native-scroll">
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="release-lifecycle">Document lifecycle</Label>
@@ -249,7 +248,7 @@ export function ReleaseNLDPDialog({
 
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => { reset(); onOpenChange(false); }} disabled={busy}>

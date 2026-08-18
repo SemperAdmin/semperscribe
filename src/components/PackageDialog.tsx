@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layers, Plus, ChevronUp, ChevronDown, X, Download, RefreshCw, AlertTriangle, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -108,7 +107,7 @@ export function PackageDialog({
           </div>
         )}
 
-        <ScrollArea className="flex-1 -mx-2 px-2">
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 native-scroll">
           {members.length === 0 ? (
             <div className="py-16 text-center text-sm text-muted-foreground">
               Add the basic letter first, then its endorsements in order.
@@ -165,7 +164,7 @@ export function PackageDialog({
               )}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="gap-2">
           {members.length > 0 && (

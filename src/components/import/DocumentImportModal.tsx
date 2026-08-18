@@ -22,7 +22,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import {
@@ -226,7 +225,7 @@ export function DocumentImportModal({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 pr-4 -mr-2">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-4 -mr-2 native-scroll">
           <div className="space-y-5 pb-2">
             {(result.warnings.length > 0) && (
               <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 space-y-1">
@@ -311,7 +310,7 @@ export function DocumentImportModal({
 
             <div className="space-y-1.5">
               <Label className="text-xs">Paragraphs ({result.paragraphs.length}) — edit in the main editor after import</Label>
-              <div className="rounded-md border border-border bg-background/50 p-3 space-y-2 max-h-48 overflow-y-auto">
+              <div className="rounded-md border border-border bg-background/50 p-3 space-y-2 max-h-48 overflow-y-auto native-scroll">
                 {result.paragraphs.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No body paragraphs were found.</p>
                 ) : (
@@ -335,7 +334,7 @@ export function DocumentImportModal({
                   Unmatched text ({result.unmatchedText.length} {result.unmatchedText.length === 1 ? 'line' : 'lines'} the parser could not place)
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="mt-2 rounded-md border border-border bg-background/50 p-3 max-h-32 overflow-y-auto">
+                  <div className="mt-2 rounded-md border border-border bg-background/50 p-3 max-h-32 overflow-y-auto native-scroll">
                     {result.unmatchedText.map((line, i) => (
                       <p key={i} className="text-xs text-muted-foreground font-mono">{line}</p>
                     ))}
@@ -344,7 +343,7 @@ export function DocumentImportModal({
               </Collapsible>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="flex-col sm:flex-row sm:items-center gap-2 border-t border-border pt-3">
           <p className="text-xs text-destructive flex items-center gap-1.5 sm:mr-auto">

@@ -31,7 +31,6 @@ import { Users, Home, HeartCrack, FileCheck2, Building, Search } from 'lucide-re
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import type { Unit } from '@/lib/units';
 import { useUnits } from '@/hooks/useReferenceData';
@@ -294,7 +293,7 @@ function UnitSearchDialog({ open, onOpenChange, onSelect, title }: {
           onChange={(e) => setQuery(e.target.value)}
           autoFocus
         />
-        <ScrollArea className="flex-1 pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-4 native-scroll">
           <div className="space-y-2">
             {query.length <= 1 && (
               <p className="text-center py-8 text-muted-foreground text-sm">Type at least 2 characters to search...</p>
@@ -323,7 +322,7 @@ function UnitSearchDialog({ open, onOpenChange, onSelect, title }: {
               </button>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GitCompare, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -154,7 +153,7 @@ export function RevisionCompareDialog({ open, onOpenChange, letters, onRestore }
           <p className="text-xs text-muted-foreground">{summarizeDiff(diff)}</p>
         )}
 
-        <ScrollArea className="flex-1 -mx-2 px-2">
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 native-scroll">
           {!diff ? (
             <div className="py-16 text-center text-sm text-muted-foreground">
               {letters.length < 2 ? 'Nothing to compare yet.' : 'Select two revisions.'}
@@ -168,7 +167,7 @@ export function RevisionCompareDialog({ open, onOpenChange, letters, onRestore }
               {diff.fields.map((field, i) => <DiffRow key={`${field.label}-${i}`} field={field} />)}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>

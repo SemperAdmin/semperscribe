@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { FileText, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Sheet,
   SheetContent,
@@ -89,13 +88,13 @@ export function PreviewModal({
           {isAMHS ? (
             // AMHS Preview
             <div className="h-full bg-zinc-950">
-              <ScrollArea className="h-full w-full">
+              <div className="h-full w-full overflow-auto native-scroll">
                 <div className="p-4">
                   <pre className="text-green-400 font-mono text-xs whitespace-pre leading-relaxed">
                     {amhsMessage || 'Fill in the form to see preview...'}
                   </pre>
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           ) : (
             // PDF Preview

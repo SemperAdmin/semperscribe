@@ -17,7 +17,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FolderOpen, Search, Pencil, Copy, Trash2, Check, X } from 'lucide-react';
 import { SavedLetter } from '@/types';
@@ -127,7 +126,7 @@ export function DocumentLibraryDialog({
           </Select>
         </div>
 
-        <ScrollArea className="flex-1 -mx-2 px-2">
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 native-scroll">
           {visible.length === 0 ? (
             <div className="text-center py-10 text-sm text-muted-foreground">
               {letters.length === 0 ? 'No saved documents yet. Use File, Save Draft.' : 'No documents match your search.'}
@@ -213,7 +212,7 @@ export function DocumentLibraryDialog({
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

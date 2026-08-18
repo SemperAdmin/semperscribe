@@ -14,7 +14,6 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Search, User, Paintbrush, FileText, Database, Trash2, ShieldAlert, AlertTriangle, Scale, MessageSquare, ExternalLink, Bot } from 'lucide-react';
@@ -79,7 +78,7 @@ export function SettingsDialog({
             <TabsTrigger value="assistant" className="text-xs gap-1"><Bot className="w-3 h-3" />Assistant</TabsTrigger>
           </TabsList>
 
-          <ScrollArea className="flex-1 px-6 pb-6">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 native-scroll">
             {/* ── Profile Tab ── */}
             <TabsContent value="profile" className="mt-4 space-y-6">
               <p className="text-sm text-muted-foreground">
@@ -195,7 +194,7 @@ export function SettingsDialog({
                       className="bg-background border-input"
                       autoFocus
                     />
-                    <ScrollArea className="flex-1">
+                    <div className="flex-1 min-h-0 overflow-y-auto native-scroll">
                       <div className="space-y-2 pr-4">
                         {unitSearchQuery.length > 1 && filteredUnits.length === 0 && (
                           <div className="text-center py-8 text-muted-foreground">
@@ -230,7 +229,7 @@ export function SettingsDialog({
                           </div>
                         )}
                       </div>
-                    </ScrollArea>
+                    </div>
                   </DialogContent>
                 </Dialog>
               </div>
@@ -551,7 +550,7 @@ export function SettingsDialog({
             <TabsContent value="assistant">
               <GunnyBotSettings />
             </TabsContent>
-          </ScrollArea>
+          </div>
         </Tabs>
       </DialogContent>
 
@@ -568,7 +567,7 @@ export function SettingsDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="h-[60vh] pr-4 mt-4 border rounded-md p-4 bg-muted/20">
+          <div className="h-[60vh] overflow-y-auto pr-4 mt-4 border rounded-md p-4 bg-muted/20 native-scroll">
             <div className="space-y-6 text-sm">
               <section>
                 <h3 className="text-lg font-semibold mb-2 flex items-center text-foreground">
@@ -629,7 +628,7 @@ export function SettingsDialog({
                 </ul>
               </section>
             </div>
-          </ScrollArea>
+          </div>
 
           <DialogFooter className="mt-4">
             <Button onClick={() => setDisclaimerOpen(false)}>I Understand</Button>

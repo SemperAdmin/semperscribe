@@ -11,7 +11,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   CheckCircle2,
   XCircle,
@@ -182,7 +181,7 @@ export function ProofreadModal({
           </div>
         </div>
 
-        <ScrollArea className="flex-1 pr-2 max-h-[55vh] overflow-y-auto">
+        <div className="flex-1 min-h-0 pr-2 max-h-[55vh] overflow-y-auto native-scroll">
           <div className="space-y-4">
             {(Object.keys(CATEGORY_LABELS) as CheckCategory[]).map(cat => {
               const catInfo = CATEGORY_LABELS[cat];
@@ -282,7 +281,7 @@ export function ProofreadModal({
               body={paragraphs.map(p => p.content).join('\n\n')}
             />
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="flex gap-2 pt-2 border-t">
           <Button variant="outline" onClick={handleClose} className="flex-1">

@@ -11,7 +11,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bot, Send, Square, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGunnyStore } from '@/store/gunnyStore';
@@ -110,7 +109,7 @@ export function GunnyBotPanel() {
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="flex-1 p-4">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 native-scroll">
           {messages.length === 0 ? (
             <div className="text-center text-sm text-muted-foreground py-8">
               {keyPresent
@@ -141,7 +140,7 @@ export function GunnyBotPanel() {
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         <div className="p-4 border-t border-border space-y-2">
           <Textarea

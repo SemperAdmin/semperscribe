@@ -14,7 +14,6 @@ import {
   Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { ParagraphData } from '@/types';
 import {
   Accordion,
@@ -222,7 +221,7 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
 
   return (
     <aside className={cn("w-64 bg-card border-r border-border hidden md:flex flex-col h-full", className)}>
-      <ScrollArea className="flex-1">
+      <div className="flex-1 min-h-0 overflow-y-auto native-scroll">
         {/* Document Type Selector */}
         <div className="p-4 border-b border-border">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Document Type</h3>
@@ -536,7 +535,7 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
     </aside>
   );
 }

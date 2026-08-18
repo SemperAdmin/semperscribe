@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 
@@ -127,7 +126,7 @@ export function UnitInfoSection({
                 autoFocus
               />
             </div>
-            <ScrollArea className="flex-1 pr-4">
+            <div className="flex-1 min-h-0 overflow-y-auto pr-4 native-scroll">
               <div className="space-y-2">
                 {searchQuery.length > 1 && unitsLoading && (
                   <div className="text-center py-8 text-muted-foreground">
@@ -163,7 +162,7 @@ export function UnitInfoSection({
                   </div>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </DialogContent>
         </Dialog>
 

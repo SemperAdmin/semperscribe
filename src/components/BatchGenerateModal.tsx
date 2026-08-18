@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Download,
   Upload,
@@ -180,7 +179,7 @@ export function BatchGenerateModal({
           ))}
         </div>
 
-        <ScrollArea className="flex-1 pr-2">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-2 native-scroll">
           {/* ─── STEP 1: Select merge fields ─── */}
           {step === 'fields' && (
             <div className="space-y-4">
@@ -450,7 +449,7 @@ export function BatchGenerateModal({
               </div>
             </div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { BadgeCheck, Wand2, XCircle, AlertTriangle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ValidationIssue, ValidatorSeverity } from '@/lib/letter-validators';
@@ -64,7 +63,7 @@ export function ComplianceDialog({ open, onOpenChange, issues, onFix, onFixAll }
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-2 px-2">
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 native-scroll">
           {sorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <BadgeCheck className="w-10 h-10 text-green-600 dark:text-green-400 mb-2" />
@@ -105,7 +104,7 @@ export function ComplianceDialog({ open, onOpenChange, issues, onFix, onFixAll }
               })}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>

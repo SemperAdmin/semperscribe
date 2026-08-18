@@ -10,7 +10,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { DISCLAIMERS } from '@/lib/security-utils';
 import { hasSeenDisclaimer, markDisclaimerSeen } from '@/lib/storage-utils';
 
@@ -46,7 +45,7 @@ export function DisclaimerModal() {
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="h-[50vh] pr-4 mt-4 border rounded-md p-4 bg-muted/50">
+        <div className="h-[50vh] overflow-y-auto pr-4 mt-4 border rounded-md p-4 bg-muted/50 native-scroll">
           <div className="space-y-6 text-sm">
             <section>
               <h3 className="text-lg font-semibold mb-2">1. Privacy & Data Handling (PII/PHI)</h3>
@@ -98,7 +97,7 @@ export function DisclaimerModal() {
               </ul>
             </section>
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter>
           <Button onClick={handleClose}>I Understand</Button>

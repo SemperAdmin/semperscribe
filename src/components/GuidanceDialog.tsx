@@ -14,7 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -50,7 +49,7 @@ export function GuidanceDialog({ open, onOpenChange, documentType }: GuidanceDia
         </DialogHeader>
 
         <div className="flex flex-1 gap-3 min-h-0">
-          <ScrollArea className="w-[210px] shrink-0 border border-border rounded-md">
+          <div className="w-[210px] shrink-0 overflow-y-auto border border-border rounded-md native-scroll">
             <div className="p-1">
               {GUIDANCE.map((entry) => (
                 <button
@@ -66,9 +65,9 @@ export function GuidanceDialog({ open, onOpenChange, documentType }: GuidanceDia
                 </button>
               ))}
             </div>
-          </ScrollArea>
+          </div>
 
-          <ScrollArea className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto native-scroll">
             <div className="space-y-4 pr-3">
               <div>
                 <h3 className="text-base font-semibold text-foreground">{selected.label}</h3>
@@ -105,7 +104,7 @@ export function GuidanceDialog({ open, onOpenChange, documentType }: GuidanceDia
                 <p className="text-sm text-muted-foreground italic">{selected.example}</p>
               </div>
             </div>
-          </ScrollArea>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

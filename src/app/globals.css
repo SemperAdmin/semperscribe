@@ -67,3 +67,25 @@
     @apply bg-background text-foreground;
   }
 }
+@layer components {
+  /* Always-visible thin scrollbar for dialog/panel scroll containers.
+     Overlay scrollbars (macOS, some Chrome setups) hide until the user
+     scrolls, so overflowing dialogs looked cut off with no affordance —
+     the presenter-feedback bug. Styling the webkit scrollbar forces a
+     persistent classic bar; Firefox gets scrollbar-width: thin. */
+  .native-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .native-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .native-scroll::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+  }
+  .native-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

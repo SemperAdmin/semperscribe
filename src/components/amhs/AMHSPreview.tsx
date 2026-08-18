@@ -3,7 +3,6 @@ import { FormData, AMHSReference } from '@/types';
 import { generateFullMessage } from '@/services/amhs/amhsFormatter';
 import { FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface AMHSPreviewProps {
   formData: FormData;
@@ -28,13 +27,13 @@ export function AMHSPreview({ formData, references, className }: AMHSPreviewProp
       
       {/* Content */}
       <div className="flex-1 overflow-hidden relative bg-zinc-950">
-        <ScrollArea className="h-full w-full">
+        <div className="h-full w-full overflow-auto native-scroll">
             <div className="p-6">
                 <pre className="text-green-400 font-mono text-sm whitespace-pre leading-snug">
                     {formattedMessage}
                 </pre>
             </div>
-        </ScrollArea>
+        </div>
       </div>
     </aside>
   );
