@@ -59,8 +59,7 @@ module never had; that is the failure this rule exists to prevent.)
     "directiveMetadata": {
       "status": "draft"           // 1.1 lifecycle enum, see below
     }
-  },
-  "release": { /* Release exports only — absent on a working export */ }
+  }
 }
 ```
 
@@ -70,47 +69,27 @@ module never had; that is the failure this rule exists to prevent.)
 
 `final` means **drafting is complete** — it does not mean a commander
 signed the document. The `signed` and `promulgated` states were added in
-1.1 precisely so a package cannot claim to be policy without saying who
-attested to that and on what evidence. Only `signed` or `promulgated`
-packages can be Released, and only Release packages are eligible for
-policy-as-data ingest.
+1.1 precisely so a package cannot claim to be policy while saying only
+that someone finished typing it.
 
-## The two exports
+The drafter chooses the value in the export dialog and it is written to
+`data.directiveMetadata.status`. Omitting it defaults to `draft`, which
+is the safe direction: understating status never publishes a draft as
+policy, overstating it does.
 
-| | Working export (`.nldp`) | Release export (`.release.nldp`) |
-|---|---|---|
-| Purpose | move a draft between machines/people | hand a signed directive to the policy-as-data pipeline |
-| `release` block | absent | present |
-| Requirements | none | gates G1–G7 below |
-| Menu action | "Save as Data Package (.nldp)" | "Release Package (.release.nldp)..." |
+**This is an assertion, not evidence.** The file is plain JSON and anyone
+can hand-edit it. Verification against the issuing authority's copy is
+the receiving policy-as-data side's job, because it is the only side
+holding an authoritative copy to compare against.
 
-### Release gates
+## The export
 
-A Release export is refused unless every condition holds, and every
-failing condition is listed at once, by name:
+One data-package action: **"Save as Data Package (.nldp)..."** in the
+Export menu. It opens the lifecycle dialog, then writes the file.
 
-| # | Condition |
-|---|---|
-| G1 | lifecycle is `signed` or `promulgated` (chosen in the dialog — `final` fails) |
-| G2 | the signed PDF/DOCX was supplied and its SHA-256 computed in-browser |
-| G3 | `date_signed` is present and not in the future |
-| G4 | a signature block (`sig`) is present |
-| G5 | the paragraph tree is non-empty and every paragraph has a `designator` |
-| G6 | a distribution statement code is present |
-| G7 | the human accepted the affirmation text, shown in full |
-
-The affirmation text and its version are recorded verbatim in the
-`release` block (`lib/release.ts` owns both). `releasedBy` records a
-**role or billet, never a personal name**.
-
-The signed file itself is read, hashed with `crypto.subtle`, and
-discarded. Only the hash travels in the package; nothing is uploaded.
-
-**The release block is not tamper-proof, by design.** Anyone can
-hand-edit JSON. The real control sits on the receiving side, where a
-human verifies the encoding against the authoritative source and the
-artifact hash is checked independently. Release is evidence for that
-verification, not a substitute for it.
+The Release export (`.release.nldp`) and its G1–G7 gates were withdrawn
+on 2026-08-20. See `docs/POLICY_AS_DATA_HANDOFF.md` section 5,
+"Reversal", for the reasoning.
 
 ## Designators and citations
 
@@ -143,14 +122,17 @@ canonical module.
 
 - `sample-directive.nldp` — working export, regenerated through the real
   module (genuine hashes).
-- `examples/sample-directive.release.nldp` — Release export with a fake
-  but well-formed signed-artifact hash.
-- Regenerate both with
+- Regenerate it with
   `npx vite-node --config vitest.config.ts scripts/generate-nldp-samples.mts`.
 
-## Retired: Policy-as-Data (USLM) export
+## Retired paths
 
-`lib/policy-as-data.ts` is deprecated and its menu entry removed
-(docs/POLICY_AS_DATA_HANDOFF.md section 3). SemperScribe emits NLDP and
-nothing else; the policy-as-data repository derives its canonical record
-from NLDP 1.1 Release packages.
+- **Policy-as-Data (USLM) export.** Menu entry removed at `0f2ce34`,
+  module deleted 2026-08-20 (handoff section 3).
+- **Release packages.** `lib/release.ts`, `ReleaseNLDPDialog`, the
+  `release` block and the G1–G7 gates, removed 2026-08-20 (handoff
+  section 5, "Reversal").
+
+SemperScribe emits NLDP and nothing else. The policy-as-data repository
+derives its canonical record from the NLDP 1.1 package plus its own
+verification against the authoritative source.

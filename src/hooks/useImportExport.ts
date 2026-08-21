@@ -10,6 +10,7 @@ import { findLetterById } from '@/lib/storage-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
 import { debugUserAction } from '@/lib/console-utils';
 import { createNLDPFile, generateNLDPFilename } from '@/lib/nldp-utils';
+import type { NLDPLifecycle } from '@/lib/nldp-format';
 
 interface ImportExportDeps {
   formData: FormData;
@@ -159,7 +160,11 @@ export function useImportExport(deps: ImportExportDeps) {
   // Canonical NLDP export (lib/nldp-utils.ts). The previous ad-hoc
   // shape (packageId / formatVersion "1.0.0") bypassed the spec module
   // entirely; the module is the specification, so the app now emits it.
-  const handleExportNldp = useCallback(async () => {
+  // The lifecycle is chosen in ExportNLDPDialog and asserted by the
+  // drafter. Defaulting to 'draft' keeps a caller that supplies nothing
+  // on the safe side: understating status never publishes a draft as
+  // policy, overstating it does.
+  const handleExportNldp = useCallback(async (status: NLDPLifecycle = 'draft') => {
     const nldpFile = await createNLDPFile(
       // distList is app-local UI state, not part of the NLDP contract;
       // it rides inside formData-adjacent app exports only.
@@ -174,6 +179,7 @@ export function useImportExport(deps: ImportExportDeps) {
           title: formData.subj || 'Untitled Package',
           description: 'Exported from Naval Letter Formatter',
         },
+        status,
       }
     );
 
@@ -186,7 +192,7 @@ export function useImportExport(deps: ImportExportDeps) {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-    debugUserAction('Export Data', { format: 'nldp' });
+    debugUserAction('Export Data', { format: 'nldp', status });
   }, [formData, vias, references, enclosures, copyTos, distList, paragraphs]);
 
   // P1.1 (DONDOCS_PARITY_PLAN): password-encrypted links by default,

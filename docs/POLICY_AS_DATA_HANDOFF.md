@@ -248,6 +248,11 @@ commit, so a defective export is traceable to the build that produced it.
 
 ## 5. The Release step
 
+> **REVERSED 2026-08-20. Implemented at `0f2ce34`, withdrawn in full.** The
+> section below is kept verbatim as the record of what was built and why, so the
+> receiving side sees the decision rather than a silent disappearance. Read the
+> "Reversal" note at the end of this section before acting on anything in it.
+
 New module `src/lib/release.ts`, one dialog, one hook change. No backend, no
 account, consistent with the local-first architecture.
 
@@ -299,6 +304,52 @@ Show it in full. Record the exact string and its version in the file.
 | `sample-directive.nldp` | regenerate at 1.1, working export |
 | `examples/` | add a Release sample with a fake but well-formed hash |
 | `docs/NLDP_FEATURE_GUIDE.md` | rewrite, section 6 |
+
+### Reversal, 2026-08-20
+
+**Decision.** Delete the Release step in full: `src/lib/release.ts`,
+`ReleaseNLDPDialog`, the `NLDPRelease` and `NLDPSignedArtifact` types, the
+`release` block on `NLDPFile` and `NLDPImportResult`, `generateReleaseNLDPFilename`,
+gates G1 to G7, the affirmation, `tests/release-gate.test.ts`,
+`tests/nldp-hash.test.ts`, and `examples/sample-directive.release.nldp`.
+
+**Why.** The signed PDF or DOCX does not reach the policy-as-data side by any
+path. Section 9 above assumed it does, in the sentence "the artifact hash is
+checked independently". With no artifact to recompute against, the SHA-256 in
+the release block is an unverifiable string and G2 evidences nothing. The rest
+of the gates fall out from there:
+
+- G3, G4, G5 and G6 read fields already inside the NLDP file. Ingest validation
+  on the receiving side reads identical data and reaches an identical verdict.
+  Running them here is the two-implementations failure this document exists to
+  stop, in the same shape as section 3.
+- G7's affirmation is unsigned JSON, conceded above as not tamper-proof. As
+  evidence in a chain of custody a self-asserted claim with no cryptographic
+  signature carries no weight, and section 2 already gates rendering of authored
+  records on verification absolutely, so the affirmation blocked nothing.
+- G1 was the one gate asserting something undiscoverable from the file. Its
+  value is preserved: see below.
+
+**What is preserved.** The lifecycle enum stays exactly as section 4 defines it,
+`signed` and `promulgated` included. The draft-leakage defect this handoff was
+written to fix is fixed by the enum, not by the release block.
+
+The Release dialog was the app's ONLY route to `signed` and `promulgated`.
+`handleExportNldp` passed no status and `createNLDPFile` fell through to
+`config.status ?? 'draft'`, so deleting the dialog alone would have pinned every
+export to `draft` permanently. That is the same class of defect as 1.0, running
+the other way: a signed order arriving as a draft rather than a draft arriving as
+in force. `src/components/ExportNLDPDialog.tsx` replaces the route. It offers all
+six lifecycle values on the working export, with no gates, no affirmation and no
+hash. `tests/nldp-lifecycle.test.ts` guards it.
+
+**What the receiving side must know.** NLDP files no longer carry a `release`
+block. The field was optional on `NLDPFile`, so a package without one was valid
+1.1 before this change and remains valid: **the format version stays 1.1 and no
+reader change is required.** Lifecycle now arrives in
+`data.directiveMetadata.status` on every package, and it is a drafter assertion.
+Verification against the issuing authority's copy is unchanged and remains the
+receiving side's job, per section 1.
 
 ---
 
@@ -397,9 +448,14 @@ and a package that does not round-trip cannot deliver it.
 
 1. `.nldp` at version 1.1 exports and imports, and 1.0 files still import.
 2. Every paragraph carries a `designator` matching `lib/citation.ts`.
-3. A document with `status: 'final'` cannot produce a Release package, and the
-   refusal names G1.
-4. A Release package carries a SHA-256 of a real file the user selected.
+3. ~~A document with `status: 'final'` cannot produce a Release package, and the
+   refusal names G1.~~ **Retired 2026-08-20** with the Release step. Replaced by:
+   the export dialog offers all six lifecycle values, and `final` carries the
+   explicit "NOT signed" wording.
+4. ~~A Release package carries a SHA-256 of a real file the user selected.~~
+   **Retired 2026-08-20.** The signed artifact does not reach the receiving
+   side, so the hash was unverifiable. Replaced by: every export stamps
+   `directiveMetadata.status`, and omitting it defaults to `draft`.
 5. `references[].parsed` is `false` wherever the text was not confidently
    parsed, and no `cited` object is invented.
 6. `policy-as-data.ts` is deprecated and its UI path removed.

@@ -31,7 +31,7 @@ import { ImportPayload } from '@/services/import/extractionTypes';
 import { ProofreadModal } from '@/components/ProofreadModal';
 import { BatchGenerateModal } from '@/components/BatchGenerateModal';
 import { ShareLinkDialog, UnlockShareDialog, ConfirmShareDialog } from '@/components/ShareLinkDialog';
-import { ReleaseNLDPDialog } from '@/components/ReleaseNLDPDialog';
+import { ExportNLDPDialog } from '@/components/ExportNLDPDialog';
 import { FindReplaceDialog } from '@/components/FindReplaceDialog';
 import { GuidanceDialog } from '@/components/GuidanceDialog';
 import { FindReplaceResult } from '@/lib/find-replace';
@@ -213,7 +213,7 @@ function NavalLetterGeneratorInner() {
 
   // P1.1: share-link creation dialog state
   const [showShareDialog, setShowShareDialog] = useState(false);
-  const [showReleaseDialog, setShowReleaseDialog] = useState(false);
+  const [showExportNldpDialog, setShowExportNldpDialog] = useState(false);
 
   // P1.2: document library dialog state
   const [showLibrary, setShowLibrary] = useState(false);
@@ -876,8 +876,7 @@ function NavalLetterGeneratorInner() {
       onLoadTemplateUrl={handleLoadTemplateUrl}
       currentUnitCode={currentUnitCode}
       currentUnitName={currentUnitName}
-      onExportNldp={handleExportNldp}
-      onReleaseNldp={() => setShowReleaseDialog(true)}
+      onExportNldp={() => setShowExportNldpDialog(true)}
       onShareLink={() => setShowShareDialog(true)}
       onUpdatePreview={updatePreview}
       onCopyAMHS={handleCopyAMHS}
@@ -1016,15 +1015,10 @@ function NavalLetterGeneratorInner() {
         onOpenChange={setShowShareDialog}
         onCreate={handleShareLink}
       />
-      <ReleaseNLDPDialog
-        open={showReleaseDialog}
-        onOpenChange={setShowReleaseDialog}
-        formData={formData}
-        vias={vias}
-        references={references}
-        enclosures={enclosures}
-        copyTos={copyTos}
-        paragraphs={paragraphs}
+      <ExportNLDPDialog
+        open={showExportNldpDialog}
+        onOpenChange={setShowExportNldpDialog}
+        onExport={handleExportNldp}
       />
       <DocumentLibraryDialog
         open={showLibrary}

@@ -45,18 +45,24 @@ The following are explicit non-concerns for this PoC.
 - Unintended information leakage that routes input data (drafted correspondence content) to any third-party host, outside the opt-in GunnyBot data flow described below. A GunnyBot code path that transmits content the user did not submit, targets a host the user did not configure, or fires when no key is set remains in scope.
 - License compliance gaps in the dependency tree.
 
-## NLDP Release Packages
+## NLDP Data Packages
 
-A Release export (`.release.nldp`) records a human affirmation and the
-SHA-256 of the signed document. The release block is **not tamper-proof**:
-anyone can hand-edit the JSON, and this is an accepted proof-of-concept
-shortcut. The real control lives on the receiving policy-as-data side,
-where a human verifies the encoding against the authoritative source and
-the artifact hash is checked independently. Hashing happens entirely in
-the browser via `crypto.subtle`; the signed file is never embedded in the
-package or transmitted anywhere. A Release export does not change what
-may be typed into the app — if the signed document is CUI, its hash is
-safe to carry and its text is not.
+An `.nldp` export carries the drafter's asserted lifecycle in
+`data.directiveMetadata.status`. It is an assertion, not evidence: the
+file is plain JSON and anyone can hand-edit it. Treat a package claiming
+`signed` or `promulgated` as a claim to be checked, never as proof. The
+control lives on the receiving policy-as-data side, where a human
+verifies the encoding against the authoritative source before anything
+publishes.
+
+The Release export (`.release.nldp`), which carried a SHA-256 of the
+signed document and a human affirmation, was withdrawn on 2026-08-20.
+The signed artifact never reached the receiving side, so its hash could
+not be checked against anything and the gates around it duplicated
+validation the ingest side already performs.
+
+Exporting a data package does not change what may be typed into the app.
+The CUI warning still governs.
 
 ## Third-Party Data Flow (GunnyBot)
 

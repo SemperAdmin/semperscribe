@@ -8,16 +8,17 @@
  * from it and must be updated when it changes, never the other way round.
  *
  * Version 1.1 (docs/POLICY_AS_DATA_HANDOFF.md): every 1.1 addition is
- * optional at the type level so a 1.0 reader still parses a 1.1 file;
- * the release validator (lib/release.ts) is what makes them required.
+ * optional at the type level, so a 1.0 reader still parses a 1.1 file
+ * and a 1.1 reader still parses a 1.0 file.
  */
 
 /**
  * Lifecycle of the directive carried in the package. 1.0 stopped at
  * 'final', which meant "drafting complete" and was misread as "in
- * force" — none of the 1.0 states meant a commander signed it. The
- * signed and promulgated states exist so a Release package can say so
- * honestly; only those two are eligible for ingest.
+ * force": none of the 1.0 states meant a commander signed it. The
+ * signed and promulgated states exist so an export states signature
+ * status honestly. The drafter asserts this value; the receiving
+ * policy-as-data side verifies it against the authoritative copy.
  */
 export type NLDPLifecycle =
   | 'draft'        // being written
@@ -137,26 +138,6 @@ export interface NLDPCopyTo {
   order?: number;
 }
 
-/** 1.1 - the signed artifact, which is what makes verification possible. */
-export interface NLDPSignedArtifact {
-  filename: string;
-  format: 'pdf' | 'docx';
-  sha256: string;
-  byteLength: number;
-  hashedAt: string;
-}
-
-/** 1.1 - the release block: present only on a Release export. */
-export interface NLDPRelease {
-  released: true;
-  releasedAt: string;
-  releasedBy: string;          // role or billet, NOT a personal name
-  lifecycle: Extract<NLDPLifecycle, 'signed' | 'promulgated'>;
-  signedArtifact: NLDPSignedArtifact;
-  affirmation: string;         // the exact text the human accepted
-  affirmationVersion: string;  // so a changed wording is detectable
-}
-
 export interface NLDPData {
   formData: NLDPFormData;
   paragraphs: NLDPParagraph[];
@@ -188,8 +169,6 @@ export interface NLDPFile {
   integrity: NLDPDataIntegrity;
   /** The actual directive data */
   data: NLDPData;
-  /** 1.1 - absent on a working export. Ingest requires it. */
-  release?: NLDPRelease;
 }
 
 // Export configuration interface
@@ -208,7 +187,8 @@ export interface NLDPExportConfig {
     description?: string;
     tags?: string[];
   };
-  /** Lifecycle stamped into directiveMetadata.status. Defaults to 'draft'. */
+  /** Lifecycle stamped into directiveMetadata.status. Defaults to
+   *  'draft'. Chosen by the drafter in the export dialog. */
   status?: NLDPLifecycle;
   /** Stamped into directiveMetadata.lastModified when provided. Left
    *  absent otherwise so re-export stays deterministic (round-trip). */
@@ -222,8 +202,6 @@ export interface NLDPImportResult {
   error?: string;
   warnings?: string[];
   metadata?: NLDPMetadata;
-  /** 1.1 - release block, when the imported file carries one. */
-  release?: NLDPRelease;
 }
 
 // Validation interfaces

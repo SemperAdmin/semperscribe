@@ -1,13 +1,13 @@
 /**
  * NLDP 1.0 → 1.1 compatibility: a 1.0 file still imports under the 1.1
- * reader. Every 1.1 addition is optional at the type level; only the
- * release validator requires them.
+ * reader. Every 1.1 addition is optional at the type level, so neither
+ * reader rejects the other's files.
  */
 import { describe, it, expect } from 'vitest';
 import { importNLDPFile, validateNLDPFile } from '@/lib/nldp-utils';
 import { NLDP_CONSTANTS } from '@/lib/nldp-format';
 
-/** A faithful 1.0 file: no designators, no cited, no release block. */
+/** A faithful 1.0 file: no designators, no cited citations. */
 const V10_FILE = {
   format: 'NLDP',
   version: '1.0',
@@ -52,7 +52,6 @@ describe('NLDP 1.0 compatibility', () => {
     expect(result.data?.paragraphs[0].content).toContain('1.0 paragraph');
     expect(result.data?.paragraphs[0].designator).toBeUndefined();
     expect(result.data?.references[0].parsed).toBeUndefined();
-    expect(result.release).toBeUndefined();
   });
 
   it('the 1.0 lifecycle values remain readable', async () => {

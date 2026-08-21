@@ -106,8 +106,6 @@ interface HeaderActionsProps {
   onClearForm: () => void;
   savedLetters: SavedLetter[];
   onLoadTemplateUrl: (url: string) => void;
-  /** Opens the NLDP Release dialog (docs/POLICY_AS_DATA_HANDOFF.md §5). */
-  onReleaseNldp?: () => void;
   documentType: string;
   currentUnitCode?: string;
   currentUnitName?: string;
@@ -156,7 +154,6 @@ export function HeaderActions({
   onClearForm,
   savedLetters,
   onLoadTemplateUrl,
-  onReleaseNldp,
   documentType,
   currentUnitCode,
   currentUnitName,
@@ -537,14 +534,8 @@ export function HeaderActions({
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onExportNldp} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
                 <Save className="w-4 h-4 mr-2" />
-                Save as Data Package (.nldp)
+                Save as Data Package (.nldp)...
               </DropdownMenuItem>
-              {onReleaseNldp && (
-                <DropdownMenuItem onClick={onReleaseNldp} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                  <Download className="w-4 h-4 mr-2" />
-                  Release Package (.release.nldp)...
-                </DropdownMenuItem>
-              )}
 
               {onBatchGenerate && (
                 <>

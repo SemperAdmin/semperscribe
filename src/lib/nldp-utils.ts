@@ -8,7 +8,6 @@ import {
   NLDPData,
   NLDPExportConfig,
   NLDPImportResult,
-  NLDPRelease,
   NLDPValidationResult,
   NLDP_CONSTANTS
 } from './nldp-format';
@@ -171,10 +170,11 @@ export function validateNLDPFile(fileData: any): NLDPValidationResult {
 }
 
 /**
- * Create an NLDP file from application data
+ * Create an NLDP file from application data.
  *
- * The optional release block is built by lib/release.ts AFTER its gates
- * pass; this function only carries it into the file.
+ * config.status carries the lifecycle the drafter asserted in the
+ * export dialog. It is an assertion, not evidence: the receiving
+ * policy-as-data side verifies it against the authoritative copy.
  */
 export async function createNLDPFile(
   formData: any,
@@ -183,8 +183,7 @@ export async function createNLDPFile(
   enclosures: string[],
   copyTos: string[],
   paragraphs: any[],
-  config: NLDPExportConfig = {},
-  release?: NLDPRelease
+  config: NLDPExportConfig = {}
 ): Promise<NLDPFile> {
 
   // Prepare the data structure
@@ -252,8 +251,7 @@ export async function createNLDPFile(
       crc32,
       recordCount
     },
-    data: sanitizedData,
-    ...(release ? { release } : {})
+    data: sanitizedData
   };
 
   return nldpFile;
@@ -301,7 +299,6 @@ export async function importNLDPFile(fileContent: string): Promise<NLDPImportRes
       success: true,
       data: parsedData.data,
       metadata: parsedData.metadata,
-      release: parsedData.release,
       warnings: validation.warnings
     };
 
@@ -336,14 +333,6 @@ export function generateNLDPFilename(formData: any, config: NLDPExportConfig): s
   }
   
   return filename;
-}
-
-/**
- * Filename for a Release export: same base as the working export with a
- * ".release.nldp" extension, so the two are unmistakable side by side.
- */
-export function generateReleaseNLDPFilename(formData: any, config: NLDPExportConfig = {}): string {
-  return generateNLDPFilename(formData, config).replace(/\.nldp$/, '.release.nldp');
 }
 
 /**
