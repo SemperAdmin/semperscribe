@@ -365,6 +365,13 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
     return `NAVMC 10922 - ${name}.${extension}`;
   }
 
+  // Unit Punishment Book. The accused's name identifies the record, the same
+  // way the member's name does on the other NAVMC forms.
+  if (formData.documentType === 'navmc10132') {
+    const name = sanitize(formData.accusedName ?? '') || 'Marine';
+    return `NAVMC 10132 - ${name}.${extension}`;
+  }
+
   // AMHS
   if (formData.documentType === 'amhs') {
     return `AMHS - ${subject}.${extension}`;

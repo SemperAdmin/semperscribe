@@ -1,0 +1,126 @@
+{
+  "metadata": {
+    "packageId": "navmc10132-combined-punishment",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-08-24T00:00:00.000Z",
+    "author": {
+      "name": "SemperScribe"
+    },
+    "package": {
+      "title": "NAVMC 10132 - Combined Punishments With Suspension",
+      "description": "Two punishment codes run concurrently with a non-empty item 7 suspension, exercising the combination renderer. Sample data - replace before use.",
+      "subject": "",
+      "documentType": "navmc10132"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "navmc10132",
+      "unit": "HQ CO, 3D BN, 5TH MARINES, 1ST MARDIV",
+      "accusedName": "MARTINEZ, LUIS A",
+      "accusedRankGrade": "Sgt, E5",
+      "accusedEdipi": "3000400005",
+      "accusedPayGrade": "E5",
+      "offenses": [
+        {
+          "articleLabel": "Art. 92  Dereliction of duty by neglect",
+          "summary": "Dereliction as duty NCO, missed required security checks, 12 Aug 26.",
+          "finding": "Guilty"
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        }
+      ],
+      "demand": "I do not demand trial and will accept non-judicial punishment, subject to my right of appeal.",
+      "counselOpportunity": "have",
+      "accusedRefusedToSign": false,
+      "electionDate": "2026-08-14",
+      "bookerStatement": "BOOKER STATEMENT: Having been advised of the above and fully understanding my rights, I choose to accept NJP.",
+      "rightsAttestDate": "2026-08-15",
+      "unauthorizedAbsences": "",
+      "punishments": [
+        {
+          "code": "N09",
+          "days": "14"
+        },
+        {
+          "code": "N11",
+          "limits": "MCB Camp Pendleton",
+          "days": "14"
+        }
+      ],
+      "punishmentDate": "2026-08-15",
+      "punishmentImposed": "Extra du for 14 days, and restr to the limits of MCB Camp Pendleton for 14 days, w/o susp fr du, to run concurrently.",
+      "punishmentsConcurrent": true,
+      "punishmentOverflowToItem21": false,
+      "suspension": "Ten of the 14 days extra duty are suspended for 180 days from 15 Aug 2026, to be remitted without further action if not sooner vacated.",
+      "njpAuthorityName": "DONNELLY, SEAN P",
+      "njpAuthorityGrade": "Maj, O4",
+      "njpAuthorityEdipi": "3000400006",
+      "njpAuthorityPayGrade": "O4",
+      "dispositionNoticeDate": "2026-08-15",
+      "appealAdvisementDate": "2026-08-15",
+      "intendAppeal": "I do not intend to appeal.",
+      "appealIntentDate": "2026-08-15",
+      "notAppealed": true,
+      "appealDate": "",
+      "appealDecision": "",
+      "appealDecisionDate": "",
+      "appealDecisionNoticeDate": "",
+      "finalAdminUd": "",
+      "finalAdminDtd": "",
+      "remarks": [],
+      "remarksFreeText": "",
+      "remarksComposed": "",
+      "victims": [
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        }
+      ]
+    }
+  }
+}

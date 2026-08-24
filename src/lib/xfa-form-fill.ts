@@ -180,6 +180,11 @@ export function officialFormPath(documentType: string): string | null {
   const file = documentType === 'aa-form' ? 'forms/navmc-10274-blank.pdf'
     : documentType === 'page11' ? 'forms/navmc-118-11-blank.pdf'
     : documentType === 'navmc10922' ? 'forms/navmc-10922-blank.pdf'
+    // NAVMC 10132 is a plain AcroForm, not XFA. It is registered here because
+    // this is the one place that maps a document type to its bundled blank,
+    // but it fills through navmc10132-export.ts, never through
+    // exportOfficialForm below.
+    : documentType === 'navmc10132' ? 'forms/navmc-10132-blank.pdf'
     : null;
   if (!file) return null;
   const path = resolvePublicPath(file);

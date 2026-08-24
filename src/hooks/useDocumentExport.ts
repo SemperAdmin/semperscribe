@@ -150,6 +150,24 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
       }
 
       deliver(blob, format);
+
+      // NAVMC 10132 needs no branch of its own above. It is a plain
+      // AcroForm, so PIPELINE_MAP.navmc10132 already returns the OFFICIAL
+      // blank filled and still editable - unlike the XFA forms, where the
+      // pipeline returns a flattened redraw and the official form has to be
+      // fetched on a separate path. Routing it through the standard path
+      // keeps the signature-field pass and the enclosure merge, both of
+      // which are safe on an AcroForm. Only the note differs.
+      if (format === 'pdf' && formData.documentType === 'navmc10132') {
+        toast?.({
+          title: 'Official Form Exported',
+          description:
+            'This is the official NAVMC 10132, filled and still editable in Adobe Acrobat or Reader. '
+            + 'The seven signature blocks are left open so items 9 and 16 take a CAC signature. '
+            + "Adobe's usage-rights signature was removed - it goes void the moment the file changes, "
+            + 'and an invalid signature reads as tampering. Filling and signing are unaffected.',
+        });
+      }
     } catch (error) {
       console.error(`Error generating ${format.toUpperCase()}:`, error);
       alert(`Failed to generate ${format.toUpperCase()}. Please check the console for details.`);

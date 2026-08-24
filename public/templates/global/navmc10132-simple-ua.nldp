@@ -1,0 +1,121 @@
+{
+  "metadata": {
+    "packageId": "navmc10132-simple-ua",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-08-24T00:00:00.000Z",
+    "author": {
+      "name": "SemperScribe"
+    },
+    "package": {
+      "title": "NAVMC 10132 - Simple UA, Accepted NJP",
+      "description": "Single Article 86 offense, Guilty, one punishment, accused accepts NJP and does not appeal. Sample data - replace before use.",
+      "subject": "",
+      "documentType": "navmc10132"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "navmc10132",
+      "unit": "CO B, 1ST BN, 6TH MARINES, 2D MARDIV",
+      "accusedName": "RIVERA, DIEGO M",
+      "accusedRankGrade": "LCpl, E3",
+      "accusedEdipi": "1000200003",
+      "accusedPayGrade": "E3",
+      "offenses": [
+        {
+          "articleLabel": "Art. 86  Absence without leave",
+          "summary": "UA from 0600, 10 Aug 26 to 1900, 12 Aug 26, Camp Lejeune, NC.",
+          "finding": "Guilty"
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        }
+      ],
+      "demand": "I do not demand trial and will accept non-judicial punishment, subject to my right of appeal.",
+      "counselOpportunity": "have",
+      "accusedRefusedToSign": false,
+      "electionDate": "2026-08-15",
+      "bookerStatement": "BOOKER STATEMENT: Having been advised of the above and fully understanding my rights, I choose to accept NJP.",
+      "rightsAttestDate": "2026-08-16",
+      "unauthorizedAbsences": "UA 10-12 Aug 26, returned voluntarily, no marks of desertion.",
+      "punishments": [
+        {
+          "code": "N09",
+          "days": "10"
+        }
+      ],
+      "punishmentDate": "2026-08-16",
+      "punishmentImposed": "Extra du for 10 days.",
+      "punishmentsConcurrent": false,
+      "punishmentOverflowToItem21": false,
+      "suspension": "NONE",
+      "njpAuthorityName": "PATEL, RAVI K",
+      "njpAuthorityGrade": "Capt, O3",
+      "njpAuthorityEdipi": "1000200004",
+      "njpAuthorityPayGrade": "O3",
+      "dispositionNoticeDate": "2026-08-16",
+      "appealAdvisementDate": "2026-08-16",
+      "intendAppeal": "I do not intend to appeal.",
+      "appealIntentDate": "2026-08-16",
+      "notAppealed": true,
+      "appealDate": "",
+      "appealDecision": "",
+      "appealDecisionDate": "",
+      "appealDecisionNoticeDate": "",
+      "finalAdminUd": "",
+      "finalAdminDtd": "",
+      "remarks": [],
+      "remarksFreeText": "",
+      "remarksComposed": "",
+      "victims": [
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        }
+      ]
+    }
+  }
+}

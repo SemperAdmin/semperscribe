@@ -10,6 +10,7 @@ import { ParagraphSection } from '@/components/letter/ParagraphSection';
 import { ClassificationSection } from '@/components/letter/ClassificationSection';
 import { Page11RemarksSection } from '@/components/letter/Page11RemarksSection';
 import { Navmc10922FormSections } from '@/components/letter/Navmc10922Sections';
+import { Navmc10132FormSections } from '@/components/letter/Navmc10132Sections';
 import { getClassification } from '@/lib/classification';
 import { ClosingBlockSection } from '@/components/letter/ClosingBlockSection';
 import { MultipleToSection } from '@/components/letter/MultipleToSection';
@@ -213,6 +214,15 @@ export function DocumentLayout({
               keeps the single schema-driven form. */}
           {formData.documentType === 'navmc10922' ? (
             <Navmc10922FormSections
+              formData={formData}
+              setFormData={setFormData}
+              onDynamicSync={handleDynamicFormSubmit}
+              formKey={formKey}
+            />
+          ) : formData.documentType === 'navmc10132' ? (
+            /* NAVMC 10132: five custom sections interleaved with four narrow
+               DynamicForm instances so the screen follows the paper's order. */
+            <Navmc10132FormSections
               formData={formData}
               setFormData={setFormData}
               onDynamicSync={handleDynamicFormSubmit}

@@ -54,7 +54,7 @@ export function runProofreadChecks(
   }
 
   // Skip checks entirely for non-letter types
-  const isForm = ['page11', 'aa-form', 'navmc10922', 'coordination-page', 'decision-paper'].includes(docType);
+  const isForm = ['page11', 'aa-form', 'navmc10922', 'navmc10132', 'coordination-page', 'decision-paper'].includes(docType);
   const isAmhs = docType === 'amhs';
   const isDLAType = docType?.startsWith('dla-') || false;
 
