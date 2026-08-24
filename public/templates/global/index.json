@@ -454,4 +454,33 @@
     "documentType": "navmc10922",
     "url": "/templates/global/navmc10922-marriage-proxy.nldp"
   }
+,
+  {
+    "id": "navmc10132-simple-ua",
+    "title": "NAVMC 10132 - Simple UA, Accepted NJP",
+    "description": "Single Article 86 offense, Guilty, one punishment, accused accepts NJP and does not appeal. Sample data - replace before use.",
+    "documentType": "navmc10132",
+    "url": "/templates/global/navmc10132-simple-ua.nldp"
+  },
+  {
+    "id": "navmc10132-mixed-findings",
+    "title": "NAVMC 10132 - Multiple Offenses, Mixed Finding",
+    "description": "Two offense rows, one Guilty and one Not Guilty, exercising the reportable-versus-excluded unit diary split. Sample data - replace before use.",
+    "documentType": "navmc10132",
+    "url": "/templates/global/navmc10132-mixed-findings.nldp"
+  },
+  {
+    "id": "navmc10132-combined-punishment",
+    "title": "NAVMC 10132 - Combined Punishments With Suspension",
+    "description": "Two punishment codes run concurrently with a non-empty item 7 suspension, exercising the combination renderer. Sample data - replace before use.",
+    "documentType": "navmc10132",
+    "url": "/templates/global/navmc10132-combined-punishment.nldp"
+  },
+  {
+    "id": "navmc10132-appeal-filed",
+    "title": "NAVMC 10132 - Appeal Filed",
+    "description": "The accused elects to appeal, so items 12 through 15 carry data through a completed appeal decision. Sample data - replace before use.",
+    "documentType": "navmc10132",
+    "url": "/templates/global/navmc10132-appeal-filed.nldp"
+  }
 ]

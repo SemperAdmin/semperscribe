@@ -1,0 +1,121 @@
+{
+  "metadata": {
+    "packageId": "navmc10132-mixed-findings",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-08-24T00:00:00.000Z",
+    "author": {
+      "name": "SemperScribe"
+    },
+    "package": {
+      "title": "NAVMC 10132 - Multiple Offenses, Mixed Finding",
+      "description": "Two offense rows, one Guilty and one Not Guilty, exercising the reportable-versus-excluded unit diary split. Sample data - replace before use.",
+      "subject": "",
+      "documentType": "navmc10132"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "navmc10132",
+      "unit": "CO C, 2D BN, 4TH MARINES, 1ST MARDIV",
+      "accusedName": "OKAFOR, CHIDI B",
+      "accusedRankGrade": "Cpl, E4",
+      "accusedEdipi": "2000300004",
+      "accusedPayGrade": "E4",
+      "offenses": [
+        {
+          "articleLabel": "Art. 86  Absence without leave",
+          "summary": "UA from 0730 to 1600, 3 Aug 26, MCB Camp Pendleton.",
+          "finding": "Guilty"
+        },
+        {
+          "articleLabel": "Art. 92  Failure to obey other order or regulation",
+          "summary": "Alleged failure to comply with liberty policy, 5 Aug 26.",
+          "finding": "Not Guilty"
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        }
+      ],
+      "demand": "I do not demand trial and will accept non-judicial punishment, subject to my right of appeal.",
+      "counselOpportunity": "have",
+      "accusedRefusedToSign": false,
+      "electionDate": "2026-08-10",
+      "bookerStatement": "BOOKER STATEMENT: Having been advised of the above and fully understanding my rights, I choose to accept NJP.",
+      "rightsAttestDate": "2026-08-11",
+      "unauthorizedAbsences": "UA 3 Aug 26, returned same day under escort.",
+      "punishments": [
+        {
+          "code": "N16",
+          "oralOrWritten": "orally"
+        }
+      ],
+      "punishmentDate": "2026-08-11",
+      "punishmentImposed": "To be orally admonished.",
+      "punishmentsConcurrent": false,
+      "punishmentOverflowToItem21": false,
+      "suspension": "NONE",
+      "njpAuthorityName": "BRENNAN, SIOBHAN T",
+      "njpAuthorityGrade": "1stLt, O2",
+      "njpAuthorityEdipi": "2000300005",
+      "njpAuthorityPayGrade": "O2",
+      "dispositionNoticeDate": "2026-08-11",
+      "appealAdvisementDate": "2026-08-11",
+      "intendAppeal": "I do not intend to appeal.",
+      "appealIntentDate": "2026-08-11",
+      "notAppealed": true,
+      "appealDate": "",
+      "appealDecision": "",
+      "appealDecisionDate": "",
+      "appealDecisionNoticeDate": "",
+      "finalAdminUd": "",
+      "finalAdminDtd": "",
+      "remarks": [],
+      "remarksFreeText": "",
+      "remarksComposed": "",
+      "victims": [
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        }
+      ]
+    }
+  }
+}

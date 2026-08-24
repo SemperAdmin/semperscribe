@@ -103,6 +103,41 @@ async function generateCoordinationPagePdf(ctx: PdfBuildContext): Promise<Blob> 
   return new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
 }
 
+/**
+ * NAVMC 10132 fallback notice page.
+ *
+ * A WORKING stub, deliberately not a throwing one. The live preview calls
+ * generatePdfForDocType on a timer, so a throwing PIPELINE_MAP entry crashes
+ * the preview pane rather than showing a message. The 10922 build hit that
+ * live. Since Phase 5 this is the FALLBACK: the AcroForm fill is the primary
+ * path and this page shows only when the blank cannot be fetched or filled.
+ */
+async function generateNavmc10132Placeholder(): Promise<Blob> {
+  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([612, 792]);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const body = await doc.embedFont(StandardFonts.Helvetica);
+  const lines: [string, typeof bold, number][] = [
+    ['NAVMC 10132 (Unit Punishment Book)', bold, 16],
+    ['', body, 12],
+    ['The official blank could not be filled.', body, 12],
+    ['', body, 12],
+    ['This page stands in for the official form because the fill that', body, 11],
+    ['writes your data onto the bundled blank did not complete. Your', body, 11],
+    ['entries are not lost - they are still in the form on screen.', body, 11],
+    ['', body, 12],
+    ['The browser console carries the underlying error.', body, 11],
+  ];
+  let y = 700;
+  for (const [text, font, size] of lines) {
+    if (text) page.drawText(text, { x: 72, y, size, font, color: rgb(0.1, 0.1, 0.1) });
+    y -= size + 8;
+  }
+  const bytes = await doc.save();
+  return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+}
+
 const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>> = {
   standard: generateStandardPdf,
   navmc10274: generateNavmc10274Pdf,
@@ -116,6 +151,18 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
     const { generateNavmc10922 } = await import('@/services/pdf/navmc10922Generator');
     const bytes = await generateNavmc10922(ctx.formData);
     return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+  },
+  // NAVMC 10132 fills the official AcroForm blank. The live preview consumes
+  // this map on a timer, so a failure must degrade to the placeholder notice
+  // page rather than throw and take the preview pane down with it.
+  navmc10132: async (ctx) => {
+    try {
+      const { exportNavmc10132Form } = await import('@/lib/navmc10132-export');
+      return await exportNavmc10132Form(ctx.formData);
+    } catch (error) {
+      console.error('NAVMC 10132 AcroForm fill failed, falling back to the notice page:', error);
+      return generateNavmc10132Placeholder();
+    }
   },
   amhs: async () => new Blob([], { type: 'text/plain' }), // AMHS doesn't use PDF
   'coordination-page': generateCoordinationPagePdf,

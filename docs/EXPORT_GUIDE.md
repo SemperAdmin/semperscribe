@@ -63,10 +63,59 @@ instead of a redrawn PDF: NAVMC 10274 (AA Form), NAVMC 118(11)
     The app adds no markings; handle the filled file accordingly.
   - Rule sources and the full field map: `docs/NAVMC_10922_SPEC.md`.
 
+## Official NAVMC Form Export (AcroForm)
+
+NAVMC 10132 (Unit Punishment Book) exports onto the official blank too,
+but by a completely different mechanism from the three XFA forms above.
+It is a plain AcroForm addressed by field NAME. The two paths share
+nothing except the idea of filling a bundled blank, so nothing in the
+XFA section applies here.
+
+- **It opens anywhere.** Any viewer renders it, Adobe not required.
+  This is the practical difference from the XFA forms, which show a
+  "Please wait" placeholder outside Adobe. The live preview inside
+  SemperScribe shows the real document for the same reason.
+- **The fields stay editable** after export.
+- **The seven signature widgets are left empty on purpose** so items 9
+  and 16 are CAC-signed in Adobe. The app never draws a signature.
+- **Signature fields and bound enclosure files do NOT force a
+  flattened path.** Drawn annotations and appended pages survive on an
+  AcroForm, so NAVMC 10132 has no flattened fallback and needs none.
+- **Adobe's usage-rights signature is removed.** Filling the form
+  changes the bytes, which voids that signature, because it covers the
+  original bytes exactly. Showing no signature beats showing an invalid
+  one, since an invalid signature reads as tampering. Filling and
+  signing are unaffected.
+- **Signing item 16 locks the whole form in Adobe.** Do it last. The
+  unit diary entry recorded there must comply with MCTFSPRIUM.
+- **Item 5 findings store long values and display short ones.** The
+  dropdowns store "Guilty" and "Not Guilty" while the form displays "G"
+  and "NG", and the form's own item-6 script tests for "Guilty". A tool
+  reading the file sees the long value. This is the government form's
+  behavior, not the app's.
+- **Item 6 clipping is the form's own defect.** The dropdown button
+  covers part of the widget. The app measures against the usable width
+  and warns before the text overflows.
+- **The unit diary handoff is a separate panel, not part of the PDF.**
+  It emits a copyable transcription aid. SemperScribe has no MCTFS
+  connection, so a human types the entry. Only offense rows with a
+  Guilty finding are reportable, and the panel warns when item 16
+  already carries a UD number, because entering it twice creates a
+  duplicate.
+- **The official form's own artwork marks it "CUI (when filled in)".**
+  The app adds no markings. Handle the filled file accordingly.
+- Rule sources and the full 74-field map: `docs/NAVMC_10132_SPEC.md`
+  and `tools/aa-forms/navmc10132-map.json`.
+
 ## File Locations
 - Downloads go to your browser's default download folder
-- Filenames follow the format: `[SSIC] [SUBJECT].[extension]`
+- Correspondence filenames follow the format: `[SSIC] [SUBJECT].[extension]`
 - Example: `MCO 1610.7B PERFORMANCE EVALUATION SYSTEM PES.docx`
+- Forms are named from the form and the Marine instead, since they
+  carry no SSIC or subject line
+- Example: `NAVMC 10132 - MARTINEZ LUIS A.pdf`
+- `getExportFilename` in `src/lib/naval-format-utils.ts` is the single
+  source for both
 
 ## Troubleshooting
 - ✅ Both exports are confirmed working via console logs

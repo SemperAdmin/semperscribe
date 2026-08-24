@@ -1,6 +1,14 @@
 import { z } from 'zod';
 import { ITypeDefinition } from '@/lib/i-type/definition';
-import { NAVMC_10922_RELATIONSHIPS } from '@/types/navmc';
+import {
+  NAVMC_10922_RELATIONSHIPS,
+  NAVMC_10132_DEMAND,
+  NAVMC_10132_APPEAL_INTENT,
+  NAVMC_10132_VICTIM_STATUS,
+  NAVMC_10132_VICTIM_SEX,
+  NAVMC_10132_VICTIM_RACE,
+  NAVMC_10132_VICTIM_ETHNICITY,
+} from '@/types/navmc';
 
 // --- UI Schema Definitions ---
 
@@ -51,7 +59,7 @@ export interface SectionDefinition {
   className?: string; // Optional override for the grid layout (e.g. "grid-cols-1")
 }
 
-export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'amhs' | 'coordination-page';
+export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'amhs' | 'coordination-page';
 export type ExportFormat = 'pdf' | 'docx' | 'amhs-text';
 export type DocumentCategory =
   | 'standard-letter'
@@ -1294,6 +1302,319 @@ export const Navmc10922Definition: DocumentTypeDefinition = {
     // inside one - the debounced sync would clobber them. Zod keeps
     // documentsViewed, swornDay, swornMonth, swornYear2Digit, and
     // attestingOfficerName for validation and import.
+  ],
+};
+
+// 7c. NAVMC 10132 (Unit Punishment Book)
+// Rule source: docs/NAVMC_10132_SPEC.md. Zod stays permissive so it gives
+// inline hints while editing. The hard export gate is the Phase 4 validator
+// module (navmc10132-validators.ts), which carries the citations.
+//
+// Two vocabularies below are EXPORT values, not display text, and must stay
+// byte-exact: item 2's demand strings and item 5's findings. The form displays
+// "G" and "NG" for findings but stores "Guilty" and "Not Guilty", and its own
+// item-6 script tests for "Guilty". Spec defect 3.3.
+
+const Navmc10132OffenseRow = z.object({
+  articleLabel: z.string().optional().default(''),
+  mctfsCode: z.string().optional(),
+  summary: z.string().optional().default(''),
+  finding: z.enum(['', 'Guilty', 'Not Guilty']).optional().default(''),
+});
+
+const Navmc10132VictimRow = z.object({
+  status: z.union([z.literal(''), z.enum(NAVMC_10132_VICTIM_STATUS)]).optional().default(''),
+  sex: z.union([z.literal(''), z.enum(NAVMC_10132_VICTIM_SEX)]).optional().default(''),
+  race: z.union([z.literal(''), z.enum(NAVMC_10132_VICTIM_RACE)]).optional().default(''),
+  ethnicity: z
+    .union([z.literal(''), z.enum(NAVMC_10132_VICTIM_ETHNICITY)])
+    .optional()
+    .default(''),
+});
+
+const Navmc10132PunishmentRow = z.object({
+  code: z.string().min(1),
+  days: z.string().optional(),
+  limits: z.string().optional(),
+  suspendedFromDuty: z.boolean().optional(),
+  dollars: z.string().optional(),
+  dollarsPerMonth: z.string().optional(),
+  months: z.string().optional(),
+  gradeReducedTo: z.string().optional(),
+  oralOrWritten: z.enum(['', 'orally', 'in writing']).optional(),
+});
+
+const Navmc10132RemarkRow = z.object({
+  date: z.string().optional().default(''),
+  kind: z.enum([
+    'additional-offenses',
+    'forwarded',
+    'suspension-vacated-njp',
+    'appeal-stayed-restriction',
+    'appeal-stayed-extra-duties',
+    'appeal-denied',
+    'appeal-granted',
+    'suspension-vacated-appeal',
+    'set-aside',
+    'additional-victims',
+  ]),
+  detail: z.string().optional().default(''),
+});
+
+const edipiField = () =>
+  z.string().regex(/^\d{10}$/, 'EDIPI is the 10-digit DOD ID number').or(z.literal(''));
+
+export const Navmc10132Schema = z.object({
+  documentType: z.literal('navmc10132'),
+
+  // Items 17 to 20
+  unit: z.string().optional(),
+  accusedName: z.string().min(1, 'Accused name is required (Last, First Middle)'),
+  accusedRankGrade: z.string().optional(),
+  accusedEdipi: edipiField().optional(),
+  accusedPayGrade: z.string().optional(),
+
+  // Items 1 and 5
+  offenses: z.array(Navmc10132OffenseRow).max(5).optional(),
+
+  // Item 2
+  demand: z
+    .enum(['', NAVMC_10132_DEMAND.ACCEPT, NAVMC_10132_DEMAND.REFUSE, NAVMC_10132_DEMAND.VESSEL])
+    .optional(),
+  counselOpportunity: z.enum(['', 'have', 'have not']).optional(),
+  accusedRefusedToSign: z.boolean().optional(),
+  electionDate: z.string().optional(),
+  bookerStatement: z.string().optional(),
+
+  // Item 3
+  rightsAttestDate: z.string().optional(),
+
+  // Item 4
+  unauthorizedAbsences: z.string().optional(),
+
+  // Items 6 and 7
+  punishments: z.array(Navmc10132PunishmentRow).optional(),
+  punishmentDate: z.string().optional(),
+  punishmentImposed: z.string().optional(),
+  punishmentsConcurrent: z.boolean().optional(),
+  punishmentOverflowToItem21: z.boolean().optional(),
+  suspension: z.string().optional(),
+
+  // Item 8
+  njpAuthorityName: z.string().optional(),
+  njpAuthorityGrade: z.string().optional(),
+  njpAuthorityEdipi: edipiField().optional(),
+  njpAuthorityPayGrade: z.string().optional(),
+
+  // Items 10 to 15
+  dispositionNoticeDate: z.string().optional(),
+  appealAdvisementDate: z.string().optional(),
+  intendAppeal: z
+    .enum([
+      '',
+      NAVMC_10132_APPEAL_INTENT.WILL_NOT,
+      NAVMC_10132_APPEAL_INTENT.WILL,
+      NAVMC_10132_APPEAL_INTENT.REFUSED,
+    ])
+    .optional(),
+  appealIntentDate: z.string().optional(),
+  notAppealed: z.boolean().optional(),
+  appealDate: z.string().optional(),
+  appealDecision: z.string().optional(),
+  appealDecisionDate: z.string().optional(),
+  appealDecisionNoticeDate: z.string().optional(),
+
+  // Item 16
+  finalAdminUd: z.string().optional(),
+  finalAdminDtd: z.string().optional(),
+
+  // Items 21 and 22
+  remarks: z.array(Navmc10132RemarkRow).optional(),
+  remarksFreeText: z.string().optional(),
+  remarksComposed: z.string().optional(),
+  victims: z.array(Navmc10132VictimRow).max(5).optional(),
+});
+
+const NAVMC_10132_APPEAL_INTENT_OPTIONS: FieldOption[] = [
+  { label: '—', value: '' },
+  { label: 'I do not intend to appeal.', value: NAVMC_10132_APPEAL_INTENT.WILL_NOT },
+  { label: 'I do intend to appeal.', value: NAVMC_10132_APPEAL_INTENT.WILL },
+  { label: 'The accused refuses to sign.', value: NAVMC_10132_APPEAL_INTENT.REFUSED },
+];
+
+export const Navmc10132Definition: DocumentTypeDefinition = {
+  id: 'navmc10132',
+  name: 'NAVMC 10132 (Unit Punishment Book)',
+  description:
+    'Unit Punishment Book recording nonjudicial punishment under Article 15, UCMJ, per MCO 5800.16 Vol 14 as amended by MARADMIN 427/23.',
+  icon: '⚖️',
+  schema: Navmc10132Schema,
+  features: {
+    ...STANDARD_LETTER_FEATURES,
+    showHeaderSettings: false,
+    showUnitInfo: false,
+    showVia: false,
+    showReferences: false,
+    showEnclosures: false,
+    showParagraphs: false,
+    showClosingBlock: false,
+    // The official form carries its own CUI artwork. The app adds no
+    // markings, consistent with the 10922 decision.
+    showClassification: false,
+    category: 'forms',
+    pdfPipeline: 'navmc10132',
+    exportFormats: ['pdf'],
+  },
+  // PHASE 1 SCOPE. Only fields that no custom component will write from
+  // OUTSIDE a DynamicForm appear here. RHF seeds defaults once at mount and
+  // clobbers external writes on its next debounced sync, which bit the 10922
+  // build twice.
+  //
+  // Deliberately absent, and owned by Phase 3 custom components:
+  //   unit                    - UNITS search dialog writes it
+  //   offenses[]              - OffensesSection grid
+  //   demand, counselOpportunity, accusedRefusedToSign, electionDate,
+  //   bookerStatement         - AccusedElectionSection, which also coerces
+  //                             demand when the refusal box is checked
+  //   punishments[], punishmentDate, punishmentImposed,
+  //   dispositionNoticeDate   - PunishmentSection builder
+  //   remarks[], remarksFreeText, remarksComposed,
+  //   finalAdminUd, finalAdminDtd - RemarksSection composer
+  //   victims[]               - VictimsSection grid
+  // Zod keeps every one of them for validation and import.
+  sections: [
+    {
+      id: 'accused',
+      title: 'Accused (Items 18-20)',
+      fields: [
+        {
+          name: 'accusedName',
+          label: 'Accused (Last, First Middle)',
+          type: 'text',
+          required: true,
+          className: 'md:col-span-2',
+        },
+        {
+          name: 'accusedRankGrade',
+          label: 'Rank / Grade',
+          type: 'text',
+          placeholder: 'Sgt, E5',
+          description:
+            'Use the exact spellings fixed by the form instructions. No periods in ranks, no dashes in grades, and never the digit zero for the letter O.',
+        },
+        { name: 'accusedEdipi', label: 'EDIPI', type: 'text', placeholder: '1234567890' },
+        {
+          name: 'accusedPayGrade',
+          label: 'Pay grade only',
+          type: 'text',
+          placeholder: 'E5',
+          description:
+            'Not printed. Marines in the grade of E-6 or above may not be reduced in paygrade (MCO 5800.16 Vol 14 para 010302.C).',
+        },
+      ],
+    },
+    {
+      id: 'rights',
+      title: 'CO Rights Certification (Item 3)',
+      description:
+        'Must be dated on or before the date punishment is imposed. The certification precedes imposition.',
+      fields: [
+        {
+          name: 'rightsAttestDate',
+          label: 'Date certified',
+          type: 'date-picker',
+          className: 'md:col-span-1',
+        },
+      ],
+    },
+    {
+      id: 'absence',
+      title: 'Unauthorized Absence (Item 4)',
+      description:
+        'Complete only when the accused is receiving NJP for an Article 85 or Article 86 offense. Enter periods of absence over 24 hours and any marks of desertion.',
+      fields: [
+        {
+          name: 'unauthorizedAbsences',
+          label: 'Absences over 24 hours and marks of desertion',
+          type: 'text',
+          className: 'md:col-span-2',
+        },
+      ],
+    },
+    {
+      id: 'suspension',
+      title: 'Suspension of Punishment (Item 7)',
+      description:
+        'Enter NONE when no part of the punishment is suspended. Otherwise give the specific punishment, the length of the suspension, and the terms for automatic remission.',
+      fields: [
+        {
+          name: 'suspension',
+          label: 'Suspension terms',
+          type: 'text',
+          className: 'md:col-span-2',
+        },
+      ],
+    },
+    {
+      id: 'authority',
+      title: 'NJP Authority (Items 8, 8A, 8B)',
+      fields: [
+        {
+          name: 'njpAuthorityName',
+          label: 'Name, title, service branch if other than USMC',
+          type: 'text',
+          className: 'md:col-span-2',
+        },
+        { name: 'njpAuthorityGrade', label: 'Rank / Grade', type: 'text', placeholder: 'LtCol, O5' },
+        { name: 'njpAuthorityEdipi', label: 'EDIPI', type: 'text' },
+        {
+          name: 'njpAuthorityPayGrade',
+          label: 'Pay grade only',
+          type: 'text',
+          placeholder: 'O5',
+          description:
+            'Not printed. Decides whether the selected punishment codes require field-grade authority (10 U.S.C. 815(b)(2)(H)).',
+        },
+      ],
+    },
+    {
+      id: 'appeal',
+      title: 'Appeal (Items 11-15)',
+      fields: [
+        {
+          name: 'appealAdvisementDate',
+          label: 'Item 11 - date accused advised of the right to appeal',
+          type: 'date-picker',
+          description: 'Normally the same date as item 6, and never before it.',
+        },
+        {
+          name: 'intendAppeal',
+          label: 'Item 12 - accused intention',
+          type: 'select',
+          options: NAVMC_10132_APPEAL_INTENT_OPTIONS,
+        },
+        { name: 'appealIntentDate', label: 'Item 12 - date', type: 'date-picker' },
+        {
+          name: 'notAppealed',
+          label: 'Item 13 - not appealed',
+          type: 'checkbox',
+          description: 'Check this, or give a date of appeal. Never both, never neither.',
+        },
+        { name: 'appealDate', label: 'Item 13 - date of appeal, if any', type: 'date-picker' },
+        {
+          name: 'appealDecision',
+          label: 'Item 14 - decision on appeal',
+          type: 'text',
+          className: 'md:col-span-2',
+        },
+        { name: 'appealDecisionDate', label: 'Item 14 - date', type: 'date-picker' },
+        {
+          name: 'appealDecisionNoticeDate',
+          label: 'Item 15 - date accused notified of the decision',
+          type: 'date-picker',
+        },
+      ],
+    },
   ],
 };
 
@@ -2720,6 +3041,7 @@ export const DocumentSchema = z.union([
   ChangeTransmittalSchema,
   Page11Schema,
   Navmc10922Schema,
+  Navmc10132Schema,
   AMHSSchema,
   MFRSchema,
   FromToMemoSchema,
@@ -2753,6 +3075,7 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   'change-transmittal': ChangeTransmittalDefinition,
   page11: Page11Definition,
   navmc10922: Navmc10922Definition,
+  navmc10132: Navmc10132Definition,
   mfr: MFRDefinition,
   'from-to-memo': FromToMemoDefinition,
   'letterhead-memo': LetterheadMemoDefinition,

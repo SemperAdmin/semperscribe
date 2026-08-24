@@ -1,0 +1,127 @@
+{
+  "metadata": {
+    "packageId": "navmc10132-appeal-filed",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-08-24T00:00:00.000Z",
+    "author": {
+      "name": "SemperScribe"
+    },
+    "package": {
+      "title": "NAVMC 10132 - Appeal Filed",
+      "description": "The accused elects to appeal, so items 12 through 15 carry data through a completed appeal decision. Sample data - replace before use.",
+      "subject": "",
+      "documentType": "navmc10132"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "navmc10132",
+      "unit": "1ST BN, 8TH MARINES, 2D MARDIV",
+      "accusedName": "THOMPSON, JAMAL R",
+      "accusedRankGrade": "Cpl, E4",
+      "accusedEdipi": "4000500006",
+      "accusedPayGrade": "E4",
+      "offenses": [
+        {
+          "articleLabel": "Art. 91  Disrespect toward WO/NCO",
+          "summary": "Disrespectful language toward platoon sergeant during formation, 1 Aug 26.",
+          "finding": "Guilty"
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        },
+        {
+          "articleLabel": "",
+          "summary": "",
+          "finding": ""
+        }
+      ],
+      "demand": "I do not demand trial and will accept non-judicial punishment, subject to my right of appeal.",
+      "counselOpportunity": "have",
+      "accusedRefusedToSign": false,
+      "electionDate": "2026-08-05",
+      "bookerStatement": "BOOKER STATEMENT: Having been advised of the above and fully understanding my rights, I choose to accept NJP.",
+      "rightsAttestDate": "2026-08-06",
+      "unauthorizedAbsences": "",
+      "punishments": [
+        {
+          "code": "N13",
+          "days": "30"
+        }
+      ],
+      "punishmentDate": "2026-08-06",
+      "punishmentImposed": "Extra du for 30 days.",
+      "punishmentsConcurrent": false,
+      "punishmentOverflowToItem21": false,
+      "suspension": "NONE",
+      "njpAuthorityName": "CARDENAS, ELENA V",
+      "njpAuthorityGrade": "LtCol, O5",
+      "njpAuthorityEdipi": "4000500007",
+      "njpAuthorityPayGrade": "O5",
+      "dispositionNoticeDate": "2026-08-06",
+      "appealAdvisementDate": "2026-08-06",
+      "intendAppeal": "I do intend to appeal.",
+      "appealIntentDate": "2026-08-06",
+      "notAppealed": false,
+      "appealDate": "2026-08-09",
+      "appealDecision": "Appeal reviewed. Punishment as adjudged is affirmed.",
+      "appealDecisionDate": "2026-08-14",
+      "appealDecisionNoticeDate": "2026-08-14",
+      "finalAdminUd": "",
+      "finalAdminDtd": "",
+      "remarks": [
+        {
+          "date": "2026-08-14",
+          "kind": "appeal-denied",
+          "detail": "punishment as adjudged is affirmed by LtCol CARDENAS"
+        }
+      ],
+      "remarksFreeText": "",
+      "remarksComposed": "2026-08-14 ITEM 14: Appeal denied, punishment as adjudged is affirmed by LtCol CARDENAS.",
+      "victims": [
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        },
+        {
+          "status": "",
+          "sex": "",
+          "race": "",
+          "ethnicity": ""
+        }
+      ]
+    }
+  }
+}

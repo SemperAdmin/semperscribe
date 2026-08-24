@@ -264,3 +264,279 @@ export function createEmptyNavmc10922Data(): Navmc10922Data {
     attestingOfficerName: '',
   };
 }
+
+// ---------------------------------------------------------------------------
+// NAVMC 10132 (Unit Punishment Book)
+// Rule source: docs/NAVMC_10132_SPEC.md. Unlike 10274/118(11)/10922 this form
+// is a plain AcroForm addressed by field NAME, so the model is semantic and the
+// name-to-selector table lives in navmc10132-acroform.ts.
+// ---------------------------------------------------------------------------
+
+/**
+ * Item 2 demand options. These are the /Opt EXPORT values, byte-exact.
+ * The dropdown has NO blank entry on the official form.
+ */
+export const NAVMC_10132_DEMAND = {
+  ACCEPT:
+    'I do not demand trial and will accept non-judicial punishment, subject to my right of appeal.',
+  REFUSE: 'I demand trial and refuse non-judicial punishment.',
+  VESSEL: 'I cannot demand trial because I am attached to or embarked upon a vessel.',
+} as const;
+
+export type Navmc10132Demand = '' | (typeof NAVMC_10132_DEMAND)[keyof typeof NAVMC_10132_DEMAND];
+
+/** Item 12. Export values, byte-exact. */
+export const NAVMC_10132_APPEAL_INTENT = {
+  WILL_NOT: 'I do not intend to appeal.',
+  WILL: 'I do intend to appeal.',
+  REFUSED: 'the accused refuses to sign.',
+} as const;
+
+export type Navmc10132AppealIntent =
+  | ''
+  | (typeof NAVMC_10132_APPEAL_INTENT)[keyof typeof NAVMC_10132_APPEAL_INTENT];
+
+/**
+ * Item 22 victim status. This is the vocabulary printed in the form's own
+ * instructions, which is the /Opt list on row A ONLY. Rows B through E carry a
+ * different, undocumented vocabulary and are non-editable combos, so the app
+ * writes row A to the form and routes victims 2 through 5 into item 21 using
+ * the instruction's own "Additional Victims" format. Spec defect 3.1.
+ */
+export const NAVMC_10132_VICTIM_STATUS = [
+  'Military',
+  'Military (spouse)',
+  'Civilian (spouse)',
+  'Civilian (dependent)',
+  'Civilian (DON employee)',
+  'Civilian (other)',
+  'Other',
+  'Unknown',
+] as const;
+
+export const NAVMC_10132_VICTIM_SEX = ['Male', 'Female', 'Unknown'] as const;
+
+export const NAVMC_10132_VICTIM_RACE = [
+  'American Indian or Alaskan Native',
+  'Asian',
+  'Black or African American',
+  'Native Hawaiian or Other Pacific Islander',
+  'White',
+  'Other',
+  'Unknown',
+] as const;
+
+export const NAVMC_10132_VICTIM_ETHNICITY = [
+  'Hispanic or Latino',
+  'Not Hispanic or Latino',
+  'Unknown',
+] as const;
+
+/** The ten remark formats prescribed by the item 21 instruction, plus free text. */
+export type Navmc10132RemarkKind =
+  | 'additional-offenses'
+  | 'forwarded'
+  | 'suspension-vacated-njp'
+  | 'appeal-stayed-restriction'
+  | 'appeal-stayed-extra-duties'
+  | 'appeal-denied'
+  | 'appeal-granted'
+  | 'suspension-vacated-appeal'
+  | 'set-aside'
+  | 'additional-victims';
+
+/** One of the five item 1 offense rows, carrying its item 5 finding. */
+export interface Navmc10132Offense {
+  /**
+   * /Opt export value of the `1x ARTICLE` dropdown, byte-exact including the
+   * double space after the article number. Empty means the row is unused.
+   */
+  articleLabel: string;
+  /**
+   * Resolved from articleLabel through navmc10132-articles.ts. Not printed on
+   * the form; carried for the unit diary handoff.
+   */
+  mctfsCode?: string;
+  /** Item 1 summary. Roughly 84 characters, clips silently. */
+  summary: string;
+  /**
+   * Item 5. EXPORT values only. The form DISPLAYS "G" and "NG" but stores the
+   * long strings, and its own item-6 script tests for "Guilty". Spec defect 3.3.
+   */
+  finding: '' | 'Guilty' | 'Not Guilty';
+}
+
+/** One of the five item 22 victim rows. */
+export interface Navmc10132Victim {
+  status: '' | (typeof NAVMC_10132_VICTIM_STATUS)[number];
+  sex: '' | (typeof NAVMC_10132_VICTIM_SEX)[number];
+  race: '' | (typeof NAVMC_10132_VICTIM_RACE)[number];
+  ethnicity: '' | (typeof NAVMC_10132_VICTIM_ETHNICITY)[number];
+}
+
+/** A selected punishment code plus the parameters that code requires. */
+export interface Navmc10132PunishmentEntry {
+  /** N01 through N17. See navmc10132-punishments.ts. */
+  code: string;
+  days?: string;
+  limits?: string;
+  suspendedFromDuty?: boolean;
+  dollars?: string;
+  dollarsPerMonth?: string;
+  months?: string;
+  gradeReducedTo?: string;
+  oralOrWritten?: '' | 'orally' | 'in writing';
+}
+
+/** A structured item 21 entry. Phase 2's composer renders these. */
+export interface Navmc10132Remark {
+  /** ISO. Rendered YYYY-MM-DD, matching the instruction's own prefix. */
+  date: string;
+  kind: Navmc10132RemarkKind;
+  /** The parameterised portion, e.g. the recommendation or the reason. */
+  detail: string;
+}
+
+export interface Navmc10132Data {
+  // Items 17 to 20 - accused and unit
+  unit: string;
+  accusedName: string;
+  accusedRankGrade: string;
+  accusedEdipi: string;
+  /**
+   * App-side, not printed. Pay grade alone, e.g. 'E5'. Drives warning W-08:
+   * Marines in the grade of E-6 or above may not be reduced in paygrade
+   * (MCO 5800.16 Vol 14 para 010302.C).
+   */
+  accusedPayGrade: string;
+
+  // Items 1 and 5 - offenses and findings. The form has exactly five rows.
+  offenses: Navmc10132Offense[];
+
+  // Item 2 - accused election
+  demand: Navmc10132Demand;
+  counselOpportunity: '' | 'have' | 'have not';
+  accusedRefusedToSign: boolean;
+  electionDate: string;
+  /**
+   * DERIVED by Phase 2's bookerStatement(), never user-edited. Stored so the
+   * live preview and the emitter cannot disagree. The blank ships with the
+   * ACCEPTANCE text already in the field and rewrites it only through on-blur
+   * JavaScript the app cannot run, so leaving this underived produces a UPB
+   * that falsely states the accused accepted NJP. Spec defect 3.2.
+   */
+  bookerStatement?: string;
+
+  // Item 3 - CO certification of rights
+  rightsAttestDate: string;
+
+  // Item 4 - unauthorised absence and marks of desertion
+  unauthorizedAbsences: string;
+
+  // Items 6 and 7 - punishment
+  punishments: Navmc10132PunishmentEntry[];
+  punishmentDate: string;
+  /** DERIVED by Phase 2's renderPunishment(). The item 6 string. */
+  punishmentImposed?: string;
+  /**
+   * App-side, not a printed field of its own. Whether the selected
+   * punishments run concurrently. A property of the SET rather than of any
+   * one code, because MCM Part V para 5.d governs how punishments combine.
+   * Feeds renderPunishment's concurrent option, which appends the
+   * "to run concurrently" clause the MCO's own combination example uses.
+   */
+  punishmentsConcurrent?: boolean;
+  /**
+   * TRUE when the rendered punishment exceeds item 6's capacity and the field
+   * carries "See Supplemental Page" with the full text in item 21. The MCO's
+   * own combination example is 160 characters against a 123-character field.
+   */
+  punishmentOverflowToItem21?: boolean;
+  suspension: string;
+
+  // Item 8 - NJP authority
+  njpAuthorityName: string;
+  njpAuthorityGrade: string;
+  njpAuthorityEdipi: string;
+  /**
+   * App-side, not printed. Pay grade alone, e.g. 'O5'. Drives warning W-05,
+   * whether the selected punishment codes need field-grade authority.
+   */
+  njpAuthorityPayGrade: string;
+
+  // Items 10 to 15 - notice and appeal
+  dispositionNoticeDate: string;
+  appealAdvisementDate: string;
+  intendAppeal: Navmc10132AppealIntent;
+  appealIntentDate: string;
+  notAppealed: boolean;
+  appealDate: string;
+  appealDecision: string;
+  appealDecisionDate: string;
+  appealDecisionNoticeDate: string;
+
+  // Item 16 - final administrative action
+  finalAdminUd: string;
+  finalAdminDtd: string;
+
+  // Item 21 - remarks
+  remarks: Navmc10132Remark[];
+  remarksFreeText: string;
+  /** DERIVED by Phase 2's composeRemarks(). The assembled item 21 value. */
+  remarksComposed?: string;
+
+  // Item 22 - victim demographics. Five rows; only row A reaches the form.
+  victims: Navmc10132Victim[];
+}
+
+export const NAVMC_10132_EMPTY_OFFENSE: Navmc10132Offense = {
+  articleLabel: '',
+  summary: '',
+  finding: '',
+};
+
+export const NAVMC_10132_EMPTY_VICTIM: Navmc10132Victim = {
+  status: '',
+  sex: '',
+  race: '',
+  ethnicity: '',
+};
+
+export function createEmptyNavmc10132Data(): Navmc10132Data {
+  return {
+    unit: '',
+    accusedName: '',
+    accusedRankGrade: '',
+    accusedEdipi: '',
+    accusedPayGrade: '',
+    offenses: Array.from({ length: 5 }, () => ({ ...NAVMC_10132_EMPTY_OFFENSE })),
+    demand: '',
+    counselOpportunity: '',
+    accusedRefusedToSign: false,
+    electionDate: '',
+    rightsAttestDate: '',
+    unauthorizedAbsences: '',
+    punishments: [],
+    punishmentDate: '',
+    punishmentsConcurrent: false,
+    suspension: '',
+    njpAuthorityName: '',
+    njpAuthorityGrade: '',
+    njpAuthorityEdipi: '',
+    njpAuthorityPayGrade: '',
+    dispositionNoticeDate: '',
+    appealAdvisementDate: '',
+    intendAppeal: '',
+    appealIntentDate: '',
+    notAppealed: false,
+    appealDate: '',
+    appealDecision: '',
+    appealDecisionDate: '',
+    appealDecisionNoticeDate: '',
+    finalAdminUd: '',
+    finalAdminDtd: '',
+    remarks: [],
+    remarksFreeText: '',
+    victims: Array.from({ length: 5 }, () => ({ ...NAVMC_10132_EMPTY_VICTIM })),
+  };
+}
