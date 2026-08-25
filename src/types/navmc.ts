@@ -411,6 +411,93 @@ export interface Navmc10132Suspension {
   days?: string;
 }
 
+/**
+ * The outcome of one Figure 14-1 notice. NOT a boolean.
+ *
+ * MCO 5800.16 Vol 14 Figure 14-1 paragraph 2 reads "It is my intent to
+ * vacate your previously suspended punishment in: FULL/PART", and para
+ * 011201 requires the accused be given an opportunity to respond BEFORE
+ * the suspension may be vacated. That opportunity has to have an
+ * "unresolved yet" state (`pending`) and can end in a decision NOT to
+ * vacate (`not-vacated`) as well as in the two elections the figure itself
+ * offers. Collapsing this to "vacated / not vacated" would misrepresent a
+ * notice still awaiting the accused's response as either a vacation that
+ * has not happened or one that has, when in truth nothing has been decided.
+ */
+export type Navmc10132VacationStatus = 'pending' | 'vacated-full' | 'vacated-part' | 'not-vacated';
+
+/**
+ * One vacation record against a suspended punishment. Decision row D-60.
+ *
+ * WHY THIS EXISTS. `njp-vacation-handoff.ts` generates the Figure 14-1
+ * notice; `navmc10132-remarks.ts` carries the `suspension-vacated-njp`
+ * remark kind that records a vacation on item 21. Nothing connected the
+ * two, so a vacation reached the UPB only if a clerk remembered to
+ * hand-add the remark. This record is the missing link: it is what
+ * `vacationRemarks` (navmc10132-acroform.ts) derives the item 21 remark
+ * from, so the remark no longer depends on anyone remembering it.
+ *
+ * WHY IT IS NOT "did this suspension get vacated: yes/no". Most
+ * suspensions are never vacated at all; they run out and remit under MCM
+ * Part V para 6.a(3). A model that only recorded yes/no would have no way
+ * to distinguish "never noticed" from "noticed, and still pending" from
+ * "noticed, and the commander decided not to vacate" — three different
+ * facts the app must not conflate, since only the derivation reading this
+ * record (not the mere existence of a suspension) can tell whether
+ * anything was actually vacated. See `Navmc10132VacationStatus`.
+ *
+ * TARGETS A SUSPENSION BY `suspensionIndex`, NEVER `punishmentIndex`. V-31
+ * (navmc10132-validators-punishment.ts) now blocks export on two item 7
+ * suspensions naming the same punishmentIndex, so a suspension's own
+ * position in `Navmc10132Data.suspensions` is what identifies it
+ * unambiguously; `punishmentIndex` identifies a punishment, not a
+ * suspension of it. See the identical note on `SuspensionPeriod` in
+ * njp-suspension-period.ts.
+ */
+export interface Navmc10132Vacation {
+  /**
+   * This vacation's target: the index of the suspension in
+   * `Navmc10132Data.suspensions` (equivalently, `SuspensionPeriod.suspensionIndex`
+   * from njp-suspension-period.ts) that Figure 14-1 was served against.
+   */
+  suspensionIndex: number;
+  /**
+   * ISO. The date the Figure 14-1 notice was SERVED on the accused.
+   *
+   * THIS IS NOT "the commencement of the vacation proceedings" from JAGMAN
+   * 0118.c/0118.d, and is deliberately never named or documented as such.
+   * JAGMAN 0118.c interrupts a suspension's running period on
+   * "commencement of proceedings to vacate", and 0118.d requires the
+   * vacating order within ten working days of "the commencement of the
+   * vacation proceedings" — but no source in this codebase equates
+   * "commencement of proceedings" with "the date the notice was served",
+   * and it would be easy but wrong to assume Figure 14-1 going out IS the
+   * commencement date. This field records only the fact it is named for.
+   * A future rule that needs "commencement of proceedings" must state that
+   * assumption explicitly at its own call site; it must not read this
+   * field and treat it as already having done so.
+   */
+  noticeServedDate: string;
+  /** See `Navmc10132VacationStatus`. */
+  status: Navmc10132VacationStatus;
+  /**
+   * ISO. The date `status` was decided, i.e. the date the commander acted
+   * on the accused's response (or non-response) to the notice. Unset while
+   * `status` is `'pending'`, since nothing has been decided yet to date.
+   */
+  outcomeDate?: string;
+  /**
+   * What was actually vacated. REQUIRED, in substance, when `status` is
+   * `'vacated-part'` — "in part" with nothing named is an incomplete
+   * record, and `navmc10132-v32-` (navmc10132-validators-punishment.ts)
+   * blocks export on a partial vacation missing this. Unused, and ignored
+   * by the derivation, for the other three statuses: a full vacation
+   * already names the whole suspended punishment through `suspensionIndex`,
+   * and neither `pending` nor `not-vacated` vacated anything to describe.
+   */
+  vacatedDetail?: string;
+}
+
 /** A structured item 21 entry. Phase 2's composer renders these. */
 export interface Navmc10132Remark {
   /** ISO. Rendered YYYY-MM-DD, matching the instruction's own prefix. */
@@ -549,6 +636,23 @@ export interface Navmc10132Data {
    * punishmentOverflowToItem21 for item 6.
    */
   suspensionOverflowToItem21?: boolean;
+  /**
+   * Vacation records against item 7 suspensions. Decision row D-60. See
+   * `Navmc10132Vacation`. Not printed directly: `vacationRemarks`
+   * (navmc10132-acroform.ts) derives the item 21 `suspension-vacated-njp`
+   * remark from an EXECUTED entry here (`status` `'vacated-full'` or
+   * `'vacated-part'`); a `'pending'` or `'not-vacated'` entry derives
+   * nothing, because nothing was vacated.
+   *
+   * OWNED BY A FUTURE CUSTOM COMPONENT, NOT DynamicForm, matching every
+   * other structured array on this form (`punishments`, `suspensions`,
+   * `remarks`, `victims`). See the exclusion list on `Navmc10132Definition`
+   * in schemas.ts. No such component exists yet; this field has no writer
+   * in Phase 1 or Phase 3, and is reachable only by direct FormData
+   * manipulation (tests, import) until the panel is built and browser
+   * tested.
+   */
+  vacations?: Navmc10132Vacation[];
 
   // Item 8 - NJP authority
   njpAuthorityName: string;
@@ -620,6 +724,7 @@ export function createEmptyNavmc10132Data(): Navmc10132Data {
     suspension: '',
     suspensions: [],
     suspensionOverflowToItem21: false,
+    vacations: [],
     njpAuthorityName: '',
     njpAuthorityGrade: '',
     njpAuthorityEdipi: '',

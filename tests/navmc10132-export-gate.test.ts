@@ -289,6 +289,98 @@ describe('V-31 stops the export: two suspensions name the same item 6 punishment
 });
 
 // ---------------------------------------------------------------------------
+// V-32 - decision row D-60. A vacation record marked vacated in part must
+// say what part. See vacationPartialDetailIssues's own JSDoc in
+// navmc10132-validators-punishment.ts for why this is a blocker with no
+// regulatory citation, mirroring V-31.
+// ---------------------------------------------------------------------------
+
+describe('V-32 stops the export: a partial vacation names no vacated detail', () => {
+  it('blocks when a vacated-part record carries no vacatedDetail, clears once one is entered', () => {
+    const blocking = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-part',
+          outcomeDate: '2026-03-10',
+          vacatedDetail: '',
+        },
+      ],
+    });
+    expect(
+      getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v32-')),
+    ).toBe(true);
+
+    // Only `vacatedDetail` changes, from empty to naming what was vacated.
+    const compliant = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-part',
+          outcomeDate: '2026-03-10',
+          vacatedDetail: '7 days extra duty',
+        },
+      ],
+    });
+    expect(
+      getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v32-')),
+    ).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// V-33 - decision row D-60. A vacation record must name a suspensionIndex
+// item 7 actually carries. Mirrors the V-05 addendum one level up.
+// ---------------------------------------------------------------------------
+
+describe('V-33 stops the export: a vacation names a suspensionIndex item 7 does not carry', () => {
+  it('blocks when suspensionIndex is out of bounds, clears when it points at a real suspension', () => {
+    const blocking = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 5, // out of bounds; only index 0 exists
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          outcomeDate: '2026-03-10',
+        },
+      ],
+    });
+    expect(
+      getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v33-')),
+    ).toBe(true);
+
+    // Only `suspensionIndex` changes, from the dangling 5 to the valid 0.
+    const compliant = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          outcomeDate: '2026-03-10',
+        },
+      ],
+    });
+    expect(
+      getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v33-')),
+    ).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // V-06 - item 3 rights-certification date must not be after item 6.
 // ---------------------------------------------------------------------------
 

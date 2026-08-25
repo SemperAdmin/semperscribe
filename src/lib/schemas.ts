@@ -1350,6 +1350,22 @@ const Navmc10132SuspensionRow = z.object({
   days: z.string().optional(),
 });
 
+// Decision row D-60. Structured vacation records against item 7
+// suspensions; see Navmc10132Vacation in src/types/navmc.ts for the full
+// shape rationale, in particular why `status` is a four-state union rather
+// than a boolean and why `noticeServedDate` is never treated as the JAGMAN
+// 0118.c/0118.d "commencement of proceedings" date. `suspensionIndex` is
+// required (not optional) for the same reason Navmc10132SuspensionRow's
+// `punishmentIndex` above is required: an unset target is not a legal
+// draft state for a record whose entire purpose is naming one.
+const Navmc10132VacationRow = z.object({
+  suspensionIndex: z.number(),
+  noticeServedDate: z.string().optional().default(''),
+  status: z.enum(['pending', 'vacated-full', 'vacated-part', 'not-vacated']),
+  outcomeDate: z.string().optional(),
+  vacatedDetail: z.string().optional(),
+});
+
 const Navmc10132RemarkRow = z.object({
   date: z.string().optional().default(''),
   kind: z.enum([
@@ -1411,6 +1427,12 @@ export const Navmc10132Schema = z.object({
   suspension: z.string().optional(),
   suspensions: z.array(Navmc10132SuspensionRow).optional(),
   suspensionOverflowToItem21: z.boolean().optional(),
+  // Decision row D-60. Deliberately absent from Navmc10132Definition's
+  // `sections` below, matching every other structured array on this form
+  // (punishments, suspensions, remarks, victims): see the exclusion list
+  // comment there. Zod keeps the field for validation and import even
+  // though no DynamicForm field, and no custom component yet, writes it.
+  vacations: z.array(Navmc10132VacationRow).optional(),
 
   // Item 8
   njpAuthorityName: z.string().optional(),
@@ -1496,6 +1518,16 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
   //   remarks[], remarksFreeText, remarksComposed,
   //   finalAdminUd, finalAdminDtd - RemarksSection composer
   //   victims[]               - VictimsSection grid
+  //   vacations[]             - Decision row D-60. No custom component
+  //                             exists yet (owner is away from his machine
+  //                             and this codebase's working agreement is
+  //                             that every UI phase is browser-tested
+  //                             before it ships; the panel is a later
+  //                             change). Listed here now, ahead of that
+  //                             component, so nobody "fixes" the absence
+  //                             by adding a plain field to `sections`
+  //                             below and reintroduces the exact RHF
+  //                             clobber this list exists to prevent.
   // Zod keeps every one of them for validation and import.
   sections: [
     {

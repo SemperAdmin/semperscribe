@@ -245,12 +245,12 @@ export function vacationHandoff(
   // instead of re-deriving the wording here makes the two agree by
   // construction, not by two hand-synced literals.
   //
-  // MATCH ON suspensionIndex, NEVER punishmentIndex. Nothing in this app
-  // forbids two item-7 suspensions from naming the same punishmentIndex
-  // (suspensionIndexBoundsIssues checks bounds only, never uniqueness), so
-  // matching by punishmentIndex would silently hand a clerk the WRONG
-  // deadline whenever that happens — the first suspension against that
-  // punishment, not necessarily the one this handoff is for. suspensionIndex
+  // MATCH ON suspensionIndex, NEVER punishmentIndex. V-31 (D-59) blocks two
+  // item 7 suspensions naming the same punishment, but that is an EXPORT
+  // GATE and not a data-model guarantee: this function runs on in-flight
+  // state, long before any gate. Matching on punishmentIndex returned the
+  // FIRST suspension against that punishment whatever the caller asked for,
+  // so the letter could carry another suspension's deadline. suspensionIndex
   // is this suspension's own position in item 7 and is unambiguous.
   const deadline = vacationDeadlines(formData).find(
     (d) => d.suspensionIndex === suspensionIndex,

@@ -17,6 +17,16 @@
  * See its own JSDoc for the full reasoning and why the citation names the
  * determination rather than a regulation.
  *
+ * Also carries V-32, V-33, and W-20 (`vacationPartialDetailIssues`,
+ * `vacationSuspensionIndexBoundsIssues`, `vacationNoticeAfterRemissionIssues`),
+ * the export-side rules over the vacation records added for decision row
+ * D-60. Like V-31, none of the three has a docs/NAVMC_10132_SPEC.md section
+ * 6 row: V-32 and V-33 are app-side record-integrity checks over a data
+ * model this codebase itself defines, not a rule an outside source states,
+ * and W-20 is deliberately 'warn', not 'block' — see its own JSDoc for why
+ * the same conditional-date reasoning as W-17 applies. See each function's
+ * own JSDoc for its citation, or the deliberate lack of one.
+ *
  * Two rules here are deliberately weaker than their table description because
  * the underlying data cannot support the stronger claim. See the JSDoc on
  * `suspensionTermsIssues` (V-05) and `appealDecisionIncreaseIssues` (V-16) for
@@ -34,7 +44,11 @@ import { FormData } from '@/types';
 // TYPE-ONLY. letter-validators imports this module at runtime, so a value
 // import here would create a module cycle.
 import type { ValidationIssue } from '@/lib/letter-validators';
-import type { Navmc10132PunishmentEntry, Navmc10132Suspension } from '@/types/navmc';
+import type {
+  Navmc10132PunishmentEntry,
+  Navmc10132Suspension,
+  Navmc10132Vacation,
+} from '@/types/navmc';
 import {
   fitsInField,
   overflowBy,
@@ -106,6 +120,14 @@ function punishmentEntries(formData: FormData): Navmc10132PunishmentEntry[] {
 function suspensionEntries(formData: FormData): Navmc10132Suspension[] {
   return Array.isArray(formData.suspensions)
     ? (formData.suspensions as Navmc10132Suspension[])
+    : [];
+}
+
+/** Reads the vacation records array (decision row D-60), tolerating an
+ * unset or non-array field. */
+function vacationEntries(formData: FormData): Navmc10132Vacation[] {
+  return Array.isArray(formData.vacations)
+    ? (formData.vacations as Navmc10132Vacation[])
     : [];
 }
 
@@ -347,6 +369,107 @@ export function suspensionDuplicateTargetIssues(formData: FormData): ValidationI
         ),
       );
     });
+  });
+
+  return issues;
+}
+
+/**
+ * V-32 (blocker). A vacation record's outcome is `'vacated-part'` but does
+ * not say what part was actually vacated. Decision row D-60.
+ *
+ * NOT A REGULATORY CITATION, for the same reason V-31 above is not one:
+ * neither the MCM, the JAGMAN, nor MCO 5800.16 Vol 14 prescribes a
+ * machine-checkable format for the vacation RECORD itself, only for the
+ * Figure 14-1 notice that precedes it. Figure 14-1 paragraph 2 offers
+ * "FULL/PART" as the commander's election; recording PART while naming
+ * nothing vacated is an incomplete record on its face. It also breaks the
+ * derivation this record exists to feed: `vacationRemarks`
+ * (navmc10132-acroform.ts) composes the item 21 remark from exactly this
+ * detail, so a partial vacation with nothing named renders as an
+ * undifferentiated "vacated" line, silently overstating what actually
+ * happened to the suspended punishment.
+ *
+ * THE ID IS KEYED ON THE VACATION'S OWN POSITION in `vacations`, never on
+ * `suspensionIndex`. Nothing in the model forbids two vacation records
+ * from naming the same suspensionIndex (this rule does not check for that,
+ * and nothing else in this file does either), so keying on suspensionIndex
+ * risks the identical duplicate-id defect V-31's own JSDoc describes, the
+ * one that made ComplianceDialog.tsx and PackageDialog.tsx silently drop
+ * an issue off the screen (`key={issue.id}`).
+ */
+export function vacationPartialDetailIssues(formData: FormData): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+
+  vacationEntries(formData).forEach((vacation, index) => {
+    if (vacation.status !== 'vacated-part') return;
+    if ((vacation.vacatedDetail ?? '').trim() !== '') return;
+
+    issues.push(
+      issue(
+        `navmc10132-v32-vacation-partial-no-detail-${index}`,
+        'block',
+        `Vacation record ${index} is marked vacated in part but does not say what part.`,
+        'MCO 5800.16 Vol 14 Figure 14-1 para 2 ("FULL/PART")',
+        'A partial vacation must record what was actually vacated so item 21 can state it ' +
+          'and so the part of the suspended punishment that survives can still be tracked. ' +
+          'Enter what was vacated, or change the outcome to vacated in full if the entire ' +
+          'suspended punishment was vacated.',
+      ),
+    );
+  });
+
+  return issues;
+}
+
+/**
+ * V-33 (blocker). A vacation record names a `suspensionIndex` item 7 does
+ * not carry. Decision row D-60.
+ *
+ * Mirrors `suspensionIndexBoundsIssues` (the V-05 addendum, above) one
+ * level up: that rule checks a suspension's `punishmentIndex` against item
+ * 6; this checks a vacation's `suspensionIndex` against item 7. A vacation
+ * with a dangling `suspensionIndex` has nothing to vacate and nothing for
+ * `vacationRemarks` (navmc10132-acroform.ts) to render truthfully, the
+ * same reasoning the V-05 addendum's own JSDoc gives for blocking rather
+ * than warning on this class of error.
+ *
+ * `suspensionIndex`, NEVER `punishmentIndex`: see `Navmc10132Vacation`'s
+ * own JSDoc (src/types/navmc.ts) and `SuspensionPeriod`'s in
+ * njp-suspension-period.ts for why only a suspension's own array position
+ * identifies it unambiguously.
+ *
+ * SILENT on a vacation record whose suspensionIndex is in bounds but whose
+ * target is itself malformed (an out-of-bounds punishmentIndex, say): that
+ * is `suspensionIndexBoundsIssues`'s (V-05) finding on the suspension
+ * entry, not this rule's on the vacation entry that points at it.
+ */
+export function vacationSuspensionIndexBoundsIssues(formData: FormData): ValidationIssue[] {
+  const suspensions = suspensionEntries(formData);
+  const issues: ValidationIssue[] = [];
+
+  vacationEntries(formData).forEach((vacation, index) => {
+    const { suspensionIndex } = vacation;
+    const inBounds =
+      Number.isInteger(suspensionIndex) &&
+      suspensionIndex >= 0 &&
+      suspensionIndex < suspensions.length;
+    if (inBounds) return;
+
+    issues.push(
+      issue(
+        `navmc10132-v33-vacation-suspension-index-${index}`,
+        'block',
+        `Vacation record ${index} names suspensionIndex ${suspensionIndex}, which is not a ` +
+          'suspension item 7 carries.',
+        'Item 7 / item 21 consistency (decision row D-60)',
+        'A vacation record must name a suspension actually recorded in item 7. Remove this ' +
+          'vacation record, or point it at a valid index' +
+          (suspensions.length > 0
+            ? `, 0 through ${suspensions.length - 1}.`
+            : '; item 7 carries no suspensions to vacate.'),
+      ),
+    );
   });
 
   return issues;
@@ -1048,6 +1171,73 @@ export function suspensionInterruptionAssumptionIssues(formData: FormData): Vali
 }
 
 /**
+ * W-20 (ADVISORY, NOT A BLOCKER — read W-17's reasoning above before
+ * touching the severity; the same argument applies here). Decision row
+ * D-60.
+ *
+ * `endsOnIfUninterrupted` (njp-suspension-period.ts) is a conditional
+ * date, not a certain one: two JAGMAN 0118.c interruptions can push the
+ * real remission date LATER, and MCM Part V para 6.a(2)'s
+ * enlistment-expiration clause can pull it EARLIER, and this app has a
+ * field for none of the three. A Figure 14-1 notice served after the
+ * computed date MIGHT be acting on a punishment MCM 6.a(3) already remitted
+ * "without further action" — or might not, if an interruption the app
+ * cannot see kept the suspension alive past that date. BLOCKING here would
+ * stop a lawful notice on a number the app cannot stand behind, exactly
+ * the failure D-51 in docs/NAVMC_10132_SPEC.md exists to prevent. Read
+ * that row, and W-17's JSDoc above, before changing this severity.
+ *
+ * COMPARES `noticeServedDate`, NOT `outcomeDate`. The notice-served date is
+ * the fact this record actually carries about WHEN Figure 14-1 went out;
+ * `outcomeDate` is when the commander later decided, always on or after
+ * the notice. If the notice itself went out after the computed remission
+ * date, everything downstream of it inherits the same problem, so checking
+ * the earliest fact catches it soonest — and this rule never emits on a
+ * `'pending'` record for exactly that reason, since a still-pending
+ * vacation has no `outcomeDate` to compound the warning with.
+ *
+ * NOT the JAGMAN 0118.d ten-working-day order deadline (spec row W-19,
+ * unbuilt): that deadline runs from "commencement of the vacation
+ * proceedings," a date `Navmc10132Vacation` deliberately does not claim
+ * `noticeServedDate` to be (see its own JSDoc). This rule is the D-36/D-51
+ * remission-floor deadline only.
+ *
+ * SILENT when the vacation names an out-of-bounds suspensionIndex (V-33's
+ * job, not this rule's) or when njp-suspension-period.ts cannot compute an
+ * end date at all (`suspensionsWithComputedEnd` already excludes those).
+ */
+export function vacationNoticeAfterRemissionIssues(formData: FormData): ValidationIssue[] {
+  const byIndex = new Map(
+    suspensionsWithComputedEnd(formData).map((period) => [period.suspensionIndex, period]),
+  );
+
+  return vacationEntries(formData).flatMap((vacation, index) => {
+    const period = byIndex.get(vacation.suspensionIndex);
+    if (!period) return [];
+
+    const noticeServedDate = (vacation.noticeServedDate ?? '').trim();
+    if (noticeServedDate === '' || noticeServedDate <= period.endsOnIfUninterrupted) return [];
+
+    return [
+      issue(
+        `navmc10132-w20-vacation-notice-after-remission-${index}`,
+        'warn',
+        `Vacation record ${index}'s notice was served on ${noticeServedDate}, after the ` +
+          `computed suspension end date of ${period.endsOnIfUninterrupted}.`,
+        'MCM Part V para 6.a(3); JAGMAN (JAGINST 5800.7G CH-2) para 0118.c; MCM Part V para 6.a(2)',
+        `Unless interrupted or terminated first, the suspension of ` +
+          `${period.code || 'the item 6 punishment'} is remitted without further action on ` +
+          `${period.endsOnIfUninterrupted}, and a notice served after that date acts on a ` +
+          'punishment that may no longer exist. This computed date is conditional, not ' +
+          'certain: unauthorized absence, a prior vacation proceeding already underway, or an ' +
+          'earlier expiration of the current enlistment can each change the real date. Confirm ' +
+          'which applies before treating this notice as untimely.',
+      ),
+    ];
+  });
+}
+
+/**
  * V-18 (BLOCKING). Item 6 carries both a reduction and a forfeiture, and the
  * forfeiture is not recorded as computed on the reduced grade.
  *
@@ -1127,7 +1317,12 @@ export function forfeitureReducedGradeIssues(formData: FormData): ValidationIssu
  * rules reading the individual codes (W-05 through W-08). W-06 is a blocker
  * despite sitting among the W-numbered rules, see its own JSDoc. V-31 sits
  * beside V-05 because it is the same suspensions array, not because it
- * shares V-05's spec paragraph — it has none, see its own JSDoc.
+ * shares V-05's spec paragraph — it has none, see its own JSDoc. V-32 and
+ * V-33 sit beside V-31 for the identical reason, one level up: they read
+ * the vacations array added for decision row D-60, not a spec paragraph
+ * either. W-20 sits beside W-17 because it shares W-17's conditional-date
+ * source (njp-suspension-period.ts), applied to a vacation's notice date
+ * instead of the suspension's own end date.
  */
 export function punishmentIssues(formData: FormData): ValidationIssue[] {
   return [
@@ -1135,6 +1330,8 @@ export function punishmentIssues(formData: FormData): ValidationIssue[] {
     ...suspensionTermsIssues(formData),
     ...suspensionIndexBoundsIssues(formData),
     ...suspensionDuplicateTargetIssues(formData),
+    ...vacationPartialDetailIssues(formData),
+    ...vacationSuspensionIndexBoundsIssues(formData),
     ...suspensionOverflowIssues(formData),
     ...punishmentAuthorizationIssues(formData),
     ...punishmentFieldCapacityIssues(formData),
@@ -1149,5 +1346,6 @@ export function punishmentIssues(formData: FormData): ValidationIssue[] {
     ...punishmentCombinationIssues(formData),
     ...suspensionPeriodIssues(formData),
     ...suspensionInterruptionAssumptionIssues(formData),
+    ...vacationNoticeAfterRemissionIssues(formData),
   ];
 }

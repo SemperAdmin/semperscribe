@@ -215,10 +215,12 @@ export interface SuspensionPeriod {
   /**
    * This suspension's own position in item 7's `suspensions` array. NOT the
    * same thing as `punishmentIndex` below, and must not be confused with
-   * it: nothing in this app forbids two item-7 suspensions from naming the
-   * same `punishmentIndex` (`suspensionIndexBoundsIssues` checks bounds
-   * only, never uniqueness), so `punishmentIndex` cannot be used to find
-   * "the one suspension a caller means" — only `suspensionIndex` can.
+   * it. V-31 (D-59) now BLOCKS two item 7 suspensions naming the same
+   * `punishmentIndex`, but that is an EXPORT GATE, not a data-model
+   * guarantee: the array still holds duplicates in flight, before the gate
+   * ever runs, and every consumer here reads it in that state. So
+   * `punishmentIndex` still cannot identify "the one suspension a caller
+   * means". Only `suspensionIndex` can.
    * `vacationHandoff` receives a suspension's index as its own parameter
    * for exactly this reason; match against this field, never against
    * `punishmentIndex`.
