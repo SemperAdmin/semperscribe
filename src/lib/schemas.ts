@@ -1362,6 +1362,11 @@ const Navmc10132SuspensionRow = z.object({
 // JSDoc on Navmc10132Vacation (src/types/navmc.ts) for why it lives here
 // rather than on Figure 14-1 (D-48's rule against inventing figure content)
 // and how it feeds W-18 (navmc10132-validators-punishment.ts).
+// `offenceDate` is decision row D-49 (MCO 011201 / JAGMAN 0118.d's shared
+// date window; see Navmc10132Vacation's own JSDoc) and `vacatingAuthorityGrade`
+// is decision row D-56 (MCO 011201's "kind and amount" authority test; see
+// Navmc10132Vacation's own JSDoc for why item 8A cannot supply it). Both feed
+// navmc10132-validators-punishment.ts (V-29/W-21 and V-30/W-22 respectively).
 const Navmc10132VacationRow = z.object({
   suspensionIndex: z.number(),
   noticeServedDate: z.string().optional().default(''),
@@ -1369,6 +1374,8 @@ const Navmc10132VacationRow = z.object({
   outcomeDate: z.string().optional(),
   vacatedDetail: z.string().optional(),
   article31RightsReadDate: z.string().optional(),
+  offenceDate: z.string().optional(),
+  vacatingAuthorityGrade: z.string().optional(),
 });
 
 const Navmc10132RemarkRow = z.object({

@@ -3,12 +3,12 @@
  *
  * Covers the punishment-side blockers and warnings from docs/NAVMC_10132_SPEC.md
  * section 6: V-04, V-05 (plus its suspensionIndexBoundsIssues addendum), V-14,
- * V-15, V-16, V-17, V-18, V-19, V-20, V-21, V-22, W-05, W-06, W-07, W-08, W-17.
- * KEEP THIS LIST ACCURATE: it undercounted V-17 through V-22 and W-17 for a
- * time, which is how a file can carry a rule nobody reading only the header
- * would know to look for. All other rules in section 6 (offense/finding
- * rules, date ordering, capacity rules outside item 6, accused identity,
- * unit, EDIPI) live in sibling modules.
+ * V-15, V-16, V-17, V-18, V-19, V-20, V-21, V-22, V-29, V-30, W-05, W-06,
+ * W-07, W-08, W-17, W-18. KEEP THIS LIST ACCURATE: it undercounted V-17
+ * through V-22 and W-17 for a time, which is how a file can carry a rule
+ * nobody reading only the header would know to look for. All other rules
+ * in section 6 (offense/finding rules, date ordering, capacity rules
+ * outside item 6, accused identity, unit, EDIPI) live in sibling modules.
  *
  * Also carries V-31 (`suspensionDuplicateTargetIssues`), which is NOT one of
  * the section 6 rows above: it has no docs/NAVMC_10132_SPEC.md paragraph
@@ -49,6 +49,28 @@
  * (navmc10132-acroform.ts) rather than re-deriving any part of what that
  * function already decides; see both JSDocs for why that import, not a
  * copy, is the point.
+ *
+ * Also carries V-29 and its W-21 companion (`vacationOffenceWindowIssues`,
+ * `vacationOffenceAfterRemissionIssues`), decision row D-49: whether a
+ * vacation's triggering offence date falls inside the suspension window
+ * MCO 011201 and JAGMAN 0118.d both describe. THIS PAIR IS DELIBERATELY
+ * ASYMMETRIC. V-29 blocks only on the certain lower bound (an offence
+ * cannot precede the suspension it is offered to justify); W-21 warns,
+ * never blocks, on the same conditional upper bound W-17 and W-20 already
+ * treat as advisory, for the identical reason. See V-29's own JSDoc for
+ * the full argument.
+ *
+ * Also carries V-30 and its W-22 companion (`vacatingAuthorityInsufficientIssues`,
+ * `vacatingAuthorityUnknownIssues`), decision row D-56: whether the
+ * commander recorded as vacating a suspension, via the new
+ * `vacatingAuthorityGrade` field, is competent for the kind and amount
+ * vacated. Mirrors `punishmentAuthorityGradeIssues` (W-05)'s block/warn
+ * split over `authoritySatisfies`'s three outcomes, applied to the
+ * vacating authority instead of item 8A's imposing authority. BOTH ARE
+ * SILENT ON A `'vacated-part'` RECORD: `vacatedDetail` is free text this
+ * app cannot turn into a legal figure, so neither rule may treat the whole
+ * punishment's requirement as a stand-in for a partial vacation's. See
+ * V-30's own JSDoc for the full argument.
  *
  * Two rules here are deliberately weaker than their table description because
  * the underlying data cannot support the stronger claim. See the JSDoc on
@@ -1464,6 +1486,327 @@ export function vacationRightsAdvisementIssues(formData: FormData): ValidationIs
 }
 
 /**
+ * V-29 (blocker on the certain lower bound only). The offense or violation
+ * that triggers a vacation must have been committed on or after the item 6
+ * punishment date, i.e. during the period of suspension it is offered to
+ * justify. Decision row D-49.
+ *
+ * MCO 5800.16 Vol 14 para 011201, verbatim: "Vacation of suspension may
+ * only be based on an offense under the UCMJ committed during the period
+ * of suspension." JAGMAN (JAGINST 5800.7G CH-2) para 0118.d words the SAME
+ * window more broadly: it permits vacation on "a violation of the
+ * conditions of suspension," which need not be a UCMJ offense at all. Both
+ * sources word the WINDOW identically; they disagree only on the NATURE of
+ * what may trigger a vacation inside it. Per D-49's ruling, this rule
+ * tests the DATE WINDOW ONLY and never the nature of the basis: gating on
+ * the narrower MCO test would block a lawful JAGMAN vacation this codebase
+ * cannot tell apart from an unlawful one, since `offenceDate` records only
+ * a date and `vacatedDetail` is free text this app does not parse.
+ *
+ * THE WINDOW HAS TWO ENDS, AND THEY ARE NOT EQUALLY CERTAIN — this is why
+ * the rule below is asymmetric, and the asymmetry is deliberate, not an
+ * oversight:
+ *
+ *   - The START, the item 6 `punishmentDate`, is fixed. Nothing in the MCM
+ *     or the JAGMAN moves it: an offense committed on or before the
+ *     punishment was imposed cannot possibly have occurred "during" a
+ *     suspension that had not yet begun. That is provable from data this
+ *     app holds, so a violation of it BLOCKS.
+ *   - The END, `endsOnIfUninterrupted` (njp-suspension-period.ts), is a
+ *     CONDITIONAL date, not a fixed one. See that module's own docstring
+ *     and W-17's JSDoc above for the full argument: JAGMAN 0118.c
+ *     interruptions can push the real end LATER, and MCM Part V para
+ *     6.a(2)'s enlistment-expiry clause can pull it EARLIER, and this app
+ *     has a field for none of the three. An offense dated after the
+ *     computed end MIGHT still fall inside the real, tolled period.
+ *     BLOCKING on that number would refuse a lawful vacation on a date the
+ *     app cannot stand behind, the identical reasoning W-17 and W-20
+ *     already apply to this exact computed date. That boundary is instead
+ *     `vacationOffenceAfterRemissionIssues` (W-21) immediately below,
+ *     advisory rather than blocking.
+ *
+ * SILENT, NOT BLOCKING OR WARNING, in every case below, each either owned
+ * by another rule or simply lacking a fact to test:
+ *   - `offenceDate` unset: nothing recorded yet to test. Ordinary state for
+ *     a record predating this field, same posture as
+ *     `article31RightsReadDate` before W-18.
+ *   - `suspensionIndex` out of bounds: V-33's finding on the record's
+ *     target, not this rule's. Two rules complaining about one bad index
+ *     trains people to tune out one of them.
+ *   - the targeted suspension's period cannot be computed at all (an
+ *     unreadable item 7 period, or an unreadable `punishmentDate`):
+ *     `suspensionsWithComputedEnd` already excludes those, and
+ *     `suspensionTermsIssues` (V-05) or its addendum already has, or will
+ *     have, something to say about item 7 in that state.
+ *
+ * THE ID IS KEYED ON THE VACATION'S OWN POSITION in `vacations`, matching
+ * V-32 through V-34 and W-18 above, for the identical `key={issue.id}`
+ * reason their own JSDocs give.
+ */
+export function vacationOffenceWindowIssues(formData: FormData): ValidationIssue[] {
+  const byIndex = new Map(
+    suspensionsWithComputedEnd(formData).map((period) => [period.suspensionIndex, period]),
+  );
+  const punishmentDate =
+    (typeof formData.punishmentDate === 'string' ? formData.punishmentDate : '').trim();
+  const issues: ValidationIssue[] = [];
+
+  vacationEntries(formData).forEach((vacation, index) => {
+    const period = byIndex.get(vacation.suspensionIndex);
+    if (!period) return; // out of bounds (V-33) or period unreadable (V-05)
+
+    const offenceDate = (vacation.offenceDate ?? '').trim();
+    if (offenceDate === '' || punishmentDate === '') return; // nothing recorded yet to test
+
+    if (offenceDate <= punishmentDate) {
+      issues.push(
+        issue(
+          `navmc10132-v29-vacation-offence-before-suspension-${index}`,
+          'block',
+          `Vacation record ${index}'s triggering offence is dated ${offenceDate}, on or before ` +
+            `the item 6 punishment date of ${punishmentDate}.`,
+          'MCO 5800.16 Vol 14 para 011201; JAGMAN (JAGINST 5800.7G CH-2) para 0118.d',
+          'Vacation may only be based on conduct committed during the period of suspension, ' +
+            `which begins on the item 6 punishment date. An offence dated ${offenceDate}, on ` +
+            `or before ${punishmentDate}, cannot have occurred during a suspension that had ` +
+            'not yet begun. Correct the offence date, or confirm this vacation record ' +
+            'targets the right suspension.',
+        ),
+      );
+    }
+  });
+
+  return issues;
+}
+
+/**
+ * W-21 (ADVISORY, NOT A BLOCKER — read V-29's JSDoc above before touching
+ * the severity; the same asymmetric-window argument applies here, and W-17
+ * and W-20 make the identical case for the identical computed date).
+ *
+ * `endsOnIfUninterrupted` is conditional, not certain: JAGMAN 0118.c
+ * interruptions can push the real suspension end LATER, and MCM Part V
+ * para 6.a(2)'s enlistment-expiry clause can pull it EARLIER, and this app
+ * has a field for none of the three. V-29 above already blocks on the one
+ * boundary this app CAN stand behind — an offence cannot precede the
+ * suspension's own start. This rule covers the boundary the app CANNOT
+ * stand behind: an offence dated after the computed remission date MIGHT
+ * still have occurred during the real, tolled suspension period, and
+ * blocking on it would refuse a lawful vacation on a number the app cannot
+ * prove, exactly the failure D-51 exists to prevent.
+ *
+ * SILENT under the identical conditions V-29 is silent under: an unset
+ * `offenceDate`, an out-of-bounds `suspensionIndex` (V-33's job), or an
+ * unreadable suspension period (`suspensionsWithComputedEnd` already
+ * excludes those).
+ *
+ * THE ID IS KEYED ON THE VACATION'S OWN POSITION, matching V-29 and its
+ * siblings above.
+ */
+export function vacationOffenceAfterRemissionIssues(formData: FormData): ValidationIssue[] {
+  const byIndex = new Map(
+    suspensionsWithComputedEnd(formData).map((period) => [period.suspensionIndex, period]),
+  );
+
+  return vacationEntries(formData).flatMap((vacation, index) => {
+    const period = byIndex.get(vacation.suspensionIndex);
+    if (!period) return [];
+
+    const offenceDate = (vacation.offenceDate ?? '').trim();
+    if (offenceDate === '' || offenceDate <= period.endsOnIfUninterrupted) return [];
+
+    return [
+      issue(
+        `navmc10132-w21-vacation-offence-after-remission-${index}`,
+        'warn',
+        `Vacation record ${index}'s triggering offence is dated ${offenceDate}, after the ` +
+          `computed suspension end date of ${period.endsOnIfUninterrupted}.`,
+        'MCM Part V para 6.a(2)-(3); JAGMAN (JAGINST 5800.7G CH-2) para 0118.c',
+        `Unless interrupted or terminated first, the suspension of ` +
+          `${period.code || 'the item 6 punishment'} is remitted without further action on ` +
+          `${period.endsOnIfUninterrupted}, and conduct committed after that date would fall ` +
+          'outside the suspension period it is offered to justify vacating. This computed ' +
+          'date is conditional, not certain: unauthorized absence, a vacation proceeding ' +
+          'already underway, or an earlier expiration of the current enlistment can each ' +
+          'change the real end date. Confirm which applies before treating this offence as ' +
+          'outside the suspension.',
+      ),
+    ];
+  });
+}
+
+/**
+ * V-30 (blocker for a FULL vacation only). The vacating authority must be
+ * competent for the kind and amount of punishment actually vacated.
+ * Decision row D-56.
+ *
+ * MCO 5800.16 Vol 14 para 011201, verbatim: "A suspended NJP may be
+ * vacated by any commander authorized to impose upon the accused
+ * punishment of the kind and amount to be vacated." Two consequences,
+ * both from D-56's own reasoning:
+ *
+ * FIRST: the vacating commander is NOT necessarily the imposing
+ * commander, so item 8A (`njpAuthorityGrade` / `njpAuthorityPayGrade`) is
+ * the WRONG source. This rule reads `vacatingAuthorityGrade`, recorded on
+ * the vacation record itself, and never item 8A. JAGMAN (JAGINST 5800.7G
+ * CH-2) para 0118.a defines "successor in command" by reference to U.S.
+ * Navy Regulation 1026 and expressly does not limit it to the next
+ * succeeding officer, which is why this is a free-text grade recorded per
+ * vacation rather than a pick from a chain of command this app can derive.
+ *
+ * SECOND: "kind and amount" is a COMPUTABLE predicate. This rule reuses
+ * the identical `authoritySatisfies` check `punishmentAuthorityGradeIssues`
+ * (W-05) already runs against item 8A and the code's own
+ * `requiredAuthority`, applied here to the vacating authority instead of
+ * the imposing one.
+ *
+ * THE BOUNDARY THIS RULE DOES NOT CROSS, AND MUST NOT BE MADE TO CROSS.
+ * "The kind and amount TO BE VACATED" is not always the whole punishment.
+ * For a `'vacated-part'` record, `vacatedDetail` names what was actually
+ * vacated as FREE TEXT, and this codebase has no parser that turns free
+ * text into a legal figure or a punishment code — nothing here or
+ * elsewhere may add one as a shortcut. So this rule can check a FULL
+ * vacation against the suspended punishment's OWN requirement, because a
+ * full vacation names the whole thing unambiguously through
+ * `suspensionIndex`, and it CANNOT check a PARTIAL vacation at all:
+ * checking the whole punishment's requirement as a stand-in for a
+ * fraction of it would refuse a lawful partial vacation by a commander
+ * competent for the part actually vacated but not for the whole. THIS
+ * RULE IS THEREFORE SILENT ON `status === 'vacated-part'`, deliberately,
+ * not an oversight, and no future edit should "improve" this by checking
+ * the whole punishment there as a proxy.
+ *
+ * SEVERITY SPLIT ON `authoritySatisfies`'s THREE OUTCOMES, mirroring W-05
+ * exactly:
+ *   - true: the recorded grade meets the code's required authority. No
+ *     issue.
+ *   - false: the recorded grade is PROVABLY below the code's required
+ *     authority. BLOCK — a commander with no authority to impose a
+ *     punishment vacating it anyway is exactly what MCO 011201's sentence
+ *     exists to prevent, and this is something the app CAN prove.
+ *   - 'unknown': `vacatingAuthorityGrade` is unset, unparseable, or the
+ *     code requires GCMCA authority, a billet question unanswerable from a
+ *     pay grade alone. This rule does NOT fire for 'unknown' — see
+ *     `vacatingAuthorityUnknownIssues` (W-22) immediately below, which
+ *     surfaces it as an advisory instead of leaving it silent, so an
+ *     unrecorded grade cannot pass this check by omission.
+ *
+ * SILENT on an out-of-bounds `suspensionIndex` (V-33's job), a suspension
+ * whose `punishmentIndex` is out of bounds (the V-05 addendum's job), or
+ * an unresolvable punishment code (V-14 and upstream code selection own
+ * that).
+ *
+ * THE ID IS KEYED ON THE VACATION'S OWN POSITION, matching its siblings
+ * above.
+ */
+export function vacatingAuthorityInsufficientIssues(formData: FormData): ValidationIssue[] {
+  const suspensions = suspensionEntries(formData);
+  const punishments = punishmentEntries(formData);
+  const issues: ValidationIssue[] = [];
+
+  vacationEntries(formData).forEach((vacation, index) => {
+    if (vacation.status !== 'vacated-full') return; // V-30's own boundary; see JSDoc
+
+    const suspension = suspensions[vacation.suspensionIndex];
+    if (!suspension) return; // V-33's job
+
+    const punishment = punishments[suspension.punishmentIndex];
+    if (!punishment) return; // suspensionIndexBoundsIssues' (V-05 addendum) job
+
+    const code = resolvePunishment(punishment.code);
+    if (!code) return; // V-14 and upstream code selection own an unresolvable code
+    if (code.requiredAuthority === 'any') return;
+
+    const grade = (vacation.vacatingAuthorityGrade ?? '').trim();
+    const result = authoritySatisfies(code.requiredAuthority, grade);
+    if (result !== false) return;
+
+    issues.push(
+      issue(
+        `navmc10132-v30-vacation-authority-insufficient-${index}`,
+        'block',
+        `Vacation record ${index} vacates ${punishment.code} in full, which requires ` +
+          'field-grade authority, and the recorded vacating authority does not satisfy it.',
+        'MCO 5800.16 Vol 14 para 011201; 10 U.S.C. 815(b)(2)(H); MCO 5800.16 Vol 14 para 010303',
+        `The vacating authority grade recorded for this vacation is "${grade}," below the ` +
+          `grade required to impose ${punishment.code} (${code.description}). A suspended ` +
+          'punishment may only be vacated by a commander authorized to impose punishment of ' +
+          'the same kind and amount. Confirm the vacating authority\'s actual grade, or route ' +
+          'this vacation to a commander who holds the required authority.',
+      ),
+    );
+  });
+
+  return issues;
+}
+
+/**
+ * W-22 (ADVISORY, NOT A BLOCKER). A FULL vacation's `vacatingAuthorityGrade`
+ * cannot establish whether the vacating authority is competent for the
+ * kind and amount vacated: it is unset, unparseable, or the punishment
+ * requires GCMCA authority, a billet question `authoritySatisfies` cannot
+ * answer from a pay grade alone. Mirrors `punishmentAuthorityGradeIssues`
+ * (W-05)'s identical 'unknown' branch, applied to the vacating authority
+ * instead of the imposing one. Decision row D-56.
+ *
+ * WHY 'warn' AND NOT SILENCE. `vacatingAuthorityGrade` is a NEW field with
+ * no printed line on the form and no existing writer, so unset is the
+ * ordinary state for most records today, the same posture
+ * `article31RightsReadDate` had before W-18 gave it one. Leaving this
+ * wholly silent would let a full vacation with an unrecorded, unverifiable
+ * vacating authority pass every check this codebase runs, silently, which
+ * is worse than naming the gap. This warning is what makes the field
+ * actionable: enter a grade `authoritySatisfies` can read, and this stops
+ * firing (or V-30 blocks instead, if the grade turns out insufficient).
+ *
+ * SILENT on a `status === 'vacated-part'` record for the identical reason
+ * V-30 is silent there: the app cannot compute a requirement for a
+ * fraction of a punishment named only in free text, so it cannot say the
+ * requirement is merely "unknown" either — there is no requirement this
+ * rule can state in the first place. See V-30's own JSDoc for the full
+ * argument; it applies here without modification.
+ */
+export function vacatingAuthorityUnknownIssues(formData: FormData): ValidationIssue[] {
+  const suspensions = suspensionEntries(formData);
+  const punishments = punishmentEntries(formData);
+  const issues: ValidationIssue[] = [];
+
+  vacationEntries(formData).forEach((vacation, index) => {
+    if (vacation.status !== 'vacated-full') return; // matches V-30's own boundary
+
+    const suspension = suspensions[vacation.suspensionIndex];
+    if (!suspension) return;
+
+    const punishment = punishments[suspension.punishmentIndex];
+    if (!punishment) return;
+
+    const code = resolvePunishment(punishment.code);
+    if (!code) return;
+    if (code.requiredAuthority === 'any') return;
+
+    const grade = (vacation.vacatingAuthorityGrade ?? '').trim();
+    const result = authoritySatisfies(code.requiredAuthority, grade);
+    if (result !== 'unknown') return;
+
+    issues.push(
+      issue(
+        `navmc10132-w22-vacation-authority-unknown-${index}`,
+        'warn',
+        `Cannot determine whether the vacating authority for vacation record ${index} is ` +
+          `competent to vacate ${punishment.code} in full.`,
+        'MCO 5800.16 Vol 14 para 011201; 10 U.S.C. 815(b)(2)(H)',
+        `Either the vacating authority grade is not recorded, or ${punishment.code} requires ` +
+          'GCMCA authority, a billet question the app cannot answer from a pay grade alone. ' +
+          `Confirm by hand that the commander vacating this punishment actually holds ` +
+          `authority to impose ${punishment.code} (${code.description}).`,
+      ),
+    );
+  });
+
+  return issues;
+}
+
+/**
  * V-18 (BLOCKING). Item 6 carries both a reduction and a forfeiture, and the
  * forfeiture is not recorded as computed on the reduced grade.
  *
@@ -1552,7 +1895,12 @@ export function forfeitureReducedGradeIssues(formData: FormData): ValidationIssu
  * shares W-17's conditional-date source (njp-suspension-period.ts),
  * applied to a vacation's notice date instead of the suspension's own end
  * date. W-18 sits last, beside W-20, because it reads the same vacations
- * array over a different pair of dates (decision row D-54).
+ * array over a different pair of dates (decision row D-54). V-29, W-21,
+ * V-30 and W-22 sit last of all: V-29/W-21 read the vacations array
+ * against `offenceDate` and the same conditional end date W-17/W-20
+ * already read (decision row D-49), and V-30/W-22 read it against
+ * `vacatingAuthorityGrade` and the punishment's own required authority
+ * (decision row D-56). All four are new as of this change.
  */
 export function punishmentIssues(formData: FormData): ValidationIssue[] {
   return [
@@ -1579,5 +1927,9 @@ export function punishmentIssues(formData: FormData): ValidationIssue[] {
     ...suspensionInterruptionAssumptionIssues(formData),
     ...vacationNoticeAfterRemissionIssues(formData),
     ...vacationRightsAdvisementIssues(formData),
+    ...vacationOffenceWindowIssues(formData),
+    ...vacationOffenceAfterRemissionIssues(formData),
+    ...vacatingAuthorityInsufficientIssues(formData),
+    ...vacatingAuthorityUnknownIssues(formData),
   ];
 }

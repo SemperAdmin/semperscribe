@@ -539,6 +539,68 @@ export interface Navmc10132Vacation {
    * here treats an unset value as anything other than "not yet recorded."
    */
   article31RightsReadDate?: string;
+  /**
+   * ISO. The date the UCMJ offense, or JAGMAN 0118.d "violation of the
+   * conditions of suspension," that triggers THIS vacation was committed.
+   * Decision row D-49.
+   *
+   * MCO 5800.16 Vol 14 para 011201, verbatim: "Vacation of suspension may
+   * only be based on an offense under the UCMJ committed during the period
+   * of suspension." JAGMAN (JAGINST 5800.7G CH-2) para 0118.d words the
+   * same window more broadly, over "a violation of the conditions of
+   * suspension." Both sources word the WINDOW identically; they disagree
+   * only on the NATURE of what may trigger a vacation inside it, and this
+   * codebase cannot tell a UCMJ offense apart from a bare conditions
+   * violation from the data it holds. So this field records only the DATE,
+   * never a characterization of what happened, and `navmc10132-v29-`
+   * (navmc10132-validators-punishment.ts) and its W-21 companion test only
+   * the date window, per D-49's ruling. Naming the nature of the basis is
+   * left to `vacatedDetail` or the record's own free text, never inferred
+   * from this field.
+   *
+   * NOT `noticeServedDate`. That field is when Figure 14-1 was served on
+   * the accused, an action the commander takes; this field is when the
+   * accused's own triggering conduct occurred, ordinarily well before the
+   * notice. Comparing the wrong one against the suspension window would
+   * silently test the wrong fact.
+   *
+   * Unset is the ordinary state for a record predating this field, same
+   * posture as `article31RightsReadDate`: nothing here treats an unset
+   * value as anything other than "not yet recorded," and both
+   * `navmc10132-v29-` and its W-21 companion stay silent rather than guess.
+   */
+  offenceDate?: string;
+  /**
+   * Pay grade, e.g. 'O5', of the commander who actually vacates this
+   * suspension. Decision row D-56.
+   *
+   * MCO 5800.16 Vol 14 para 011201, verbatim: "A suspended NJP may be
+   * vacated by any commander authorized to impose upon the accused
+   * punishment of the kind and amount to be vacated." THE VACATING
+   * COMMANDER IS NOT NECESSARILY THE IMPOSING COMMANDER, so item 8A
+   * (`njpAuthorityGrade` / `njpAuthorityPayGrade`) is the WRONG source for
+   * this fact and must never be read in its place. JAGMAN (JAGINST
+   * 5800.7G CH-2) para 0118.a defines "successor in command" by reference
+   * to U.S. Navy Regulation 1026 and expressly does NOT limit it to the
+   * next succeeding officer, so this is a grade recorded on the vacation
+   * record itself, free text over a rank, not a pick from a chain of
+   * command this app knows or can compute.
+   *
+   * FEEDS `navmc10132-v30-` (navmc10132-validators-punishment.ts), which
+   * checks this grade against the suspended punishment's own required
+   * authority using the identical `authoritySatisfies` machinery W-05 uses
+   * for item 8A. That rule, and its W-22 "cannot determine" companion,
+   * apply ONLY to a `'vacated-full'` record: for `'vacated-part'`,
+   * `vacatedDetail` names what was vacated as free text this codebase
+   * cannot parse into a legal figure, so no rule reading this field may
+   * treat the whole punishment's requirement as a stand-in for a partial
+   * one. See both rules' own JSDoc for the full reasoning.
+   *
+   * Unset is the ordinary state for a record predating this field. Neither
+   * V-30 nor W-22 treats an unset value as anything other than "not yet
+   * recorded" or "cannot yet be checked."
+   */
+  vacatingAuthorityGrade?: string;
 }
 
 /** A structured item 21 entry. Phase 2's composer renders these. */

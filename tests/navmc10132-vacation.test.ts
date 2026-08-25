@@ -8,6 +8,15 @@
 // JAGMAN 0118.d requires before the vacation notice, layered on the
 // `article31RightsReadDate` field D-54 added to Navmc10132Vacation.
 //
+// Also covers V-29 and its W-21 companion (decision row D-49, the offence
+// window, layered on the new `offenceDate` field) and V-30 and its W-22
+// companion (decision row D-56, the vacating authority's competence,
+// layered on the new `vacatingAuthorityGrade` field). V-29's and V-30's
+// own getExportBlockers-backed gate tests live in
+// tests/navmc10132-export-gate.test.ts, matching V-34's own precedent
+// below; the leaf-function tests here exercise all four functions,
+// including their 'warn' companions, which that file does not cover.
+//
 // V-34's own getExportBlockers-backed gate test lives in
 // tests/navmc10132-export-gate.test.ts, per the coordinator's instruction
 // that this one land there specifically, in that file's house pattern. The
@@ -36,6 +45,10 @@ import {
   vacationNoticeAfterRemissionIssues,
   vacationRightsAdvisementIssues,
   vacationRemarkMissingIssues,
+  vacationOffenceWindowIssues,
+  vacationOffenceAfterRemissionIssues,
+  vacatingAuthorityInsufficientIssues,
+  vacatingAuthorityUnknownIssues,
 } from '@/lib/navmc10132-validators-punishment';
 
 function baseForm(overrides: Record<string, unknown> = {}): FormData {
@@ -642,5 +655,321 @@ describe('V-34: an executed vacation must actually produce an item 21 remark', (
       vacations: [{ suspensionIndex: 0, status: 'vacated-full' }],
     });
     expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-v34-'))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// V-29 (blocker, lower bound only) and W-21 (advisory, upper bound):
+// decision row D-49. Whether a vacation's triggering offence date falls
+// inside the suspension window MCO 011201 and JAGMAN 0118.d both describe.
+// The pair is DELIBERATELY ASYMMETRIC: the item 6 punishment date, the
+// window's start, is certain and blocks; the computed remission date, the
+// window's end (njp-suspension-period.ts's `endsOnIfUninterrupted`), is
+// conditional per D-51 and only warns, mirroring W-17/W-20's own severity
+// for the identical computed date.
+// ---------------------------------------------------------------------------
+
+describe('V-29: a vacation\'s triggering offence must not predate the suspension it targets', () => {
+  it('blocks when the offence date is on or before the item 6 punishment date', () => {
+    const onSameDay = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2026-01-15' }],
+    });
+    let issues = vacationOffenceWindowIssues(onSameDay);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('block');
+    expect(issues[0].id).toBe('navmc10132-v29-vacation-offence-before-suspension-0');
+
+    const before = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2025-12-01' }],
+    });
+    issues = vacationOffenceWindowIssues(before);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].id).toBe('navmc10132-v29-vacation-offence-before-suspension-0');
+  });
+
+  it('is silent when the offence date is strictly after the punishment date and within the computed window', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2026-02-01' }],
+    });
+    expect(vacationOffenceWindowIssues(form)).toEqual([]);
+  });
+
+  it('is silent when offenceDate is unset, which is the ordinary state for a record predating this field', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending' }],
+    });
+    expect(vacationOffenceWindowIssues(form)).toEqual([]);
+  });
+
+  it('is silent on an out-of-bounds suspensionIndex, which is V-33\'s finding, not this rule\'s', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 5, status: 'pending', offenceDate: '2025-12-01' }],
+    });
+    expect(vacationOffenceWindowIssues(form)).toEqual([]);
+  });
+
+  it('is silent when the suspension period cannot be computed at all', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      // Neither months nor days entered: no computable end date.
+      suspensions: [{ punishmentIndex: 0 }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2025-12-01' }],
+    });
+    expect(vacationOffenceWindowIssues(form)).toEqual([]);
+  });
+
+  it('blocks the full validator run via getExportBlockers, not merely the leaf function', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2025-12-01' }],
+    });
+    expect(
+      getExportBlockers(form, [], [], []).some((i) => i.id.startsWith('navmc10132-v29-')),
+    ).toBe(true);
+  });
+
+  it('is folded into the punishmentIssues aggregate', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2025-12-01' }],
+    });
+    expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-v29-'))).toBe(true);
+  });
+});
+
+describe('W-21: an offence dated after the computed suspension end date is advisory only', () => {
+  it('warns when offenceDate is after endsOnIfUninterrupted', () => {
+    // NJP 2026-01-15, suspended 1 month -> ends 2026-02-15. Offence dated
+    // well after that.
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '1' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2026-03-01' }],
+    });
+    const issues = vacationOffenceAfterRemissionIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].id).toBe('navmc10132-w21-vacation-offence-after-remission-0');
+  });
+
+  it('is silent when the offence date is on or before the computed end date', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2026-02-01' }],
+    });
+    expect(vacationOffenceAfterRemissionIssues(form)).toEqual([]);
+  });
+
+  // THE PART THAT MATTERS: 'warn' must never gate the export. Blocking here
+  // would refuse a lawful vacation over a date D-51 says the app cannot
+  // stand behind, since JAGMAN 0118.c tolling could have kept the real
+  // suspension alive past the computed date.
+  it('never appears in getExportBlockers, even when it fires', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '1' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2026-03-01' }],
+    });
+    expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-w21-'))).toBe(true);
+    expect(
+      getExportBlockers(form, [], [], []).some((i) => i.id.startsWith('navmc10132-w21-')),
+    ).toBe(false);
+  });
+
+  it('is folded into the punishmentIssues aggregate', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '1' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2026-03-01' }],
+    });
+    expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-w21-'))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// V-30 (blocker, full vacation only) and W-22 (advisory): decision row
+// D-56. Whether the recorded `vacatingAuthorityGrade` is competent, under
+// MCO 011201's "kind and amount to be vacated" test, to vacate the
+// suspended punishment. N13 (extra duties up to 45 days) requires
+// field-grade authority, matching W-05's own fixture code choice for the
+// identical `authoritySatisfies` machinery applied to item 8A. BOTH RULES
+// ARE SILENT ON status 'vacated-part': `vacatedDetail` is free text this
+// app cannot turn into a legal figure, so neither rule may test a partial
+// vacation against the whole punishment's requirement.
+// ---------------------------------------------------------------------------
+
+describe('V-30: the vacating authority must be competent for the kind and amount vacated', () => {
+  it('blocks a full vacation when the recorded vacating authority grade is below the code\'s requirement', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full', vacatingAuthorityGrade: 'O3' }],
+    });
+    const issues = vacatingAuthorityInsufficientIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('block');
+    expect(issues[0].id).toBe('navmc10132-v30-vacation-authority-insufficient-0');
+  });
+
+  it('is silent when the recorded vacating authority grade satisfies the requirement', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full', vacatingAuthorityGrade: 'O5' }],
+    });
+    expect(vacatingAuthorityInsufficientIssues(form)).toEqual([]);
+  });
+
+  it('is silent on a partial vacation regardless of the recorded grade, deliberately, not an oversight', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          status: 'vacated-part',
+          vacatedDetail: '10 days extra duty',
+          vacatingAuthorityGrade: 'O3',
+        },
+      ],
+    });
+    expect(vacatingAuthorityInsufficientIssues(form)).toEqual([]);
+  });
+
+  it('is silent when the code requires no more than any NJP authority', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full', vacatingAuthorityGrade: 'O2' }],
+    });
+    expect(vacatingAuthorityInsufficientIssues(form)).toEqual([]);
+  });
+
+  it('is silent on an out-of-bounds suspensionIndex, which is V-33\'s finding, not this rule\'s', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 5, status: 'vacated-full', vacatingAuthorityGrade: 'O3' }],
+    });
+    expect(vacatingAuthorityInsufficientIssues(form)).toEqual([]);
+  });
+
+  it('blocks the full validator run via getExportBlockers, not merely the leaf function', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full', vacatingAuthorityGrade: 'O3' }],
+    });
+    expect(
+      getExportBlockers(form, [], [], []).some((i) => i.id.startsWith('navmc10132-v30-')),
+    ).toBe(true);
+  });
+
+  it('is folded into the punishmentIssues aggregate', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full', vacatingAuthorityGrade: 'O3' }],
+    });
+    expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-v30-'))).toBe(true);
+  });
+});
+
+describe('W-22: an unrecorded or unverifiable vacating authority grade is advisory only', () => {
+  it('warns on a full vacation when vacatingAuthorityGrade is unset', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full' }],
+    });
+    const issues = vacatingAuthorityUnknownIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].id).toBe('navmc10132-w22-vacation-authority-unknown-0');
+  });
+
+  it('is silent on a partial vacation, matching V-30\'s own boundary', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-part', vacatedDetail: '10 days extra duty' }],
+    });
+    expect(vacatingAuthorityUnknownIssues(form)).toEqual([]);
+  });
+
+  it('is silent once a grade is entered, whether it satisfies the requirement or V-30 blocks it instead', () => {
+    const satisfies = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full', vacatingAuthorityGrade: 'O5' }],
+    });
+    expect(vacatingAuthorityUnknownIssues(satisfies)).toEqual([]);
+
+    const insufficient = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full', vacatingAuthorityGrade: 'O3' }],
+    });
+    expect(vacatingAuthorityUnknownIssues(insufficient)).toEqual([]);
+  });
+
+  // THE PART THAT MATTERS: 'warn' must never gate the export.
+  it('never appears in getExportBlockers, even when it fires', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full' }],
+    });
+    expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-w22-'))).toBe(true);
+    expect(
+      getExportBlockers(form, [], [], []).some((i) => i.id.startsWith('navmc10132-w22-')),
+    ).toBe(false);
+  });
+
+  it('is folded into the punishmentIssues aggregate', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full' }],
+    });
+    expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-w22-'))).toBe(true);
   });
 });

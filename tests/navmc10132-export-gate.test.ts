@@ -466,6 +466,98 @@ describe('V-34 stops the export: an executed vacation with no item 21 remark for
 });
 
 // ---------------------------------------------------------------------------
+// V-29 - decision row D-49. A vacation's triggering offence must not
+// predate the item 6 punishment date, the certain start of the suspension
+// window MCO 011201 and JAGMAN 0118.d both describe. See
+// vacationOffenceWindowIssues's own JSDoc in navmc10132-validators-punishment.ts
+// for why this is asymmetric with its W-21 companion (advisory, unblocking),
+// which has its own leaf-function tests in tests/navmc10132-vacation.test.ts
+// rather than duplicated here, matching this file's own house pattern for
+// 'warn' rules.
+// ---------------------------------------------------------------------------
+
+describe('V-29 stops the export: the vacation offence date is on or before the item 6 punishment date', () => {
+  it('blocks when offenceDate is on or before punishmentDate, clears once it is strictly after', () => {
+    const blocking = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2025-12-01' }],
+    });
+    expect(
+      getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v29-')),
+    ).toBe(true);
+
+    // Only `offenceDate` changes, from before the punishment date to
+    // strictly after it and within the computed suspension window.
+    const compliant = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2026-02-01' }],
+    });
+    expect(
+      getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v29-')),
+    ).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// V-30 - decision row D-56. A FULL vacation's recorded vacating authority
+// grade must be competent, under MCO 011201's "kind and amount to be
+// vacated" test, for the punishment actually vacated. Silent on a partial
+// vacation, deliberately: see vacatingAuthorityInsufficientIssues's own
+// JSDoc in navmc10132-validators-punishment.ts. Its W-22 companion
+// (advisory, unblocking) has its own leaf-function tests in
+// tests/navmc10132-vacation.test.ts rather than duplicated here.
+// ---------------------------------------------------------------------------
+
+describe('V-30 stops the export: a full vacation\'s vacating authority is not competent for the punishment vacated', () => {
+  it('blocks a full vacation when the vacating authority grade is below the code\'s requirement, clears once a sufficient grade is entered', () => {
+    const blocking = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }], // field-grade authority required
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full', vacatingAuthorityGrade: 'O3' }],
+    });
+    expect(
+      getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v30-')),
+    ).toBe(true);
+
+    // Only `vacatingAuthorityGrade` changes, from below the requirement to
+    // meeting it.
+    const compliant = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full', vacatingAuthorityGrade: 'O5' }],
+    });
+    expect(
+      getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v30-')),
+    ).toBe(false);
+  });
+
+  it('is silent on a partial vacation with the identical insufficient grade, the deliberate boundary D-56 draws', () => {
+    const partial = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N13', days: '30' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          status: 'vacated-part',
+          vacatedDetail: '10 days extra duty',
+          vacatingAuthorityGrade: 'O3',
+        },
+      ],
+    });
+    expect(
+      getExportBlockers(partial, [], [], []).some((i) => i.id.startsWith('navmc10132-v30-')),
+    ).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // V-06 - item 3 rights-certification date must not be after item 6.
 // ---------------------------------------------------------------------------
 
