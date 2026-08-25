@@ -1,8 +1,20 @@
 // Vitest suite for decision row D-60: the vacation record model
 // (src/types/navmc.ts, Navmc10132Vacation), its Zod schema (src/lib/schemas.ts),
 // its item 21 derivation (vacationRemarks in src/lib/navmc10132-acroform.ts),
-// and its export-gate validators V-32, V-33, W-20
+// and its export-gate validators V-32, V-33, V-34, W-20
 // (src/lib/navmc10132-validators-punishment.ts).
+//
+// Also covers W-18 (decision row D-54), the Article 31 rights advisement
+// JAGMAN 0118.d requires before the vacation notice, layered on the
+// `article31RightsReadDate` field D-54 added to Navmc10132Vacation.
+//
+// V-34's own getExportBlockers-backed gate test lives in
+// tests/navmc10132-export-gate.test.ts, per the coordinator's instruction
+// that this one land there specifically, in that file's house pattern. The
+// leaf-function tests below exercise vacationRemarkOutcomes
+// (navmc10132-acroform.ts) and vacationRemarkMissingIssues
+// (navmc10132-validators-punishment.ts) directly, without duplicating that
+// gate test.
 //
 // WHAT THIS FILE DOES NOT COVER. No UI component exists yet for this data
 // (see the exclusion-list comment on Navmc10132Definition, schemas.ts) so
@@ -14,7 +26,7 @@ import { describe, it, expect } from 'vitest';
 import type { FormData } from '@/types';
 import { createEmptyNavmc10132Data } from '@/types/navmc';
 import { Navmc10132Schema } from '@/lib/schemas';
-import { navmc10132Values } from '@/lib/navmc10132-acroform';
+import { navmc10132Values, vacationRemarkOutcomes } from '@/lib/navmc10132-acroform';
 import { isPrescribedFormat } from '@/lib/navmc10132-remarks';
 import { getExportBlockers } from '@/lib/letter-validators';
 import {
@@ -22,6 +34,8 @@ import {
   vacationPartialDetailIssues,
   vacationSuspensionIndexBoundsIssues,
   vacationNoticeAfterRemissionIssues,
+  vacationRightsAdvisementIssues,
+  vacationRemarkMissingIssues,
 } from '@/lib/navmc10132-validators-punishment';
 
 function baseForm(overrides: Record<string, unknown> = {}): FormData {
@@ -375,5 +389,258 @@ describe('W-20: a notice served after the computed suspension end date is adviso
       vacations: [{ suspensionIndex: 0, noticeServedDate: '2026-03-01', status: 'pending' }],
     });
     expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-w20-'))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W-18 (advisory): decision row D-54, JAGMAN 0118.d's Article 31 rights
+// advisement. Two sub-rules, checked one vacation record at a time: not
+// recorded at all, and recorded on or after the notice-served date (the
+// wrong order, since serving Figure 14-1 is the "ask" 0118.d requires the
+// reading to precede). Must warn, never block, per the reasoning in
+// vacationRightsAdvisementIssues's own JSDoc (unprovable misconduct premise
+// per D-49, and the app recording history it cannot undo either way).
+// ---------------------------------------------------------------------------
+
+describe('W-18: Article 31 rights advisement before the vacation notice is advisory only', () => {
+  it('warns when article31RightsReadDate is unset', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, noticeServedDate: '2026-03-01', status: 'pending' }],
+    });
+    const issues = vacationRightsAdvisementIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].id).toBe('navmc10132-w18-rights-not-recorded-0');
+  });
+
+  it('warns when the rights reading is recorded on or after the notice-served date', () => {
+    // Same day as the notice: 0118.d requires the reading to come BEFORE
+    // the notice, and a same-day recording is not evidence it did.
+    const sameDay = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'pending',
+          article31RightsReadDate: '2026-03-01',
+        },
+      ],
+    });
+    let issues = vacationRightsAdvisementIssues(sameDay);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].id).toBe('navmc10132-w18-rights-after-notice-0');
+
+    // Clearly after the notice.
+    const after = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'pending',
+          article31RightsReadDate: '2026-03-05',
+        },
+      ],
+    });
+    issues = vacationRightsAdvisementIssues(after);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].id).toBe('navmc10132-w18-rights-after-notice-0');
+  });
+
+  it('is silent once the rights reading is recorded strictly before the notice', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'pending',
+          article31RightsReadDate: '2026-02-27',
+        },
+      ],
+    });
+    expect(vacationRightsAdvisementIssues(form)).toEqual([]);
+  });
+
+  // THE PART THAT MATTERS: 'warn' must never gate the export, on either
+  // sub-rule.
+  it('never appears in getExportBlockers, even when either sub-rule fires', () => {
+    const notRecorded = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, noticeServedDate: '2026-03-01', status: 'pending' }],
+    });
+    expect(punishmentIssues(notRecorded).some((i) => i.id.startsWith('navmc10132-w18-'))).toBe(true);
+    expect(
+      getExportBlockers(notRecorded, [], [], []).some((i) => i.id.startsWith('navmc10132-w18-')),
+    ).toBe(false);
+
+    const wrongOrder = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'pending',
+          article31RightsReadDate: '2026-03-05',
+        },
+      ],
+    });
+    expect(punishmentIssues(wrongOrder).some((i) => i.id.startsWith('navmc10132-w18-'))).toBe(true);
+    expect(
+      getExportBlockers(wrongOrder, [], [], []).some((i) => i.id.startsWith('navmc10132-w18-')),
+    ).toBe(false);
+  });
+
+  it('is folded into the punishmentIssues aggregate', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, noticeServedDate: '2026-03-01', status: 'pending' }],
+    });
+    expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-w18-'))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// V-34 (blocker): decision row D-60, found while closing W-18 (D-54). An
+// executed vacation record for which vacationRemarks (navmc10132-acroform.ts)
+// produced no item 21 remark. vacationRemarkMissingIssues checks the
+// OUTCOME of vacationRemarkOutcomes, not a re-implemented list of the
+// derivation's own branches; these four cases below exercise all four
+// branches that derivation can currently take, precisely to demonstrate
+// that ONE rule catches all of them without naming any of them in its own
+// logic. The getExportBlockers-backed gate test for V-34 itself lives in
+// tests/navmc10132-export-gate.test.ts, per the coordinator's instruction.
+// ---------------------------------------------------------------------------
+
+describe('V-34: an executed vacation must actually produce an item 21 remark', () => {
+  it('fires when the item 6 punishment date is blank, which suppresses every remark on the form', () => {
+    const form = baseForm({
+      // punishmentDate deliberately left unset.
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        { suspensionIndex: 0, status: 'vacated-full', outcomeDate: '2026-03-10' },
+      ],
+    });
+    const issues = vacationRemarkMissingIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('block');
+    expect(issues[0].id).toBe('navmc10132-v34-vacation-remark-missing-0');
+    expect(issues[0].detail).toContain('punishment date is blank');
+  });
+
+  it('fires when outcomeDate is unset', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full' }],
+    });
+    const issues = vacationRemarkMissingIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].id).toBe('navmc10132-v34-vacation-remark-missing-0');
+    expect(issues[0].detail).toContain('no outcome date recorded');
+  });
+
+  it('fires when the targeted suspension does not exist', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        { suspensionIndex: 5, status: 'vacated-full', outcomeDate: '2026-03-10' }, // out of bounds
+      ],
+    });
+    const issues = vacationRemarkMissingIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].id).toBe('navmc10132-v34-vacation-remark-missing-0');
+    expect(issues[0].detail).toContain('does not carry');
+  });
+
+  it('fires when the targeted punishment cannot be rendered', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'ZZZZ' }], // unresolvable code
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full', outcomeDate: '2026-03-10' }],
+    });
+    const issues = vacationRemarkMissingIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].id).toBe('navmc10132-v34-vacation-remark-missing-0');
+    expect(issues[0].detail).toContain('could not be rendered');
+  });
+
+  it('is silent once a remark is actually produced', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full', outcomeDate: '2026-03-10' }],
+    });
+    expect(vacationRemarkMissingIssues(form)).toEqual([]);
+    // Confirm the reason it is silent: a remark really was derived, not
+    // that this fixture happened to dodge every branch by coincidence.
+    expect(vacationRemarkOutcomes(form)[0].remark).not.toBeNull();
+  });
+
+  it('is silent on pending and not-vacated records, which correctly produce no remark', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        { suspensionIndex: 0, status: 'pending' },
+        { suspensionIndex: 0, status: 'not-vacated', outcomeDate: '2026-03-10' },
+      ],
+    });
+    expect(vacationRemarkMissingIssues(form)).toEqual([]);
+    const outcomes = vacationRemarkOutcomes(form);
+    expect(outcomes[0].remark).toBeNull();
+    expect(outcomes[0].gapReason).toBeNull();
+    expect(outcomes[1].remark).toBeNull();
+    expect(outcomes[1].gapReason).toBeNull();
+  });
+
+  it('keys each id on the vacation record\'s own array position, not a shared index', () => {
+    // Two executed vacations against two distinct suspensions, both
+    // missing an outcome date. Each must get its OWN id so ComplianceDialog
+    // and PackageDialog (key={issue.id}) do not silently drop one.
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }, { code: 'N16', oralOrWritten: 'orally' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '6' },
+        { punishmentIndex: 1, months: '3' },
+      ],
+      vacations: [
+        { suspensionIndex: 0, status: 'vacated-full' },
+        { suspensionIndex: 1, status: 'vacated-part', vacatedDetail: 'partial' },
+      ],
+    });
+    const issues = vacationRemarkMissingIssues(form);
+    expect(issues.map((i) => i.id).sort()).toEqual([
+      'navmc10132-v34-vacation-remark-missing-0',
+      'navmc10132-v34-vacation-remark-missing-1',
+    ]);
+  });
+
+  it('is folded into the punishmentIssues aggregate', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full' }],
+    });
+    expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-v34-'))).toBe(true);
   });
 });

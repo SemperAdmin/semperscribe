@@ -1358,12 +1358,17 @@ const Navmc10132SuspensionRow = z.object({
 // required (not optional) for the same reason Navmc10132SuspensionRow's
 // `punishmentIndex` above is required: an unset target is not a legal
 // draft state for a record whose entire purpose is naming one.
+// `article31RightsReadDate` is decision row D-54, JAGMAN 0118.d. See its own
+// JSDoc on Navmc10132Vacation (src/types/navmc.ts) for why it lives here
+// rather than on Figure 14-1 (D-48's rule against inventing figure content)
+// and how it feeds W-18 (navmc10132-validators-punishment.ts).
 const Navmc10132VacationRow = z.object({
   suspensionIndex: z.number(),
   noticeServedDate: z.string().optional().default(''),
   status: z.enum(['pending', 'vacated-full', 'vacated-part', 'not-vacated']),
   outcomeDate: z.string().optional(),
   vacatedDetail: z.string().optional(),
+  article31RightsReadDate: z.string().optional(),
 });
 
 const Navmc10132RemarkRow = z.object({

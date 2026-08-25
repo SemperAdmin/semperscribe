@@ -381,6 +381,91 @@ describe('V-33 stops the export: a vacation names a suspensionIndex item 7 does 
 });
 
 // ---------------------------------------------------------------------------
+// V-34 - decision row D-60, found while closing W-18 (D-54). A vacation
+// record's status says a vacation happened (`vacated-full` or
+// `vacated-part`) but vacationRemarks (navmc10132-acroform.ts) produced no
+// item 21 remark for it. See vacationRemarkMissingIssues's own JSDoc in
+// navmc10132-validators-punishment.ts for why this is ONE outcome-based
+// rule rather than one rule per silent-skip branch in the derivation, and
+// for why it blocks, unlike its W-18/W-20 neighbors.
+//
+// The fixture below reaches the gap through the outcomeDate branch
+// specifically (one of several the derivation can hit), only because a
+// concrete fixture has to pick one; the rule itself does not know or care
+// which branch fired, which is the point.
+// ---------------------------------------------------------------------------
+
+describe('V-34 stops the export: an executed vacation with no item 21 remark for it', () => {
+  it('blocks when an executed vacation has no outcome date, clears once one is entered', () => {
+    const blocking = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          // outcomeDate deliberately unset: vacationRemarks derives
+          // nothing without it, and nothing was blocking that until now.
+        },
+      ],
+    });
+    expect(
+      getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v34-')),
+    ).toBe(true);
+
+    // Only `outcomeDate` changes, unset to entered. Everything else about
+    // the record, including `status`, is unchanged.
+    const compliant = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          outcomeDate: '2026-03-10',
+        },
+      ],
+    });
+    expect(
+      getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v34-')),
+    ).toBe(false);
+  });
+
+  it('is silent on a pending or not-vacated record with no remark, which is correct, not a gap', () => {
+    const pending = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, noticeServedDate: '2026-03-01', status: 'pending' }],
+    });
+    expect(
+      getExportBlockers(pending, [], [], []).some((i) => i.id.startsWith('navmc10132-v34-')),
+    ).toBe(false);
+
+    const notVacated = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'not-vacated',
+          outcomeDate: '2026-03-10',
+        },
+      ],
+    });
+    expect(
+      getExportBlockers(notVacated, [], [], []).some((i) => i.id.startsWith('navmc10132-v34-')),
+    ).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // V-06 - item 3 rights-certification date must not be after item 6.
 // ---------------------------------------------------------------------------
 

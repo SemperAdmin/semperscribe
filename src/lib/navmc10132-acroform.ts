@@ -266,12 +266,33 @@ function vacationTargetText(formData: FormData, punishmentIndex: number): string
 }
 
 /**
- * Derives the item 21 `suspension-vacated-njp` remark for every EXECUTED
- * vacation record. Decision row D-60: this is what closes the gap between
- * njp-vacation-handoff.ts (which generates the Figure 14-1 notice) and
- * navmc10132-remarks.ts (which carries the remark kind that records the
- * vacation) — a vacation now reaches item 21 without a clerk having to
- * remember to hand-add it.
+ * One vacation record's own remark-derivation result: the remark it
+ * produces, or null when the record does not (or should not) produce one.
+ *
+ * `gapReason` is populated ONLY when `remark` is null AND the record's own
+ * `status` is `'vacated-full'` or `'vacated-part'` — i.e. exactly the case
+ * V-34 (navmc10132-validators-punishment.ts) treats as a defect: a record
+ * that says a vacation happened, feeding an export that says nothing about
+ * it. It stays null for `'pending'` and `'not-vacated'`, which correctly
+ * produce no remark and are not gaps at all. See `deriveVacationRemarkGap`
+ * below for what it does and does not promise.
+ */
+export interface VacationRemarkOutcome {
+  remark: Navmc10132Remark | null;
+  gapReason: string | null;
+}
+
+/**
+ * THE single derivation this file uses to decide whether one vacation
+ * record produces an item 21 remark. `vacationRemarks` below and V-34
+ * (navmc10132-validators-punishment.ts, via `vacationRemarkOutcomes`) both
+ * read this function's result rather than re-implementing any part of it,
+ * on purpose: a rule that re-derived "should this record have a remark"
+ * from its own copy of these checks would silently fall out of sync with
+ * this function the first time a guard is added here and not there. That
+ * drift is exactly the failure class this codebase exists to catch, so it
+ * must not be reintroduced one level up in the rule that closes the
+ * previous instance of it.
  *
  * SILENT ON 'pending' AND 'not-vacated', ON PURPOSE. Nothing was vacated in
  * either state: MCO 5800.16 Vol 14 para 011201 requires the accused be
@@ -279,10 +300,11 @@ function vacationTargetText(formData: FormData, punishmentIndex: number): string
  * Figure 14-1 paragraph 2 offers FULL/PART as the commander's election
  * only after that response, so a commander can also decide not to vacate.
  * A remark reading "... vacated." for a record that vacated nothing would
- * misstate the UPB. This is also why nothing here warns on the ABSENCE of
- * a vacation record: most suspensions are never vacated at all (MCM Part V
- * para 6.a(3), remitted without further action), so a rule that fired on
- * every un-vacated suspension would fire constantly on correct forms.
+ * misstate the UPB. This is also why nothing here, or in V-34, warns on
+ * the ABSENCE of a vacation record: most suspensions are never vacated at
+ * all (MCM Part V para 6.a(3), remitted without further action), so a rule
+ * that fired on every un-vacated suspension would fire constantly on
+ * correct forms.
  *
  * SKIPPED, NOT EMITTED MALFORMED, when the NJP date, the outcome date, the
  * targeted suspension, or the punishment it names is missing or
@@ -291,9 +313,9 @@ function vacationTargetText(formData: FormData, punishmentIndex: number): string
  * clause; a derived remark that fails the app's own format check would be
  * worse than none, so an incomplete record is left for the clerk to finish
  * rather than rendered with a hole in it. `navmc10132-v32-` and
- * `navmc10132-v33-` (navmc10132-validators-punishment.ts) block export on
- * the two incompleteness shapes this function would otherwise silently
- * drop.
+ * `navmc10132-v33-` (navmc10132-validators-punishment.ts) already block
+ * export on two of the ways this can happen; V-34 is what catches the
+ * remaining ones, by checking THIS OUTCOME rather than re-listing them.
  *
  * THE REMARK'S OWN DATE IS `outcomeDate`, NEVER `noticeServedDate`. The
  * remark records that a vacation HAPPENED, so it is dated by when the
@@ -301,33 +323,113 @@ function vacationTargetText(formData: FormData, punishmentIndex: number): string
  * out — matching how every other item 21 kind here is dated by its own
  * event (`appeal-denied` by the decision date, not the appeal date).
  */
-function vacationRemarks(formData: FormData): Navmc10132Remark[] {
-  const njpDate = (readString(formData, 'punishmentDate') ?? '').trim();
-  if (njpDate === '') return [];
+function deriveVacationRemark(
+  vacation: Navmc10132Vacation,
+  njpDate: string,
+  suspensions: Navmc10132Suspension[],
+  formData: FormData,
+): Navmc10132Remark | null {
+  if (njpDate === '') return null;
+  if (vacation.status !== 'vacated-full' && vacation.status !== 'vacated-part') return null;
 
+  const outcomeDate = (vacation.outcomeDate ?? '').trim();
+  if (outcomeDate === '') return null;
+
+  const suspension = suspensions[vacation.suspensionIndex];
+  if (!suspension) return null;
+
+  const target = vacationTargetText(formData, suspension.punishmentIndex);
+  if (target === '') return null;
+
+  const base = `${target} susp on ${njpDate}`;
+  const vacatedDetail = (vacation.vacatedDetail ?? '').trim();
+  const detail =
+    vacation.status === 'vacated-part' && vacatedDetail !== ''
+      ? `${base}, in part: ${vacatedDetail}`
+      : base;
+
+  return { date: outcomeDate, kind: 'suspension-vacated-njp', detail };
+}
+
+/**
+ * Best-effort prose naming WHICH input `deriveVacationRemark` above found
+ * missing, for an executed vacation (`'vacated-full'` or `'vacated-part'`)
+ * whose remark came back null. Called only from `vacationRemarkOutcomes`,
+ * only in that case.
+ *
+ * DELIBERATELY NOT THE GATE. Whether V-34 fires is decided entirely by
+ * `deriveVacationRemark`'s outcome (null or not); this function only
+ * explains a gap that outcome already established, so a clerk can fix the
+ * cause rather than hunt for it. Its own checks mirror
+ * `deriveVacationRemark`'s in order, which is unavoidable duplication for a
+ * plain-language explanation, but it is duplication that can only make the
+ * MESSAGE stale, never the GATE: a future guard added to
+ * `deriveVacationRemark` without a matching branch added here still
+ * produces a null remark, V-34 still fires, and this function falls
+ * through to the generic closing line below rather than mis-describing the
+ * gap.
+ */
+function deriveVacationRemarkGap(
+  vacation: Navmc10132Vacation,
+  njpDate: string,
+  suspensions: Navmc10132Suspension[],
+  formData: FormData,
+): string {
+  if (njpDate === '') {
+    return 'item 6 punishment date is blank, which suppresses every derived vacation remark on the form';
+  }
+  const outcomeDate = (vacation.outcomeDate ?? '').trim();
+  if (outcomeDate === '') {
+    return 'this record has no outcome date recorded';
+  }
+  const suspension = suspensions[vacation.suspensionIndex];
+  if (!suspension) {
+    return `this record names suspensionIndex ${vacation.suspensionIndex}, which item 7 does not carry`;
+  }
+  const target = vacationTargetText(formData, suspension.punishmentIndex);
+  if (target === '') {
+    return 'the suspended punishment this record targets could not be rendered';
+  }
+  return 'the app could not determine why';
+}
+
+/**
+ * Every vacation record's own remark-derivation outcome, in `vacations`
+ * array order. Decision row D-60 built the derivation
+ * (`deriveVacationRemark`, which closes the gap between
+ * njp-vacation-handoff.ts, which generates the Figure 14-1 notice, and
+ * navmc10132-remarks.ts, which carries the remark kind that records the
+ * vacation); this export exists so V-34
+ * (navmc10132-validators-punishment.ts) can check, per record, whether
+ * that derivation actually produced something, instead of importing or
+ * re-deriving any part of the check itself. See `VacationRemarkOutcome`
+ * above for the shape and `deriveVacationRemark`'s own JSDoc for why this
+ * is the one place that decision gets made.
+ */
+export function vacationRemarkOutcomes(formData: FormData): VacationRemarkOutcome[] {
+  const njpDate = (readString(formData, 'punishmentDate') ?? '').trim();
   const suspensions = readSuspensions(formData);
 
-  return readVacations(formData).flatMap((vacation): Navmc10132Remark[] => {
-    if (vacation.status !== 'vacated-full' && vacation.status !== 'vacated-part') return [];
+  return readVacations(formData).map((vacation): VacationRemarkOutcome => {
+    const remark = deriveVacationRemark(vacation, njpDate, suspensions, formData);
+    if (remark) return { remark, gapReason: null };
 
-    const outcomeDate = (vacation.outcomeDate ?? '').trim();
-    if (outcomeDate === '') return [];
-
-    const suspension = suspensions[vacation.suspensionIndex];
-    if (!suspension) return [];
-
-    const target = vacationTargetText(formData, suspension.punishmentIndex);
-    if (target === '') return [];
-
-    const base = `${target} susp on ${njpDate}`;
-    const vacatedDetail = (vacation.vacatedDetail ?? '').trim();
-    const detail =
-      vacation.status === 'vacated-part' && vacatedDetail !== ''
-        ? `${base}, in part: ${vacatedDetail}`
-        : base;
-
-    return [{ date: outcomeDate, kind: 'suspension-vacated-njp', detail }];
+    const executed = vacation.status === 'vacated-full' || vacation.status === 'vacated-part';
+    return {
+      remark: null,
+      gapReason: executed ? deriveVacationRemarkGap(vacation, njpDate, suspensions, formData) : null,
+    };
   });
+}
+
+/**
+ * The flattened list of remarks `vacationRemarkOutcomes` above actually
+ * produced, i.e. every non-null `remark`, in `vacations` array order. This
+ * is the shape `composeRemarks` (below) needs; see `vacationRemarkOutcomes`
+ * for the per-record derivation and gap reasoning this filters down from.
+ */
+function vacationRemarks(formData: FormData): Navmc10132Remark[] {
+  return vacationRemarkOutcomes(formData).flatMap((outcome) => (outcome.remark ? [outcome.remark] : []));
 }
 
 /**

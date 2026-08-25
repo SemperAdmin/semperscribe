@@ -496,6 +496,49 @@ export interface Navmc10132Vacation {
    * and neither `pending` nor `not-vacated` vacated anything to describe.
    */
   vacatedDetail?: string;
+  /**
+   * ISO. The date Article 31, UCMJ rights were read to the accused for THIS
+   * vacation action. Decision row D-54.
+   *
+   * NOT A FIGURE 14-1 FIELD. JAGMAN (JAGINST 5800.7G CH-2) para 0118.d
+   * requires the reading but Figure 14-1 prints no line for it and this
+   * codebase never adds content a source figure does not carry (see D-48).
+   * The fact still has to live somewhere or the app cannot check the one
+   * thing 0118.d actually orders checked: SEQUENCE. So it lives here, on
+   * the record of the vacation action itself, app-side and unprinted, the
+   * same posture as `accusedYearsOfService` and `forfeitureBasisGrade`
+   * above.
+   *
+   * WHY THIS FIELD MAKES W-18 ACTIONABLE RATHER THAN PERMANENT NOISE. Before
+   * D-60, a rights-advisement warning with nothing to record against and no
+   * way to clear it was rejected outright as training clerks to ignore
+   * warnings. This field is the acknowledgment: enter the date rights were
+   * read, and `navmc10132-w18-rights-not-recorded-*`
+   * (navmc10132-validators-punishment.ts) stops firing for this record. A
+   * second, distinct rule then checks what this field actually says: 0118.d
+   * requires the reading BEFORE the commander asks whether the accused
+   * wishes to make a statement, and Figure 14-1, the notice of intent, IS
+   * that ask, so `navmc10132-w18-rights-after-notice-*` compares this date
+   * against `noticeServedDate` and warns when rights were read on or after
+   * it rather than before.
+   *
+   * WHY BOTH SIDES OF THIS ARE 'warn', NEVER 'block'. Per D-49 the app
+   * gates only on the suspension DATE WINDOW; it has no way to know whether
+   * a given vacation's basis is misconduct (JAGMAN 0118.d's trigger) or a
+   * bare condition-of-suspension violation that JAGMAN 0118.d does not
+   * reach at all. Both W-18 sub-rules therefore name the condition rather
+   * than assert it. And even where 0118.d plainly applies, the app is
+   * recording HISTORY: blocking export on a wrong-order or unrecorded
+   * reading would trap a clerk from memorializing what already happened,
+   * and refusing the export cannot un-read the rights either way. See W-19
+   * in docs/NAVMC_10132_SPEC.md for the identical reasoning applied to the
+   * ten-working-day order deadline.
+   *
+   * Unset is the ordinary state for most existing records, including every
+   * fixture in tests/navmc10132-vacation.test.ts predating this field; nothing
+   * here treats an unset value as anything other than "not yet recorded."
+   */
+  article31RightsReadDate?: string;
 }
 
 /** A structured item 21 entry. Phase 2's composer renders these. */

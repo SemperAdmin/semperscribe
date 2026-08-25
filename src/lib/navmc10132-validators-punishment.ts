@@ -27,6 +27,29 @@
  * the same conditional-date reasoning as W-17 applies. See each function's
  * own JSDoc for its citation, or the deliberate lack of one.
  *
+ * Also carries W-18 (`vacationRightsAdvisementIssues`), decision row D-54:
+ * JAGMAN 0118.d's Article 31 rights advisement, which must precede the
+ * Figure 14-1 notice of intent (the notice IS the commander's ask, per
+ * 0118.d's own wording). This IS a section 6 spec row (see docs/NAVMC_10132_SPEC.md's
+ * W-18) but, like W-17 and W-20, deliberately stays 'warn': see the
+ * function's own JSDoc for why, and for the two distinct sub-conditions it
+ * checks against the `article31RightsReadDate` field D-54 added to
+ * `Navmc10132Vacation`.
+ *
+ * Also carries V-34 (`vacationRemarkMissingIssues`), found while closing
+ * W-18 above: an executed vacation record (`status` `'vacated-full'` or
+ * `'vacated-part'`) for which `vacationRemarks` (navmc10132-acroform.ts)
+ * produced no item 21 remark, for ANY reason, not one enumerated list of
+ * reasons. Like V-31 through V-33, no docs/NAVMC_10132_SPEC.md section 6
+ * row: it is an app-side consistency check between two artifacts this
+ * codebase itself produces (a vacation record and the exported remarks),
+ * not a rule an outside source states. UNLIKE W-18 and W-20, this one
+ * BLOCKS: see its own JSDoc for why the reasoning that keeps those two at
+ * 'warn' does not apply here. Reads `vacationRemarkOutcomes`
+ * (navmc10132-acroform.ts) rather than re-deriving any part of what that
+ * function already decides; see both JSDocs for why that import, not a
+ * copy, is the point.
+ *
  * Two rules here are deliberately weaker than their table description because
  * the underlying data cannot support the stronger claim. See the JSDoc on
  * `suspensionTermsIssues` (V-05) and `appealDecisionIncreaseIssues` (V-16) for
@@ -77,6 +100,14 @@ import {
   suspensionsWithComputedEnd,
   SUSPENSION_ASSUMPTIONS,
 } from '@/lib/njp-suspension-period';
+// Value import, not type-only: navmc10132-acroform.ts imports only
+// '@/types', '@/types/navmc' and navmc10132-utils.ts (itself import-free),
+// none of which reach back into this module or into letter-validators.ts,
+// so this edge does not create the module cycle the letter-validators
+// type-only import above guards against. V-34 below reads
+// `vacationRemarkOutcomes` rather than re-deriving any part of what it
+// checks; see V-34's own JSDoc for why.
+import { vacationRemarkOutcomes } from '@/lib/navmc10132-acroform';
 
 const ITEM_6_FIELD = '6 PUNISHMENT IMPOSED';
 
@@ -468,6 +499,85 @@ export function vacationSuspensionIndexBoundsIssues(formData: FormData): Validat
           (suspensions.length > 0
             ? `, 0 through ${suspensions.length - 1}.`
             : '; item 7 carries no suspensions to vacate.'),
+      ),
+    );
+  });
+
+  return issues;
+}
+
+/**
+ * V-34 (BLOCKING). A vacation record's `status` is `'vacated-full'` or
+ * `'vacated-part'`, i.e. it asserts a vacation actually happened, but item
+ * 21 carries no remark for it. The exported UPB is a permanent record that
+ * a vacation occurred while the exported document says nothing about it.
+ *
+ * FOUND CLOSING D-54 / W-18, in `vacationRemarks` (navmc10132-acroform.ts,
+ * shipped under decision row D-60 earlier the same day). That function has
+ * FOUR distinct places it can return nothing for an executed record: the
+ * item 6 punishment date is blank (which suppresses every vacation remark
+ * on the form at once), the outcome date is blank, the targeted suspension
+ * does not exist, or the punishment that suspension names cannot be
+ * rendered. Only the third of the four had a rule (V-33, above). The other
+ * three were reachable and unguarded.
+ *
+ * WHY THIS IS ONE RULE, NOT FOUR. Enumerating the four causes as four
+ * separate checks would mean this rule re-implements, in a second place,
+ * exactly the branching `deriveVacationRemark` (navmc10132-acroform.ts)
+ * already implements, and the two would have to be kept in lockstep by
+ * hand forever. That is precisely how the gap this rule closes was created
+ * in the first place: three of the four branches were added to the
+ * derivation without anyone adding a matching rule for them. Checking the
+ * OUTCOME instead, "did the derivation actually produce a remark for this
+ * record," cannot fall behind the derivation it guards, because it reads
+ * the derivation's own result (`vacationRemarkOutcomes`) rather than a copy
+ * of its logic. A fifth guard added to `deriveVacationRemark` tomorrow is
+ * caught by this rule automatically, with no corresponding edit required
+ * here.
+ *
+ * `vacationRemarkOutcomes` IS THE SHARED DERIVATION, IMPORTED, NOT COPIED.
+ * See its own JSDoc (navmc10132-acroform.ts) for why re-deriving any part
+ * of "would a remark be produced" here, instead of importing the answer,
+ * would reintroduce the identical drift risk this rule exists to close.
+ * `outcome.gapReason` is a best-effort explanation of WHICH input was
+ * missing, built by that module walking the same checks in the same order
+ * for message purposes only; it is never what this rule's severity decision
+ * is based on, so a `gapReason` that has not been updated for some future
+ * fifth branch degrades to a generic closing line rather than causing this
+ * rule to miss the gap.
+ *
+ * WHY 'block' AND NOT 'warn', UNLIKE W-18 AND W-20 JUST ABOVE. Those two
+ * warn because the app cannot observe an unrecorded real-world fact (a
+ * rights reading, an interruption) and refusing export cannot fix history
+ * either way. This is different in kind: the record ITSELF states a
+ * vacation happened (`status` says so) and the export ITSELF is what fails
+ * to say so, a contradiction between two artifacts this app produces
+ * together, not a gap in what the app can observe about the world. That is
+ * squarely within what the app can prove and fix, so it blocks.
+ *
+ * THE ID IS KEYED ON EACH VACATION'S OWN POSITION in `vacations`, matching
+ * V-32, V-33 and W-20 above, for the identical `key={issue.id}` reason
+ * their own JSDocs give.
+ */
+export function vacationRemarkMissingIssues(formData: FormData): ValidationIssue[] {
+  const outcomes = vacationRemarkOutcomes(formData);
+  const issues: ValidationIssue[] = [];
+
+  vacationEntries(formData).forEach((vacation, index) => {
+    const outcome = outcomes[index];
+    if (!outcome || outcome.remark) return; // no gap, or nothing this rule cares about
+    if (outcome.gapReason === null) return; // 'pending' or 'not-vacated': correctly produced nothing
+
+    issues.push(
+      issue(
+        `navmc10132-v34-vacation-remark-missing-${index}`,
+        'block',
+        `Vacation record ${index} is recorded as ${vacation.status}, but item 21 carries no ` +
+          'remark stating so.',
+        'NAVMC 10132 (REV. 08-2023) instructions, page 3, ITEM 21; decision row D-60',
+        `This record says a vacation occurred, so the exported UPB must say so too, and it ` +
+          `currently would not: ${outcome.gapReason}. Fix that and item 21 will carry the ` +
+          'vacation remark automatically; nothing else needs to change by hand.',
       ),
     );
   });
@@ -1238,6 +1348,122 @@ export function vacationNoticeAfterRemissionIssues(formData: FormData): Validati
 }
 
 /**
+ * W-18 (ADVISORY, NOT A BLOCKER — read this before touching the severity).
+ * Decision row D-54.
+ *
+ * JAGMAN (JAGINST 5800.7G CH-2) para 0118.d, verbatim: "If the reason for
+ * vacation involves additional misconduct, Article 31, UCMJ, rights must be
+ * read to the accused before the commander asks if the accused wishes to
+ * make a statement on his or her own behalf." MCO 5800.16 Vol 14 para
+ * 011201 requires a UCMJ offense as the basis for ANY vacation, so under
+ * the MCO this fires in effectively every Marine Corps vacation. But D-49
+ * records a real conflict: JAGMAN 0118.d itself permits vacation on "a
+ * violation of the conditions of suspension," which need not be misconduct
+ * at all, and the app was deliberately ruled to gate only on the
+ * suspension DATE WINDOW, never on the nature of the basis, because it
+ * cannot tell the two apart from the data it holds. Both messages below
+ * therefore say "if this vacation is based on misconduct," naming the
+ * condition, rather than asserting it as fact.
+ *
+ * WHY 'warn' AND NOT 'block'. Two independent reasons, either sufficient on
+ * its own:
+ *   1. UNPROVABLE PREMISE. Per D-49 above, the app cannot know whether
+ *      0118.d's misconduct trigger even applies to a given vacation. A
+ *      blocker fires on a premise the app cannot establish, which is the
+ *      same reasoning W-17 gives for its own severity (see that JSDoc).
+ *   2. HISTORY, NOT DRAFTING. Even where 0118.d plainly applies, this
+ *      record is memorializing something that ALREADY HAPPENED (or did
+ *      not) before the clerk ever opens the app. Blocking export would
+ *      trap a clerk from truthfully recording a rights reading that came
+ *      too late, or that never got recorded, and refusing the export
+ *      cannot retroactively fix the sequence or un-read the rights either
+ *      way. Compare W-19 in docs/NAVMC_10132_SPEC.md (the JAGMAN 0118.d
+ *      ten-working-day order deadline), advisory for the identical reason:
+ *      "the app has no ability to un-issue a late order and a block would
+ *      trap a clerk recording history truthfully."
+ *
+ * TWO SUB-RULES, BOTH APPLIED PER VACATION RECORD, AT MOST ONE FIRING PER
+ * RECORD (the second is only checked once the first has already cleared):
+ *
+ *   - rights-not-recorded: `article31RightsReadDate` is unset. This is the
+ *     rule that makes the warning ACTIONABLE rather than the permanent,
+ *     unacknowledgeable noise the task record for this decision explicitly
+ *     rejects: enter the date, and this stops firing for that record. It
+ *     necessarily fires on most vacation records that predate this field
+ *     (including every fixture in tests/navmc10132-vacation.test.ts), which
+ *     is correct, not a bug: those records genuinely have not recorded the
+ *     fact yet.
+ *   - rights-after-notice: `article31RightsReadDate` IS recorded, but on or
+ *     after `noticeServedDate`. Figure 14-1, the notice of intent to
+ *     vacate, is the document that invites the accused's response, so
+ *     SERVING IT IS "the commander asks if the accused wishes to make a
+ *     statement" in 0118.d's own words. A reading recorded on or after that
+ *     date is the wrong order regardless of the misconduct question, which
+ *     is why this sub-rule's message does not hedge on that condition the
+ *     way rights-not-recorded's does. Strictly later-or-equal, not merely
+ *     later: 0118.d requires the reading to come BEFORE the notice, so a
+ *     same-day recording with no way to establish which came first inside
+ *     the day is not evidence of the correct order and is treated the same
+ *     as recording it after.
+ *
+ * NEVER `commencementDate` OR ANY 0118.c/0118.d "commencement of
+ * proceedings" DATE, because `Navmc10132Vacation` carries none. This rule
+ * compares against `noticeServedDate` only, per that field's own JSDoc
+ * warning against treating it as the commencement date. The ten-working-day
+ * order deadline that DOES need a commencement date (spec row W-19) is a
+ * separate, unbuilt rule (D-52) and out of this rule's scope.
+ *
+ * SILENT ON A VACATION WITH AN OUT-OF-BOUNDS `suspensionIndex`. That is
+ * V-33's finding on the record's target, not this rule's concern; this rule
+ * only ever reads the vacation record's own two date fields.
+ *
+ * THE ID IS KEYED ON EACH VACATION'S OWN POSITION in `vacations`, matching
+ * V-32, V-33 and W-20 above, for the identical `key={issue.id}` reason their
+ * own JSDocs give.
+ */
+export function vacationRightsAdvisementIssues(formData: FormData): ValidationIssue[] {
+  return vacationEntries(formData).flatMap((vacation, index) => {
+    const rightsReadDate = (vacation.article31RightsReadDate ?? '').trim();
+
+    if (rightsReadDate === '') {
+      return [
+        issue(
+          `navmc10132-w18-rights-not-recorded-${index}`,
+          'warn',
+          `Vacation record ${index} does not record when Article 31, UCMJ rights were read.`,
+          'JAGMAN (JAGINST 5800.7G CH-2) para 0118.d',
+          'If this vacation is based on misconduct, Article 31 rights must be read to the ' +
+            'accused before the commander asks whether the accused wishes to make a ' +
+            'statement, and serving the Figure 14-1 notice of intent is that ask. The app ' +
+            'cannot determine from the data it holds whether this vacation is in fact based ' +
+            'on misconduct or on a bare violation of the conditions of suspension, which ' +
+            'JAGMAN 0118.d also allows without a rights reading. Enter the date rights were ' +
+            'read, or confirm the basis does not involve misconduct.',
+        ),
+      ];
+    }
+
+    const noticeServedDate = (vacation.noticeServedDate ?? '').trim();
+    if (noticeServedDate === '' || rightsReadDate < noticeServedDate) return [];
+
+    return [
+      issue(
+        `navmc10132-w18-rights-after-notice-${index}`,
+        'warn',
+        `Vacation record ${index} records Article 31 rights read on ${rightsReadDate}, on or ` +
+          `after the notice was served on ${noticeServedDate}.`,
+        'JAGMAN (JAGINST 5800.7G CH-2) para 0118.d',
+        'JAGMAN 0118.d requires Article 31 rights to be read before the commander asks ' +
+          'whether the accused wishes to make a statement, and serving the Figure 14-1 ' +
+          'notice of intent is that ask. This record shows the rights reading on the same ' +
+          'day as or after the notice, which is the wrong order. Confirm the actual sequence ' +
+          'and correct this date if the rights reading in fact came first.',
+      ),
+    ];
+  });
+}
+
+/**
  * V-18 (BLOCKING). Item 6 carries both a reduction and a forfeiture, and the
  * forfeiture is not recorded as computed on the reduced grade.
  *
@@ -1320,9 +1546,13 @@ export function forfeitureReducedGradeIssues(formData: FormData): ValidationIssu
  * shares V-05's spec paragraph — it has none, see its own JSDoc. V-32 and
  * V-33 sit beside V-31 for the identical reason, one level up: they read
  * the vacations array added for decision row D-60, not a spec paragraph
- * either. W-20 sits beside W-17 because it shares W-17's conditional-date
- * source (njp-suspension-period.ts), applied to a vacation's notice date
- * instead of the suspension's own end date.
+ * either. V-34 sits immediately beside V-32 and V-33, blockers first, for
+ * the same reason: it is the third rule checking that array's own
+ * consistency, found while closing W-18. W-20 sits beside W-17 because it
+ * shares W-17's conditional-date source (njp-suspension-period.ts),
+ * applied to a vacation's notice date instead of the suspension's own end
+ * date. W-18 sits last, beside W-20, because it reads the same vacations
+ * array over a different pair of dates (decision row D-54).
  */
 export function punishmentIssues(formData: FormData): ValidationIssue[] {
   return [
@@ -1332,6 +1562,7 @@ export function punishmentIssues(formData: FormData): ValidationIssue[] {
     ...suspensionDuplicateTargetIssues(formData),
     ...vacationPartialDetailIssues(formData),
     ...vacationSuspensionIndexBoundsIssues(formData),
+    ...vacationRemarkMissingIssues(formData),
     ...suspensionOverflowIssues(formData),
     ...punishmentAuthorizationIssues(formData),
     ...punishmentFieldCapacityIssues(formData),
@@ -1347,5 +1578,6 @@ export function punishmentIssues(formData: FormData): ValidationIssue[] {
     ...suspensionPeriodIssues(formData),
     ...suspensionInterruptionAssumptionIssues(formData),
     ...vacationNoticeAfterRemissionIssues(formData),
+    ...vacationRightsAdvisementIssues(formData),
   ];
 }
