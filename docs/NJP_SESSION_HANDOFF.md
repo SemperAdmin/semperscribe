@@ -334,14 +334,13 @@ evidence that the output is right.
 
 ## 7. Backlog
 
-**BLOCKED ON A SOURCE DOCUMENT.** `njp-vacation-post-action.ts` (D-55) is built
-and tested but its header carries a named debt: the verbatim text of MCO 5800.16
-Vol 14 para 011202 is not in this codebase, so nothing in that module is presented
-as a quotation, unlike `njp-appeal-package.ts` which quotes 011107 in full. Get the
-order, add the paragraph to the header, and check two inferences the module rests
-on: the ORDER of the five steps, and that step 1's "vacated punishment information"
-means the unit diary number and date rather than a description of the punishment.
-Do not ship the checklist to a user before that check.
+**CLEARED, AND THE CHECK WAS WORTH RUNNING.** `njp-vacation-post-action.ts` (D-55)
+shipped first with the paragraph unread and a named debt in its header. Reading the
+paragraph reversed the central claim: "vacated punishment information" comes from
+the commander's letter, not from the unit diary, and the Unit Diary number arrives
+one sentence later. The chain is six sentences, not five. Two actors were wrong. The
+module now quotes 011202 verbatim, read from two editions that agree. The lesson is
+the same one section 6 keeps repeating: a summary of a source is not the source.
 
 **Specified and unbuilt.** D-37 through D-57, V-23 through V-30 and W-17 through
 W-19 have no code. Twenty-one decision rows from one session. Start with D-51,
@@ -352,6 +351,17 @@ consume.
 reversed assertions in `navmc10132-acroform.test.ts` (they defend behaviour D-40,
 D-41 and D-42 overturned), unit tests for `navmc10132-booker` and
 `navmc10132-capacity`, and `verify_templates.mjs` into `test.yml`.
+
+**The CMC (JA) defect report needs a revision.** `docs/NAVMC_10132_DEFECT_REPORT.md`
+was delivered 2026-08-24 with thirteen numbered findings. Since then: 011402.G was
+DOWNGRADED and is no longer an MCO defect (D-57, the MCO transcribes 10 U.S.C. 815(e)
+faithfully and the dead text originates in the statute), and two new form findings
+have accumulated against block 16, both from D-55. The first is the lock collision:
+`16 FINAL ADMIN INIT` carries `/Action /All`, and TWO steps of MCO 5800.16 Vol 14
+para 011202 write the original UPB after that signature. The second is a capacity
+defect: 011202 directs block 16 to be updated with the vacated punishment
+information from the commander's letter, and block 16 is exactly two fields, a unit
+diary number and a date, neither of which can hold it.
 
 **Tier 2 NJP package.** Vacation notice and execution letter, both from one
 template per D-50. Appeal endorsement. Neither new module has tests.
