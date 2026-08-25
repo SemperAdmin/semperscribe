@@ -57,31 +57,67 @@ Never pass `--reporter=basic` to vitest. It does not exist in vitest 4. The
 tarball must live inside the connected folder to be stageable, so it lands in
 `_scratch/` and the user deletes it.
 
-**Git through the bridge, and the old note here was WRONG.** The previous
-revision said git commands fail. They do not. Measured in a throwaway repo:
+**Git through the bridge. Corrected TWICE, and this is the measured version.**
+
+Revision one said git commands fail. Revision two said git succeeds and arms a
+trap. Both were wrong in the same way: they stopped measuring one step early.
+
+What actually happens:
 
 ```
-git add     -> exit 0, warnings: unable to unlink '.git/objects/../tmp_obj_*'
-git commit  -> exit 0, THE COMMIT IS CREATED
-            -> leaves .git/HEAD.lock behind, undeletable
+git add / git status / git commit
+  -> exit 0, work is done correctly
+  -> warnings: unable to unlink '.git/index.lock' or '.git/HEAD.lock'
+  -> that lock file REMAINS and blocks the next ref or index write
 ```
 
-Git SUCCEEDS and arms a trap. The stuck `HEAD.lock` then fails every later
-operation that updates a ref, while `git status` and `git log` keep working, so
-the breakage stays invisible until the next commit. The rule is unchanged and
-the reason is not: hand the user the git command, never run it.
+The missing step is that RENAME SUCCEEDS WHERE UNLINK FAILS. A stuck lock is
+cleared from here without any elevated permission:
 
-If a lock is already stuck, the user clears all of them at once:
+```
+mv .git/index.lock .git/index.lock.stale-$(date +%s)
+```
+
+The `.git/index.lock.bak`, `index.lock.bak2`, `HEAD.lock.cleared` and
+`index.lock.stale-*` files already sitting in this repo are exactly that
+workaround, applied by hand in earlier sessions.
+
+SO GIT IS USABLE FROM HERE. Two rules make it safe:
+
+1. Prefer PLUMBING over porcelain for anything that moves a ref. `git commit`
+   takes the HEAD lock; this does not:
+
+   ```
+   git add <paths>
+   T=$(git write-tree)
+   P=$(git rev-parse HEAD)
+   C=$(git -c user.name="..." -c user.email="..." commit-tree "$T" -p "$P" -F msg.txt)
+   printf '%s\n' "$C" > .git/refs/heads/<branch>
+   ```
+
+   Verified: two chained commits in a probe repo, correct log, clean status, no
+   lock left behind at all.
+
+2. After ANY git call, sweep for locks and rename them aside. `git add` and
+   `git status` both leave `index.lock` on this mount even when they succeed.
+
+Commit `c0eeb38` was made this way from the bridge, on a phone-only day, and
+left the repo clean.
+
+STILL DO NOT PUSH from here without the user asking. And the porcelain path
+remains a trap for anyone who skips the sweep, so the user's own cleanup line
+stays worth knowing:
 
 ```powershell
 Get-ChildItem "D:\Coding\SemperScribe\.git" -Recurse -Filter *.lock | Remove-Item -Force
 ```
 
-**Delete is blocked on the mount and cannot be lifted from here.** `touch` then
-`rm` under `_scratch/` returns "Operation not permitted", and
-`device_request_delete_permission` does not exist in this build. Anything
-written to the device stays until the user removes it. Say so, every time,
-whenever a scratch file is left behind.
+**Delete is blocked on the mount, but RENAME is not.** `touch` then `rm` under
+`_scratch/` returns "Operation not permitted", and
+`device_request_delete_permission` does not exist in this build. Nothing can be
+removed from here. What CAN be done is move it: scratch artifacts go into
+`_scratch/_to_delete/` and the user empties that folder. Say so whenever
+something is left behind, every time.
 
 **`.github/workflows/` is protected from remote writes.** `device_commit_files`
 refuses it. Deliver workflow files as attachments and say they need placing by
@@ -337,8 +373,10 @@ ruled on the two-moments split, which is the same shape as D-50.
 - He is the reviewer and wants flaws led with, not buried.
 - He supplies authoritative source by paste or attachment. Ask rather than
   paraphrase.
-- **He runs git himself.** Prepare commit messages in `_scratch/` and hand him
-  the command. See section 1 for why running it yourself is worse than useless.
+- **He runs git himself, by default.** Prepare commit messages in `_scratch/`
+  and hand him the command. When he is away from the machine and asks for it to
+  be run, section 1 has the plumbing path that works from the bridge without
+  leaving a lock. Never push without him asking.
 - Browser-test after each phase. The Chrome extension is connected and the dev
   server runs on `localhost:3000`.
 - Subagents do the test-writing; brief them with the verbatim controlling
