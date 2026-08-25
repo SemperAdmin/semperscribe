@@ -23,6 +23,7 @@ import { describe, it, expect } from 'vitest';
 import type { FormData } from '@/types';
 import type { ValidationIssue } from '@/lib/letter-validators';
 import { createEmptyNavmc10132Data } from '@/types/navmc';
+import { getExportBlockers } from '@/lib/letter-validators';
 
 import {
   monthlyBasicPay,
@@ -460,7 +461,7 @@ describe('correctionalCustodyGradeIssues (V-19)', () => {
     const issues = correctionalCustodyGradeIssues(form);
     expect(issues).toHaveLength(1);
     const found = findIssue(issues, 'navmc10132-v19-correctional-custody-grade');
-    expect(found.severity).toBe('fail');
+    expect(found.severity).toBe('block');
   });
 
   it('does not fire on an E-5 with custody plus an unsuspended reduction below E-4', () => {
@@ -487,7 +488,7 @@ describe('correctionalCustodyGradeIssues (V-19)', () => {
     const issues = correctionalCustodyGradeIssues(form);
     expect(issues).toHaveLength(1);
     const found = findIssue(issues, 'navmc10132-v19-correctional-custody-grade');
-    expect(found.severity).toBe('fail');
+    expect(found.severity).toBe('block');
   });
 
   it('a suspended reduction never leaves the accused at E-4: fires and says so', () => {
@@ -502,7 +503,7 @@ describe('correctionalCustodyGradeIssues (V-19)', () => {
     const issues = correctionalCustodyGradeIssues(form);
     expect(issues).toHaveLength(1);
     const found = findIssue(issues, 'navmc10132-v19-correctional-custody-grade');
-    expect(found.severity).toBe('fail');
+    expect(found.severity).toBe('block');
     expect(found.rule.toLowerCase()).toContain('suspended');
   });
 
@@ -512,6 +513,33 @@ describe('correctionalCustodyGradeIssues (V-19)', () => {
       punishments: [{ code: 'N09', days: '5' }],
     });
     expect(correctionalCustodyGradeIssues(form)).toEqual([]);
+  });
+
+  it("V-19 stops the export, not merely the compliance list: a 'fail' severity renders as Non-compliant and lets the export through", () => {
+    // E-4 with correctional custody and no reduction: unlawful under
+    // JAGMAN 0111.b. getExportBlockers runs the FULL validator suite, so
+    // this fixture trips other unrelated blockers too (missing offense
+    // data, unit, identity, etc.) — assert on the presence of the V-19
+    // prefix, never on the array's length or emptiness.
+    const blocking = baseForm({
+      accusedPayGrade: 'E4',
+      punishments: [{ code: 'N06', days: '7' }],
+    });
+    const blockingIssues = getExportBlockers(blocking, [], [], []);
+    expect(blockingIssues.some((i) => i.id.startsWith('navmc10132-v19-'))).toBe(true);
+
+    // Same fixture, but with the unsuspended reduction below E-4 that
+    // JAGMAN 0111.b requires: the V-19 prefix must not appear.
+    const compliant = baseForm({
+      accusedPayGrade: 'E4',
+      punishments: [
+        { code: 'N06', days: '7' },
+        { code: 'N08', gradeReducedTo: 'E3' },
+      ],
+      suspensions: [],
+    });
+    const compliantIssues = getExportBlockers(compliant, [], [], []);
+    expect(compliantIssues.some((i) => i.id.startsWith('navmc10132-v19-'))).toBe(false);
   });
 });
 
@@ -540,7 +568,7 @@ describe('forfeitureCeilingIssues (V-20)', () => {
     expect(forfeitureCeilingIssues(form)).toEqual([]);
   });
 
-  it('an unreadable forfeitureBasisGrade surfaces as exactly one fail issue whose id names it unreadable, rather than staying silent (defect 6 reaching V-20)', () => {
+  it('an unreadable forfeitureBasisGrade surfaces as exactly one blocking issue whose id names it unreadable, rather than staying silent (defect 6 reaching V-20)', () => {
     const form = baseForm({
       punishmentDate: '2026-01-01',
       accusedPayGrade: 'E2',
@@ -550,7 +578,7 @@ describe('forfeitureCeilingIssues (V-20)', () => {
     });
     const issues = forfeitureCeilingIssues(form);
     expect(issues).toHaveLength(1);
-    expect(issues[0].severity).toBe('fail');
+    expect(issues[0].severity).toBe('block');
     expect(issues[0].id).toContain('v20-ceiling-unreadable');
   });
 
@@ -569,7 +597,7 @@ describe('forfeitureCeilingIssues (V-20)', () => {
     });
     const overIssues = forfeitureCeilingIssues(over);
     expect(overIssues).toHaveLength(1);
-    expect(findIssue(overIssues, 'navmc10132-v20-forfeiture-over-ceiling').severity).toBe('fail');
+    expect(findIssue(overIssues, 'navmc10132-v20-forfeiture-over-ceiling').severity).toBe('block');
 
     const equal = baseForm({
       punishmentDate: '2026-01-01',
@@ -595,7 +623,7 @@ describe('forfeitureCeilingIssues (V-20)', () => {
     });
     const overIssues = forfeitureCeilingIssues(over);
     expect(overIssues).toHaveLength(1);
-    expect(findIssue(overIssues, 'navmc10132-v20-forfeiture-over-ceiling').severity).toBe('fail');
+    expect(findIssue(overIssues, 'navmc10132-v20-forfeiture-over-ceiling').severity).toBe('block');
 
     const equal = baseForm({
       punishmentDate: '2026-01-01',
@@ -629,6 +657,36 @@ describe('forfeitureCeilingIssues (V-20)', () => {
     const found = findIssue(issues, 'navmc10132-v20-forfeiture-over-ceiling');
     expect(found.rule).toContain(`ceiling at E2 is $${e2Ceiling.ceiling.sevenDaysPay}`);
     expect(found.rule).not.toContain('ceiling at E5');
+  });
+
+  it("V-20 stops the export, not merely the compliance list: a 'fail' severity renders as Non-compliant and lets the export through", () => {
+    const status = payTableStatus('2026-01-01');
+    const ceiling = forfeitureCeiling({ status, payGrade: 'E2', yearsOfService: 3 });
+    expect(ceiling.kind).toBe('ceiling');
+    if (ceiling.kind !== 'ceiling') return;
+
+    // Over the ceiling: unlawful under 10 U.S.C. 815(b)(2)(C).
+    // getExportBlockers runs the FULL validator suite, so this fixture
+    // trips other unrelated blockers too — assert on the presence of the
+    // V-20 prefix, never on the array's length or emptiness.
+    const blocking = baseForm({
+      punishmentDate: '2026-01-01',
+      accusedPayGrade: 'E2',
+      accusedYearsOfService: '3',
+      punishments: [{ code: 'N07', dollars: String(ceiling.ceiling.sevenDaysPay + 1) }],
+    });
+    const blockingIssues = getExportBlockers(blocking, [], [], []);
+    expect(blockingIssues.some((i) => i.id.startsWith('navmc10132-v20-'))).toBe(true);
+
+    // Same fixture, but forfeiture set exactly at the ceiling: no V-20 issue.
+    const compliant = baseForm({
+      punishmentDate: '2026-01-01',
+      accusedPayGrade: 'E2',
+      accusedYearsOfService: '3',
+      punishments: [{ code: 'N07', dollars: String(ceiling.ceiling.sevenDaysPay) }],
+    });
+    const compliantIssues = getExportBlockers(compliant, [], [], []);
+    expect(compliantIssues.some((i) => i.id.startsWith('navmc10132-v20-'))).toBe(false);
   });
 });
 

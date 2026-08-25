@@ -27,6 +27,8 @@ import { familyTotals, combinationFindings } from '@/lib/navmc10132-combination-
 
 import { punishmentCombinationIssues, punishmentIssues } from '@/lib/navmc10132-validators-punishment';
 
+import { getExportBlockers } from '@/lib/letter-validators';
+
 // ---------------------------------------------------------------------------
 // Fixture helpers, matching the style in tests/navmc10132-basic-pay.test.ts
 // ---------------------------------------------------------------------------
@@ -472,7 +474,7 @@ describe('combinationFindings — per-case aggregates (5.b)', () => {
 // ---------------------------------------------------------------------------
 
 describe('punishmentCombinationIssues (V-21)', () => {
-  it('every issue has severity "fail" and an id starting "navmc10132-v21-"', () => {
+  it('every issue has severity "block" and an id starting "navmc10132-v21-"', () => {
     const form = baseForm({
       njpAuthorityPayGrade: 'O3',
       punishments: [
@@ -483,7 +485,7 @@ describe('punishmentCombinationIssues (V-21)', () => {
     const issues = punishmentCombinationIssues(form);
     expect(issues.length).toBeGreaterThan(0);
     for (const found of issues) {
-      expect(found.severity).toBe('fail');
+      expect(found.severity).toBe('block');
       expect(found.id.startsWith('navmc10132-v21-')).toBe(true);
     }
   });
@@ -527,5 +529,30 @@ describe('punishmentCombinationIssues (V-21)', () => {
     expect(
       concurrent.some((i) => i.id === 'navmc10132-v21-combination-restriction-extra-duties')
     ).toBe(false);
+  });
+
+  it("V-21 stops the export, not merely the compliance list: a 'fail' severity renders as Non-compliant and lets the export through", () => {
+    // Correctional custody + restriction: forbidden outright by MCM Part V
+    // para 5.d(3). getExportBlockers runs the FULL validator suite, so this
+    // fixture trips other unrelated blockers too — assert on the presence
+    // of the V-21 prefix, never on the array's length or emptiness.
+    const blocking = baseForm({
+      njpAuthorityPayGrade: 'O3',
+      punishments: [
+        { code: 'N06', days: '7' },
+        { code: 'N11', limits: 'the confines of the unit area', days: '14' },
+      ],
+    });
+    const blockingIssues = getExportBlockers(blocking, [], [], []);
+    expect(blockingIssues.some((i) => i.id.startsWith('navmc10132-v21-'))).toBe(true);
+
+    // Same authority and case, but only the correctional custody: no
+    // combination to forbid, so no V-21 issue.
+    const compliant = baseForm({
+      njpAuthorityPayGrade: 'O3',
+      punishments: [{ code: 'N06', days: '7' }],
+    });
+    const compliantIssues = getExportBlockers(compliant, [], [], []);
+    expect(compliantIssues.some((i) => i.id.startsWith('navmc10132-v21-'))).toBe(false);
   });
 });

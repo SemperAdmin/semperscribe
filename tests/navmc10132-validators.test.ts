@@ -23,6 +23,7 @@ import {
 import { composeRemarks } from '@/lib/navmc10132-utils';
 
 import { runNavmc10132Validators } from '@/lib/navmc10132-validators';
+import { getExportBlockers } from '@/lib/letter-validators';
 
 import {
   offenseArticlePresent,
@@ -755,7 +756,7 @@ describe('W-08, a reduction imposed on an E-6 or above accused', () => {
   });
 });
 
-describe('V-18 (BLOCKING/fail), forfeiture must be based on the grade to which reduced', () => {
+describe('V-18 (BLOCKING), forfeiture must be based on the grade to which reduced', () => {
   // MCM Part V para 5.c(8), verbatim: "If the punishment includes both
   // reduction, whether or not suspended, and forfeiture of pay, the
   // forfeiture must be based on the grade to which reduced."
@@ -784,7 +785,7 @@ describe('V-18 (BLOCKING/fail), forfeiture must be based on the grade to which r
     const issues = forfeitureReducedGradeIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toBe('navmc10132-v18-forfeiture-basis-unknown');
-    expect(issues[0].severity).toBe('fail');
+    expect(issues[0].severity).toBe('block');
   });
 
   it('both present, gradeReducedTo LCpl (E3), forfeitureBasisGrade unset: fails as basis-grade', () => {
@@ -797,7 +798,7 @@ describe('V-18 (BLOCKING/fail), forfeiture must be based on the grade to which r
     const issues = forfeitureReducedGradeIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toBe('navmc10132-v18-forfeiture-basis-grade');
-    expect(issues[0].severity).toBe('fail');
+    expect(issues[0].severity).toBe('block');
   });
 
   it('both present, forfeitureBasisGrade recorded as the PRE-reduction grade E4: fails, and names both E4 and E3', () => {
@@ -811,7 +812,7 @@ describe('V-18 (BLOCKING/fail), forfeiture must be based on the grade to which r
     const issues = forfeitureReducedGradeIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toBe('navmc10132-v18-forfeiture-basis-grade');
-    expect(issues[0].severity).toBe('fail');
+    expect(issues[0].severity).toBe('block');
     expect(issues[0].rule).toContain('E4');
     expect(issues[0].rule).toContain('E3');
   });
@@ -853,7 +854,7 @@ describe('V-18 (BLOCKING/fail), forfeiture must be based on the grade to which r
     const issues = forfeitureReducedGradeIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toBe('navmc10132-v18-forfeiture-basis-grade');
-    expect(issues[0].severity).toBe('fail');
+    expect(issues[0].severity).toBe('block');
   });
 
   it('is wired into punishmentIssues, the aggregate export', () => {
@@ -866,6 +867,37 @@ describe('V-18 (BLOCKING/fail), forfeiture must be based on the grade to which r
     });
     const issues = punishmentIssues(form);
     expect(issues.some((i) => i.id === 'navmc10132-v18-forfeiture-basis-grade')).toBe(true);
+  });
+
+  it("V-18 stops the export, not merely the compliance list: a 'fail' severity renders as Non-compliant and lets the export through", () => {
+    // Reduction plus forfeiture, forfeiture basis recorded at the
+    // PRE-reduction grade: unlawful under MCM Part V para 5.c(8).
+    // getExportBlockers runs the FULL validator suite (proving
+    // runNavmc10132Validators, folded into runLetterValidators, actually
+    // reaches the export gate), so this fixture trips other unrelated
+    // blockers too — assert on the presence of the V-18 prefix, never on
+    // the array's length or emptiness.
+    const blocking = baseForm({
+      punishments: [
+        { code: 'N08', gradeReducedTo: 'LCpl' },
+        { code: 'N07', dollars: '50' },
+      ],
+      forfeitureBasisGrade: 'E4',
+    });
+    const blockingIssues = getExportBlockers(blocking, [], [], []);
+    expect(blockingIssues.some((i) => i.id.startsWith('navmc10132-v18-'))).toBe(true);
+
+    // Same fixture, but the forfeiture basis is correctly recorded at the
+    // reduced grade E3: no V-18 issue.
+    const compliant = baseForm({
+      punishments: [
+        { code: 'N08', gradeReducedTo: 'LCpl' },
+        { code: 'N07', dollars: '50' },
+      ],
+      forfeitureBasisGrade: 'E3',
+    });
+    const compliantIssues = getExportBlockers(compliant, [], [], []);
+    expect(compliantIssues.some((i) => i.id.startsWith('navmc10132-v18-'))).toBe(false);
   });
 });
 

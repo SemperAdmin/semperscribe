@@ -132,6 +132,35 @@ export function SuspensionSection({ formData, setFormData, SectionCard }: Sectio
   const overCount = !previewError && !fits ? overflowBy(ITEM_7_FIELD, previewText) : 0;
   const carried = Boolean(formData.suspensionOverflowToItem21);
 
+  // THE DERIVED STRING. `suspension` is item 7's value of record, exactly as
+  // `punishmentImposed` is item 6's, and this effect is what writes it.
+  //
+  // IT WAS MISSING UNTIL 2026-08-25. Item 7's free-text input was removed
+  // when this section became a selection over item 6, and schemas.ts recorded
+  // that `suspension` "survives as the DERIVED string, written by
+  // renderSuspension exactly as `punishmentImposed` is written by
+  // renderPunishment". That writer was documented and never built, so
+  // `suspension` stayed at its '' default forever. Validator V-05 reads it
+  // and blocks on empty, which meant EVERY NAVMC 10132 was export-blocked on
+  // "Item 7 suspension is empty" no matter what item 7 actually held. The
+  // exported PDF was never wrong, because navmc10132-acroform.ts recomputes
+  // item 7 from suspensions[] rather than reading this field, which is
+  // precisely why the gap survived: the visible output looked correct.
+  //
+  // renderSuspension returns the literal NONE for an empty list, which is
+  // what item 7's own instruction requires, so this satisfies V-05 in the
+  // nothing-suspended case rather than merely silencing it.
+  //
+  // Render-loop guard, the same shape the item 6 effect uses: primitive
+  // dependencies, and the body compares against the current value before
+  // writing, so a render that recomputes the same text is a no-op.
+  React.useEffect(() => {
+    const next = previewError ? '' : previewText;
+    if ((formData.suspension ?? '') !== next) {
+      setFormData((prev) => ({ ...prev, suspension: next }));
+    }
+  }, [previewText, previewError, formData.suspension, setFormData]);
+
   // AUTOMATIC, in both directions. Overflow is a fact about a single-line
   // field, not a preference: item 7 physically cannot hold the text, and the
   // only lawful alternative is carrying it to item 21, which the form's page

@@ -34,6 +34,8 @@ import {
 
 import { suspensionPeriodIssues, punishmentIssues } from '@/lib/navmc10132-validators-punishment';
 
+import { getExportBlockers } from '@/lib/letter-validators';
+
 // ---------------------------------------------------------------------------
 // Fixture helpers, matching the style in tests/navmc10132-basic-pay.test.ts
 // ---------------------------------------------------------------------------
@@ -376,7 +378,7 @@ describe('vacationDeadlines', () => {
 // ---------------------------------------------------------------------------
 
 describe('suspensionPeriodIssues (V-22)', () => {
-  it('reports a fail-severity issue with an id starting navmc10132-v22-', () => {
+  it('reports a block-severity issue with an id starting navmc10132-v22-', () => {
     const form = baseForm({
       punishmentDate: '2026-01-15',
       punishments: [{ code: 'N09', days: '14' }],
@@ -384,7 +386,7 @@ describe('suspensionPeriodIssues (V-22)', () => {
     });
     const issues = suspensionPeriodIssues(form);
     expect(issues).toHaveLength(1);
-    expect(issues[0].severity).toBe('fail');
+    expect(issues[0].severity).toBe('block');
     expect(issues[0].id.startsWith('navmc10132-v22-')).toBe(true);
   });
 
@@ -405,5 +407,29 @@ describe('suspensionPeriodIssues (V-22)', () => {
       suspensions: [{ punishmentIndex: 0, months: '6' }],
     });
     expect(suspensionPeriodIssues(form)).toEqual([]);
+  });
+
+  it("V-22 stops the export, not merely the compliance list: a 'fail' severity renders as Non-compliant and lets the export through", () => {
+    // A 7-month suspension runs longer than MCM Part V para 6.a(2) allows.
+    // getExportBlockers runs the FULL validator suite, so this fixture
+    // trips other unrelated blockers too — assert on the presence of the
+    // V-22 prefix, never on the array's length or emptiness.
+    const blocking = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '7' }],
+    });
+    const blockingIssues = getExportBlockers(blocking, [], [], []);
+    expect(blockingIssues.some((i) => i.id.startsWith('navmc10132-v22-'))).toBe(true);
+
+    // Same fixture, but the suspension is exactly at the 6-month cap: no
+    // V-22 issue.
+    const compliant = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+    });
+    const compliantIssues = getExportBlockers(compliant, [], [], []);
+    expect(compliantIssues.some((i) => i.id.startsWith('navmc10132-v22-'))).toBe(false);
   });
 });

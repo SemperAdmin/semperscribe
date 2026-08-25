@@ -52,6 +52,24 @@ import { suspensionPeriodFindings } from '@/lib/njp-suspension-period';
 const ITEM_6_FIELD = '6 PUNISHMENT IMPOSED';
 
 /** Builds one ValidationIssue. Mirrors the 10922 validator contract exactly. */
+/**
+ * SEVERITY IS 'block', NOT 'fail', FOR ANYTHING THAT MUST STOP AN EXPORT.
+ *
+ * There are three levels and only one of them gates: getExportBlockers in
+ * letter-validators.ts filters on `severity === 'block'`. 'fail' renders as
+ * "Non-compliant" in the compliance dialog and lets the export through;
+ * 'warn' renders as "Advisory".
+ *
+ * V-18 through V-22 were written with 'fail' and described as BLOCKING in
+ * their own docstrings, in the spec decision table, and in every report.
+ * They blocked nothing. Caught 2026-08-25 by looking at the badge in the
+ * compliance dialog, which read "Non-compliant" beside issues badged "Blocks
+ * export". Their tests passed throughout, because the tests asserted the
+ * severity the code emitted rather than the behaviour the rule needed.
+ *
+ * If you add a rule here that names an unlawful punishment, use 'block' and
+ * assert the EXPORT is stopped, not merely that an issue was produced.
+ */
 function issue(
   id: string,
   severity: ValidationIssue['severity'],
@@ -691,7 +709,7 @@ export function correctionalCustodyGradeIssues(formData: FormData): ValidationIs
   return [
     issue(
       'navmc10132-v19-correctional-custody-grade',
-      'fail',
+      'block',
       suspendedReduction
         ? `Correctional custody is imposed on an E-${accusedGrade} and the accompanying reduction is SUSPENDED.`
         : `Correctional custody is imposed on an E-${accusedGrade} with no reduction below E-4.`,
@@ -751,7 +769,7 @@ export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
     return [
       issue(
         `navmc10132-v20-ceiling-unreadable-${result.reason}`,
-        'fail',
+        'block',
         'The forfeiture ceiling cannot be computed because an input is unreadable.',
         'JAGMAN 0111.i; MCO 5800.16 Vol 14 para 010901',
         `${result.detail} Until it is readable the app cannot check the forfeiture against its ` +
@@ -773,7 +791,7 @@ export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
         issues.push(
           issue(
             `navmc10132-v20-forfeiture-over-ceiling-${index}`,
-            'fail',
+            'block',
             `${code.code} forfeits $${amount} but the ceiling at ${ceiling.payGrade} is $${ceiling.sevenDaysPay}.`,
             '10 U.S.C. 815(b)(2)(C); JAGMAN 0111.i; DoD FMR Vol 7A Ch 1',
             `Seven days' pay at ${ceiling.payGrade} is $${ceiling.sevenDaysPay}, from monthly pay ` +
@@ -791,7 +809,7 @@ export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
         issues.push(
           issue(
             `navmc10132-v20-forfeiture-over-ceiling-${index}`,
-            'fail',
+            'block',
             `${code.code} forfeits $${amount} per month but the ceiling at ${ceiling.payGrade} is $${ceiling.halfMonthPay}.`,
             '10 U.S.C. 815(b)(2)(H)(iii); JAGMAN 0111.i',
             `One-half of one month's pay at ${ceiling.payGrade} is $${ceiling.halfMonthPay}, from ` +
@@ -832,7 +850,7 @@ export function punishmentCombinationIssues(formData: FormData): ValidationIssue
   });
 
   return findings.map((finding) =>
-    issue(`navmc10132-v21-${finding.id}`, 'fail', finding.rule, finding.citation, finding.detail),
+    issue(`navmc10132-v21-${finding.id}`, 'block', finding.rule, finding.citation, finding.detail),
   );
 }
 
@@ -855,7 +873,7 @@ export function punishmentCombinationIssues(formData: FormData): ValidationIssue
  */
 export function suspensionPeriodIssues(formData: FormData): ValidationIssue[] {
   return suspensionPeriodFindings(formData).map((finding) =>
-    issue(`navmc10132-v22-${finding.id}`, 'fail', finding.rule, finding.citation, finding.detail),
+    issue(`navmc10132-v22-${finding.id}`, 'block', finding.rule, finding.citation, finding.detail),
   );
 }
 
@@ -900,7 +918,7 @@ export function forfeitureReducedGradeIssues(formData: FormData): ValidationIssu
     return [
       issue(
         'navmc10132-v18-forfeiture-basis-unknown',
-        'fail',
+        'block',
         'A reduction and a forfeiture are both imposed, but the reduction names no target grade.',
         'MCM Part V para 5.c(8)',
         'The forfeiture must be based on the grade to which reduced, so the reduction target ' +
@@ -920,7 +938,7 @@ export function forfeitureReducedGradeIssues(formData: FormData): ValidationIssu
   return [
     issue(
       'navmc10132-v18-forfeiture-basis-grade',
-      'fail',
+      'block',
       recorded === ''
         ? 'A reduction and a forfeiture are both imposed, and the forfeiture basis grade is not recorded.'
         : `The forfeiture is recorded as computed on ${recorded}, not on the reduced grade ${target}.`,
