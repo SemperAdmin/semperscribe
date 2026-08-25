@@ -336,6 +336,38 @@ whether Acrobat re-renders the value. If it does not, clear the RichText flag on
 
 ---
 
+### 3.9 The signature lock lists name fields that no longer exist (CRITICAL)
+
+Four of the seven `/SigFieldLock` `/Fields` arrays carry 29 references to field names
+absent from the form. The form was revised, fields were renamed away from FINAL
+DISPOSITION, and the lock arrays were never updated.
+
+| dead name in the lock list | actual field on the form |
+|---|---|
+| `6 FINAL DISPOSITION TAKEN` | `6 PUNISHMENT IMPOSED` |
+| `6 FINAL DISPOSITION DATE` | `6 PUNISHMENT IMPOSITION DATE` |
+| `8 FINAL DISPOSITION AUTHORITY NAME TITLE SERVICE` | `8 NJP AUTHORITY NAME TITLE SERVICE` |
+| `8A FINAL DISPOSITION AUTHORITY GRADE` | `8A NJP AUTHORITY GRADE` |
+| `8B FINAL DISPOSITION AUTHORITY EDIPI` | `8B NJP AUTHORITY EDIPI` |
+| `9 NJP PROPER SIGNATURE` | `9 NJP AUTHORITY SIGNATURE` |
+| `10 DATE OF NOTICE TO ACCUSED OF FINAL DISPOSITION TAKEN_af_date` | `10 DATE OF DISPOSITION NOTICE` |
+| `4 CURRENT UAS OVER 24 HRS` and `5 CURRENT MARKS OF DESERTION` | `4 CURRENT UAS OVER 24 HRS AND MARKS OF DESERTION` |
+
+Dead counts: item 9 lock 6 of 58, item 11 lock 7 of 61, item 12 lock 7 of 64, item 14
+lock 9 of 70. The item 2 lock (43) and the item 3 lock (45) are clean.
+
+CONSEQUENCE. Items 6, 6 date, 8, 8A, 8B, 9 and 10 are locked by NO signature until the
+terminal `16 FINAL ADMIN INIT`, whose `/Action /All` locks everything. So the signature
+that imposes punishment does not lock the punishment. After the imposing officer signs,
+the punishment text, its date and the officer's own identity stay editable, and changing
+them falls outside every FieldMDP list, so Acrobat raises no invalidity flag. A permanent
+record's punishment can be altered post-signature and still verify clean.
+
+This is the strongest finding in the CMC (JA) report: precise, reproducible, and fixed by
+correcting six strings in four lock dictionaries. App mitigation is D-45 and V-27.
+
+---
+
 ## 4. Round-trip probe, measured
 
 pdf-lib 1.17.1, Node 22, against the supplied blank:
@@ -504,6 +536,14 @@ for what happened when that was not done.
 | V-20 | A forfeiture does not exceed the statutory ceiling for the grade it is based on | 10 U.S.C. 815(b)(2)(C) and (H)(iii); JAGMAN 0111.i; DoD FMR Vol 7A Ch 1. CONDITIONAL: silent unless the held pay table governs the punishment date, so it never blocks on a figure the app cannot support |
 | V-21 | The set of punishments in item 6 is a lawful combination | MCM Part V para 5.d(1) to (4), plus the per-case aggregate ceilings of 5.b that per-code clamping cannot see |
 | V-22 | An item 7 suspension does not exceed six months | MCM Part V para 6.a(2). Computed as a DATE, not a day count, because the order says months |
+| V-23 | No write targets a field locked by a signature already present in the file | The form's own `/SigFieldLock` dictionaries. Computed per D-37. Writing a locked field is what invalidates a signature |
+| V-24 | The returned `2 BOOKER` matches the statement recomputed from `2 DEMAND`, `2 COUNSELOPP` and `2 ACC REFUSE TO SIGN` | D-41. The blank ships an ACCEPTANCE default, so a reader whose scripts never fired leaves a refusal case stating acceptance |
+| V-25 | Items 23-25 match items 18-20 on re-upload | D-42, MCO 011103. Verification, not authorship: the calculate scripts populate them in Acrobat |
+| V-26 | Pass-1 content is unchanged on re-upload: item 1 rows, items 17-20 | The item 2 signature locks all of them, so any difference means the file was altered before signing or a different file came back |
+| V-27 | Items 6, 6 date, 8, 8A, 8B and 10 are unchanged once item 9 is signed | D-45, defect 3.9. The form's lock lists name these fields under names that no longer exist, so the app enforces what the signature was meant to |
+| V-28 | The returned `2 DEMAND` is consistent with `vesselException` | 10 U.S.C. 815(a): a member attached to or embarked in a vessel has no right to refuse NJP. If the box is checked, the vessel option is the only lawful election and demand-trial is unavailable. If it is clear, the vessel option is unlawful. Checked on re-upload, because `vesselException` is APP STATE carried outside the PDF while `2 DEMAND` comes back inside it, so the two can disagree |
+| V-29 | The triggering offence date falls inside the suspension window | MCO 011201 and JAGMAN 0118.d, which word the window identically. Asserts `punishmentDate < offenceDate <= endsOn`. DISTINCT FROM D-36, which tests when the vacation ACTION occurs; this tests when the OFFENCE occurred. Per D-49 the gate tests the DATE only, never the nature of the basis |
+| V-30 | The vacating authority is competent for the kind and amount vacated | MCO 011201: "any commander authorized to impose upon the accused punishment of the kind and amount to be vacated." Computed against `resolveAuthorityLevel` and the N-code ceilings. Reads the D-56 field, never item 8A |
 
 ### 6.2 Warnings
 
@@ -525,6 +565,9 @@ for what happened when that was not done.
 | W-14 | An offense on this UPB also appears on another UPB for the same accused in the session library | MCM Part V para 1.f.(1): double punishment prohibited. Detection is best-effort within the app's own documents |
 | W-15 | Multiple offenses share a date and place, suggesting one incident or course of conduct | MCM Part V para 1.f.(3): offenses from a single incident are ordinarily considered together and not made the basis for multiple punishments. Advisory only |
 | W-16 | Remarks or summary indicate the offense was tried in a US-derived court | MCM Part V para 1.f.(5): NJP may not be imposed for an offense tried by a court deriving its authority from the United States. Keyword heuristic, warn only |
+| W-17 | The computed suspension end date is a floor, not a fixed date | JAGMAN 0118.c: the period is interrupted by the probationer's unauthorized absence and by commencement of vacation proceedings. Names BOTH tolling events alongside the D-35 EAS caveat, so the disclosure matches the uncertainty. See D-51 |
+| W-18 | Article 31 rights are read before the accused is asked for a statement | JAGMAN 0118.d. Fires whenever the recorded basis is misconduct, which under MCO 011201 is every vacation. Advisory: the app cannot observe whether the reading happened. See D-54 |
+| W-19 | The vacation order issues within ten working days of commencement | JAGMAN 0118.d. Advisory rather than blocking, because the app has no ability to un-issue a late order and a block would trap a clerk recording history truthfully. Working days, so weekends and federal holidays come out. See D-52 |
 
 W-05 and W-06 no longer need a text parser. Section 11 replaces free-text item 6 with a
 structured builder over the MCTFS punishment codes, so the ceiling and the required authority
@@ -534,10 +577,13 @@ false-positive tolerant and warn-only, same posture as the 10922 foreign-divorce
 
 ### 6.3 Deliberately NOT enforced
 
-- Signature-driven locks. Your decision: capture and export only. Lock semantics stay in
-  Acrobat, where the signatures happen.
-- "Do not add offenses or victims after the accused signs." A lock rule with no signature event
-  for the app to key on. Surface as static guidance on the offense and victim sections.
+- ~~Signature-driven locks~~ REVERSED 2026-08-25. The app now READS the form's own
+  `/SigFieldLock` dictionaries and refuses to write any locked field. See D-37 and V-23. The
+  earlier entry assumed capture-and-export with no re-upload; the document is multi-pass.
+- ~~"Do not add offenses or victims after the accused signs"~~ REVERSED 2026-08-25. The signature
+  event the app lacked is exactly what it now keys on. Item 1 rows and the whole victim block
+  22A-22E close at pass 1, alongside the accused's signature, so the rule is enforced by V-23
+  rather than surfaced as guidance.
 - CUI markings. The form carries its own `CUI - PRIVACY SENSITIVE WHEN FILLED IN` artwork. The
   app adds nothing, consistent with the standing CUI framing rule.
 
@@ -671,6 +717,27 @@ All still true from the 10922 build:
 | D-34 | V-18 through V-22 were emitted as `'fail'` and blocked nothing | CLOSED FIXED 2026-08-25. THE DEFECT: three severities exist and only `'block'` gates, but all five new validators were emitted as `'fail'`, which renders as "Non-compliant" and lets the export through. Their docstrings, this decision table, and every status report called them BLOCKING throughout. `'fail'` appears nowhere in navmc10132-validators-punishment.ts before this session introduced it; every pre-existing NAVMC blocker uses `'block'`. CONSEQUENCE while it stood: a forfeiture computed on the pre-reduction grade, correctional custody on an NCO with no qualifying reduction, a forfeiture over the statutory ceiling, correctional custody combined with restriction, and a twelve-month suspension ALL EXPORTED CLEANLY. WHY THE TESTS MISSED IT: all twelve asserted `expect(issue.severity).toBe('fail')`, the string the code emitted rather than the behaviour the rule needed, so they stayed green. Found by reading the badge in the compliance dialog, not by any test. FIX: severities corrected, and each of the five now has a test that calls getExportBlockers and asserts the export is actually stopped for a violating fixture and clean for a compliant variant of the same fixture. The `issue()` helper carries a standing note about which severity gates |
 | D-35 | V-22, the six-month suspension cap | CLOSED BLOCKING 2026-08-25. MCM Part V para 6.a(2): "Suspension of a punishment may not be for a period longer than 6 months from the date of the suspension." Item 7 collected a period in months or days with NO ceiling of any kind, so a twelve-month suspension recorded cleanly onto a permanent record. Computed as a DATE rather than a day count because the order says months: a suspension imposed 31 August ends 28 February, clamped to the last day of the target month. The boundary is INCLUSIVE, since 6.a(2) forbids longer than six months, not six months itself. NOT ENFORCED, and deliberately so: the second clause of 6.a(2) terminates a suspension early at the expiration of the current enlistment, and the form carries no EAS field, so every computed date names that caveat rather than implying it is unconditional |
 | D-36 | The vacation deadline falls out of 6.a(3) | CLOSED 2026-08-25. "Unless the suspension is sooner vacated, suspended portions of the punishment are remitted, without further action, upon the termination of the period of suspension." A vacation notice served after that date acts on a punishment that no longer exists, so `vacationDeadlines` computes it from the item 6 date plus the item 7 period. This is why the Figure 14-1 work depends on njp-suspension-period.ts rather than the other way round |
+| D-37 | The document has SEVEN passes, and the form defines them | CLOSED 2026-08-25 by Stephen. Every signature field carries a `/Lock` of type `/SigFieldLock`. Signing sets ReadOnly on every field the lock names, so the form encodes its own pass sequence in data. The app READS that model, it does not hardcode one. See section 13 for the measured table. THE RULE: before any pass-N write, compute the locked set from every signature field that carries a `/V`. `/Action /All` locks everything, `/Action /Include` locks the named `/Fields`, `/Action /Exclude` locks everything else. Refuse to write any member. Writing a locked field is what breaks a signature; writing an unlocked field does not |
+| D-38 | Signing order is forced, one way only | CLOSED 2026-08-25, MEASURED. Item 3's lock list INCLUDES `2 ACC ELECTION AND RIGHTS SIGNATURE`. Item 2's lock list does NOT include `3 RIGHTS ATTEST SIGNATURE`. Member signs item 2 first, then the certifying officer signs item 3, and both work. Reverse them and the member's signature field is read-only and can never be signed, so the form is dead and the only remedy is starting over. Nothing in the form warns anyone. The pass-1 export must carry this order as printed guidance |
+| D-39 | Pass 1 writes item 1, items 17-20 and the item 8 block, and NOTHING ELSE | CLOSED 2026-08-25 by Stephen. Findings, item 6, item 7, the item 2 group and everything from item 10 onward belong to later passes. Item 5 findings were exposed in the pass-1 UI and Stephen ruled them out: a finding is the commander's determination made AFTER the election and the hearing, so recording one at notification is a process defect ahead of any code. MEASURED VIOLATION on a live pass-1 export: the app wrote `NONE` into item 7, which the blank leaves undefined |
+| D-40 | The blank PRE-ANSWERS the accused's election, and the app clears it | CLOSED 2026-08-25 by Stephen: "Blank for pandered election. No data should be assumed." MEASURED on the untouched government blank with no app involvement: `2 DEMAND` = "I do not demand trial and will accept non-judicial punishment, subject to my right of appeal.", `2 COUNSELOPP` = "have", `2 BOOKER` = "BOOKER STATEMENT: Having been advised of the above and fully understanding my rights, I choose to accept NJP." A notification document handed to a Marine therefore states they accept NJP and carries a Booker statement before anyone has spoken to them. The pass-1 export CLEARS all three. THE TRAP, and it is measured: removing `/V` alone is not clearing. Every one of the three carries a baked `/AP` appearance stream, so the value disappears while the page STILL DISPLAYS the acceptance text. That is the worst available state, a document reading as answered whose field is empty, and it would pass any check written against `/V`. THE CORRECT CLEAR is three operations per field: delete `/V`, delete `/AP` on every widget, and set `NeedAppearances` true on the AcroForm so the viewer regenerates an empty appearance. Verified: values gone, appearances gone, `2 DEMAND` keeps all three options for the member to pick, and `2 BOOKER` keeps its read-only flag. NO UNLOCK IS NEEDED even though `2 BOOKER` is read-only, because this is a dict-level delete rather than a `setText` through the form API. `NeedAppearances` IS A PASS-1-ONLY DEVICE: from pass 2 onward the file carries signatures, and asking a viewer to regenerate appearances across a signed document is a modification nobody sanctioned. Never set it on an incremental write |
+| D-41 | `bookerStatement()` becomes a VERIFIER, not a writer | CLOSED 2026-08-25, and this REVERSES the Phase 2 role. `2 BOOKER` is read-only in the blank (`/Ff` 12582913) and its three inputs are editable: `2 DEMAND`, `2 COUNSELOPP`, `2 ACC REFUSE TO SIGN`. The member sets those in Acrobat, the form's own on-blur scripts compose the statement, and the item 2 signature locks all four together. Measured on Stephen's signed file: the group came back coherent. So the app must NOT write item 2 at pass 1. On re-upload it RECOMPUTES the statement from the three returned elections and compares against the returned `2 BOOKER`, blocking on mismatch. That catches the real failure, a member using a reader whose scripts never fire, leaving the blank's shipped ACCEPTANCE default in place on a refusal case. `coerceDemand()` gets the same treatment |
+| D-42 | Defect 3.4 is RETIRED | CLOSED 2026-08-25, MEASURED. Items 23-25 came back POPULATED from Stephen's round trip and match items 18-20 exactly. Acrobat runs the calculate scripts when a human opens the file to sign, so the round trip fills page 2 identity. The original finding assumed a single pdf-lib export where no script ever runs, which is no longer the export model. The app VERIFIES these three on re-upload and never writes them |
+| D-43 | The export gate needs a PASS SCOPE | CLOSED 2026-08-25. MEASURED on the live app: a valid pass-1 export was blocked by "Item 13 has neither an appeal date nor the Not Appealed checkbox set" and "Item 6 punishment imposed is empty". Item 13 belongs to pass 6 and item 6 to pass 3, so both are CORRECT states for a notification document. `getExportBlockers` must evaluate only the rules whose fields the current pass owns. A rule whose fields are locked or not yet reached stays silent rather than failing |
+| D-44 | Pass 1 needs no incremental writer | CLOSED 2026-08-25. Nothing is signed at pass 1, so the existing full-rewrite fill is correct there and `useObjectStreams: false` still applies. The incremental path starts at pass 2. See section 13.3 |
+| D-45 | The app locks what the form forgot to lock | CLOSED 2026-08-25, mitigation for defect 3.9. Once `9 NJP AUTHORITY SIGNATURE` carries a `/V`, the app treats items 6, 6 date, 8, 8A, 8B and 10 as APP-LOCKED even though the form leaves them writable, and records their values in the carried state so a later pass detects an outside change |
+| D-46 | UI sections are derived, not hardcoded | CLOSED 2026-08-25 by Stephen. On import the app computes the locked set and shows only the sections whose fields are still open. A fresh document shows pass 1 alone. The table in section 13.1 is the expected result and serves as a TEST ORACLE, never as the runtime source of truth, so a future form revision changes behaviour without a code change |
+| D-47 | The rights advisement renders DYNAMICALLY off the vessel checkbox | CLOSED 2026-08-25 by Stephen. Toggling `vesselException` re-renders the section live: true gives `APPENDIX_A_1_C`, false gives `APPENDIX_A_1_D`. `selectRightsAppendix` already does this and `renderNjpRights` is pure, so the section is a derived render rather than a stored value. NON-OBVIOUS DEPENDENCY, and it is the reason this row exists rather than being a UI note: the two appendices do not need the same inputs. A-1-d carries paragraph 3, the MAXIMUM punishment rule, which reads `authorityPayGrade` from item 8A and `accusedPayGrade` from item 19. A-1-c has no paragraph 3 and needs neither. So unchecking the box makes items 8A and 19 REQUIRED for a complete advisement, and an empty item 8A renders the maximum rule blank rather than erroring. Both fields are already in the pass-1 section list, so the dependency is satisfiable at pass 1, but the generate option must report the gap instead of emitting a blank paragraph 3 |
+| D-48 | No CUI banner on the generated Figure 14-1 | CLOSED 2026-08-25 by Stephen: "no CUI at head and foot." MCO 5800.16 Vol 14 Figure 14-1 prints the literal word CUI above the SSIC block and again below Copy to. The generated letter reproduces the figure's STRUCTURE and drops the marking. GENERALIZED RULE: never hardcode a control marking from a source figure, form or template into an app-generated document. Marking stays a user decision through `src/lib/classification.ts`. WHY: a banner the app prints on its own authority asserts a designation the app has no basis to make, which is the same reasoning behind the standing "CUI Pending" ban. This EXTENDS D-13 and section 6.3 past the form-artwork premise those rested on, since a generated naval letter carries no pre-printed artwork. Say so in the module docstring so the deviation reads as a decision rather than an omission |
+| D-49 | The vacation gate tests the DATE WINDOW alone | CLOSED 2026-08-25 by Stephen. THE CONFLICT: MCO 011201 allows vacation only "based on an offense under the UCMJ committed during the period of suspension", while JAGMAN 0118.d allows it on "a violation of the conditions of suspension" in that period. Conditions of suspension is the broader set, so a commander vacating on a condition violation short of a UCMJ offense acts within the JAGMAN and outside the MCO. A gate on the narrower test would BLOCK A LAWFUL VACATION. Both sources word the WINDOW identically, so the window is common ground and the gate lives there. The NATURE of the basis becomes advisory text naming both standards. See V-29 |
+| D-50 | Figure 14-1 serves TWO moments, and the app renders both | CLOSED 2026-08-25. Vol 14 contains exactly ONE figure and uses it twice. Para 011201: the accused "shall be notified and given an opportunity to respond using Figure 14-1", pre-decision. Para 011202: "The unit commander will generate the vacation letter, Figure 14-1, which notifies the Marine of the commander's decision to vacate the punishment in whole or in part", post-decision. The figure's own title is "Notice of Intent to Vacate Suspended Punishment" and its paragraph 2 reads "It is my intent to vacate ... in: FULL/PART", pre-decision language carrying a post-decision job. `njp-vacation-handoff.ts` generates ONE letter and labels it the notice. It must generate TWO from one template, differing in paragraph 2's tense and in whether FULL / PART is offered or resolved. Same two-moments split already open for the A-1-f CO scripts |
+| D-51 | Every computed suspension end date is a FLOOR, not a date | CLOSED 2026-08-25, and it AMENDS D-35. JAGMAN 0118.c verbatim: "The running of the period of suspension of the punishment is interrupted by the unauthorized absence of the probationer or by commencement of proceedings to vacate suspension of the punishment." `njp-suspension-period.ts` computes `endsOn` as a pure calendar add and models neither tolling event, so D-35's caveat text names only the EAS and UNDERSTATES the uncertainty it exists to disclose. HIGHEST CONSEQUENCE IN THE VACATION SET: D-36 derives the vacation deadline from `endsOn`, so an understated date tells a commander a LIVE suspension has already remitted, and the app's own remitted-without-further-action message reads as authoritative. Fix this before any other vacation row, because it corrupts a date other modules consume |
+| D-52 | A second vacation deadline exists, ten WORKING days | CLOSED 2026-08-25. JAGMAN 0118.d: "The order vacating a suspension must be issued within 10 working days of the commencement of the vacation proceedings." Independent of D-36. D-36 runs from imposition to remission; this runs from commencement of proceedings. Working days, so weekends and federal holidays come out of the count. Needs a commencement-date field the app does not have. Advisory rather than blocking, per W-19: the app has no ability to un-issue a late order, and a block would only trap a clerk recording history truthfully |
+| D-53 | The appeal statement is conditional AND incomplete | CLOSED 2026-08-25. MCO 011201: "If only suspended punishment is vacated, an accused has no right of appeal. If additional punishment is imposed, the right to appeal applies." `njp-appeal-package.ts` has ZERO occurrences of "vacat", so the 011107 checklist runs identically on a vacation-only action and assembles a package around a right the Marine does not hold. JAGMAN 0118.d supplies the other half: the decision is not appealable "but is a proper subject of an Article 138, UCMJ, complaint." Saying "no appeal" and stopping is accurate and incomplete, so the output NAMES the retained remedy. Same conditional suppresses any appeal-rights language in the Figure 14-1 letter |
+| D-54 | Article 31 rights precede any request for a statement | CLOSED 2026-08-25. JAGMAN 0118.d: "If the reason for vacation involves additional misconduct, Article 31, UCMJ, rights must be read to the accused before the commander asks if the accused wishes to make a statement on his or her own behalf." MCO 011201 requires a UCMJ offense as the basis, so this fires in effectively every Marine Corps vacation. `njp-a1-rights.ts` covers A-1-c and A-1-d only. Surfaced as W-18 rather than a blocker, because the app cannot observe whether the reading happened |
+| D-55 | The 011202 post-action chain, and the lock collision inside it | CLOSED 2026-08-25. Para 011202 specifies five steps the app models nowhere: administrators update block 16 on the original UPB, forward the letter and updated UPB to IPAC, IPAC returns the completed UPB carrying the UD number and date, IPAC scans the corrected UPB to the ESR and OMPF, and the unit VALIDATES the scanned copy against the binder original. The last step is a verification duty. Checklist material on the `njp-appeal-package.ts` pattern. THE COLLISION: `16 FINAL ADMIN INIT` carries `/Action /All`, so signing it locks the entire document. A vacation happens months later and 011202 orders a block 16 update on the ORIGINAL UPB, which that lock makes impossible in place. The form's lock design and the order's procedure contradict each other. Sixth finding for the CMC (JA) report. Block 16 itself resolves cleanly: it is `finalAdminUd` and `finalAdminDtd`, and 011202's loose phrase "vacated punishment information" resolves against its own closing sentences to the unit diary NUMBER AND DATE of the vacation action, not a punishment description. No capacity problem |
+| D-56 | Vacating authority needs its own field, and item 8A is the wrong source | CLOSED 2026-08-25. MCO 011201: a suspended NJP "may be vacated by any commander authorized to impose upon the accused punishment of the kind and amount to be vacated." TWO consequences. The vacating commander is NOT necessarily the imposing commander, so item 8A cannot supply it. And "kind and amount" is a COMPUTABLE predicate against `resolveAuthorityLevel` and the N-code ceilings already shipped, so a company-grade commander vacating a field-grade forfeiture is detectable. JAGMAN 0118.a defines "successor in command" by reference to U.S. Navy Regulation 1026 and expressly NOT limited to the next succeeding officer, so the field is free text over a rank, not a pick from the current chain. See V-30 |
+| D-57 | The MCO narrows a protection below the JAGMAN. Log it, build nothing | CLOSED 2026-08-25. JAGMAN 0118.d sets the appear-before-the-commander trigger at "Article 15(e)(1)-(7)". MCO 011201 sets it at "(1)-(6)", dropping item (7), detention of more than 14 days' pay. Not house style: the same MCO transcribes all seven at 011402 A-G for judge advocate review, and that transcription is FAITHFUL to 10 U.S.C. 815(e), verified verbatim 2026-08-25. So 011402.G is NOT an MCO defect, correcting an earlier framing; the dead text originates upstream in the statute retaining detention while MCM Part V para 5.b does not prescribe it. PRACTICAL IMPACT TODAY IS ZERO, since detention is unprescribed and MCTFS carries no code. Route to the CMC (JA) report and write no logic |
 
 ---
 
@@ -841,6 +908,87 @@ with parameters, suspension terms, and appeal status.
 Recommend shipping it as a copyable text block or CSV in release 1, not an MCTFS transaction.
 The app has no MCTFS connectivity and should not pretend to. Reuse the `edms-handoff.ts`
 pattern already in the repo.
+
+## 13. The pass model
+
+The document is filled across seven passes. Each ends at a signature, and each signature
+names the fields it makes read-only. The form therefore defines its own sequence, which
+the app reads rather than hardcodes. See D-37.
+
+### 13.1 The measured table
+
+| pass | ends with | app writes in this pass | open entering | closes |
+|---|---|---|---|---|
+| 1 | `2 ACC ELECTION AND RIGHTS SIGNATURE`, accused | item 1 A-E article and summary, items 17-20, item 8 block, victim block 22A-22E if used | 74 | 43 |
+| 2 | `3 RIGHTS ATTEST SIGNATURE`, certifying officer | nothing | 31 | 2 |
+| 3 | `9 NJP AUTHORITY SIGNATURE`, imposing | item 4, item 5 findings A-E, item 6 punishment and date, item 7 suspension, item 8 block, item 10 | 29 | 13 |
+| 4 | `11 APPEAL ADVISEMENT SIGNATURE` | item 11 date | 22 | 3 |
+| 5 | `12 APPEAL INTENT SIGNATURE` | item 12 election and date | 20 | 3 |
+| 6 | `14 APPEAL DECISION SIGNATURE` | item 13 date or Not Appealed, item 14 decision and date | 17 | 7 |
+| 7 | `16 FINAL ADMIN INIT`, `/Action /All` | item 15 date, item 16 UD and DTD, item 21 remarks | 12 | all |
+
+PASSES 1 AND 2 ARE ONE PHYSICAL ROUND TRIP. The app exports once, the member signs item 2,
+the certifying officer signs item 3, and the file comes back.
+
+THE VICTIM BLOCK CLOSES AT PASS 1, alongside the accused's signature. Anything entered in
+22A-22E must precede it. Victims 2-5 route to item 21 remarks per D-1, which stays open
+until pass 7, so that path is unaffected.
+
+FINDINGS CLOSE AT PASS 3. They are writable earlier, and exposing them earlier is a
+process defect per D-39.
+
+### 13.2 Pass 1 UI, as ruled by Stephen 2026-08-25
+
+The pass-1 form shows exactly these sections and nothing else:
+
+- Unit and Accused, items 17-20
+- Rank and Pay Grade, item 19
+- Offenses and findings, items 1 and 5, WITH THE FINDING CONTROL HIDDEN
+- Item 2, Accused Election, REDUCED TO TWO CONTROLS:
+  - the vessel status checkbox, `vesselException`
+  - the rights advisement, rendered DYNAMICALLY off that checkbox, with a generate option
+- NJP Authority, items 8, 8A and 8B
+
+The pass-1 export CLEARS `2 DEMAND`, `2 COUNSELOPP` and `2 BOOKER` per D-40. The clear is
+three operations per field, not one: delete `/V`, delete `/AP` on every widget, set
+`NeedAppearances`. A test asserting only that `/V` is gone passes on a document that still
+prints the acceptance text.
+
+WHY ITEM 2 APPEARS AT ALL, AND WHY ONLY THAT MUCH. `vesselException` is APP STATE, not a
+form field. It records a fact about the accused rather than an election, it is settled
+before the accused answers anything, and it selects which advisement is served:
+`njp-a1-rights.ts` already returns `APPENDIX_A_1_C` when it is true and `APPENDIX_A_1_D`
+when it is false. Everything else in item 2 belongs to the member in Acrobat, per D-41.
+
+THE ADVISEMENT IS A DERIVED RENDER, NOT A STORED VALUE. Toggling the checkbox re-renders it,
+per D-47. Watch the asymmetry: A-1-d carries paragraph 3, the maximum-punishment rule, which
+reads item 8A and item 19; A-1-c has no paragraph 3 and reads neither. Clearing the checkbox
+therefore makes two other pass-1 fields required for a complete advisement, and an empty item
+8A renders that paragraph blank rather than raising an error.
+
+BECAUSE `vesselException` IS APP-ONLY, it does not survive in the PDF. It has to ride in
+the carried state, and it is the concrete case proving the carrier is needed.
+
+GAP: `njp-a1-rights.ts` is built and wired to nothing. No component or hook imports it.
+The generate option is new work, not a wiring task.
+
+### 13.3 Which writer each pass uses
+
+Pass 1 needs no incremental writer, because nothing is signed yet. The existing
+full-rewrite fill applies, with `useObjectStreams: false` per Phase 0.
+
+From pass 2 onward the file carries signatures and every write must be an incremental
+update that leaves prior bytes untouched. That path requires `useObjectStreams: TRUE`,
+which is the OPPOSITE of the Phase 0 rule and correct in its own path. Do not harmonize
+the two. A classic xref table appended to this form's xref stream is rejected by Acrobat
+with "Unexpected byte range values defining scope of signed data", which is a structural
+rejection thrown before any hash check rather than a tamper report.
+
+Verified end to end on a real CAC-signed file: the signed revision was preserved
+byte-for-byte, the ByteRange was unchanged, every written value read back through an
+independent parser, and the locked accused name was untouched.
+
+---
 
 ## 12. Sources
 
