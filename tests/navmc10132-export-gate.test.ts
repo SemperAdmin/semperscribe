@@ -54,6 +54,11 @@ import { join } from 'path';
 import type { FormData } from '@/types';
 import { createEmptyNavmc10132Data, type Navmc10132Offense } from '@/types/navmc';
 import { getExportBlockers } from '@/lib/letter-validators';
+import {
+  NAVMC10132_VALIDATOR_MODULES,
+  extractBlockSeverityRuleIds,
+  countBlockSeverityArguments,
+} from './navmc10132-blocker-scan';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers (restated from tests/navmc10132-validators.test.ts; see
@@ -185,13 +190,20 @@ describe('V-04 stops the export: item 6 punishment is empty', () => {
     // hide an accused with no punishment entries at all. No entries means
     // there is no NJP to memorialize; per MCO 5800.16 Vol 14 para 011110.C
     // the form should be destroyed, not exported.
-    const blocking = baseForm({ punishments: [] });
+    //
+    // stage: 3 — item 6 is a pass-3 field (D-43, D-46, spec section 13.1)
+    // and this rule is stage-scoped: it stays silent before pass 3, which
+    // is exactly the fix for the bug this file's own header now
+    // documents (a brand new, pass-1 document was blocked on an empty
+    // item 6 that pass 1 does not even show). See the "stage-scoped"
+    // describe block below for the pass-1-stays-silent proof.
+    const blocking = baseForm({ punishments: [], stage: 3 });
     expect(getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v04-punishment-empty'))).toBe(
       true,
     );
 
     // One punishment entry added. Only `punishments` changes.
-    const compliant = baseForm({ punishments: [{ code: 'N09', days: '14' }] });
+    const compliant = baseForm({ punishments: [{ code: 'N09', days: '14' }], stage: 3 });
     expect(
       getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v04-punishment-empty')),
     ).toBe(false);
@@ -223,11 +235,16 @@ describe('V-05 stops the export: item 7 suspension text is empty', () => {
     // once some future refactor promotes it to 'block' without anyone
     // noticing the assertion never moved. Left out on purpose; flagged in
     // the delivery report rather than faked.
-    const blocking = baseForm({ suspension: '' });
+    //
+    // stage: 3 — item 7 is a pass-3 field (D-43, D-46, spec section 13.1),
+    // the same pass as item 6, and the empty-item-7 branch is stage-scoped:
+    // it stays silent before pass 3. See the "stage-scoped" describe block
+    // below for the pass-1-stays-silent proof.
+    const blocking = baseForm({ suspension: '', stage: 3 });
     expect(getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v05-'))).toBe(true);
 
     // Only `suspension` changes, to the literal word the instruction asks for.
-    const compliant = baseForm({ suspension: 'NONE' });
+    const compliant = baseForm({ suspension: 'NONE', stage: 3 });
     expect(getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v05-'))).toBe(false);
   });
 
@@ -648,11 +665,19 @@ describe('V-08 stops the export: item 13 must be exactly one of date or Not Appe
   });
 
   it('blocks when neither the date nor Not Appealed is set', () => {
-    // Only `appealDate` changes from the compliant baseline, cleared back
-    // to the empty-field default instead of holding a date. Item 13 cannot
-    // be left blank; the instruction requires an affirmative record either
-    // way.
-    const blocking = baseForm({ appealDate: '', notAppealed: false });
+    // `appealDate` changes from the compliant baseline, cleared back to the
+    // empty-field default instead of holding a date. Item 13 cannot be left
+    // blank; the instruction requires an affirmative record either way.
+    //
+    // `stage: 6` is also added, and has to be: item 13 is a pass-6 field
+    // (D-43, D-46, spec section 13.1), and the "-neither" branch is
+    // stage-scoped, silent before pass 6. `compliant` (the shared baseline
+    // above, implicit stage 1) still correctly reads as not-blocked in the
+    // comparison below regardless: it has `appealDate` set, so the
+    // "-neither" branch was never in play for it at any stage. See the
+    // "stage-scoped" describe block further down for the pass-1-stays-silent
+    // proof this rule needed before this fix.
+    const blocking = baseForm({ appealDate: '', notAppealed: false, stage: 6 });
     expect(getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v08-'))).toBe(true);
     expect(getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v08-'))).toBe(false);
   });
@@ -857,36 +882,383 @@ describe('W-06 stops the export: an entered days or months value exceeds the cod
 });
 
 // ===========================================================================
+// IDENTITY RULES (navmc10132-validators-identity.ts) — V-09 through V-12.
+//
+// WHY THESE ARRIVE SEPARATELY FROM THE ELEVEN ABOVE. This file's original
+// eleven gate tests, plus V-01 and W-06, covered offenses.ts, dates.ts, and
+// punishment.ts only. identity.ts was left out of that reading list, out of
+// the differential that proved each of those eleven tests actually goes red
+// when its rule is downgraded to 'fail', and out of the first meta test's
+// own scan. The coordinator's own morning audit reported V-09 through V-12
+// as covered, on a proximity heuristic (getExportBlockers appearing
+// somewhere in the same test file as an assertion on the rule's id) that
+// was never true: every existing assertion on these four ids reads the
+// LEAF function's own return value directly (checkFieldCapacities,
+// checkAccusedIdentity, checkUnitEchelon, checkEdipiFormat in
+// tests/navmc10132-validators.test.ts), never getExportBlockers. That
+// proves the rule EMITS the issue, not that the export gate actually stops
+// on it — the identical gap the file header above describes for the
+// original eleven. This section closes it for identity.ts the same way.
+// ===========================================================================
+
+describe('V-09 stops the export: a capacity-bound field overflows its measured width', () => {
+  it('blocks item 17 (unit) one character over its measured width, clears one character under', () => {
+    // "17 UNIT" in NAVMC_10132_FIELD_METRICS (navmc10132-field-metrics.ts)
+    // measures width: 538.17pt at Helvetica/Arial 8pt. navmc10132-capacity.ts
+    // subtracts 2pt padding per side, so usable width is 538.17 - 4 = 534.17pt.
+    // 'W' is Helvetica's widest printable character (944 per 1000 em), which
+    // at 8pt measures exactly 944/1000 * 8 = 7.552pt. 71 W's measure
+    // 71 * 7.552 = 536.192pt, over the 534.17pt usable width; 70 W's measure
+    // 528.64pt, under it. The compliant fixture is the blocking one with
+    // exactly ONE character removed, not merely a short or empty string, so
+    // this proves the actual measured-width boundary V-09 checks rather than
+    // proving an empty field does not overflow (V-09 explicitly skips empty
+    // values, `if (value === '') continue`, which would prove nothing about
+    // the width check itself).
+    //
+    // The assertion below checks the UN-suffixed prefix
+    // navmc10132-v09-overflow-, not navmc10132-v09-overflow-17-unit, on
+    // purpose: this rule's static id (what the meta test below extracts
+    // from the source) is the template up to its `${`, which is the
+    // un-suffixed form — the per-field suffix only exists at runtime.
+    // Asserting the longer, field-specific string here would still catch
+    // this fixture's own issue, but would not satisfy the meta test's
+    // "the recorded anchor is a prefix of the rule's own id prefix" check,
+    // and this test would silently stop counting as this rule's gate test.
+    // Every other capacity-bound field is left at its baseForm default
+    // (empty, which V-09 explicitly skips), so `unit` is the only field
+    // that can produce a navmc10132-v09-overflow- issue in this fixture,
+    // and the un-suffixed prefix is unambiguous here.
+    const blocking = baseForm({ unit: 'W'.repeat(71) });
+    expect(
+      getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v09-overflow-')),
+    ).toBe(true);
+
+    // Only `unit` changes, one fewer 'W'.
+    const compliant = baseForm({ unit: 'W'.repeat(70) });
+    expect(
+      getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v09-overflow-')),
+    ).toBe(false);
+  });
+});
+
+describe('V-10 stops the export: the accused identity (items 18-20) is incomplete', () => {
+  it('blocks when item 20 (EDIPI) is blank, clears once it is entered', () => {
+    // Items 18, 19, and 20 are all required; V-10 fires listing whichever
+    // are blank. Item 18 and item 19 are held constant and non-empty across
+    // both fixtures so only item 20 (accusedEdipi) is exercised, and a
+    // malformed-but-present EDIPI is deliberately avoided here (V-12's
+    // job, not V-10's, per checkAccusedIdentity's own JSDoc and
+    // checkEdipiFormat's "An empty accused EDIPI is V-10's problem, not
+    // this rule's" note). This is a pass-1 field (item 17-20 items,
+    // spec section 13.1), so per the "Stage scoping" describe blocks above
+    // it needs no stage guard, only this gate test — see the task's own
+    // instruction not to add scoping here.
+    const blocking = baseForm({
+      accusedName: 'Doe, John A.',
+      accusedRankGrade: 'Sgt/E-5',
+      accusedEdipi: '',
+    });
+    expect(
+      getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v10-accused-identity-incomplete')),
+    ).toBe(true);
+
+    // Only `accusedEdipi` changes, blank to a well-formed 10-digit EDIPI.
+    const compliant = baseForm({
+      accusedName: 'Doe, John A.',
+      accusedRankGrade: 'Sgt/E-5',
+      accusedEdipi: '1234567890',
+    });
+    expect(
+      getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v10-accused-identity-incomplete')),
+    ).toBe(false);
+  });
+});
+
+describe('V-11 stops the export: item 17 (unit) is blank', () => {
+  it('blocks when unit is blank, clears once it is entered', () => {
+    // A pass-1 field (item 17, spec section 13.1), so per the "Stage
+    // scoping" describe blocks above it needs no stage guard, only this
+    // gate test — see the task's own instruction not to add scoping here.
+    // The compliant value is deliberately not equal to accusedName, since
+    // that shape (matching text in both fields) trips the separate,
+    // 'warn'-severity navmc10132-v11-unit-matches-accused-name check
+    // instead, which is irrelevant to what this test proves and never
+    // reaches getExportBlockers regardless.
+    const blocking = baseForm({ unit: '' });
+    expect(getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v11-unit-blank'))).toBe(
+      true,
+    );
+
+    // Only `unit` changes, blank to a real unit name.
+    const compliant = baseForm({ unit: 'HQ Company, 1st Battalion' });
+    expect(getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v11-unit-blank'))).toBe(
+      false,
+    );
+  });
+});
+
+describe('V-12 stops the export: a present EDIPI-shaped field is not exactly 10 digits', () => {
+  // Two independent pairs, one per item (20 and 8B), each holding the
+  // OTHER EDIPI field blank throughout (an empty value is explicitly
+  // skipped by checkEdipiFormat, `if (trimmed === '') continue`, so it
+  // never contributes an issue and cannot cross-contaminate the other
+  // item's proof).
+  //
+  // BOTH PAIRS ASSERT ON THE SAME UN-SUFFIXED PREFIX,
+  // navmc10132-v12-edipi-format-, DELIBERATELY, for two independent
+  // reasons: (1) that is this rule's actual static id, the template up
+  // to its `${`, which the meta test below extracts from the source and
+  // requires an anchor to be a PREFIX of, not a longer, more specific
+  // string, so a per-item anchor like navmc10132-v12-edipi-format-20
+  // would silently stop counting as this rule's gate test; (2)
+  // checkEdipiFormat checks item 20 before item 8B in its own candidates
+  // array, and asserting the shared, un-suffixed prefix means neither
+  // test below depends on which item that loop happens to reach first,
+  // exactly the ordering concern the task named. Each fixture still
+  // proves its own item independently: only one EDIPI field is ever
+  // malformed at a time (the other is blank and skipped), so whichever
+  // navmc10132-v12-edipi-format- issue appears in a given fixture can
+  // only be the one that fixture's own malformed field produced.
+
+  it('blocks a malformed item 20 (accused EDIPI), clears once it is 10 digits', () => {
+    const blocking = baseForm({ accusedEdipi: '12345', njpAuthorityEdipi: '' });
+    expect(
+      getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v12-edipi-format-')),
+    ).toBe(true);
+
+    // Only `accusedEdipi` changes, to a well-formed 10-digit EDIPI.
+    const compliant = baseForm({ accusedEdipi: '1234567890', njpAuthorityEdipi: '' });
+    expect(
+      getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v12-edipi-format-')),
+    ).toBe(false);
+  });
+
+  it('blocks a malformed item 8B (NJP authority EDIPI), clears once it is 10 digits, independent of item 20', () => {
+    const blocking = baseForm({ accusedEdipi: '', njpAuthorityEdipi: 'ABCDEFGHIJ' });
+    expect(
+      getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v12-edipi-format-')),
+    ).toBe(true);
+
+    // Only `njpAuthorityEdipi` changes, to a well-formed 10-digit EDIPI.
+    const compliant = baseForm({ accusedEdipi: '', njpAuthorityEdipi: '1234567890' });
+    expect(
+      getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v12-edipi-format-')),
+    ).toBe(false);
+  });
+});
+
+// ===========================================================================
+// STAGE SCOPING (D-43, D-46) — the actual defect this file exists to close.
+// Measured live: a brand new, pass-1 notification document was blocked on
+// "Item 6 punishment imposed is empty" and "Item 13 has neither an appeal
+// date nor the Not Appealed checkbox set," even though the stage selector
+// (StageSelector.tsx, per D-46) hides both sections from a pass-1 clerk.
+// Item 6 belongs to pass 3 and item 13 to pass 6 (spec section 13.1); both
+// are correct, unremarkable states for a notification document.
+//
+// ONLY THREE RULES NEEDED SCOPING, not a table mapping every rule to a
+// pass. A rule only misfires early if it complains a field is ABSENT: V-04
+// (item 6 empty), the empty-item-7 branch of V-05, and the "-neither"
+// branch of V-08 (item 13). Every other block rule in this file complains
+// a field is WRONG, which is naturally silent when the field is empty
+// (there is nothing to be wrong about yet) — V-20 does not fire on a blank
+// forfeiture, V-21 does not fire on an empty punishment set, and so on for
+// the rest. See the delivery report for the full rule-by-rule enumeration;
+// this section proves the three that needed scoping, in both directions.
+// ===========================================================================
+
+describe('Stage scoping: a fresh pass-1 document is not blocked on pass-3/pass-6 fields', () => {
+  it('does not block on empty item 6, item 7, or item 13 at stage 1', () => {
+    // Matches what createEmptyNavmc10132Data and the StageSelector both
+    // default a brand new document to. Navmc10132Sections.tsx gates the
+    // punishment/suspension sections behind navmc10132StageAtLeast(3) and
+    // the appeal block behind stage 4, so a pass-1 clerk cannot even see
+    // items 6, 7, or 13 — the export gate must not demand they be filled.
+    const form = baseForm({
+      stage: 1,
+      punishments: [],
+      suspension: '',
+      appealDate: '',
+      notAppealed: false,
+    });
+    const blockers = getExportBlockers(form, [], [], []);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-v04-punishment-empty'))).toBe(false);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-v05-suspension-empty'))).toBe(false);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-v08-item13-neither'))).toBe(false);
+  });
+
+  it('starts blocking again exactly at the stage that first owns each field', () => {
+    // Item 6 and item 7 open at pass 3; item 13 opens at pass 6 (spec
+    // section 13.1). Same empty shape at every stage below, only `stage`
+    // moves, one pass at a time across the boundary each rule cares about.
+    const shape = { punishments: [] as unknown[], suspension: '', appealDate: '', notAppealed: false };
+
+    const atPass2 = getExportBlockers(baseForm({ ...shape, stage: 2 }), [], [], []);
+    expect(atPass2.some((i) => i.id.startsWith('navmc10132-v04-punishment-empty'))).toBe(false);
+    expect(atPass2.some((i) => i.id.startsWith('navmc10132-v05-suspension-empty'))).toBe(false);
+
+    const atPass3 = getExportBlockers(baseForm({ ...shape, stage: 3 }), [], [], []);
+    expect(atPass3.some((i) => i.id.startsWith('navmc10132-v04-punishment-empty'))).toBe(true);
+    expect(atPass3.some((i) => i.id.startsWith('navmc10132-v05-suspension-empty'))).toBe(true);
+    // Item 13 has not opened yet at pass 3.
+    expect(atPass3.some((i) => i.id.startsWith('navmc10132-v08-item13-neither'))).toBe(false);
+
+    const atPass5 = getExportBlockers(baseForm({ ...shape, stage: 5 }), [], [], []);
+    expect(atPass5.some((i) => i.id.startsWith('navmc10132-v08-item13-neither'))).toBe(false);
+
+    const atPass6 = getExportBlockers(baseForm({ ...shape, stage: 6 }), [], [], []);
+    expect(atPass6.some((i) => i.id.startsWith('navmc10132-v08-item13-neither'))).toBe(true);
+  });
+});
+
+describe('Stage scoping does not weaken the gate on a finished document', () => {
+  // Both requirements below are the reason `navmc10132ExportGateStage`
+  // (src/types/navmc.ts) exists as a function distinct from
+  // `navmc10132Stage`: the export gate must not quietly drop a real
+  // blocker just because a document's `stage` is unset or points at an
+  // early pass it may not actually still be at.
+
+  it('still blocks on every stage-scoped field at the final numbered pass (7)', () => {
+    const form = baseForm({
+      stage: 7,
+      punishments: [],
+      suspension: '',
+      appealDate: '',
+      notAppealed: false,
+    });
+    const blockers = getExportBlockers(form, [], [], []);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-v04-punishment-empty'))).toBe(true);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-v05-suspension-empty'))).toBe(true);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-v08-item13-neither'))).toBe(true);
+  });
+
+  it('still blocks at stage "complete"', () => {
+    const form = baseForm({
+      stage: 'complete',
+      punishments: [],
+      suspension: '',
+      appealDate: '',
+      notAppealed: false,
+    });
+    const blockers = getExportBlockers(form, [], [], []);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-v04-punishment-empty'))).toBe(true);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-v05-suspension-empty'))).toBe(true);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-v08-item13-neither'))).toBe(true);
+  });
+
+  it('treats a document with no `stage` key at all as complete, not pass 1 (D-46)', () => {
+    // `stage` is app state, never written to the AcroForm
+    // (`Navmc10132Data.stage`'s own JSDoc), so a document saved before
+    // this field existed carries no `stage` key at all. That silence has
+    // to read as "predates the field," never "just started": an old
+    // document is more likely complete than freshly begun, and the two
+    // wrong defaults are not symmetric. Defaulting to pass 1 here would
+    // silently drop every later-pass blocker on a document that may
+    // actually be finished; defaulting to 'complete' only risks a false
+    // complaint on a genuinely early document, which is recoverable and
+    // is exactly the pre-scoping behaviour every clerk already knows how
+    // to read past. Built by deleting `stage` off an otherwise-ordinary
+    // fixture, matching what an actually old saved document's FormData
+    // looks like, rather than trusting baseForm's own `stage: 1` default
+    // (from createEmptyNavmc10132Data, correct for a FRESH document, see
+    // `navmc10132ExportGateStage`'s own JSDoc for why the export gate
+    // cannot share that default).
+    const form = baseForm({ punishments: [], suspension: '', appealDate: '', notAppealed: false });
+    delete (form as { stage?: unknown }).stage;
+    expect('stage' in form).toBe(false);
+
+    const blockers = getExportBlockers(form, [], [], []);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-v04-punishment-empty'))).toBe(true);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-v05-suspension-empty'))).toBe(true);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-v08-item13-neither'))).toBe(true);
+  });
+});
+
+// ===========================================================================
+// SHARED SCANNER PROOF — the three meta guards below all read
+// NAVMC10132_VALIDATOR_MODULES and extractBlockSeverityRuleIds from
+// tests/navmc10132-blocker-scan.ts instead of each carrying its own file
+// list and its own id-extraction regex. This is the fix for a real defect
+// the coordinator measured directly: the original per-guard regex stopped
+// a quoted id at the FIRST quote character of any kind, backtick, single,
+// or double, which cannot span
+// navmc10132-v09-overflow-${field.toLowerCase().replace(/[^a-z0-9]+/g,
+// '-')}` in navmc10132-validators-identity.ts (the single-quoted `'-'`
+// inside the template's own .replace() call ends the match before the
+// id's real closing backtick). That guard also never scanned identity.ts
+// at all. A guard whose own coverage nobody measures is the exact failure
+// this whole exercise exists to eliminate, so before any guard relies on
+// the shared scanner, this block proves the scanner itself is not making
+// the same mistake, or a new one, rather than just asserting it. See
+// tests/navmc10132-blocker-scan.ts's own JSDoc for the full story and for
+// what this proof still cannot catch.
+// ===========================================================================
+
+describe('Meta: the shared blocker scanner is not silently under-counting', () => {
+  it('finds V-09 by name, the exact case the id-extraction regex used to miss', () => {
+    const libDir = join(__dirname, '..', 'src', 'lib');
+    const src = readFileSync(join(libDir, 'navmc10132-validators-identity.ts'), 'utf-8');
+    const ids = extractBlockSeverityRuleIds(src);
+    expect(ids).toContain('navmc10132-v09-overflow-');
+  });
+
+  it('never returns fewer ids than an independently-computed count of block severity arguments, for every scanned module', () => {
+    const libDir = join(__dirname, '..', 'src', 'lib');
+    for (const fileName of NAVMC10132_VALIDATOR_MODULES) {
+      const src = readFileSync(join(libDir, fileName), 'utf-8');
+      const extractedCount = extractBlockSeverityRuleIds(src).length;
+      const independentCount = countBlockSeverityArguments(src);
+      // countBlockSeverityArguments is a deliberately different regex
+      // (comma-flanked 'block', no id-matching at all), so the two
+      // methods can only agree by both being right, not by sharing a bug.
+      expect(
+        extractedCount,
+        `${fileName}: the id extractor found ${extractedCount} block-severity call sites, ` +
+          `but ${independentCount} comma-flanked 'block' severity arguments actually exist ` +
+          `in the source. The extractor must never find fewer.`,
+      ).toBeGreaterThanOrEqual(independentCount);
+    }
+  });
+});
+
+// ===========================================================================
 // META TEST — the real deliverable.
 //
-// Everything above proves eleven NAMED rules stop the export today. This
-// test's job is different: it reads the validator source directly and
-// fails when SOME rule, present or future, is marked severity 'block' in
-// code but has no proof anywhere in the test suite that getExportBlockers
-// actually stops it for that rule. Its purpose is to make the twelfth
-// blocker, whenever it is written, arrive already gated instead of
-// repeating the eleven-rule archaeology this file just did.
+// Everything above proves NAMED rules stop the export today. This test's
+// job is different: it reads the validator source directly and fails when
+// SOME rule, present or future, is marked severity 'block' in code but has
+// no proof anywhere in the test suite that getExportBlockers actually
+// stops it for that rule. Its purpose is to make the next blocker, whenever
+// it is written, arrive already gated instead of repeating the archaeology
+// this file did for its first eleven rules.
 //
-// WHAT IT SCANS. The three modules this file's brief named as the ones to
-// read for rule behavior: navmc10132-validators-offenses.ts,
-// -dates.ts and -punishment.ts. navmc10132-validators-identity.ts is
-// DELIBERATELY EXCLUDED — none of the eleven rules this file covers come
-// from it, it was out of scope for the reading list this file was built
-// from, and it has its own pre-existing 'block' rules (V-10, V-11, and
-// others) that this exercise never audited. Folding it in here would
-// either fail this file for gaps nobody asked this file to close, or
-// require an allowlist so broad it stops meaning anything. If identity.ts
-// needs the same treatment, it earns its own pass, not a silent tuck-in
-// here.
+// WHAT IT SCANS. NAVMC10132_VALIDATOR_MODULES (tests/navmc10132-blocker-scan.ts),
+// shared with the two meta guards below it in this file. That module
+// carries the full explanation for what changed and why: this guard used
+// to scan only three files, offenses/dates/punishment, and hand-excluded
+// navmc10132-validators-identity.ts on the reasoning that none of the
+// eleven rules this file was built to prove came from it. That reasoning
+// never covered what THIS guard exists to protect against — identity.ts
+// carries its own block-severity rules (V-09 through V-12), just as exposed
+// to an unproven-blocker defect as anything in the other three files, and
+// this guard was never checking them. The coordinator caught this by
+// measuring the id-extraction regex's actual capture rate against a raw
+// count of 'block' occurrences per file and finding identity.ts silently
+// omitted entirely. Excluding it again would repeat the identical mistake
+// one more time, so it is in the shared file list now, for every guard.
 //
-// HOW IT DECIDES A RULE IS A "BLOCKER". Every rule in these three modules
+// HOW IT DECIDES A RULE IS A "BLOCKER". Every rule in these four modules
 // builds its ValidationIssue through a same-shaped local `issue(id,
-// severity, rule, citation, detail)` call. This scan looks for literal
-// occurrences of that shape where the severity argument is the string
-// 'block', and takes the id argument (up to the first `${` for a template
-// id) as the rule's static id prefix — the part every id it ever emits at
-// runtime is guaranteed to start with. This is a source-text pattern match,
-// not a type-checked AST walk.
+// severity, rule, citation, detail)` call. `extractBlockSeverityRuleIds`
+// (tests/navmc10132-blocker-scan.ts) looks for literal occurrences of that
+// shape where the severity argument is the string 'block', and takes the
+// id argument (up to the first `${` for a template id) as the rule's
+// static id prefix — the part every id it ever emits at runtime is
+// guaranteed to start with. This is a source-text pattern match, not a
+// type-checked AST walk, and the "shared scanner is not silently
+// under-counting" describe block above is what proves this extraction
+// itself is trustworthy before this test relies on it.
 //
 // WHAT "HAS A GATE TEST" MEANS HERE. For each such id prefix, this scans
 // every *.test.ts file in this directory (tests/) for a file that both (a)
@@ -916,7 +1288,10 @@ describe('W-06 stops the export: an entered days or months value exceeds the cod
 // Any addition needs, in the same commit, a comment naming the rule, the
 // reason it is not gated, and who accepted that gap; "predates this file"
 // is not by itself such a reason, as this file's own history shows. The
-// empty array below is the expected steady state.
+// empty array below is the expected steady state — and per the coordinator's
+// own instruction, a prefix that turns up uncovered now that identity.ts is
+// scanned does NOT get added here blind; it gets reported and left for a
+// decision.
 //
 // WHAT THIS CANNOT CATCH, ON PURPOSE STATED HERE:
 //   1. A rule documented in prose or a JSDoc comment as a "blocker" that
@@ -943,20 +1318,15 @@ describe('W-06 stops the export: an entered days or months value exceeds the cod
 //      suite every such file is scoped to one validator family, so this
 //      has not produced a false pass in practice, but it is a file-level
 //      heuristic, not a per-test proof.
+//   4. Whatever the shared scanner itself cannot catch — see
+//      tests/navmc10132-blocker-scan.ts's own JSDoc on
+//      extractBlockSeverityRuleIds.
 // ===========================================================================
 
 describe('Meta: every source-level export blocker has a getExportBlockers-backed gate test', () => {
-  it('finds no block-severity rule in the offense/date/punishment modules without a matching startsWith proof in tests/', () => {
+  it('finds no block-severity rule in the four rule modules without a matching startsWith proof in tests/', () => {
     const libDir = join(__dirname, '..', 'src', 'lib');
     const testsDir = __dirname;
-
-    // Deliberately by name, not a directory glob: see the identity.ts note
-    // above for why navmc10132-validators-identity.ts is left out.
-    const SCANNED_SOURCE_FILES = [
-      'navmc10132-validators-offenses.ts',
-      'navmc10132-validators-dates.ts',
-      'navmc10132-validators-punishment.ts',
-    ];
 
     // DELIBERATELY EMPTY. See the ALLOWLIST note above: this held two
     // genuinely unproven blockers (V-01, W-06) in an earlier pass and both
@@ -968,26 +1338,17 @@ describe('Meta: every source-level export blocker has a getExportBlockers-backed
     type BlockerRef = { file: string; idPrefix: string };
     const blockers: BlockerRef[] = [];
 
-    // Matches `issue(\n  '<id>',\n  'block',` (or "..." / `...`) in any of
-    // the scanned files' own local issue() helper calls. Captures the id
-    // literal, template placeholders included.
-    const ISSUE_BLOCK_RE = /issue\(\s*[`'"]([^`'"]+)[`'"]\s*,\s*['"]block['"]/g;
-
-    for (const fileName of SCANNED_SOURCE_FILES) {
+    for (const fileName of NAVMC10132_VALIDATOR_MODULES) {
       const src = readFileSync(join(libDir, fileName), 'utf-8');
-      let match: RegExpExecArray | null;
-      ISSUE_BLOCK_RE.lastIndex = 0;
-      while ((match = ISSUE_BLOCK_RE.exec(src)) !== null) {
-        const rawId = match[1];
-        const templateStart = rawId.indexOf('${');
-        const idPrefix = templateStart === -1 ? rawId : rawId.slice(0, templateStart);
+      for (const idPrefix of extractBlockSeverityRuleIds(src)) {
         blockers.push({ file: fileName, idPrefix });
       }
     }
 
-    // Sanity check on the scan itself: if this finds nothing, the regex or
-    // the file list broke, and the rest of this test would trivially pass
-    // for the wrong reason (nothing to check). Fail loudly instead.
+    // Sanity check on the scan itself: if this finds nothing, the shared
+    // scanner or the file list broke, and the rest of this test would
+    // trivially pass for the wrong reason (nothing to check). Fail loudly
+    // instead.
     expect(blockers.length).toBeGreaterThan(0);
 
     // Collect every `i.id.startsWith(anchor)`-shaped literal argument out of
@@ -1115,20 +1476,23 @@ describe('Meta: every source-level export blocker has a getExportBlockers-backed
 //   - Inherits the brace-matching caveat documented on
 //     extractFunctionBody below: it is a depth-counting scan, not a real
 //     parser, verified by hand against the current contents of these
-//     three files rather than proven safe against arbitrary future code.
-//   - Scoped to the same three modules as the first meta test, for the
-//     same reason (see the identity.ts note above); a rule in
-//     navmc10132-validators-identity.ts is outside what this file covers.
+//     four files rather than proven safe against arbitrary future code.
+//   - Scoped to NAVMC10132_VALIDATOR_MODULES (tests/navmc10132-blocker-scan.ts),
+//     the same shared file list the first meta test uses, identity.ts
+//     included. Checked by hand: none of identity.ts's own JSDoc blocks use
+//     the "label (blocker)" / "label, blocker" phrasing this scan keys on
+//     (grep -ni blocker there turns up only the file-header prose and a
+//     type-union line comment, neither attached to an exported function),
+//     so widening this scan to include it changes nothing about what it
+//     currently flags — it only means a future identity.ts rule written
+//     with a mismatched JSDoc will now be caught the same way one in the
+//     other three files already is.
 // ===========================================================================
 
 describe('Meta: a JSDoc-documented blocker rule must actually emit severity block', () => {
   it('flags a rule whose JSDoc affirmatively calls it a blocker but whose code never emits block', () => {
     const libDir = join(__dirname, '..', 'src', 'lib');
-    const SCANNED_SOURCE_FILES = [
-      'navmc10132-validators-offenses.ts',
-      'navmc10132-validators-dates.ts',
-      'navmc10132-validators-punishment.ts',
-    ];
+    const SCANNED_SOURCE_FILES = NAVMC10132_VALIDATOR_MODULES;
 
     // Matches a rule label ("V-06", "W-06", "V-05 addendum", ...)
     // immediately followed by "(blocker" or ", blocker" — this codebase's
@@ -1147,11 +1511,15 @@ describe('Meta: a JSDoc-documented blocker rule must actually emit severity bloc
      * Returns the source substring from `openBraceIndex` through its
      * matching closing brace, by depth-counting characters. Not a real
      * parser: it does not special-case braces inside string, template, or
-     * regex literals. Verified safe for these three files by hand — the
+     * regex literals. Verified safe for these four files by hand — the
      * only in-body brace pairs besides each function's own block are
      * self-balanced `${expr}` template interpolations (one open, one
      * close each) and single `(x as { a?: T })` inline casts, none of
-     * which straddle a function boundary in the current source. A future
+     * which straddle a function boundary in the current source. Checked
+     * again for navmc10132-validators-identity.ts specifically when this
+     * scan widened to include it: every `${...}` there (the V-09 and V-12
+     * id templates, the capacity-field message strings) is the same
+     * self-balanced one-open-one-close shape, nothing nested. A future
      * edit that introduces an unbalanced brace inside a string literal in
      * one of these bodies could desync this scan; nothing here defends
      * against that short of a real TypeScript parser.
@@ -1231,3 +1599,217 @@ describe('Meta: a JSDoc-documented blocker rule must actually emit severity bloc
     ).toEqual([]);
   });
 });
+
+// ===========================================================================
+// THIRD META TEST — a stage-scoping decision must exist for every
+// block-severity rule, so a new blocker arrives already CONSIDERED.
+//
+// WHY THIS EXISTS. The first meta test above makes sure a new blocker has
+// a getExportBlockers-backed gate test. The second makes sure a rule
+// documented as a blocker actually emits severity 'block'. Neither one
+// asks the question this file's own header exists to answer: DOES THIS
+// RULE MISFIRE ON A DOCUMENT THAT HAS NOT REACHED THE PASS ITS FIELD
+// BELONGS TO? A new rule added next month, correctly gated and correctly
+// severitied, can still repeat the D-43 defect if nobody stops to ask
+// whether it complains about a field's ABSENCE rather than its
+// WRONGNESS, and if so, which pass first owns that field. This test does
+// not answer that question for anyone. It only makes sure someone did, by
+// requiring every block-severity id prefix this scan finds to be a key in
+// NAVMC10132_STAGE_SCOPE_DECISIONS below, so a new prefix with no entry
+// fails loudly instead of silently inheriting no scope at all.
+//
+// SHARES ITS FILE LIST AND ITS EXTRACTION WITH THE OTHER TWO META TESTS
+// NOW (tests/navmc10132-blocker-scan.ts). This guard was the first of the
+// three to scan navmc10132-validators-identity.ts and to use a
+// quote-balanced id extractor, back when the other two guards still used
+// their own copies of both. Three guards independently trusting their own
+// copies of "which files" and "how to extract an id" is exactly how the
+// first two silently under-scanned for as long as they did, so all three
+// now read NAVMC10132_VALIDATOR_MODULES and call
+// extractBlockSeverityRuleIds from that one shared module instead of
+// carrying their own. This guard keeps its own registry,
+// NAVMC10132_STAGE_SCOPE_DECISIONS below, because the scoping DECISION for
+// each rule is specific to what this guard checks, not something the other
+// two need.
+//
+// THE REGISTRY BELOW IS THE DECISION, NOT A RUNTIME MAPPING. Only three
+// entries actually gate anything at runtime (see the "Stage scoping"
+// describe blocks above and the STAGE-SCOPED JSDoc paragraphs on
+// punishmentPresenceIssues, suspensionTermsIssues, and
+// v08AppealDateExclusiveOfNotAppealed). The other thirty carry a recorded
+// reason instead: either the rule complains a field is WRONG, which is
+// naturally silent while that field is still empty, or the field it checks
+// for absence is already owned at pass 1, the earliest stage there is, so
+// no stage guard can ever change its behaviour. Building one map entry per
+// rule here is deliberately NOT the same mistake the task brief warns
+// against (a table suppressing every rule by pass): nothing downstream
+// reads this registry to decide whether to suppress a rule. It exists
+// solely so this test can demand a conscious answer, and the answer for
+// most rules is "no guard needed," recorded in one line instead of left
+// implicit.
+// ===========================================================================
+
+describe('Meta: every source-level export blocker has a recorded stage-scoping decision', () => {
+  it('finds no block-severity rule id prefix in the four rule modules without an entry in NAVMC10132_STAGE_SCOPE_DECISIONS', () => {
+    const libDir = join(__dirname, '..', 'src', 'lib');
+
+    // Every block-severity rule id prefix found across the four modules,
+    // as of this file's own last update, mapped to the scoping decision
+    // made for it. A short tag, not free text, so a new prefix arriving
+    // with no entry fails the lookup below in an obvious way rather than
+    // matching some unrelated comment by accident.
+    //
+    //   GATED stage>=N   — the rule is stage-scoped in code; see its own
+    //                       "STAGE-SCOPED" JSDoc paragraph and the
+    //                       blocking/compliant proof in the "Stage
+    //                       scoping" describe blocks above.
+    //   EARLIEST-PASS     — an absence-type rule whose field is already
+    //                       owned at pass 1, the earliest stage there is,
+    //                       so no stage can ever be too early for it.
+    //   NOT-ABSENCE        — the rule complains a field is WRONG, not
+    //                       absent, so it is naturally silent while that
+    //                       field is still empty and needs no stage guard.
+    const NAVMC10132_STAGE_SCOPE_DECISIONS: Record<string, string> = {
+      // --- navmc10132-validators-offenses.ts ---
+      'navmc10132-offense-article-present': 'EARLIEST-PASS: item 1, pass 1 (V-01)',
+      'navmc10132-offense-summary-present-': 'EARLIEST-PASS: item 1, pass 1 (V-02)',
+      'navmc10132-offense-finding-requires-article-':
+        'NOT-ABSENCE: fires on an inconsistent finding, not a missing one; the finding control itself is hidden pre-pass-3 (V-03)',
+      'navmc10132-punishment-requires-guilty-finding':
+        'NOT-ABSENCE: silent while punishmentImposed is empty, which it is pre-pass-3 (V-13)',
+
+      // --- navmc10132-validators-dates.ts ---
+      'navmc10132-v06-rights-cert-after-punishment':
+        'NOT-ABSENCE: silent unless both dates parse, and both are pre-pass-3/pre-pass-2 fields (V-06)',
+      'navmc10132-v07-appeal-advisement-before-punishment':
+        'NOT-ABSENCE: silent unless both dates parse; appealAdvisementDate is a pass-4 field (V-07)',
+      'navmc10132-v08-item13-both':
+        'NOT-ABSENCE: fires only when BOTH item-13 controls are already set, which cannot happen before pass 6 either (V-08)',
+      'navmc10132-v08-item13-neither': 'GATED stage>=6: item 13, pass 6 (V-08) — the D-43 defect',
+
+      // --- navmc10132-validators-punishment.ts ---
+      'navmc10132-v04-punishment-empty': 'GATED stage>=3: item 6, pass 3 (V-04) — the D-43 defect',
+      'navmc10132-v05-suspension-empty': 'GATED stage>=3: item 7, pass 3 (V-05 empty branch)',
+      'navmc10132-v05-suspension-index-':
+        'NOT-ABSENCE: requires an existing suspensions[] entry, which is empty pre-pass-3 (V-05 addendum)',
+      'navmc10132-v31-': 'NOT-ABSENCE: requires two existing suspensions[] entries (V-31)',
+      'navmc10132-v32-vacation-partial-no-detail-':
+        'NOT-ABSENCE: requires an existing vacations[] entry (V-32)',
+      'navmc10132-v33-vacation-suspension-index-':
+        'NOT-ABSENCE: requires an existing vacations[] entry (V-33)',
+      'navmc10132-v34-vacation-remark-missing-':
+        'NOT-ABSENCE: requires an existing vacations[] entry asserting a vacation happened (V-34)',
+      'navmc10132-v14-unauthorized-': 'NOT-ABSENCE: requires an existing punishments[] entry (V-14)',
+      'navmc10132-v15-item6-overflow':
+        'NOT-ABSENCE: explicit early return when punishments[] is empty (V-15)',
+      'navmc10132-v17-item7-overflow':
+        'NOT-ABSENCE: explicit early return when suspensions[] is empty (V-17)',
+      'navmc10132-w06-days-': 'NOT-ABSENCE: requires an existing punishments[] entry with a days value (W-06)',
+      'navmc10132-w06-months-':
+        'NOT-ABSENCE: requires an existing punishments[] entry with a months value (W-06)',
+      'navmc10132-v19-correctional-custody-grade':
+        'NOT-ABSENCE: requires an existing correctional-custody punishments[] entry (V-19)',
+      'navmc10132-v20-ceiling-unreadable-':
+        'NOT-ABSENCE: an unset punishmentDate reads as table-not-current, which is excluded from the surfaced reasons (V-20)',
+      'navmc10132-v20-forfeiture-over-ceiling-':
+        'NOT-ABSENCE: requires a computed ceiling, which requires a set punishmentDate (V-20)',
+      'navmc10132-v21-': 'NOT-ABSENCE: requires existing punishments[] entries (V-21)',
+      'navmc10132-v22-': 'NOT-ABSENCE: requires an existing suspensions[] entry (V-22)',
+      'navmc10132-v29-vacation-offence-before-suspension-':
+        'NOT-ABSENCE: requires an existing vacations[] entry with offenceDate set (V-29)',
+      'navmc10132-v30-vacation-authority-insufficient-':
+        'NOT-ABSENCE: requires an existing vacated-full vacations[] entry (V-30)',
+      'navmc10132-v18-forfeiture-basis-unknown':
+        'NOT-ABSENCE: requires an existing reduction AND forfeiture punishments[] entry (V-18)',
+      'navmc10132-v18-forfeiture-basis-grade':
+        'NOT-ABSENCE: requires an existing reduction AND forfeiture punishments[] entry (V-18)',
+
+      // --- navmc10132-validators-identity.ts ---
+      'navmc10132-v09-overflow-':
+        'NOT-ABSENCE: explicit `if (value === "") continue` per field, only fires when too long, not absent (V-09)',
+      'navmc10132-v10-accused-identity-incomplete': 'EARLIEST-PASS: items 18-20, pass 1 (V-10)',
+      'navmc10132-v11-unit-blank': 'EARLIEST-PASS: item 17, pass 1 (V-11)',
+      'navmc10132-v12-edipi-format-':
+        'NOT-ABSENCE: only fires on a present-but-malformed EDIPI, skipped when empty (V-12)',
+    };
+
+    type BlockerRef = { file: string; idPrefix: string };
+    const blockers: BlockerRef[] = [];
+
+    for (const fileName of NAVMC10132_VALIDATOR_MODULES) {
+      const src = readFileSync(join(libDir, fileName), 'utf-8');
+      for (const idPrefix of extractBlockSeverityRuleIds(src)) {
+        blockers.push({ file: fileName, idPrefix });
+      }
+    }
+
+    // Sanity check on the scan itself, matching the house pattern the
+    // first meta test already uses: if this finds nothing, the shared
+    // scanner or the file list broke, and the rest of this test would
+    // trivially pass for the wrong reason.
+    expect(blockers.length).toBeGreaterThan(0);
+    expect(Object.keys(NAVMC10132_STAGE_SCOPE_DECISIONS).length).toBeGreaterThan(0);
+
+    // Verified by name: V-09 is exactly the case the shared scanner exists
+    // to catch. If this ever stops finding it, the extractor regressed.
+    expect(blockers.some((b) => b.idPrefix === 'navmc10132-v09-overflow-')).toBe(true);
+
+    const seen = new Set<string>();
+    const undecided: string[] = [];
+    for (const { file, idPrefix } of blockers) {
+      const key = `${file}:${idPrefix}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!(idPrefix in NAVMC10132_STAGE_SCOPE_DECISIONS)) {
+        undecided.push(`${idPrefix}  (from ${file})`);
+      }
+    }
+
+    expect(
+      undecided,
+      undecided.length
+        ? `The following block-severity rule id prefix(es) have no recorded stage-scoping ` +
+          `decision in NAVMC10132_STAGE_SCOPE_DECISIONS above. Before adding one, decide: ` +
+          `does this rule complain that a field is ABSENT (not merely wrong)? If so, which ` +
+          `pass first owns that field per docs/NAVMC_10132_SPEC.md section 13.1, and does ` +
+          `the rule need a navmc10132StageAtLeast(navmc10132ExportGateStage(formData), N) ` +
+          `guard before it fires? If the field is owned at pass 1, or the rule only ever ` +
+          `fires once other, later-owned data already exists, record that reasoning as the ` +
+          `decision instead. Either way, add an entry recording the decision, do not leave ` +
+          `it undecided:\n  ` + undecided.join('\n  ')
+        : undefined,
+    ).toEqual([]);
+  });
+});
+
+// ===========================================================================
+// WHAT THE THIRD META TEST CANNOT CATCH, ON PURPOSE STATED HERE:
+//   1. It cannot verify that a recorded decision is actually CORRECT. A
+//      rule entered as NOT-ABSENCE that in fact does complain about an
+//      absent, later-pass field would satisfy this test while still
+//      carrying the D-43 defect. This test only forces the question to be
+//      asked and answered in one place a reviewer can read; it does not
+//      grade the answer. The three rules this delivery actually found
+//      needing a guard are separately proven correct by the "Stage
+//      scoping" describe blocks above, which exercise real
+//      getExportBlockers output at real stage boundaries — that is a
+//      different, stronger kind of proof than this test attempts.
+//   2. It inherits the first meta test's limitation #2: a rule whose
+//      issue(...) call is not literally shaped `issue(<id>, 'block', ...)`
+//      in the source text, a severity chosen via a variable, a ternary, or
+//      a differently-named local helper, would not match this scan's
+//      regex and would silently not be counted as a blocker at all, so no
+//      decision would ever be demanded for it.
+//   3. It is scoped to the four rule modules named above. A block-severity
+//      rule added to a fifth NAVMC 10132 validator module, or folded into
+//      letter-validators.ts itself behind a `documentType === 'navmc10132'`
+//      check, is invisible to this scan and would need this test widened
+//      to reach it, the same way this test itself widened the first two
+//      meta tests' three-file scope to four for identity.ts.
+//   4. A prefix can drift out of NAVMC10132_STAGE_SCOPE_DECISIONS being
+//      dead (the rule it named was deleted or renamed) without this test
+//      noticing, since it only checks scanned-prefixes-are-a-subset-of-
+//      registry-keys, never the reverse. A stale entry is inert, not
+//      dangerous, so this is left unchecked rather than adding a second
+//      failure mode to maintain.
+// ===========================================================================

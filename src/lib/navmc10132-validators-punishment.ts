@@ -107,6 +107,7 @@ import type {
   Navmc10132Suspension,
   Navmc10132Vacation,
 } from '@/types/navmc';
+import { navmc10132ExportGateStage, navmc10132StageAtLeast } from '@/types/navmc';
 import {
   fitsInField,
   overflowBy,
@@ -231,10 +232,20 @@ function parseNumericField(value: unknown): number | null {
  * MARADMIN 427/23 deleted 011105.A through .R, so 011105.F is dead and must
  * never be cited here even though it is the paragraph that historically held
  * the item 6 worked examples.
+ *
+ * STAGE-SCOPED (D-43, D-46, section 13.1: item 6 belongs to pass 3). An
+ * empty item 6 on a document that has not reached pass 3 yet is not a
+ * defect, it is a field the hearing has not happened for. Measured live:
+ * this exact rule blocked a brand new, pass-1 notification document before
+ * this scope existed. Silent when the export-gate stage
+ * (`navmc10132ExportGateStage`, not `navmc10132Stage`, see its own JSDoc for
+ * why the export gate defaults a missing `stage` to `'complete'` rather
+ * than pass 1) has not reached pass 3.
  */
 export function punishmentPresenceIssues(formData: FormData): ValidationIssue[] {
   const entries = punishmentEntries(formData);
   if (entries.length > 0) return [];
+  if (!navmc10132StageAtLeast(navmc10132ExportGateStage(formData), 3)) return [];
   return [
     issue(
       'navmc10132-v04-punishment-empty',
@@ -267,6 +278,13 @@ export function punishmentPresenceIssues(formData: FormData): ValidationIssue[] 
  * clause, a duration, and a remission clause (three components meaningfully
  * expressed run well past 20 characters in every MCO worked example), while
  * staying quiet on anything with enough room to plausibly hold all three.
+ *
+ * STAGE-SCOPED, THE EMPTY-ITEM-7 BLOCK ONLY (D-43, D-46, section 13.1: item
+ * 7 belongs to pass 3, the same pass as item 6). The short-entry warning
+ * below is left unscoped on purpose: it never reaches `getExportBlockers`
+ * regardless of stage (severity 'warn'), so there is nothing to scope.
+ * Silent on an empty item 7 when the export-gate stage
+ * (`navmc10132ExportGateStage`, see its own JSDoc) has not reached pass 3.
  */
 export function suspensionTermsIssues(formData: FormData): ValidationIssue[] {
   const raw = typeof formData.suspension === 'string' ? formData.suspension : '';
@@ -274,6 +292,7 @@ export function suspensionTermsIssues(formData: FormData): ValidationIssue[] {
   const SHORT_SUSPENSION_THRESHOLD = 20;
 
   if (trimmed === '') {
+    if (!navmc10132StageAtLeast(navmc10132ExportGateStage(formData), 3)) return [];
     return [
       issue(
         'navmc10132-v05-suspension-empty',

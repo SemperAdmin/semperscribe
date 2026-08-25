@@ -701,6 +701,42 @@ export function navmc10132StageAtLeast(
   return stage === 'complete' ? true : stage >= threshold;
 }
 
+/**
+ * Reads `Navmc10132Data.stage` for the EXPORT GATE only (D-43, D-46). This is
+ * deliberately NOT `navmc10132Stage` above, and the two must not be merged:
+ * they answer different questions and default oppositely on purpose.
+ *
+ * `navmc10132Stage` answers "which sections does the UI show," and defaults
+ * a missing or unrecognized value to pass 1, matching what
+ * `createEmptyNavmc10132Data` sets on a brand new document. That default is
+ * safe for the UI precisely because it is what a FRESH document actually is.
+ *
+ * The export gate cannot reuse that default. `stage` is app state, never
+ * written to the AcroForm (see `Navmc10132Data.stage`'s own JSDoc), so a
+ * document saved before this field existed has no `stage` key at all, and
+ * that silence means "predates the field," never "just started." Defaulting
+ * such a document to pass 1 here would run every later-pass blocker
+ * (V-04, V-05, V-08, and whatever is added after them) as if the fields
+ * those rules check were still untouched, silently dropping real blockers
+ * on a document that is more likely complete than not. The two wrong
+ * defaults are not symmetric: defaulting an unrecognized value to
+ * `'complete'` merely runs every rule, exactly what the export gate already
+ * did before stage scoping existed, so the worst case is a false complaint
+ * on a genuinely early document, the same complaint a clerk already knows
+ * how to read past today. Defaulting it to pass 1 instead risks the opposite,
+ * an incomplete document exporting clean. Only a `stage` key that is present
+ * AND a recognized value (explicitly including the numeral `1`, which
+ * `createEmptyNavmc10132Data` sets, so a genuinely fresh document is still
+ * scoped to pass 1 here, not swept into `'complete'`) is trusted as-is.
+ */
+export function navmc10132ExportGateStage(formData: FormData): Navmc10132Stage {
+  const value = (formData as { stage?: unknown }).stage;
+  if (value === undefined) return 'complete';
+  return (NAVMC_10132_STAGE_VALUES as readonly unknown[]).includes(value)
+    ? (value as Navmc10132Stage)
+    : 'complete';
+}
+
 export interface Navmc10132Data {
   /**
    * Which pass the document is at. See `Navmc10132Stage`.

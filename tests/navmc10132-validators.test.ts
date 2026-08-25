@@ -371,7 +371,13 @@ describe('V-08, item 13 is a date XOR the Not Appealed checkbox', () => {
   });
 
   it('trips with neither an appeal date nor Not Appealed set', () => {
-    const form = baseForm({ appealDate: '', notAppealed: false });
+    // stage: 6 — item 13 is a pass-6 field (D-43, D-46, spec section 13.1);
+    // the "-neither" branch is stage-scoped and stays silent before pass 6,
+    // so this fixture has to be AT pass 6 to prove the rule still trips
+    // once the document has actually reached it. See the export-gate stage
+    // tests (tests/navmc10132-export-gate.test.ts) for the pass-1 case
+    // proving this same rule stays SILENT on a fresh document.
+    const form = baseForm({ appealDate: '', notAppealed: false, stage: 6 });
     const issues = v08AppealDateExclusiveOfNotAppealed(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toBe('navmc10132-v08-item13-neither');
@@ -460,7 +466,13 @@ describe('W-11, item 2 shows a demand or refusal alongside item 6 punishment', (
 
 describe('V-04, item 6 punishment must not be empty', () => {
   it('trips when there are no punishment entries', () => {
-    const form = baseForm({ punishments: [] });
+    // stage: 3 — item 6 is a pass-3 field (D-43, D-46, spec section 13.1);
+    // this rule is stage-scoped and stays silent before pass 3, so the
+    // fixture has to be AT pass 3 to prove it still trips once the
+    // document has reached the field it is checking. See the export-gate
+    // stage tests (tests/navmc10132-export-gate.test.ts) for the pass-1
+    // case proving this same rule stays SILENT on a fresh document.
+    const form = baseForm({ punishments: [], stage: 3 });
     const issues = punishmentPresenceIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toBe('navmc10132-v04-punishment-empty');
@@ -475,7 +487,14 @@ describe('V-04, item 6 punishment must not be empty', () => {
 
 describe('V-05, item 7 suspension must be NONE or a specific suspension with terms', () => {
   it('trips block when item 7 is empty', () => {
-    const form = baseForm({ suspension: '' });
+    // stage: 3 — item 7 is a pass-3 field (D-43, D-46, spec section 13.1),
+    // the same pass as item 6. The empty-item-7 branch is stage-scoped and
+    // stays silent before pass 3, so the fixture has to be AT pass 3 to
+    // prove it still trips once the document has reached the field. See
+    // the export-gate stage tests (tests/navmc10132-export-gate.test.ts)
+    // for the pass-1 case proving this same branch stays SILENT on a
+    // fresh document.
+    const form = baseForm({ suspension: '', stage: 3 });
     const issues = suspensionTermsIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toBe('navmc10132-v05-suspension-empty');

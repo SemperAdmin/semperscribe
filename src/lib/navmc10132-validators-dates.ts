@@ -13,7 +13,12 @@ import type { ValidationIssue } from '@/lib/letter-validators';
 
 import type { FormData } from '@/types';
 import { parseIsoDate } from '@/lib/navmc10132-date';
-import { NAVMC_10132_DEMAND, type Navmc10132Offense } from '@/types/navmc';
+import {
+  NAVMC_10132_DEMAND,
+  navmc10132ExportGateStage,
+  navmc10132StageAtLeast,
+  type Navmc10132Offense,
+} from '@/types/navmc';
 
 /**
  * Item 1 offense rows. FormData is loosely typed, so narrow through unknown in
@@ -112,6 +117,20 @@ export function v07AppealAdvisementNotBeforePunishment(formData: FormData): Vali
  * item-13 controls was used, not about whether the typed date is a valid
  * calendar date, so a malformed-but-present string still counts as "the
  * date option was used" here. (Documented ambiguity, see module report.)
+ *
+ * STAGE-SCOPED, THE "-NEITHER" BRANCH ONLY (D-43, D-46, section 13.1: item
+ * 13 belongs to pass 6). Item 13 is unreachable before pass 6, so an empty
+ * item 13 on an earlier-stage document is not a defect, it is a field the
+ * document has not gotten to yet. Silent rather than blocking when the
+ * export-gate stage (`navmc10132ExportGateStage`, NOT `navmc10132Stage`,
+ * see that function's own JSDoc for why the export gate defaults an absent
+ * `stage` to `'complete'` rather than pass 1) has not reached pass 6.
+ *
+ * The "-both" branch is deliberately NOT stage-scoped. It fires only when
+ * BOTH `appealDate` and `notAppealed` are already set, which cannot happen
+ * on a document that has not reached item 13 yet, so it is silent on an
+ * early-stage document on its own regardless of stage, and a document that
+ * genuinely carries both values recorded is contradictory at any stage.
  */
 export function v08AppealDateExclusiveOfNotAppealed(formData: FormData): ValidationIssue[] {
   const hasAppealDate = typeof formData.appealDate === 'string' && formData.appealDate.trim() !== '';
@@ -129,6 +148,8 @@ export function v08AppealDateExclusiveOfNotAppealed(formData: FormData): Validat
     ];
   }
   if (!hasAppealDate && !hasNotAppealed) {
+    const stage = navmc10132ExportGateStage(formData);
+    if (!navmc10132StageAtLeast(stage, 6)) return [];
     return [
       issue(
         'navmc10132-v08-item13-neither',
