@@ -47,6 +47,7 @@ import {
   payTableStatus,
 } from '@/lib/navmc10132-basic-pay';
 import { combinationFindings } from '@/lib/navmc10132-combination-limits';
+import { suspensionPeriodFindings } from '@/lib/njp-suspension-period';
 
 const ITEM_6_FIELD = '6 PUNISHMENT IMPOSED';
 
@@ -836,6 +837,29 @@ export function punishmentCombinationIssues(formData: FormData): ValidationIssue
 }
 
 /**
+ * V-22 (BLOCKING). An item 7 suspension runs longer than MCM Part V para
+ * 6.a(2) allows.
+ *
+ * "Suspension of a punishment may not be for a period longer than 6 months
+ * from the date of the suspension."
+ *
+ * Item 7 collected a period in months or days with NO ceiling of any kind
+ * until 2026-08-25, so a twelve-month suspension recorded cleanly and
+ * exported onto a permanent record. That is an unlawful suspension, the same
+ * class as V-19 and V-21 rather than an advisory.
+ *
+ * The rule is computed as a DATE, not a day count, because the order says
+ * months: a suspension imposed on 31 August runs to 28 February. See
+ * njp-suspension-period.ts for the arithmetic and for the EAS caveat this
+ * app cannot check.
+ */
+export function suspensionPeriodIssues(formData: FormData): ValidationIssue[] {
+  return suspensionPeriodFindings(formData).map((finding) =>
+    issue(`navmc10132-v22-${finding.id}`, 'fail', finding.rule, finding.citation, finding.detail),
+  );
+}
+
+/**
  * V-18 (BLOCKING). Item 6 carries both a reduction and a forfeiture, and the
  * forfeiture is not recorded as computed on the reduced grade.
  *
@@ -932,5 +956,6 @@ export function punishmentIssues(formData: FormData): ValidationIssue[] {
     ...correctionalCustodyGradeIssues(formData),
     ...forfeitureCeilingIssues(formData),
     ...punishmentCombinationIssues(formData),
+    ...suspensionPeriodIssues(formData),
   ];
 }
