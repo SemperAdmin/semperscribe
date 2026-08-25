@@ -540,7 +540,18 @@ export function DocumentTypeSection({
               description="Unit Punishment Book. Records nonjudicial punishment under Article 15, UCMJ, per MCO 5800.16 Vol 14."
               note="&rarr; For NJP"
               isActive={formData.documentType === 'navmc10132'}
-              onClick={() => setFormData(prev => ({ ...prev, documentType: 'navmc10132' }))}
+              // `stage` is seeded here for the same reason page.tsx seeds it on
+              // a type change: the export gate reads an absent `stage` as
+              // `'complete'`, so a fresh UPB that never carried the field
+              // fires every later pass's blockers. `?? 1` preserves a stage
+              // already set rather than rewinding it.
+              onClick={() =>
+                setFormData(prev => ({
+                  ...prev,
+                  documentType: 'navmc10132',
+                  stage: (prev as FormData).stage ?? 1,
+                }))
+              }
             />
           </div>
         </div>

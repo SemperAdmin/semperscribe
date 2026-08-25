@@ -490,6 +490,17 @@ function NavalLetterGeneratorInner() {
     setFormData(prev => ({
       ...prev,
       documentType: newType as FormData['documentType'],
+      // SEED THE NAVMC 10132 STAGE ON FIRST SWITCH. The export gate reads an
+      // ABSENT `stage` as `'complete'` on purpose (see
+      // navmc10132ExportGateStage): a document saved before the field existed
+      // is likelier finished than freshly started, and treating a finished one
+      // as pass 1 would silently drop real blockers. That default is only safe
+      // if a NEW document actually carries the field. It did not, because
+      // createEmptyNavmc10132Data is a test helper this path never calls, so
+      // every fresh UPB read as `'complete'` and fired every later pass's
+      // blockers while the selector displayed "Notification". Preserve an
+      // existing value so re-selecting the type never rewinds the stage.
+      stage: newType === 'navmc10132' ? ((prev as FormData).stage ?? 1) : (prev as FormData).stage,
       endorsementLevel: newType === 'basic' ? '' : prev.endorsementLevel,
       basicLetterReference: newType === 'basic' ? '' : prev.basicLetterReference,
       referenceWho: newType === 'basic' ? '' : prev.referenceWho,
