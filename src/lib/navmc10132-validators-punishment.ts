@@ -10,6 +10,13 @@
  * rules, date ordering, capacity rules outside item 6, accused identity,
  * unit, EDIPI) live in sibling modules.
  *
+ * Also carries V-31 (`suspensionDuplicateTargetIssues`), which is NOT one of
+ * the section 6 rows above: it has no docs/NAVMC_10132_SPEC.md paragraph
+ * behind it at all. It exists on the subject-matter expert's determination
+ * that only one suspension may attach to one punishment, dated 2026-08-25.
+ * See its own JSDoc for the full reasoning and why the citation names the
+ * determination rather than a regulation.
+ *
  * Two rules here are deliberately weaker than their table description because
  * the underlying data cannot support the stronger claim. See the JSDoc on
  * `suspensionTermsIssues` (V-05) and `appealDecisionIncreaseIssues` (V-16) for
@@ -248,6 +255,98 @@ export function suspensionIndexBoundsIssues(formData: FormData): ValidationIssue
           (punishments.length > 0 ? `, 0 through ${punishments.length - 1}.` : '; item 6 carries no punishments to suspend.'),
       ),
     );
+  });
+
+  return issues;
+}
+
+/**
+ * V-31 (blocker). Two or more item 7 suspension entries name the same item 6
+ * `punishmentIndex`, the same punishment suspended twice over.
+ *
+ * NOT A REGULATORY CITATION, AND DELIBERATELY SO. Neither the MCM, the
+ * JAGMAN, nor MCO 5800.16 Vol 14 states a one-suspension-per-punishment
+ * rule anywhere a search by this app's authors or by a second agent could
+ * find. This rule exists on Stephen's determination as the subject-matter
+ * expert, dated 2026-08-25, not on a published paragraph. The citation
+ * field says so plainly rather than borrowing MCM Part V 5.c(8), the
+ * JAGMAN, or the MCO as if one of them said this, because none of them
+ * does, and a citation that overstates its own authority is the exact
+ * failure this app exists to prevent. Alongside the determination there is
+ * a structural fact worth stating: the NAVMC 10132 prints exactly ONE item
+ * 7 field, so even a command that meant to record two independent
+ * suspensions against one item 6 punishment has no place on the form to
+ * write the second one distinctly. If a published paragraph stating this
+ * rule ever turns up, replace the citation below with it; until then, cite
+ * the determination.
+ *
+ * SILENT on an out-of-bounds or unreadable punishmentIndex: that is
+ * `suspensionIndexBoundsIssues` (V-05 addendum)'s job. Two rules both
+ * complaining about one bad index field trains people to tune out one of
+ * them, so this rule only ever looks at indices V-05 has already accepted
+ * as in-bounds.
+ *
+ * THE ID IS KEYED ON THE DUPLICATE ENTRY'S OWN POSITION in `suspensions`,
+ * i.e. the array index this function itself iterates on to find it, NEVER
+ * on `punishmentIndex`. `punishmentIndex` is exactly the value this rule
+ * finds shared by two or more entries, so keying the id on it would hand
+ * every issue this rule emits for one shared punishmentIndex the SAME id.
+ * That is the identical failure already fixed on `suspensionPeriodFindings`
+ * (V-22, njp-suspension-period.ts) and `suspensionInterruptionAssumptionIssues`
+ * (W-17, above): this codebase renders validation lists with
+ * `key={issue.id}` (ComplianceDialog.tsx, PackageDialog.tsx), so a
+ * duplicate id does not just read oddly in a log, it makes React silently
+ * drop one of the two issues off the screen.
+ */
+export function suspensionDuplicateTargetIssues(formData: FormData): ValidationIssue[] {
+  const punishments = punishmentEntries(formData);
+  const suspensions = suspensionEntries(formData);
+
+  // Group each suspension's own array position by the punishmentIndex it
+  // targets, considering only entries suspensionIndexBoundsIssues (V-05)
+  // would accept as in-bounds. An out-of-bounds or unreadable
+  // punishmentIndex is left entirely alone here; that field is V-05's to
+  // flag, not this rule's.
+  const positionsByTarget = new Map<number, number[]>();
+  suspensions.forEach((suspension, index) => {
+    const { punishmentIndex } = suspension;
+    const inBounds =
+      Number.isInteger(punishmentIndex) &&
+      punishmentIndex >= 0 &&
+      punishmentIndex < punishments.length;
+    if (!inBounds) return;
+
+    const positions = positionsByTarget.get(punishmentIndex);
+    if (positions) positions.push(index);
+    else positionsByTarget.set(punishmentIndex, [index]);
+  });
+
+  const issues: ValidationIssue[] = [];
+  positionsByTarget.forEach((positions, punishmentIndex) => {
+    if (positions.length < 2) return;
+
+    const punishment = punishments[punishmentIndex];
+    const named = resolvePunishment(punishment.code)?.shortName ?? punishment.code;
+    const otherPositions = (position: number) =>
+      positions.filter((p) => p !== position).join(', ');
+
+    positions.forEach((position) => {
+      issues.push(
+        issue(
+          `navmc10132-v31-${position}`,
+          'block',
+          `Item 7 suspension entry ${position} suspends the same item 6 punishment ` +
+            `(${named}, index ${punishmentIndex}) as entry ${otherPositions(position)}.`,
+          'Command determination (Stephen), 2026-08-25. Not a published MCO or JAGMAN ' +
+            'paragraph. The NAVMC 10132 carries one item 7 field per punishment',
+          `Only one suspension may attach to one item 6 punishment. Item 7 entries ` +
+            `${positions.join(' and ')} both target the ${named} punishment at item 6 ` +
+            `index ${punishmentIndex}. Keep exactly one of these suspensions and remove ` +
+            'the rest, or, if a different punishment was actually meant, repoint the ' +
+            'extra entry at that punishment instead.',
+        ),
+      );
+    });
   });
 
   return issues;
@@ -1024,15 +1123,18 @@ export function forfeitureReducedGradeIssues(formData: FormData): ValidationIssu
 
 /**
  * Aggregate export. Runs every punishment-side rule in table order, blockers
- * first (V-04, V-05, V-14, V-15, V-16), then the advisory and blocker rules
- * reading the individual codes (W-05 through W-08). W-06 is a blocker
- * despite sitting among the W-numbered rules, see its own JSDoc.
+ * first (V-04, V-05, V-31, V-14, V-15, V-16), then the advisory and blocker
+ * rules reading the individual codes (W-05 through W-08). W-06 is a blocker
+ * despite sitting among the W-numbered rules, see its own JSDoc. V-31 sits
+ * beside V-05 because it is the same suspensions array, not because it
+ * shares V-05's spec paragraph — it has none, see its own JSDoc.
  */
 export function punishmentIssues(formData: FormData): ValidationIssue[] {
   return [
     ...punishmentPresenceIssues(formData),
     ...suspensionTermsIssues(formData),
     ...suspensionIndexBoundsIssues(formData),
+    ...suspensionDuplicateTargetIssues(formData),
     ...suspensionOverflowIssues(formData),
     ...punishmentAuthorizationIssues(formData),
     ...punishmentFieldCapacityIssues(formData),

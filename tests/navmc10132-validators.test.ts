@@ -50,6 +50,7 @@ import {
   punishmentPresenceIssues,
   suspensionTermsIssues,
   suspensionIndexBoundsIssues,
+  suspensionDuplicateTargetIssues,
   punishmentAuthorizationIssues,
   punishmentFieldCapacityIssues,
   appealDecisionIncreaseIssues,
@@ -536,6 +537,80 @@ describe('V-05 addendum, a structured suspension must name a punishment imposed 
   it('does not trip when there are no suspensions', () => {
     const form = baseForm({ punishments: [{ code: 'N09', days: '10' }], suspensions: [] });
     expect(suspensionIndexBoundsIssues(form)).toEqual([]);
+  });
+});
+
+describe('V-31, only one suspension may target a given item 6 punishment', () => {
+  it('trips block on both entries when two suspensions share a punishmentIndex', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '6' },
+        { punishmentIndex: 0, months: '3' },
+      ],
+    });
+    const issues = suspensionDuplicateTargetIssues(form);
+    expect(issues).toHaveLength(2);
+    expect(issues.every((i) => i.severity === 'block')).toBe(true);
+    expect(issues.every((i) => i.id.startsWith('navmc10132-v31-'))).toBe(true);
+  });
+
+  it('keys the id on each duplicate entry\'s OWN position, so two duplicates get DIFFERENT ids', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '6' },
+        { punishmentIndex: 0, months: '3' },
+      ],
+    });
+    const issues = suspensionDuplicateTargetIssues(form);
+    expect(issues.map((i) => i.id)).toEqual(['navmc10132-v31-0', 'navmc10132-v31-1']);
+    // Different ids, not merely different array entries with the same id.
+    expect(new Set(issues.map((i) => i.id)).size).toBe(2);
+  });
+
+  it('does not trip when every suspension targets a distinct punishmentIndex', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }, { code: 'N16', oralOrWritten: 'orally' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '6' },
+        { punishmentIndex: 1, months: '3' },
+      ],
+    });
+    expect(suspensionDuplicateTargetIssues(form)).toEqual([]);
+  });
+
+  it('does not trip on an empty suspensions array', () => {
+    const form = baseForm({ punishments: [{ code: 'N09', days: '14' }], suspensions: [] });
+    expect(suspensionDuplicateTargetIssues(form)).toEqual([]);
+  });
+
+  it('does not trip on a single-entry suspensions array', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+    });
+    expect(suspensionDuplicateTargetIssues(form)).toEqual([]);
+  });
+
+  it('stays silent on a shared out-of-bounds punishmentIndex, leaving that to V-05', () => {
+    // Both entries name index 5, which is out of bounds (only index 0
+    // exists). suspensionIndexBoundsIssues (V-05) owns flagging an
+    // out-of-bounds index; this rule must not also fire on it, even though
+    // the two entries technically "share" the same bad index.
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [
+        { punishmentIndex: 5, months: '6' },
+        { punishmentIndex: 5, months: '3' },
+      ],
+    });
+    expect(suspensionDuplicateTargetIssues(form)).toEqual([]);
+    // Confirm V-05 is the one actually catching the bad index, so this
+    // fixture is proven to trip *something*, not silently miscoded.
+    const boundsIssues = suspensionIndexBoundsIssues(form);
+    expect(boundsIssues).toHaveLength(2);
+    expect(boundsIssues.every((i) => i.severity === 'block')).toBe(true);
   });
 });
 

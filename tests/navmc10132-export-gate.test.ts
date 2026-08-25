@@ -258,6 +258,37 @@ describe('V-05 stops the export: item 7 suspension text is empty', () => {
 });
 
 // ---------------------------------------------------------------------------
+// V-31 - only one item 7 suspension may target a given item 6 punishmentIndex.
+// Not a section-6 spec row: see the JSDoc on suspensionDuplicateTargetIssues
+// in navmc10132-validators-punishment.ts for why the citation names a
+// command determination (Stephen, 2026-08-25) rather than a regulation.
+// ---------------------------------------------------------------------------
+
+describe('V-31 stops the export: two suspensions name the same item 6 punishmentIndex', () => {
+  it('blocks when two suspensions share a punishmentIndex, clears when they target different ones', () => {
+    const blocking = baseForm({
+      punishments: [{ code: 'N09', days: '14' }, { code: 'N16', oralOrWritten: 'orally' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '6' },
+        { punishmentIndex: 0, months: '3' },
+      ],
+    });
+    expect(getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v31-'))).toBe(true);
+
+    // Only the second suspension's punishmentIndex changes, from the
+    // duplicate 0 to the distinct 1.
+    const compliant = baseForm({
+      punishments: [{ code: 'N09', days: '14' }, { code: 'N16', oralOrWritten: 'orally' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '6' },
+        { punishmentIndex: 1, months: '3' },
+      ],
+    });
+    expect(getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v31-'))).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // V-06 - item 3 rights-certification date must not be after item 6.
 // ---------------------------------------------------------------------------
 
