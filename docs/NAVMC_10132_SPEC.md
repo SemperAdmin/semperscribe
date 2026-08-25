@@ -787,6 +787,7 @@ All still true from the 10922 build:
 | D-58 | Validation issue ids must be keyed on a UNIQUE index | CLOSED FIXED 2026-08-25, found while closing D-51 and REAL rather than theoretical. `suspensionPeriodFindings` (feeding V-22) and the new W-17 rule both built their ids from `punishmentIndex`. Nothing anywhere forbids two item 7 suspensions targeting the same item 6 punishment: `suspensionIndexBoundsIssues` checks bounds only, never uniqueness, so duplicate-target suspensions are ordinary valid input. THE CONSEQUENCE WAS VISIBLE, NOT LATENT: `ComplianceDialog.tsx` line 80 and `PackageDialog.tsx` line 95 both render the issue list with `key={issue.id}`, and React keeps only one element per key within an array render. So a clerk with two over-six-month suspensions on one punishment saw ONE V-22 blocker on screen while `getExportBlockers` returned two. Same failure shape as D-34, a real problem present in the data and invisible on the surface, reached through React's key collapsing rather than through severity mislabelling. FIX: both ids now key on the new `suspensionIndex`, which is unique across the array by construction. The id PREFIX was deliberately not changed, because the export-gate meta guard matches rules by prefix. STILL OPEN, NOT REACHABLE TODAY: `navmc10132-v20-forfeiture-over-ceiling-${index}` is emitted from two branches that would collide if one punishment code ever carried both `dollars` and `dollarsPerMonth` as exact parameters. Checked all 17 codes; none does. Latent fragility, logged rather than fixed |
 | D-59 | Only one suspension per punishment | CLOSED BUILT 2026-08-25 by Stephen's ruling, and the citation is UNUSUAL ON PURPOSE. Two or more item 7 entries must never target the same item 6 punishment. NOTHING IN THE MCM, THE JAGMAN OR MCO 5800.16 VOL 14 SAYS THIS. Two independent searches found no paragraph, so the rule rests on the subject-matter expert's determination, and V-31 cites it that way rather than borrowing a regulation that does not say it. A validator message citing a paragraph which does not support it is the exact failure class this app exists to prevent, so this is a boundary worth holding even when a plausible-looking cite is available. STRUCTURAL CORROBORATION, stated separately and never as the authority: the NAVMC 10132 carries ONE item 7 field, so the printed record has no way to express two independent suspensions distinctly. WHY IT MATTERS BEYOND TIDINESS: duplicate-target suspensions were ordinary valid input until today, and that is what made D-58's id collision and the vacation-letter mis-lookup reachable from a valid form rather than from malformed data. If a published paragraph ever turns up, replace the citation in V-31 with it |
 | D-60 | Nothing records a vacation's OUTCOME back onto the UPB | CLOSED BUILT 2026-08-25 by Stephen's ruling, structured record on the UPB. THE OBVIOUS FIX WAS WRONG AND WAS NOT BUILT: a rule warning when a suspension has no vacation remark would fire on every correct form, because most suspensions are never vacated, they simply run out and remit under MCM Part V para 6.a(3). Detection is only possible once the app knows a notice went out, which is why this needed a record rather than a rule. `vacations[]` carries the target `suspensionIndex`, the notice-served date, a FOUR-state outcome, and the outcome date with detail for a partial. Four states because 011201 requires an opportunity to respond BEFORE vacating, so pending and not-vacated are as real as vacated in full or in part. THE GAP IS CLOSED BY DERIVATION, NOT BY NAGGING: `vacationRemarks(formData)` emits the item 21 `suspension-vacated-njp` line for executed vacations only, merged in `navmc10132-acroform.ts` exactly as `overflowRemarks` already was, dated by the OUTCOME date rather than the notice date, and verified against `isPrescribedFormat`. A pending or not-vacated record emits nothing, because nothing was vacated. NO UI WAS BUILT, deliberately: the owner was away from the machine and this codebase browser-tests every UI phase before trusting it. `vacations` is NOT in any `Navmc10132Definition` section, and the exclusion list carries a note saying why, so nobody later "fixes" the gap by wiring a plain field in and reintroducing the React Hook Form clobber. Rules that fell out: V-32, V-33, W-20 |
+| D-61 | Section-level stage gating leaks fields from sections that SPAN passes | CLOSED FIXED 2026-08-25. `Navmc10132Sections` gates whole sections on `navmc10132StageAtLeast`, which is correct for a section whose fields all belong to one pass and WRONG for the three that do not. RemarksSection renders items 21 AND 16: item 21 accrues throughout the case, item 16 signs with the form's own FINAL ADMIN INIT lock and closes every remaining field in Adobe. Gating the section by its earliest field left both item 16 inputs open at notification, offering a clerk a unit diary number for an entry that has not been made, on a document with six passes of work left. THE SECTION-LEVEL TESTS COULD NOT SEE THIS: `navmc10132-stage-visibility.test.tsx` asserted the section TITLE was present at pass 1, which it correctly was, so thirteen green tests coexisted with the leak. FOUND BY BROWSER SWEEP, NOT BY THE SUITE: driving the real StageSelector through all eight stages and diffing the rendered label set surfaced it in one pass. The fix is the OffensesSection pattern, a `stage` prop and a placeholder explaining why the control is not there yet, and the guard is six new per-pass assertions that go red when the gate is removed. THE OTHER TWO SPANNING SECTIONS WERE ALREADY CORRECT: OffensesSection (item 1 at pass 1, item 5 at pass 3) and AccusedElectionSection (vessel flag at pass 1, item 2 at pass 2). No fourth spanning section exists today; a new one is the case to check first when a section title stops matching a single pass |
 
 ---
 
@@ -998,6 +999,7 @@ The pass-1 form shows exactly these sections and nothing else:
   - the rights advisement, rendered DYNAMICALLY off that checkbox, with a generate option
 - Victims, items 22A through 22E, when the offences involve one
 - NJP Authority, items 8, 8A and 8B
+- Remarks, item 21 ONLY, WITH THE ITEM 16 CONTROLS HIDDEN
 
 VICTIMS BELONG IN PASS 1 AND THE FIRST DRAFT OF THIS LIST OMITTED THEM. Stephen
 caught it 2026-08-25 against a live signed form. All twenty victim fields, 22A
@@ -1045,6 +1047,44 @@ rejection thrown before any hash check rather than a tamper report.
 Verified end to end on a real CAC-signed file: the signed revision was preserved
 byte-for-byte, the ByteRange was unchanged, every written value read back through an
 independent parser, and the locked accused name was untouched.
+
+### 13.4 Sections that span passes, and why section-level gating is not enough
+
+Three sections carry fields from more than one pass, so gating them as a unit is
+wrong in one direction or the other. Each filters its own controls instead, on a
+`stage` prop:
+
+| Section | Early field | Opens at | Late field | Opens at |
+| --- | --- | --- | --- | --- |
+| OffensesSection | item 1, article and summary | pass 1 | item 5, finding | pass 3 |
+| AccusedElectionSection | `vesselException`, advisement | pass 1 | item 2, election | pass 2 |
+| RemarksSection | item 21, remarks | pass 1 | item 16, final admin action | pass 7 |
+
+Gating one of these by its EARLIEST field leaks the late one. Gating it by its
+LATEST field hides work the clerk has to do now. Both failures are silent: the
+section renders, its title is present, and a test asserting the title passes.
+
+WHAT THE HIDDEN CONTROL IS REPLACED WITH MATTERS. Each gate renders the label plus
+a sentence saying why the control is not there yet and which stage opens it. An
+empty space reads as a missing feature and generates a bug report; a sentence reads
+as a decision. It is also what the per-pass tests assert on, so the explanation
+cannot be dropped without turning a test red.
+
+HOW THIS CLASS IS FOUND. Not by the unit suite, which is written per section and
+therefore inherits the same blind spot as the code. Drive StageSelector through all
+eight stages in a browser, collect every rendered `<label>` at each stage, and diff
+consecutive sets. Two properties fall out of the diff:
+
+- ADDITIVE. Every stage's label set is a superset of the previous stage's. A label
+  that DISAPPEARS as the stage advances is a defect, sections never close in the UI
+  because a later pass can still need to read what an earlier one recorded.
+- PLACED. Every label that appears at stage N belongs to pass N by the section 13.1
+  lock table. A label appearing earlier than its pass is the D-61 leak.
+
+The sweep costs about six minutes, nearly all of it the live preview regenerating
+on every stage change. That cost is not the sweep's, it is the open preview-debounce
+item on the work list, and it is the second place that item has shown up: it also
+stalls the renderer during ordinary typing.
 
 ---
 

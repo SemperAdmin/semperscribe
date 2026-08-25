@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { Navmc10132FormSections } from '@/components/letter/Navmc10132Sections';
 import { OffensesSection } from '@/components/letter/navmc10132/OffensesSection';
 import { AccusedElectionSection } from '@/components/letter/navmc10132/AccusedElectionSection';
+import { RemarksSection } from '@/components/letter/navmc10132/RemarksSection';
 import {
   createEmptyNavmc10132Data,
   navmc10132Stage,
@@ -259,5 +260,68 @@ describe('AccusedElectionSection: item 2 is reduced at pass 1', () => {
     expect(
       screen.getByText('The accused is attached to or embarked in a vessel'),
     ).toBeInTheDocument();
+  });
+});
+
+
+/**
+ * Item 16 is the one part of RemarksSection that does not belong to the pass
+ * its section title implies. The section renders items 21 AND 16, so every
+ * section-level assertion above passes at pass 1 while the item 16 inputs sit
+ * open underneath. Found by driving the real UI in a browser at each stage
+ * and diffing the rendered label set, not by any section-level check here,
+ * which is why these assertions target the controls rather than the card.
+ *
+ * Item 16 signs with the form's own FINAL ADMIN INIT lock, which closes every
+ * remaining field in Adobe, so a unit diary number typed at notification is a
+ * number for an entry that has not been made, on a document with six passes
+ * of work left. See spec section 13 and decision row D-43.
+ */
+describe('RemarksSection: item 16 is gated to pass 7', () => {
+  const UD = 'Item 16, unit diary (UD)';
+  const DTD = 'Item 16, date (DTD)';
+  const PLACEHOLDER = /Item 16 records the unit diary entry made after the case is closed/;
+
+  function renderAt(stage: Navmc10132Stage) {
+    return render(
+      <RemarksSection
+        formData={baseFormData({ stage })}
+        setFormData={vi.fn()}
+        SectionCard={StubSectionCard}
+        stage={stage}
+      />,
+    );
+  }
+
+  const earlier: Navmc10132Stage[] = [1, 2, 3, 4, 5, 6];
+
+  it.each(earlier)('hides both item 16 inputs at pass %s', (stage) => {
+    renderAt(stage);
+
+    expect(screen.queryByText(UD)).not.toBeInTheDocument();
+    expect(screen.queryByText(DTD)).not.toBeInTheDocument();
+    expect(screen.getByText(PLACEHOLDER)).toBeInTheDocument();
+  });
+
+  it('keeps item 21 open at pass 1, since remarks accrue throughout the case', () => {
+    renderAt(1);
+
+    expect(screen.getByText('Free text')).toBeInTheDocument();
+    expect(screen.getByText('Item 21 preview, as it will print')).toBeInTheDocument();
+  });
+
+  it('opens both item 16 inputs at pass 7', () => {
+    renderAt(7);
+
+    expect(screen.getByText(UD)).toBeInTheDocument();
+    expect(screen.getByText(DTD)).toBeInTheDocument();
+    expect(screen.queryByText(PLACEHOLDER)).not.toBeInTheDocument();
+  });
+
+  it('keeps item 16 open once the case is closed out', () => {
+    renderAt('complete');
+
+    expect(screen.getByText(UD)).toBeInTheDocument();
+    expect(screen.getByText(DTD)).toBeInTheDocument();
   });
 });

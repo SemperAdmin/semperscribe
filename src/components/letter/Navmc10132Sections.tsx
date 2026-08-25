@@ -37,9 +37,12 @@
  * one the document is currently at, per docs/NAVMC_10132_SPEC.md section 13
  * and decision rows D-43/D-46/D-47. Sections are ADDITIVE, never exclusive:
  * once a pass's fields open they stay visible at every later stage, because
- * a later pass can still need to read what an earlier one recorded. Two
- * sections filter their OWN controls at pass 1 rather than being hidden
- * outright, see OffensesSection's `stage` prop and AccusedElectionSection's.
+ * a later pass can still need to read what an earlier one recorded. Three
+ * sections filter their OWN controls rather than being hidden outright,
+ * because each carries fields from more than one pass: OffensesSection
+ * (item 1 at pass 1, item 5 at pass 3), AccusedElectionSection (the vessel
+ * flag at pass 1, item 2 at pass 2), and RemarksSection (item 21 throughout,
+ * item 16 at pass 7). See each one's `stage` prop.
  */
 
 import React from 'react';
@@ -208,6 +211,7 @@ export function Navmc10132FormSections({
         formData={formData}
         setFormData={setFormData}
         SectionCard={SectionCard}
+        stage={stage}
       />
       {stage === 'complete' && (
         <UnitDiarySection

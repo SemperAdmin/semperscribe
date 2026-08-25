@@ -14,6 +14,15 @@
  *
  * Item 16 locks the form once signed, see the helper text below the two
  * final administrative action fields.
+ *
+ * THE ITEM 16 CONTROLS ARE STAGE-GATED, hidden before "Final action
+ * recorded" (pass 7). Item 16 is the LAST thing entered on this form: its
+ * signature carries the form's own FINAL ADMIN INIT lock, which closes every
+ * remaining field in Adobe. A unit diary number typed at notification is a
+ * number for an entry that has not been made, and it would export into a
+ * document the clerk still has six passes of work left on. Item 21 above has
+ * no such gate, remarks accrue throughout the case. See OffensesSection's
+ * `stage` prop for the same pattern on item 5.
  */
 
 import React from 'react';
@@ -27,7 +36,12 @@ import {
 import { IsoDatePicker } from '@/components/letter/navmc10132/IsoDatePicker';
 import { FileText, Plus, Trash2 } from 'lucide-react';
 import { FormData } from '@/types';
-import { type Navmc10132Remark, type Navmc10132RemarkKind } from '@/types/navmc';
+import {
+  navmc10132StageAtLeast,
+  type Navmc10132Remark,
+  type Navmc10132RemarkKind,
+  type Navmc10132Stage,
+} from '@/types/navmc';
 import { composeRemarks, fitsInField } from '@/lib/navmc10132-utils';
 
 type SectionCardProps = { icon: React.ReactNode; title: string; children: React.ReactNode };
@@ -36,6 +50,8 @@ interface SectionProps {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   SectionCard: React.ComponentType<SectionCardProps>;
+  /** See the stage-gating note above the item 16 controls below. */
+  stage: Navmc10132Stage;
 }
 
 /**
@@ -131,7 +147,7 @@ function remarksOf(formData: FormData): Navmc10132Remark[] {
   return Array.isArray(formData.remarks) ? (formData.remarks as Navmc10132Remark[]) : [];
 }
 
-export function RemarksSection({ formData, setFormData, SectionCard }: SectionProps) {
+export function RemarksSection({ formData, setFormData, SectionCard, stage }: SectionProps) {
   const remarks = remarksOf(formData);
   const freeText = (formData.remarksFreeText as string) ?? '';
 
@@ -282,30 +298,43 @@ export function RemarksSection({ formData, setFormData, SectionCard }: SectionPr
         )}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <Label className="text-xs">Item 16, unit diary (UD)</Label>
-          <Input
-            value={(formData.finalAdminUd as string) ?? ''}
-            onChange={(e) => setFormData((prev) => ({ ...prev, finalAdminUd: e.target.value }))}
-            className="w-40"
-            maxLength={20}
-          />
+      {navmc10132StageAtLeast(stage, 7) ? (
+        <>
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="text-xs">Item 16, unit diary (UD)</Label>
+              <Input
+                value={(formData.finalAdminUd as string) ?? ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, finalAdminUd: e.target.value }))}
+                className="w-40"
+                maxLength={20}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Item 16, date (DTD)</Label>
+              <Input
+                value={(formData.finalAdminDtd as string) ?? ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, finalAdminDtd: e.target.value }))}
+                className="w-40"
+                maxLength={20}
+              />
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Signing item 16 locks the entire form in Adobe. The unit diary entry
+            that follows must comply with MCTFSPRIUM.
+          </p>
+        </>
+      ) : (
+        <div className="mt-6">
+          <Label className="text-xs">Item 16, final administrative action</Label>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Not yet. Item 16 records the unit diary entry made after the case is
+            closed, and signing it locks the entire form in Adobe, so it opens at
+            the Final action recorded stage.
+          </p>
         </div>
-        <div>
-          <Label className="text-xs">Item 16, date (DTD)</Label>
-          <Input
-            value={(formData.finalAdminDtd as string) ?? ''}
-            onChange={(e) => setFormData((prev) => ({ ...prev, finalAdminDtd: e.target.value }))}
-            className="w-40"
-            maxLength={20}
-          />
-        </div>
-      </div>
-      <p className="text-[11px] text-muted-foreground mt-1">
-        Signing item 16 locks the entire form in Adobe. The unit diary entry
-        that follows must comply with MCTFSPRIUM.
-      </p>
+      )}
     </SectionCard>
   );
 }
