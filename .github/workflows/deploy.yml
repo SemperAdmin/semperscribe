@@ -1,7 +1,14 @@
+# Build and publish to GitHub Pages.
+#
+# DEPLOY IS GATED ON THE TEST SUITE. The previous version ran build then
+# deploy with no test dependency, so a red suite shipped to Pages. The `test`
+# job below calls .github/workflows/test.yml through workflow_call, and both
+# build and sbom wait on it.
 name: Deploy to GitHub Pages
+
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
 
 permissions:
@@ -14,31 +21,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The full suite: typecheck, lint, and tests. Defined once in test.yml so
+  # the branch runs and the release gate can never check different things.
+  test:
+    uses: ./.github/workflows/test.yml
+
   build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build with Next.js
-        run: npm run build
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: out
-
-  # SBOM runs in parallel with deploy. Failure here does not block deploy.
-  sbom:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -49,11 +38,44 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          # Was hardcoded '20' while test.yml read .nvmrc. Two sources for one
+          # number is a drift waiting to happen, so both read the file.
+          node-version-file: .nvmrc
+          cache: npm
+
+      # `npm ci`, not `npm install`. install resolves fresh and can build
+      # against dependency versions the test job never ran, which defeats the
+      # point of gating the deploy on tests at all.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build with Next.js
+        run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  # SBOM runs in parallel with build. Failure here does not block deploy,
+  # but it does wait on tests: an SBOM for a build that never shipped is noise.
+  sbom:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Generate SBOM
         run: npm run sbom

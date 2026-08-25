@@ -1,3 +1,4 @@
+import type { Navmc10132Service } from '@/lib/navmc10132-ranks';
 import { ParagraphData } from './index';
 
 export interface Navmc10274Data {
@@ -343,7 +344,14 @@ export type Navmc10132RemarkKind =
   | 'appeal-granted'
   | 'suspension-vacated-appeal'
   | 'set-aside'
-  | 'additional-victims';
+  | 'additional-victims'
+  // Overflow carriers. Items 6 and 7 are SINGLE LINE fields and clip rather
+  // than wrapping, so a long entry loses its tail with nothing on the page
+  // to show it. When that happens the printed field reads "See Supplemental
+  // Page" and the full text lands here, which is the route the form's own
+  // page 3 ITEM 21 instruction prescribes for continuation.
+  | 'item6-overflow'
+  | 'item7-overflow';
 
 /** One of the five item 1 offense rows, carrying its item 5 finding. */
 export interface Navmc10132Offense {
@@ -388,6 +396,21 @@ export interface Navmc10132PunishmentEntry {
   oralOrWritten?: '' | 'orally' | 'in writing';
 }
 
+/** One suspended punishment. Item 7. */
+export interface Navmc10132Suspension {
+  /**
+   * Index into Navmc10132Data.punishments. A suspension is 1:1 with an
+   * imposed punishment, because a punishment never imposed cannot be
+   * suspended. Storing the index rather than a copy of the punishment
+   * keeps the two from drifting when item 6 is edited.
+   */
+  punishmentIndex: number;
+  /** Suspension period in months. Most suspensions are stated in months. */
+  months?: string;
+  /** Suspension period in days, where a command states it that way. */
+  days?: string;
+}
+
 /** A structured item 21 entry. Phase 2's composer renders these. */
 export interface Navmc10132Remark {
   /** ISO. Rendered YYYY-MM-DD, matching the instruction's own prefix. */
@@ -401,19 +424,65 @@ export interface Navmc10132Data {
   // Items 17 to 20 - accused and unit
   unit: string;
   accusedName: string;
+  /**
+   * Whose rank vocabulary item 19 draws from. The form's page 3 note fixes a
+   * CLOSED list of Marine ranks and sends every other service to its own
+   * abbreviations, requiring the RATING abbreviation for Navy petty officers.
+   * So the picker has to know the service before it can offer anything.
+   * Not printed on its own, item 19 carries the composed result.
+   */
+  accusedService?: Navmc10132Service;
   accusedRankGrade: string;
   accusedEdipi: string;
   /**
    * App-side, not printed. Pay grade alone, e.g. 'E5'. Drives warning W-08:
-   * Marines in the grade of E-6 or above may not be reduced in paygrade
-   * (MCO 5800.16 Vol 14 para 010302.C).
+   * Marines at E-6 or above and Sailors at E-7 or above may not be reduced in
+   * paygrade (MCO 5800.16 Vol 14 para 010302.C).
    */
   accusedPayGrade: string;
+  /**
+   * App-side, NOT PRINTED. The NAVMC 10132 has no years-of-service box, so
+   * this appears nowhere on the exported form and nothing in the acroform
+   * writer may reference it.
+   *
+   * WHY IT IS COLLECTED. Forfeiture is a dollar figure computed from BASIC
+   * PAY, and MCM Part V para 5.c(8) defines basic pay as "the basic pay fixed
+   * by statute for the grade and length of service of the person concerned."
+   * Length of service is this field. Pay grade alone does not determine a rate.
+   *
+   * WHAT IT DOES NOT DO YET. The app holds no pay table, so nothing computes
+   * or clamps a forfeiture ceiling from this. It is the input half only, per
+   * Stephen's 2026-08-24 ruling. Do not add a computation that silently
+   * assumes a rate.
+   */
+  accusedYearsOfService?: string;
+  /**
+   * Monthly sea duty or hardship duty pay, whole dollars. App-side, NOT
+   * PRINTED, and 0 or blank for most Marines.
+   *
+   * Collected because JAGMAN 0111.i fixes the forfeiture base: "Pay subject to
+   * forfeiture refers only to basic pay, plus sea duty or hardship duty pay."
+   * Omitting it does not make a ceiling conservative, it makes it WRONG in the
+   * direction that refuses a lawful forfeiture, so the app states plainly when
+   * it has computed on basic pay alone.
+   */
+  accusedSeaHardshipDutyPay?: string;
 
   // Items 1 and 5 - offenses and findings. The form has exactly five rows.
   offenses: Navmc10132Offense[];
 
   // Item 2 - accused election
+  /**
+   * Whether the accused is attached to or embarked in a vessel, so the
+   * vessel exception applies and the right to demand trial does not.
+   *
+   * SEPARATE FROM `demand` on purpose. This is a fact about the Marine's
+   * status, known before anything is served. `demand` is the accused's
+   * answer, recorded after. The A-1-c versus A-1-d choice has to be made
+   * BEFORE the accused elects anything, so it reads this rather than
+   * inferring status from a not-yet-made election.
+   */
+  vesselException?: boolean;
   demand: Navmc10132Demand;
   counselOpportunity: '' | 'have' | 'have not';
   accusedRefusedToSign: boolean;
@@ -435,6 +504,18 @@ export interface Navmc10132Data {
 
   // Items 6 and 7 - punishment
   punishments: Navmc10132PunishmentEntry[];
+  /**
+   * Pay grade the forfeiture in item 6 was computed on. App-side, not printed.
+   *
+   * Exists because of MCM Part V para 5.c(8): "If the punishment includes both
+   * reduction, whether or not suspended, and forfeiture of pay, the forfeiture
+   * must be based on the grade to which reduced." Without a recorded basis the
+   * rule is unauditable, since the printed item 6 shows only a dollar figure
+   * and the grade it came from is invisible. Validator V-18 blocks export when
+   * this does not match the reduction target. It records the CLERK's basis,
+   * and no part of the app verifies the arithmetic against a pay table.
+   */
+  forfeitureBasisGrade?: string;
   punishmentDate: string;
   /** DERIVED by Phase 2's renderPunishment(). The item 6 string. */
   punishmentImposed?: string;
@@ -453,6 +534,21 @@ export interface Navmc10132Data {
    */
   punishmentOverflowToItem21?: boolean;
   suspension: string;
+  /**
+   * Item 7, structured. Each entry names an index into `punishments` plus a
+   * period, so a punishment never imposed cannot be suspended. DERIVES the
+   * `suspension` string above through renderSuspension(), the same
+   * relationship punishments[] has to punishmentImposed.
+   */
+  suspensions?: Navmc10132Suspension[];
+  /**
+   * TRUE when the rendered item 7 text exceeds the field and carries
+   * "See Supplemental Page" with the full text in item 21. Item 7 is a
+   * SINGLE LINE field and clips rather than wrapping, so two suspended
+   * punishments overflow it on their own. Mirrors
+   * punishmentOverflowToItem21 for item 6.
+   */
+  suspensionOverflowToItem21?: boolean;
 
   // Item 8 - NJP authority
   njpAuthorityName: string;
@@ -506,10 +602,12 @@ export function createEmptyNavmc10132Data(): Navmc10132Data {
   return {
     unit: '',
     accusedName: '',
+    accusedService: 'USMC',
     accusedRankGrade: '',
     accusedEdipi: '',
     accusedPayGrade: '',
     offenses: Array.from({ length: 5 }, () => ({ ...NAVMC_10132_EMPTY_OFFENSE })),
+    vesselException: false,
     demand: '',
     counselOpportunity: '',
     accusedRefusedToSign: false,
@@ -520,6 +618,8 @@ export function createEmptyNavmc10132Data(): Navmc10132Data {
     punishmentDate: '',
     punishmentsConcurrent: false,
     suspension: '',
+    suspensions: [],
+    suspensionOverflowToItem21: false,
     njpAuthorityName: '',
     njpAuthorityGrade: '',
     njpAuthorityEdipi: '',

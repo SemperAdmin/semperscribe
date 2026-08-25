@@ -32,12 +32,22 @@ import {
   Gavel, Plus, Trash2, AlertTriangle, HelpCircle, Info,
 } from 'lucide-react';
 
+import { reducibleGrades, ranksAtGrade, reducedPayGrade } from '@/lib/navmc10132-ranks';
 import {
   renderPunishment, Navmc10132PunishmentRenderError,
   fitsInField, overflowBy,
   resolvePunishment, authoritySatisfies,
-  NAVMC_10132_RELEASE_ONE_PUNISHMENTS,
 } from '@/lib/navmc10132-utils';
+import {
+  NJP_AUTHORITY_LEVEL_LABEL,
+  releaseOnePunishmentsFor,
+  resolveAuthorityLevel,
+} from '@/lib/navmc10132-punishments';
+import {
+  forfeitureCeiling,
+  payTableStatus,
+  type ForfeitureCeiling,
+} from '@/lib/navmc10132-basic-pay';
 
 import {
   type Navmc10132PunishmentEntry,
@@ -61,6 +71,52 @@ function currentPunishments(formData: FormData): Navmc10132PunishmentEntry[] {
 export function PunishmentSection({ formData, setFormData, SectionCard }: SectionProps) {
   const punishments = currentPunishments(formData);
   const [codeToAdd, setCodeToAdd] = React.useState('');
+
+  // The picker's contents follow item 8A. MCM Part V para 5.b(2) splits the
+  // enlisted ceiling on the GRADE of the imposing officer, so a company-grade
+  // authority is offered a strictly smaller list than a field-grade one.
+  // Derived on every render from a pure function of one string, so there is
+  // nothing to memoise and nothing to keep in sync.
+  const authorityGrade = (formData.njpAuthorityPayGrade as string) ?? '';
+  const options = releaseOnePunishmentsFor(authorityGrade);
+
+  // Forfeiture ceilings. Computed on the BASIS grade, which V-18 has already
+  // forced to the reduction target whenever a reduction is imposed, falling
+  // back to item 19 only when none is. Null whenever the app cannot stand
+  // behind a figure: a superseded pay table, an unset length of service, a
+  // blank cell. Null renders as an explanation, never as a missing ceiling
+  // the clerk might read as "no limit".
+  const payTable = payTableStatus(
+    typeof formData.punishmentDate === 'string' ? formData.punishmentDate : '',
+  );
+  const basisGrade =
+    (typeof formData.forfeitureBasisGrade === 'string' && formData.forfeitureBasisGrade.trim()) ||
+    (typeof formData.accusedPayGrade === 'string' ? formData.accusedPayGrade : '');
+  // The status is passed in rather than checked here. forfeitureCeiling now
+  // requires it and returns a reason when it declines, so the "nothing
+  // computes on a superseded table" rule is enforced by the module rather
+  // than by this component remembering to ask first.
+  const ceilingResult = forfeitureCeiling({
+    status: payTable,
+    payGrade: basisGrade,
+    yearsOfService:
+      typeof formData.accusedYearsOfService === 'string' ? formData.accusedYearsOfService : '',
+    seaHardshipDutyPay:
+      typeof formData.accusedSeaHardshipDutyPay === 'string'
+        ? formData.accusedSeaHardshipDutyPay
+        : '',
+  });
+  const ceiling = ceilingResult.kind === 'ceiling' ? ceilingResult.ceiling : null;
+  const ceilingDetail =
+    ceilingResult.kind === 'ceiling' ? payTable.detail : ceilingResult.detail;
+
+  // A code selected before item 8A was set can become unavailable once it is.
+  // DERIVED, not cleared by an effect: the pending selection is read through
+  // this rather than written back to state, so there is no cascading render
+  // and no moment where the Select shows a code the Add button will refuse.
+  const pendingUnavailable =
+    codeToAdd !== '' &&
+    options.some((o) => o.punishment.code === codeToAdd && !o.available);
 
   // Concurrency describes how two or more punishments combine (MCM Part V
   // para 5.d), so it belongs to the set rather than to any single code. It
@@ -90,6 +146,11 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
 
   const addPunishment = () => {
     if (!codeToAdd) return;
+    // Second line of defence behind the disabled SelectItem. The picker can
+    // go stale between a selection and a click if item 8A changes in between,
+    // and adding a punishment this commander may not impose is worse than a
+    // click that does nothing.
+    if (options.some((o) => o.punishment.code === codeToAdd && !o.available)) return;
     updateEntries((list) => [...list, { code: codeToAdd }]);
     setCodeToAdd('');
   };
@@ -145,11 +206,20 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
   // Same guard shape for the overflow flag. This only clears the flag
   // when the text has shrunk back under the field's capacity, it never
   // sets it, so it cannot fight with the user's own checkbox below.
+  // AUTOMATIC in both directions, matching item 7. Overflow is a fact about
+  // a single-line field rather than a preference: item 6 physically cannot
+  // hold the text, and the only lawful alternative is carrying it to item 21,
+  // which the form's page 3 ITEM 21 instruction prescribes. This used to set
+  // only on a checkbox, so an untouched box printed a clipped legal record.
   React.useEffect(() => {
-    if (fits && formData.punishmentOverflowToItem21) {
+    if (previewError) return;
+    const carried = Boolean(formData.punishmentOverflowToItem21);
+    if (!fits && !carried) {
+      setFormData((prev) => ({ ...prev, punishmentOverflowToItem21: true }));
+    } else if (fits && carried) {
       setFormData((prev) => ({ ...prev, punishmentOverflowToItem21: false }));
     }
-  }, [fits, formData.punishmentOverflowToItem21, setFormData]);
+  }, [fits, previewError, formData.punishmentOverflowToItem21, setFormData]);
 
   return (
     <SectionCard icon={<Gavel className="mr-2 h-5 w-5" />} title="Punishment (Items 6 and 10)">
@@ -186,7 +256,16 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
                 </CardHeader>
                 {code && (
                   <CardContent className="space-y-3 pt-0">
-                    <ParameterInputs code={code} entry={entry} onChange={(patch) => updateEntry(index, patch)} />
+                    <ParameterInputs
+                      code={code}
+                      entry={entry}
+                      onChange={(patch) => updateEntry(index, patch)}
+                      accusedPayGrade={
+                        typeof formData.accusedPayGrade === 'string' ? formData.accusedPayGrade : ''
+                      }
+                      ceiling={ceiling}
+                      ceilingDetail={ceilingDetail}
+                    />
                     <EntryWarnings code={code} entry={entry} authorityGrade={(formData.njpAuthorityPayGrade as string) ?? ''} />
                   </CardContent>
                 )}
@@ -195,26 +274,46 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
           })}
         </div>
 
-        <div className="flex flex-wrap items-end gap-2 rounded-md border border-dashed p-3">
-          <div className="min-w-[280px] flex-1 space-y-1">
-            <Label className="text-xs">Add a punishment</Label>
-            <Select value={codeToAdd} onValueChange={setCodeToAdd}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a punishment code" />
-              </SelectTrigger>
-              <SelectContent>
-                {NAVMC_10132_RELEASE_ONE_PUNISHMENTS.map((p) => (
-                  <SelectItem key={p.code} value={p.code}>
-                    {p.code} - {p.description}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="space-y-2 rounded-md border border-dashed p-3">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[280px] flex-1 space-y-1">
+              <Label className="text-xs">Add a punishment</Label>
+              <Select value={codeToAdd} onValueChange={setCodeToAdd}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a punishment code" />
+                </SelectTrigger>
+                <SelectContent>
+                  {options.map(({ punishment, available, reason }) => (
+                    <SelectItem
+                      key={punishment.code}
+                      value={punishment.code}
+                      disabled={!available}
+                      className={available ? undefined : 'opacity-60'}
+                    >
+                      <span className="block">
+                        {punishment.code} - {punishment.description}
+                      </span>
+                      {!available && (
+                        <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                          {reason}
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              onClick={addPunishment}
+              disabled={!codeToAdd || pendingUnavailable}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              Add
+            </Button>
           </div>
-          <Button type="button" onClick={addPunishment} disabled={!codeToAdd}>
-            <Plus className="mr-1 h-4 w-4" />
-            Add
-          </Button>
+
+          <AuthorityLevelNote authorityGrade={authorityGrade} options={options} />
         </div>
         <p className="flex items-start gap-1 text-[11px] text-muted-foreground">
           <Info className="mt-0.5 h-3 w-3 shrink-0" />
@@ -258,32 +357,30 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
             </p>
           )}
           {!previewError && !fits && (
-            <div className="space-y-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2">
-              <p className="flex items-start gap-1 text-[11px]">
+            <div className="space-y-1 rounded-md border border-amber-500/50 bg-amber-500/10 p-2">
+              <p className="flex items-start gap-1 text-[11px] font-medium text-amber-800">
                 <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-amber-600" />
-                This rendered punishment does not fit item 6. MCO 5800.16 Vol 14 para 011103
-                prescribes the escape hatch, item 6 reads "See Supplemental Page" and the full
-                text goes in item 21 instead.
+                Carried into item 21 automatically.
               </p>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="punishment-overflow"
-                  checked={!!formData.punishmentOverflowToItem21}
-                  onCheckedChange={(checked) =>
-                    setFormData((prev) => ({ ...prev, punishmentOverflowToItem21: checked === true }))
-                  }
-                />
-                <Label htmlFor="punishment-overflow" className="text-xs">
-                  Send full text to item 21, item 6 reads See Supplemental Page
-                </Label>
-              </div>
+              <p className="text-[11px] text-amber-800">
+                This rendered punishment does not fit item 6, which clips rather than
+                wrapping. Item 6 now prints &quot;See Supplemental Page&quot; and the full
+                text above is written into item 21 as a dated entry. Shorten the punishment
+                and this reverses itself.
+              </p>
               <p className="text-[11px] text-muted-foreground">
-                This is not rare. The MCO's own worked example for combined punishments renders
-                to 160 characters against this 123 character field.
+                This is not rare. The MCO&apos;s own worked example for combined punishments
+                renders to 160 characters against this 123 character field.
               </p>
             </div>
           )}
         </div>
+
+        <ForfeitureBasisGrade
+          formData={formData}
+          setFormData={setFormData}
+          punishments={punishments}
+        />
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
@@ -312,14 +409,44 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
   );
 }
 
+/**
+ * Caps a typed or pasted duration at the code's own statutory ceiling.
+ *
+ * Exceeding the MCM Part V 5.b ceiling is unlawful, not merely unusual, so
+ * the field refuses the value rather than accepting it and flagging it after
+ * the fact. V-06 blocks the export as a second line of defence for data
+ * arriving by import rather than by typing.
+ *
+ * Anything not yet a plain non-negative integer passes through untouched, so
+ * an empty field, a lone minus, or a half-typed number stays editable. A
+ * code carrying no ceiling for this parameter clamps nothing.
+ */
+function clampToCeiling(raw: string, ceiling: number | undefined): string {
+  if (ceiling === undefined) return raw;
+  if (!/^\d+$/.test(raw)) return raw;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return raw;
+  return value > ceiling ? String(ceiling) : raw;
+}
+
 function ParameterInputs({
   code,
   entry,
   onChange,
+  accusedPayGrade,
+  ceiling,
+  ceilingDetail,
 }: {
   code: ReturnType<typeof resolvePunishment>;
   entry: Navmc10132PunishmentEntry;
   onChange: (patch: Partial<Navmc10132PunishmentEntry>) => void;
+  /** Item 19's pay grade. The lawful reduction target derives from it, so
+   *  the reduction input needs it rather than asking the clerk twice. */
+  accusedPayGrade: string;
+  /** Null when the app will not state a ceiling. Never treat null as "no limit". */
+  ceiling: ForfeitureCeiling | null;
+  /** Why there is or is not a ceiling. Shown either way. */
+  ceilingDetail: string;
 }) {
   if (!code) return null;
   return (
@@ -329,11 +456,15 @@ function ParameterInputs({
           case 'days':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">Days</Label>
+                <Label className="text-xs">
+                  Days{code.maxDays !== undefined ? ` (max ${code.maxDays})` : ''}
+                </Label>
                 <Input
                   type="number"
+                  min={1}
+                  max={code.maxDays}
                   value={entry.days ?? ''}
-                  onChange={(e) => onChange({ days: e.target.value })}
+                  onChange={(e) => onChange({ days: clampToCeiling(e.target.value, code.maxDays) })}
                 />
               </div>
             );
@@ -351,7 +482,9 @@ function ParameterInputs({
           case 'dollars':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">Forfeiture</Label>
+                <Label className="text-xs">
+                  Forfeiture{ceiling ? ` (max $${ceiling.sevenDaysPay})` : ''}
+                </Label>
                 <div className="flex items-center gap-1">
                   <span className="text-sm text-muted-foreground">$</span>
                   <Input
@@ -360,12 +493,21 @@ function ParameterInputs({
                     onChange={(e) => onChange({ dollars: e.target.value })}
                   />
                 </div>
+                <CeilingNote
+                  ceiling={ceiling}
+                  detail={ceilingDetail}
+                  max={ceiling?.sevenDaysPay}
+                  basis="seven days' pay"
+                  entered={entry.dollars}
+                />
               </div>
             );
           case 'dollarsPerMonth':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">Forfeiture per month</Label>
+                <Label className="text-xs">
+                  Forfeiture per month{ceiling ? ` (max $${ceiling.halfMonthPay})` : ''}
+                </Label>
                 <div className="flex items-center gap-1">
                   <span className="text-sm text-muted-foreground">$</span>
                   <Input
@@ -374,30 +516,80 @@ function ParameterInputs({
                     onChange={(e) => onChange({ dollarsPerMonth: e.target.value })}
                   />
                 </div>
+                <CeilingNote
+                  ceiling={ceiling}
+                  detail={ceilingDetail}
+                  max={ceiling?.halfMonthPay}
+                  basis="one-half of one month's pay"
+                  entered={entry.dollarsPerMonth}
+                />
               </div>
             );
           case 'months':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">Months</Label>
+                <Label className="text-xs">
+                  Months{code.maxMonths !== undefined ? ` (max ${code.maxMonths})` : ''}
+                </Label>
                 <Input
                   type="number"
+                  min={1}
+                  max={code.maxMonths}
                   value={entry.months ?? ''}
-                  onChange={(e) => onChange({ months: e.target.value })}
+                  onChange={(e) => onChange({ months: clampToCeiling(e.target.value, code.maxMonths) })}
                 />
               </div>
             );
-          case 'gradeReducedTo':
+          case 'gradeReducedTo': {
+            // N08 is reduction to the NEXT inferior grade, 10 U.S.C.
+            // 815(b)(2)(D), so the list carries exactly one option. Reaching a
+            // lower grade sits at (b)(2)(H)(iv), for which the MCTFS table has
+            // no code, see defect report finding 12.
+            //
+            // MCO 5800.16 Vol 14 para 010302.C bars reduction of Marines at E6
+            // and above, so the list comes back empty there and the section
+            // says why rather than offering an unlawful target.
+            const targets = reducibleGrades(accusedPayGrade, { nextInferiorOnly: true });
             return (
               <div key={param} className="space-y-1">
                 <Label className="text-xs">Grade reduced to</Label>
-                <Input
-                  type="text"
-                  value={entry.gradeReducedTo ?? ''}
-                  onChange={(e) => onChange({ gradeReducedTo: e.target.value })}
-                />
+                {accusedPayGrade === '' ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Set the accused&apos;s pay grade in item 19 first. The lawful target is
+                    derived from it.
+                  </p>
+                ) : targets.length === 0 ? (
+                  <p className="text-[11px] text-amber-800">
+                    A Marine in the grade of {accusedPayGrade} cannot be reduced in paygrade
+                    (MCO 5800.16 Vol 14 para 010302.C).
+                  </p>
+                ) : (
+                  <Select
+                    value={entry.gradeReducedTo ?? ''}
+                    onValueChange={(value) => onChange({ gradeReducedTo: value })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select the target" /></SelectTrigger>
+                    <SelectContent>
+                      {targets.flatMap((grade) => {
+                        const ranks = ranksAtGrade(grade);
+                        return ranks.length > 0
+                          ? ranks.map((rank) => (
+                              <SelectItem key={rank.abbreviation} value={rank.abbreviation}>
+                                {rank.abbreviation} ({grade})
+                              </SelectItem>
+                            ))
+                          : [
+                              <SelectItem key={grade} value={grade}>
+                                {grade}
+                              </SelectItem>,
+                            ];
+                      })}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             );
+          }
           case 'oralOrWritten':
             return (
               <div key={param} className="space-y-1">
@@ -508,6 +700,224 @@ function EntryWarnings({
           {authorityWarning}
         </p>
       )}
+    </div>
+  );
+}
+
+
+/**
+ * MCM Part V para 5.c(8): "If the punishment includes both reduction, whether
+ * or not suspended, and forfeiture of pay, the forfeiture must be based on the
+ * grade to which reduced."
+ *
+ * WHY THIS CONTROL EXISTS AT ALL. The printed item 6 shows a dollar figure and
+ * nothing else. The grade that figure was computed on is invisible on the
+ * form, which makes the single most common NJP pay error unauditable after the
+ * fact. Recording the basis turns it into something validator V-18 can gate on.
+ *
+ * IT APPEARS ONLY when item 6 carries BOTH a reduction and a forfeiture,
+ * because that is the only case the rule governs. It defaults to the reduction
+ * target and is deliberately still a choice rather than a locked value: a
+ * clerk who believes the pre-reduction grade is correct should have to say so
+ * and then read the block explaining why it is not, rather than never seeing
+ * the rule.
+ *
+ * "WHETHER OR NOT SUSPENDED" is the trap. A suspended reduction reads to most
+ * people as a reduction that did not happen, so the forfeiture gets computed
+ * at the old, higher grade and the Marine is overcollected. The copy below
+ * says so in as many words. Do not shorten it.
+ */
+function ForfeitureBasisGrade({
+  formData,
+  setFormData,
+  punishments,
+}: {
+  formData: FormData;
+  setFormData: React.Dispatch<React.SetStateAction<FormData>>;
+  punishments: Navmc10132PunishmentEntry[];
+}) {
+  const reduction = punishments.find((entry) => {
+    const code = resolvePunishment(entry.code);
+    return !!code && code.parameters.includes('gradeReducedTo');
+  });
+  const hasForfeiture = punishments.some((entry) => {
+    const code = resolvePunishment(entry.code);
+    if (!code) return false;
+    return code.parameters.includes('dollars') || code.parameters.includes('dollarsPerMonth');
+  });
+
+  const currentGrade = ((formData.accusedPayGrade as string) ?? '').trim();
+  const target = reducedPayGrade(reduction?.gradeReducedTo ?? '');
+  const recorded = ((formData.forfeitureBasisGrade as string) ?? '').trim();
+
+  // Seed the basis to the lawful answer as soon as both punishments exist and
+  // the target is known. A pure function of the target, so re-running it after
+  // its own write is a no-op and the effect settles.
+  React.useEffect(() => {
+    if (!reduction || !hasForfeiture || target === '' || recorded !== '') return;
+    setFormData((prev) =>
+      ((prev.forfeitureBasisGrade as string) ?? '') === '' 
+        ? { ...prev, forfeitureBasisGrade: target }
+        : prev,
+    );
+  }, [reduction, hasForfeiture, target, recorded, setFormData]);
+
+  if (!reduction || !hasForfeiture) return null;
+
+  const wrong = target !== '' && recorded !== '' && recorded !== target;
+
+  return (
+    <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50/60 p-3">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+        <div>
+          <p className="text-xs font-medium">Forfeiture basis grade</p>
+          <p className="text-[11px] text-muted-foreground">
+            A reduction and a forfeiture are both imposed. The forfeiture must be based on the
+            grade to which reduced, <strong>even if the reduction is suspended</strong> (MCM Part V
+            para 5.c(8)). Computing it on the pre-reduction grade overcollects from the Marine.
+          </p>
+        </div>
+      </div>
+
+      {target === '' ? (
+        <p className="text-[11px] text-amber-800">
+          Select the grade reduced to above. Until the reduction names a target, the lawful
+          basis cannot be derived and export stays blocked.
+        </p>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Computed on pay grade</Label>
+            <Select
+              value={recorded}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, forfeitureBasisGrade: value }))
+              }
+            >
+              <SelectTrigger><SelectValue placeholder="Select the basis" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={target}>{target} (reduced grade)</SelectItem>
+                {currentGrade !== '' && currentGrade !== target && (
+                  <SelectItem value={currentGrade}>{currentGrade} (current grade)</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="self-end text-[11px] text-muted-foreground">
+            The app records the basis you choose. It holds no pay table, so it does not check
+            the dollar figure itself.
+          </p>
+        </div>
+      )}
+
+      {wrong && (
+        <p className="text-[11px] font-medium text-destructive">
+          {recorded} is the pre-reduction grade. The reduction targets {target}, so the
+          forfeiture must be computed on {target} pay. Export is blocked until this is {target}.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Says which NJP level the picker is currently offering, and what that costs.
+ *
+ * WHY IT NAMES THE GRADE RATHER THAN THE ECHELON. "Company level" and
+ * "battalion level" are fleet shorthand for the wrong axis: 10 U.S.C.
+ * 815(b)(2) and MCM Part V para 5.b(2) key on the GRADE of the officer
+ * imposing, not on the unit he commands. A company commanded by a major
+ * imposes field-grade punishments and a battalion under an O-3 cannot, so
+ * this copy points at item 8A and never at the unit.
+ */
+function AuthorityLevelNote({
+  authorityGrade,
+  options,
+}: {
+  authorityGrade: string;
+  options: ReturnType<typeof releaseOnePunishmentsFor>;
+}) {
+  const level = resolveAuthorityLevel(authorityGrade);
+  const withheld = options.filter((o) => !o.available).map((o) => o.punishment.code);
+
+  if (level === null) {
+    return (
+      <p className="flex items-start gap-1 text-[11px] text-muted-foreground">
+        <Info className="mt-0.5 h-3 w-3 shrink-0" />
+        {authorityGrade.trim() === ''
+          ? 'Every code is offered because item 8A carries no pay grade yet. Set it and this ' +
+            'list narrows to what that commander may actually impose (MCM Part V para 5.b(2)).'
+          : `"${authorityGrade.trim()}" is not a readable officer pay grade, so no authority ` +
+            'check has run. Enter item 8A as O1 through O10, no dash.'}
+      </p>
+    );
+  }
+
+  return (
+    <p className="flex items-start gap-1 text-[11px] text-muted-foreground">
+      <Info className="mt-0.5 h-3 w-3 shrink-0" />
+      {NJP_AUTHORITY_LEVEL_LABEL[level]} NJP, from item 8A pay grade {authorityGrade.trim()}.
+      {withheld.length > 0
+        ? ` ${withheld.join(', ')} need a commanding officer of the grade of major or above and are disabled here. Route the case to a field-grade authority or correct item 8A.`
+        : ' Every release-one code is available at this grade.'}
+    </p>
+  );
+}
+
+
+/**
+ * The forfeiture ceiling, or an honest account of why there is not one.
+ *
+ * THE DOLLAR FIELD IS NOT CLAMPED, unlike the day and month fields. A day
+ * ceiling comes off the statute and cannot be wrong. A dollar ceiling comes
+ * off a pay table this app transcribed, and silently truncating a clerk's
+ * figure to a number the app might have gotten wrong would hide the error
+ * instead of surfacing it. Validator V-20 blocks the export, and only when the
+ * table in force actually applies, so the clerk sees the number, the source,
+ * and the reason.
+ */
+function CeilingNote({
+  ceiling,
+  detail,
+  max,
+  basis,
+  entered,
+}: {
+  ceiling: ForfeitureCeiling | null;
+  detail: string;
+  max?: number;
+  basis: string;
+  entered?: string;
+}) {
+  if (ceiling === null || max === undefined) {
+    return (
+      <p className="flex items-start gap-1 text-[11px] text-muted-foreground">
+        <Info className="mt-0.5 h-3 w-3 shrink-0" />
+        No ceiling computed. {detail} Set the years of service beside item 19 if it is blank.
+      </p>
+    );
+  }
+
+  const amount = Number((entered ?? '').trim());
+  const over = Number.isFinite(amount) && entered?.trim() !== '' && amount > max;
+
+  return (
+    <div className="space-y-1">
+      {over && (
+        <p className="text-[11px] font-medium text-destructive">
+          ${amount} exceeds the ${max} ceiling at {ceiling.payGrade}. Export is blocked.
+        </p>
+      )}
+      <p className="text-[11px] text-muted-foreground">
+        {basis} at {ceiling.payGrade} is ${max}, from $
+        {ceiling.monthlySubjectToForfeiture.toFixed(2)} monthly pay subject to forfeiture.
+      </p>
+      {ceiling.notes.map((note) => (
+        <p key={note} className="text-[11px] text-amber-800">
+          {note}
+        </p>
+      ))}
     </div>
   );
 }

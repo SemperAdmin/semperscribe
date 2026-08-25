@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { ClipboardList, Copy, AlertTriangle } from 'lucide-react';
 import { FormData } from '@/types';
 import { unitDiaryBlock } from '@/lib/navmc10132-unit-diary';
+import { mctfsNjpStatements } from '@/lib/navmc10132-mctfs';
 import { copyToClipboard } from '@/lib/url-state';
 import { useToast } from '@/hooks/use-toast';
 
@@ -40,6 +41,10 @@ interface SectionProps {
 export function UnitDiarySection({ formData, SectionCard }: SectionProps) {
   const { toast } = useToast();
   const block = React.useMemo(() => unitDiaryBlock(formData), [formData]);
+  // The TTC statements are a separate read over the same data. The prose
+  // block above remains the HIST: text PRIUM 70503 asks for, so the two are
+  // complementary rather than alternatives.
+  const mctfs = React.useMemo(() => mctfsNjpStatements(formData), [formData]);
 
   const handleCopy = async () => {
     const success = await copyToClipboard(block.text);
@@ -109,6 +114,84 @@ export function UnitDiarySection({ formData, SectionCard }: SectionProps) {
           <Copy className="mr-1 h-4 w-4" />
           Copy unit diary text
         </Button>
+
+        {/*
+          The MCTFS statements themselves. Kept BELOW the prose block on
+          purpose: PRIUM 70503 wants a HIST statement on TTC 268 carrying the
+          statistical information and all punishment awarded, and the prose
+          block above is that text. The two are one handoff, not two.
+        */}
+        <div className="space-y-3 rounded-md border p-3">
+          <div>
+            <p className="text-sm font-medium">MCTFS unit diary statements</p>
+            <p className="text-[11px] text-muted-foreground">
+              Built from this form per MCTFSPRIUM 70502, 70503, 70504, 70507, and 70508. Read
+              each one before entering it. SemperScribe has no MCTFS connection and cannot
+              check anything against the master file.
+            </p>
+          </div>
+
+          {mctfs.blockers.length > 0 && (
+            <div className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-2">
+              <p className="flex items-start gap-1 text-[11px] font-semibold text-destructive">
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                Do not enter these statements yet.
+              </p>
+              <ul className="ml-5 list-disc space-y-0.5 text-[11px] text-destructive">
+                {mctfs.blockers.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {mctfs.missing.length > 0 && (
+            <div className="space-y-1 rounded-md border border-amber-500/50 bg-amber-500/10 p-2">
+              <p className="text-[11px] font-medium text-amber-800">
+                Bracketed placeholders below stand in for data the form does not carry yet:
+              </p>
+              <ul className="ml-5 list-disc space-y-0.5 text-[11px] text-amber-800">
+                {mctfs.missing.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {mctfs.statements.map((statement, i) => (
+              <div key={i} className="space-y-1">
+                <p className="text-[11px] font-medium">
+                  {statement.ttc}
+                  <span className="ml-2 font-normal text-muted-foreground">
+                    {statement.authority}
+                  </span>
+                </p>
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded border bg-muted/40 px-2 py-1 font-mono text-xs">
+                  {statement.text}
+                </pre>
+                {statement.notes.length > 0 && (
+                  <ul className="ml-4 list-disc space-y-0.5 text-[11px] text-muted-foreground">
+                    {statement.notes.map((note, j) => (
+                      <li key={j}>{note}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {mctfs.reminders.length > 0 && (
+            <div className="space-y-1 rounded-md border border-dashed p-2">
+              <p className="text-[11px] font-medium">Follow-on entries this NJP requires</p>
+              <ul className="ml-4 list-disc space-y-0.5 text-[11px] text-muted-foreground">
+                {mctfs.reminders.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
     </SectionCard>
   );

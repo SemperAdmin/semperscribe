@@ -1344,6 +1344,12 @@ const Navmc10132PunishmentRow = z.object({
   oralOrWritten: z.enum(['', 'orally', 'in writing']).optional(),
 });
 
+const Navmc10132SuspensionRow = z.object({
+  punishmentIndex: z.number(),
+  months: z.string().optional(),
+  days: z.string().optional(),
+});
+
 const Navmc10132RemarkRow = z.object({
   date: z.string().optional().default(''),
   kind: z.enum([
@@ -1370,14 +1376,19 @@ export const Navmc10132Schema = z.object({
   // Items 17 to 20
   unit: z.string().optional(),
   accusedName: z.string().min(1, 'Accused name is required (Last, First Middle)'),
+  accusedService: z.enum(['USMC', 'USN']).optional(),
   accusedRankGrade: z.string().optional(),
   accusedEdipi: edipiField().optional(),
   accusedPayGrade: z.string().optional(),
+  accusedYearsOfService: z.string().optional(),
+  accusedSeaHardshipDutyPay: z.string().optional(),
+  forfeitureBasisGrade: z.string().optional(),
 
   // Items 1 and 5
   offenses: z.array(Navmc10132OffenseRow).max(5).optional(),
 
   // Item 2
+  vesselException: z.boolean().optional(),
   demand: z
     .enum(['', NAVMC_10132_DEMAND.ACCEPT, NAVMC_10132_DEMAND.REFUSE, NAVMC_10132_DEMAND.VESSEL])
     .optional(),
@@ -1396,9 +1407,10 @@ export const Navmc10132Schema = z.object({
   punishments: z.array(Navmc10132PunishmentRow).optional(),
   punishmentDate: z.string().optional(),
   punishmentImposed: z.string().optional(),
-  punishmentsConcurrent: z.boolean().optional(),
   punishmentOverflowToItem21: z.boolean().optional(),
   suspension: z.string().optional(),
+  suspensions: z.array(Navmc10132SuspensionRow).optional(),
+  suspensionOverflowToItem21: z.boolean().optional(),
 
   // Item 8
   njpAuthorityName: z.string().optional(),
@@ -1476,8 +1488,11 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
   //   demand, counselOpportunity, accusedRefusedToSign, electionDate,
   //   bookerStatement         - AccusedElectionSection, which also coerces
   //                             demand when the refusal box is checked
+  //   accusedYearsOfService, accusedSeaHardshipDutyPay
+  //                           - AccusedRankSection, beside item 19
   //   punishments[], punishmentDate, punishmentImposed,
-  //   dispositionNoticeDate   - PunishmentSection builder
+  //   dispositionNoticeDate, forfeitureBasisGrade
+  //                           - PunishmentSection builder
   //   remarks[], remarksFreeText, remarksComposed,
   //   finalAdminUd, finalAdminDtd - RemarksSection composer
   //   victims[]               - VictimsSection grid
@@ -1485,8 +1500,31 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
   sections: [
     {
       id: 'accused',
-      title: 'Accused (Items 18-20)',
+      title: 'Unit and Accused (Items 17-20)',
+      // accusedRankGrade and accusedPayGrade were REMOVED from this section.
+      // The form's page 3 RANK/GRADE note fixes a closed Marine list and
+      // requires the rating abbreviation for Navy petty officers, so they are
+      // built by AccusedRankSection.tsx as pickers. A text input here would
+      // clobber them under the DynamicForm rule. Do not re-add them.
+      //
+      // `unit` IS here, contrary to the exclusion list above. That list
+      // reserved it for a UNITS search dialog that was never built for this
+      // form, so item 17 had NO writer anywhere in the app: the printed form
+      // exported with the unit blank and the JAGMAN rights advisement stayed
+      // permanently blocked on "the unit (item 17)". Nothing else writes the
+      // field, so a plain input here carries no clobber risk. If a UNITS
+      // picker is ever added for the 10132, remove this field in the same
+      // change, never before.
       fields: [
+        {
+          name: 'unit',
+          label: 'Unit (Item 17)',
+          type: 'text',
+          required: true,
+          className: 'md:col-span-2',
+          description:
+            'As it prints on the form, e.g. CO B, 1ST BN, 6TH MARINES, 2D MARDIV.',
+        },
         {
           name: 'accusedName',
           label: 'Accused (Last, First Middle)',
@@ -1494,24 +1532,8 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
           required: true,
           className: 'md:col-span-2',
         },
-        {
-          name: 'accusedRankGrade',
-          label: 'Rank / Grade',
-          type: 'text',
-          placeholder: 'Sgt, E5',
-          description:
-            'Use the exact spellings fixed by the form instructions. No periods in ranks, no dashes in grades, and never the digit zero for the letter O.',
-        },
-        { name: 'accusedEdipi', label: 'EDIPI', type: 'text', placeholder: '1234567890' },
-        {
-          name: 'accusedPayGrade',
-          label: 'Pay grade only',
-          type: 'text',
-          placeholder: 'E5',
-          description:
-            'Not printed. Marines in the grade of E-6 or above may not be reduced in paygrade (MCO 5800.16 Vol 14 para 010302.C).',
-        },
-      ],
+                { name: 'accusedEdipi', label: 'EDIPI', type: 'text', placeholder: '1234567890' },
+              ],
     },
     {
       id: 'rights',
@@ -1541,20 +1563,12 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
         },
       ],
     },
-    {
-      id: 'suspension',
-      title: 'Suspension of Punishment (Item 7)',
-      description:
-        'Enter NONE when no part of the punishment is suspended. Otherwise give the specific punishment, the length of the suspension, and the terms for automatic remission.',
-      fields: [
-        {
-          name: 'suspension',
-          label: 'Suspension terms',
-          type: 'text',
-          className: 'md:col-span-2',
-        },
-      ],
-    },
+    // Item 7's free-text section was REMOVED. It is now built by
+    // SuspensionSection.tsx as a selection over the punishments in item 6,
+    // because a punishment never imposed cannot be suspended. `suspension`
+    // survives as the DERIVED string, written by renderSuspension exactly
+    // as `punishmentImposed` is written by renderPunishment, so a text box
+    // bound to it would be silently discarded at export. Do not re-add it.
     {
       id: 'authority',
       title: 'NJP Authority (Items 8, 8A, 8B)',

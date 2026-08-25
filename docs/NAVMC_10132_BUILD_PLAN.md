@@ -272,7 +272,7 @@ contingency was a size-L redraw of the entire form. It is now dead work.
 Built as `src/lib/navmc10132-unit-diary.ts` plus
 `src/components/letter/navmc10132/UnitDiarySection.tsx`, registered last in
 `Navmc10132Sections.tsx`. Verified live in Chrome and by 35 assertions in
-`tools/aa-forms/tmp_check_unit_diary.mjs`, which needs promoting into `tests/` in Phase 7.
+`tools/aa-forms/verify_unit_diary.mjs`, which needs promoting into `tests/` in Phase 7.
 
 Three rulings made during the build, none of them in the plan below.
 
@@ -387,8 +387,8 @@ think is dead.
 
 **Scratch files left behind, for Stephen to remove.** The mount blocks delete.
 
-- `tools/aa-forms/tmp_check_unit_diary.mjs`
-- `tools/aa-forms/tmp_check_templates.mjs`
+- `tools/aa-forms/verify_unit_diary.mjs`
+- `tools/aa-forms/verify_templates.mjs`
 - `public/templates/navmc10132/` - five dead files, superseded by the `global/` entries
 
 

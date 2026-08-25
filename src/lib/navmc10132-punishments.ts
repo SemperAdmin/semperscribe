@@ -86,6 +86,16 @@ export interface Navmc10132Punishment {
    */
   template: string;
   /**
+   * A brief noun for this punishment, in the same abbreviation style this
+   * table's own `template` strings already use (restr, extra du, corr cust,
+   * forf, red). Phase 4's renderSuspension() uses this to name the
+   * suspended punishment, matching the form's own item 7 example, which
+   * uses "red" for a reduction. Populated only for the release-one-available
+   * codes, since a code release one never offers cannot be suspended by this
+   * app either.
+   */
+  shortName?: string;
+  /**
    * FALSE means the app refuses the code in release one. N01 to N03 are
    * officer-only and release one is enlisted. N05 is withheld pending D-10.
    */
@@ -148,6 +158,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     parameters: ['dollarsPerMonth', 'months'],
     template:
       'Forf of ${dollarsPerMonth} pay per month for {months} months. Total forf ${totalForf}.',
+    shortName: 'forf',
     releaseOneAvailable: true,
   },
   {
@@ -173,6 +184,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     maxDays: 7,
     parameters: ['days', 'suspendedFromDuty'],
     template: 'Corr cust for {days} days {suspClause}.',
+    shortName: 'corr cust',
     releaseOneAvailable: true,
   },
   {
@@ -184,6 +196,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     maxDaysPay: 7,
     parameters: ['dollars'],
     template: 'Forf of ${dollars} pay.',
+    shortName: 'forf',
     releaseOneAvailable: true,
   },
   {
@@ -195,6 +208,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     requiredAuthority: 'any',
     parameters: ['gradeReducedTo'],
     template: 'To be red to {gradeReducedTo}.',
+    shortName: 'red',
     releaseOneAvailable: true,
   },
   {
@@ -207,6 +221,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     maxDays: 14,
     parameters: ['days'],
     template: 'Extra du for {days} days.',
+    shortName: 'extra du',
     releaseOneAvailable: true,
   },
   {
@@ -219,6 +234,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     maxDays: 14,
     parameters: ['limits', 'days'],
     template: 'Restr to the limits of {limits} for {days} days, w/susp fr du.',
+    shortName: 'restr',
     releaseOneAvailable: true,
   },
   {
@@ -231,6 +247,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     maxDays: 14,
     parameters: ['limits', 'days'],
     template: 'Restr to the limits of {limits} for {days} days, w/o susp fr du.',
+    shortName: 'restr',
     releaseOneAvailable: true,
   },
   {
@@ -242,6 +259,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     maxDays: 30,
     parameters: ['days', 'suspendedFromDuty'],
     template: 'Corr cust for {days} days {suspClause}.',
+    shortName: 'corr cust',
     releaseOneAvailable: true,
   },
   {
@@ -254,6 +272,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     maxDays: 45,
     parameters: ['days'],
     template: 'Extra du for {days} days.',
+    shortName: 'extra du',
     releaseOneAvailable: true,
   },
   {
@@ -266,6 +285,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     maxDays: 60,
     parameters: ['limits', 'days'],
     template: 'Restr to the limits of {limits} for {days} days, w/susp fr du.',
+    shortName: 'restr',
     releaseOneAvailable: true,
   },
   {
@@ -278,6 +298,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     maxDays: 60,
     parameters: ['limits', 'days'],
     template: 'Restr to the limits of {limits} for {days} days, w/o susp fr du.',
+    shortName: 'restr',
     releaseOneAvailable: true,
   },
   {
@@ -288,6 +309,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     requiredAuthority: 'any',
     parameters: ['oralOrWritten'],
     template: 'To be {oralOrWritten} admonished.',
+    shortName: 'admonition',
     releaseOneAvailable: true,
   },
   {
@@ -298,6 +320,7 @@ export const NAVMC_10132_PUNISHMENTS: readonly Navmc10132Punishment[] = [
     requiredAuthority: 'any',
     parameters: ['oralOrWritten'],
     template: 'To be {oralOrWritten} reprimanded.',
+    shortName: 'reprimand',
     releaseOneAvailable: true,
   },
 ] as const;
@@ -315,6 +338,44 @@ export const NAVMC_10132_RELEASE_ONE_PUNISHMENTS: readonly Navmc10132Punishment[
   NAVMC_10132_PUNISHMENTS.filter((p) => p.releaseOneAvailable);
 
 /**
+ * What the fleet calls the TYPE of NJP, derived from the imposing officer's
+ * grade rather than from the unit echelon.
+ *
+ * "Company level" and "battalion level" are shorthand for the wrong axis.
+ * 10 U.S.C. 815(b)(2) and MCM Part V para 5.b(2) key on the GRADE of the
+ * officer imposing, not on what he commands. A company commanded by a major
+ * imposes field-grade punishments; a battalion under an O-3 cannot. So this
+ * reads item 8A and nothing else.
+ *
+ * There is no third tier for an enlisted accused. Para 5.b(2) has exactly two
+ * subparagraphs, (A) any NJP authority and (B) a commanding officer of the
+ * grade of major or lieutenant commander or above. A flag officer is field
+ * grade or above and lands in (B) with the same ceiling. The GCMCA tier at
+ * 5.b(1)(B) is the OFFICER table.
+ */
+export type NjpAuthorityLevel = 'company-grade' | 'field-grade';
+
+export const NJP_AUTHORITY_LEVEL_LABEL: Readonly<Record<NjpAuthorityLevel, string>> = {
+  'company-grade': 'Company grade',
+  'field-grade': 'Field grade',
+};
+
+/**
+ * Company grade or field grade from the item 8A pay grade alone.
+ *
+ * Returns null for anything it cannot read: an empty field, a warrant grade, a
+ * rank abbreviation typed where a pay grade belongs. Null means "do not
+ * claim a level", and every caller honors that rather than defaulting.
+ */
+export function resolveAuthorityLevel(payGrade: string): NjpAuthorityLevel | null {
+  const match = /^O(\d+)$/i.exec(payGrade.trim().replace(/-/g, ''));
+  if (!match) return null;
+  const grade = Number(match[1]);
+  if (!Number.isFinite(grade) || grade < 1 || grade > 10) return null;
+  return grade >= 4 ? 'field-grade' : 'company-grade';
+}
+
+/**
  * Pay-grade ordering used to decide whether the item 8A authority satisfies a
  * code's requiredAuthority. Field grade begins at O4 (major). GCMCA authority
  * is a billet rather than a grade, so it cannot be inferred from 8A alone and
@@ -330,4 +391,122 @@ export function authoritySatisfies(
   const grade = Number(match[1]);
   if (required === 'field-grade') return grade >= 4;
   return 'unknown'; // gcmca is a billet, not a grade
+}
+
+
+/**
+ * The punishment FAMILY a code belongs to.
+ *
+ * A family is the thing the statute regulates, and several codes can be one
+ * family: N10 and N11 are both restriction, differing only in suspension from
+ * duty. Two rules need this and must not disagree, which is why it lives here
+ * beside the table rather than privately in either caller:
+ *
+ *   - the A-1-d maximum-punishment ceiling, which states one sentence per
+ *     family rather than one per code, and
+ *   - the MCM Part V para 5.d combination limits, which prohibit certain
+ *     FAMILIES from being combined and cap the total within one family.
+ *
+ * 'confinement' and 'arrest-in-quarters' have NO code in the MCTFS table
+ * today. They are named anyway so the 5.d gates that mention them are written
+ * against the real rule rather than silently omitted, and so a future code
+ * lands in the right family instead of falling through as unclassified.
+ */
+export type PunishmentFamily =
+  | 'admonition'
+  | 'arrest-in-quarters'
+  | 'confinement'
+  | 'correctional-custody'
+  | 'extra-duties'
+  | 'forfeiture-days-pay'
+  | 'forfeiture-monthly'
+  | 'reduction'
+  | 'restriction';
+
+const PUNISHMENT_FAMILY: Readonly<Record<string, PunishmentFamily>> = {
+  N01: 'restriction',
+  N02: 'restriction',
+  N03: 'arrest-in-quarters',
+  N04: 'forfeiture-monthly',
+  N05: 'restriction',
+  N06: 'correctional-custody',
+  N07: 'forfeiture-days-pay',
+  N08: 'reduction',
+  N09: 'extra-duties',
+  N10: 'restriction',
+  N11: 'restriction',
+  N12: 'correctional-custody',
+  N13: 'extra-duties',
+  N14: 'restriction',
+  N15: 'restriction',
+  N16: 'admonition',
+  N17: 'admonition',
+};
+
+/** The family a code belongs to, or null for a code this table does not know. */
+export function punishmentFamily(code: string): PunishmentFamily | null {
+  return PUNISHMENT_FAMILY[code.trim().toUpperCase()] ?? null;
+}
+
+/** One release-one code, with whether the item 8A authority may impose it. */
+export interface PunishmentAvailability {
+  punishment: Navmc10132Punishment;
+  available: boolean;
+  /** Empty when available and verified. Otherwise why the picker says what it says. */
+  reason: string;
+  /** True when item 8A cannot be read, so availability is assumed, not proven. */
+  unverified: boolean;
+}
+
+/**
+ * The item 6 picker's options, gated on the imposing officer's grade.
+ *
+ * WHY GATE THE PICKER AND NOT ONLY WARN AFTER THE FACT. W-05 already warns
+ * once a code is selected, but by then the clerk has typed the days, read
+ * them back in the item 6 preview, and formed an expectation. A punishment
+ * a company-grade commander may not impose should not look selectable in the
+ * first place.
+ *
+ * DISABLED, NOT HIDDEN. A hidden code reads as a code that does not exist,
+ * and the clerk who needs 45 days of extra duty would conclude the app cannot
+ * do it rather than that this CO cannot order it. The remedy here is real and
+ * worth naming: route the case to a field-grade authority, or correct item 8A.
+ * N01 through N03 and N05 stay hidden, because those are out of release scope
+ * rather than out of this commander's reach, which is a different fact.
+ *
+ * AN UNREADABLE ITEM 8A OFFERS EVERYTHING. Item 8A sits in a later section
+ * than item 6, so unset is the normal state while the clerk works, and
+ * gating on a grade nobody has entered yet would invert the form's own
+ * preparation order. Those options come back with `unverified` true so the
+ * caller can say the check has not run rather than implying it passed.
+ */
+export function releaseOnePunishmentsFor(authorityPayGrade: string): PunishmentAvailability[] {
+  return NAVMC_10132_RELEASE_ONE_PUNISHMENTS.map((punishment) => {
+    const result = authoritySatisfies(punishment.requiredAuthority, authorityPayGrade);
+
+    if (result === true) {
+      return { punishment, available: true, reason: '', unverified: false };
+    }
+
+    if (result === 'unknown') {
+      return {
+        punishment,
+        available: true,
+        unverified: true,
+        reason:
+          'Requires a commanding officer of the grade of major or above (10 U.S.C. ' +
+          '815(b)(2)(H)). Item 8A carries no readable pay grade, so this has not been ' +
+          'checked.',
+      };
+    }
+
+    return {
+      punishment,
+      available: false,
+      unverified: false,
+      reason:
+        `Requires a field-grade authority, O-4 or above (10 U.S.C. 815(b)(2)(H)). ` +
+        `Item 8A is ${authorityPayGrade.trim()}.`,
+    };
+  });
 }

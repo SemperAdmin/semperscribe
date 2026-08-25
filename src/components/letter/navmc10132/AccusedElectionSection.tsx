@@ -31,9 +31,16 @@ import {
 } from '@/components/ui/select';
 import { IsoDatePicker } from '@/components/letter/navmc10132/IsoDatePicker';
 import { FormData } from '@/types';
-import { Gavel } from 'lucide-react';
+import { Gavel, FileDown, Ship, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  rightsElectionReadiness,
+  renderRightsElection,
+  maximumPunishmentStatus,
+} from '@/lib/njp-package';
 import { bookerStatement, coerceDemand } from '@/lib/navmc10132-utils';
 import { NAVMC_10132_DEMAND, type Navmc10132Demand } from '@/types/navmc';
+import { NJP_AUTHORITY_LEVEL_LABEL } from '@/lib/njp-maximum-punishment';
 
 type SectionCardProps = { icon: React.ReactNode; title: string; children: React.ReactNode };
 
@@ -114,6 +121,30 @@ export function AccusedElectionSection({ formData, setFormData, SectionCard }: S
         refusal fields, reproduced here so the clerk sees what those scripts would have written
         instead of trusting whatever text the blank shipped with.
       </p>
+
+      <div className="mt-3 flex items-start gap-2 rounded-md border p-3">
+        <Ship className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="vessel-exception"
+              checked={!!formData.vesselException}
+              onCheckedChange={(checked) =>
+                setFormData((prev) => ({ ...prev, vesselException: checked === true }))
+              }
+            />
+            <Label htmlFor="vessel-exception" className="text-sm">
+              The accused is attached to or embarked in a vessel
+            </Label>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            A fact about the accused&apos;s status, not an election. It decides which rights
+            advisement is served, A-1-c when it applies and A-1-d when it does not, and that
+            choice is made before the accused answers anything. Set it here rather than
+            reading it back off the demand below.
+          </p>
+        </div>
+      </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div>
@@ -214,6 +245,102 @@ export function AccusedElectionSection({ formData, setFormData, SectionCard }: S
           of punishment.
         </p>
       </div>
+
+      <RightsElectionButton formData={formData} />
     </SectionCard>
+  );
+}
+
+/**
+ * Generates the JAGMAN rights advisement, A-1-c or A-1-d, from the data this
+ * section and the two above it already carry.
+ *
+ * The button sits HERE rather than in a package panel elsewhere because this
+ * is the section that owns the last field it needs. The form's section order
+ * follows the paper's own preparation order, so the button appears at the
+ * point in the process where the document is actually served.
+ *
+ * It stays enabled before any election is recorded, on purpose. The
+ * advisement is what the accused reads in order to elect, so requiring the
+ * election first would invert the sequence.
+ */
+function RightsElectionButton({ formData }: { formData: FormData }) {
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const readiness = rightsElectionReadiness(formData);
+  const vessel = !!formData.vesselException;
+  // The ceiling turns on item 8A, which sits in a LATER section. This is
+  // advisory only: the advisement still generates with paragraph 3 blank,
+  // because it is served before the authority is even recorded.
+  const maximum = maximumPunishmentStatus(formData);
+
+  const generate = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const doc = await renderRightsElection(formData);
+      const url = window.URL.createObjectURL(
+        new Blob([new Uint8Array(doc.bytes)], { type: 'application/pdf' }),
+      );
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = doc.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not generate the advisement.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 space-y-2 rounded-md border border-dashed p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-medium">
+            Rights advisement, JAGMAN Appendix {vessel ? 'A-1-c' : 'A-1-d'}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {vessel
+              ? 'Vessel exception applies, so the accused cannot refuse NJP and A-1-c is served.'
+              : 'Vessel exception does not apply, so A-1-d is served and it carries the right to refuse.'}
+          </p>
+        </div>
+        <Button type="button" variant="outline" size="sm" disabled={!readiness.ready || busy} onClick={generate}>
+          {busy ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <FileDown className="mr-2 h-4 w-4" />
+          )}
+          Generate
+        </Button>
+      </div>
+
+      {!readiness.ready && (
+        <p className="text-[11px] text-muted-foreground">
+          Still needed: {readiness.missing.join(', ')}.
+        </p>
+      )}
+      {error && <p className="text-[11px] text-destructive">{error}</p>}
+      <p className="text-[11px] text-muted-foreground">
+        Served before the accused elects anything, so it carries no finding and no imposed
+        punishment.
+      </p>
+      <div className="rounded-md bg-muted/40 p-2">
+        <p className="text-[11px] font-medium">
+          Maximum punishment, A-1-d paragraph 3
+          {maximum.level ? ` - ${NJP_AUTHORITY_LEVEL_LABEL[maximum.level]}` : ''}
+        </p>
+        <p className="text-[11px] text-muted-foreground">{maximum.detail}</p>
+        {maximum.notes.map((note) => (
+          <p key={note} className="mt-1 text-[11px] text-muted-foreground">
+            {note}
+          </p>
+        ))}
+      </div>
+    </div>
   );
 }

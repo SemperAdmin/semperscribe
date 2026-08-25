@@ -43,10 +43,20 @@ interface SectionProps {
  * chronological order the instruction lists them. Labels describe the rule
  * being invoked, not the raw kind slug, so a user picking from the Select
  * reads what the remark DOES rather than an internal identifier.
+ *
+ * PARTIAL ON PURPOSE, and this is a deliberate hole rather than an
+ * oversight. Navmc10132RemarkKind also carries 'item6-overflow' and
+ * 'item7-overflow', which are written AUTOMATICALLY by PunishmentSection and
+ * SuspensionSection when the punishment or suspension text will not fit its
+ * printed field. Those two are not clerk-authored formats, and offering them
+ * in this picker would let a clerk hand-write a second overflow entry that
+ * the automatic writer would then fight over, printing the punishment twice
+ * or not at all. The picker is driven by REMARK_KIND_ORDER below, which
+ * lists only the authorable kinds, so a new kind added to the type without a
+ * decision here simply does not appear rather than crashing.
  */
-const REMARK_KIND_META: Record<
-  Navmc10132RemarkKind,
-  { label: string; helper: string; multiline: boolean }
+const REMARK_KIND_META: Partial<
+  Record<Navmc10132RemarkKind, { label: string; helper: string; multiline: boolean }>
 > = {
   'additional-offenses': {
     label: 'Item 1 additional offenses',
@@ -164,7 +174,17 @@ export function RemarksSection({ formData, setFormData, SectionCard }: SectionPr
     <SectionCard icon={<FileText className="mr-2 h-5 w-5" />} title="Items 21 and 16, Remarks">
       <div className="space-y-4">
         {remarks.map((remark, index) => {
-          const meta = REMARK_KIND_META[remark.kind];
+          // Falls back rather than indexing into nothing. REMARK_KIND_META is
+          // Partial because the two overflow kinds are synthesised at EXPORT
+          // time by navmc10132-acroform.ts and never stored in remarks[], so
+          // this branch is unreachable for anything this section created. It
+          // stays defensive because an imported draft is not this section's
+          // own output, and a missing label must not take the page down.
+          const meta = REMARK_KIND_META[remark.kind] ?? {
+            label: remark.kind,
+            helper: 'This remark is written automatically at export and is not edited here.',
+            multiline: false,
+          };
           const isStayKind = remark.kind === 'appeal-stayed-restriction'
             || remark.kind === 'appeal-stayed-extra-duties';
           return (
@@ -188,7 +208,7 @@ export function RemarksSection({ formData, setFormData, SectionCard }: SectionPr
                     </SelectTrigger>
                     <SelectContent>
                       {REMARK_KIND_ORDER.map((kind) => (
-                        <SelectItem key={kind} value={kind}>{REMARK_KIND_META[kind].label}</SelectItem>
+                        <SelectItem key={kind} value={kind}>{REMARK_KIND_META[kind]?.label ?? kind}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

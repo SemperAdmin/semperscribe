@@ -11,6 +11,7 @@
 // The remark types are canonical in the data model. Redeclaring them here
 // would let the two drift silently.
 import type { Navmc10132Remark, Navmc10132RemarkKind } from '@/types/navmc';
+import { formatNavalDate } from '@/lib/navmc10132-date';
 export type { Navmc10132Remark, Navmc10132RemarkKind };
 
 /**
@@ -27,6 +28,18 @@ const CONTINUATION_INDENT = '            '; // 12 spaces, matches the instructio
  * Their detail carries only the "d Mmm yy" submission date that sits in the
  * middle of the sentence, never a full punishment description.
  */
+/**
+ * "Item 7. 2 Jun 12.  Extra du for 10 days, susp for 5 days, ..."
+ *
+ * An unparseable or absent date drops the date segment rather than printing
+ * a wrong one, leaving "Item 7. <text>". The entry still identifies which
+ * item it continues, which is the part a reviewer needs.
+ */
+function renderOverflow(label: string, iso: string, detail: string): string {
+  const stamped = formatNavalDate(iso);
+  return stamped ? `${label}. ${stamped}. ${detail}` : `${label}. ${detail}`;
+}
+
 function renderRemark(remark: Navmc10132Remark): string {
   const { date, kind, detail } = remark;
   switch (kind) {
@@ -50,6 +63,20 @@ function renderRemark(remark: Navmc10132Remark): string {
       return `${date} ITEM 14: ${detail}, is set aside. All rights, privileges and property affected will be restored.`;
     case 'additional-victims':
       return renderContinuationBlock(date, 'ITEM 22: Additional Victims:', detail);
+    // Overflow carriers read "Item 6. 2 Jun 12.  <text>", label first and the
+    // date in the form's own "D Mon YY" style, per Stephen 2026-08-24.
+    //
+    // This DIFFERS on purpose from the "YYYY-MM-DD ITEM n:" shape the other
+    // kinds use. The page 3 ITEM 21 instruction fixes that shape for the
+    // entries it lists as required, and a continuation carry is not one of
+    // them. It falls under the instruction's own closing clause, "this item
+    // may be used to record other appropriate remarks or information," where
+    // no shape is prescribed. Do not "harmonise" the two, the required
+    // entries above must keep the prescribed prefix.
+    case 'item6-overflow':
+      return renderOverflow('Item 6', date, detail);
+    case 'item7-overflow':
+      return renderOverflow('Item 7', date, detail);
     default: {
       // Exhaustiveness guard. TypeScript flags any Navmc10132RemarkKind left
       // unhandled above, since an unreachable branch cannot be assigned to
@@ -118,6 +145,10 @@ const PRESCRIBED_LINE_PATTERNS: RegExp[] = [
   /^ {12}[A-Z]\. .+$/,
   // ITEM 2, forwarding recommendation.
   new RegExp(`^${DATE_PATTERN} ITEM 2: Fwd to Bn/Sqn CO recom .+\\.$`),
+  // Overflow carriers. The detail is a rendered item 6 or item 7 string,
+  // so nothing beyond the prefix is constrained here.
+  new RegExp('^Item [67]\\. \\d{1,2} [A-Z][a-z]{2} \\d{2}\\. .+$'),
+  new RegExp('^Item [67]\\. .+$'),
   // ITEM 7, NJP suspension vacated.
   new RegExp(`^${DATE_PATTERN} ITEM 7: .+ susp on .+ vacated\\.$`),
   // ITEM 13, the two fixed appeal-stayed sentences.

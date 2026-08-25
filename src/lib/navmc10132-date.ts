@@ -35,3 +35,24 @@ export function toIsoDate(d: Date): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+const MONTH_ABBR = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/**
+ * Formats an ISO date as "D Mon YY", the style the form's own item 7 and
+ * item 21 examples use, for instance "2 Jun 12".
+ *
+ * Parses through parseIsoDate rather than `new Date(iso)`, the local-midnight
+ * parser this codebase already carries for this form, to avoid the
+ * UTC-parses-a-bare-date-string trap documented on that helper. Returns null
+ * on anything parseIsoDate rejects, so callers drop the date rather than
+ * printing a wrong one.
+ */
+export function formatNavalDate(iso: string): string | null {
+  const d = parseIsoDate(iso);
+  if (!d) return null;
+  return `${d.getDate()} ${MONTH_ABBR[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`;
+}
