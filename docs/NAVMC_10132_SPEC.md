@@ -363,8 +363,21 @@ the punishment text, its date and the officer's own identity stay editable, and 
 them falls outside every FieldMDP list, so Acrobat raises no invalidity flag. A permanent
 record's punishment can be altered post-signature and still verify clean.
 
+CONFIRMED LIVE 2026-08-25, from both directions. Reading the lock dictionaries says item 6
+is unlisted and item 7 is listed under its correct name. Stephen then opened a fully signed
+UPB in Acrobat and typed into item 6, which accepted the text, and into item 7, which
+refused. So the dead references are not a theoretical parsing artifact: the punishment field
+on a signed permanent record is editable and the suspension field is not, exactly as the
+name mismatch predicts.
+
+A NOTE ON READING THE SCREEN. Acrobat's "Highlight Existing Fields" shades every form field,
+read-only ones included, so highlighting is NOT evidence a field is editable. The only test
+is to click in and type.
+
 This is the strongest finding in the CMC (JA) report: precise, reproducible, and fixed by
-correcting six strings in four lock dictionaries. App mitigation is D-45 and V-27.
+correcting six strings in four lock dictionaries. App mitigation is D-45 and V-27, which
+cover items 6, 6 date, 8, 8A, 8B and 10. Item 7 needs no app mitigation, because the form
+locks it correctly.
 
 ---
 
@@ -958,7 +971,16 @@ The pass-1 form shows exactly these sections and nothing else:
 - Item 2, Accused Election, REDUCED TO TWO CONTROLS:
   - the vessel status checkbox, `vesselException`
   - the rights advisement, rendered DYNAMICALLY off that checkbox, with a generate option
+- Victims, items 22A through 22E, when the offences involve one
 - NJP Authority, items 8, 8A and 8B
+
+VICTIMS BELONG IN PASS 1 AND THE FIRST DRAFT OF THIS LIST OMITTED THEM. Stephen
+caught it 2026-08-25 against a live signed form. All twenty victim fields, 22A
+through 22E, sit in the ACCUSED's item 2 lock list, so they close at the FIRST
+signature, one earlier than the certifying officer's item 3. A clerk who leaves
+victim data for later has nowhere to put it, and per D-1 the overflow route for
+victims 2 through 5 is item 21, which stays open until pass 7. Enter victim data
+with the charges or not at all.
 
 The pass-1 export CLEARS `2 DEMAND`, `2 COUNSELOPP` and `2 BOOKER` per D-40. The clear is
 three operations per field, not one: delete `/V`, delete `/AP` on every widget, set
