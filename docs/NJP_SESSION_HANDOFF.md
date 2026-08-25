@@ -343,7 +343,7 @@ module now quotes 011202 verbatim, read from two editions that agree. The lesson
 the same one section 6 keeps repeating: a summary of a source is not the source.
 
 **Specified and unbuilt.** D-37 through D-57, V-23 through V-30 and W-17 through
-W-19 have no code. Twenty-one decision rows from one session. Start with D-51,
+W-19 have no code. D-55, D-60 and D-61 are now built, UI included. Twenty-one decision rows from one session. Start with D-51,
 alone: it corrupts `endsOn`, which both `njp-vacation-handoff.ts` and D-36
 consume.
 

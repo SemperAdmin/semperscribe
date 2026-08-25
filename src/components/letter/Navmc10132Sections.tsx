@@ -61,6 +61,7 @@ import { SuspensionSection } from '@/components/letter/navmc10132/SuspensionSect
 import { VictimsSection } from '@/components/letter/navmc10132/VictimsSection';
 import { RemarksSection } from '@/components/letter/navmc10132/RemarksSection';
 import { UnitDiarySection } from '@/components/letter/navmc10132/UnitDiarySection';
+import { VacationSection } from '@/components/letter/navmc10132/VacationSection';
 import { StageSelector } from '@/components/letter/navmc10132/StageSelector';
 import {
   navmc10132Stage,
@@ -198,6 +199,14 @@ function FormBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** True when item 7 carries at least one suspension, which is the thing a
+ *  vacation targets. Reads through unknown rather than casting off the `any`
+ *  index signature, matching every other reader of this array. */
+function hasSuspension(formData: FormData): boolean {
+  const value: unknown = formData.suspensions;
+  return Array.isArray(value) && value.length > 0;
+}
+
 /**
  * Item 4 is completed only when the accused is receiving punishment for an
  * Article 85 or Article 86 offense, per the form's item 4 instruction. Hiding it
@@ -307,6 +316,20 @@ export function Navmc10132FormSections({
       />
       {stage === 'complete' && (
         <UnitDiarySection
+          formData={formData}
+          setFormData={setFormData}
+          SectionCard={SectionCard}
+        />
+      )}
+      {/* CLOSED OUT, AND ONLY WITH A SUSPENSION TO VACATE. MCO 5800.16 Vol 14
+          para 011202 has the unit administrators update block 16 on the
+          ORIGINAL UPB after a vacation, and block 16 is pass 7, so a vacation
+          is by construction something that happens to a UPB already closed
+          out. Nothing can be vacated before item 7 carries a suspension
+          either. Both conditions are this one expression, easy to relax if a
+          unit turns out to vacate before final action. */}
+      {stage === 'complete' && hasSuspension(formData) && (
+        <VacationSection
           formData={formData}
           setFormData={setFormData}
           SectionCard={SectionCard}
