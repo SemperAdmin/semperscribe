@@ -29,10 +29,18 @@ import {
   suspensionPeriods,
   suspensionPeriodFindings,
   vacationDeadlines,
+  suspensionAssumptionsCaveat,
   SUSPENSION_MAX_MONTHS,
+  SUSPENSION_ASSUMPTIONS,
 } from '@/lib/njp-suspension-period';
 
-import { suspensionPeriodIssues, punishmentIssues } from '@/lib/navmc10132-validators-punishment';
+import {
+  suspensionPeriodIssues,
+  suspensionInterruptionAssumptionIssues,
+  punishmentIssues,
+} from '@/lib/navmc10132-validators-punishment';
+
+import { vacationHandoff } from '@/lib/njp-vacation-handoff';
 
 import { getExportBlockers } from '@/lib/letter-validators';
 
@@ -126,25 +134,25 @@ describe('addDays', () => {
 // ---------------------------------------------------------------------------
 
 describe('suspensionPeriods', () => {
-  it('computes endsOn and a readable stated string for a months-stated suspension', () => {
+  it('computes endsOnIfUninterrupted and a readable stated string for a months-stated suspension', () => {
     const form = baseForm({
       punishmentDate: '2026-08-20',
       punishments: [{ code: 'N09', days: '14' }],
       suspensions: [{ punishmentIndex: 0, months: '3' }],
     });
     const [period] = suspensionPeriods(form);
-    expect(period.endsOn).toBe(addMonths('2026-08-20', 3));
+    expect(period.endsOnIfUninterrupted).toBe(addMonths('2026-08-20', 3));
     expect(period.stated).toBe('3 months');
   });
 
-  it('computes endsOn and a readable stated string for a days-stated suspension', () => {
+  it('computes endsOnIfUninterrupted and a readable stated string for a days-stated suspension', () => {
     const form = baseForm({
       punishmentDate: '2026-08-20',
       punishments: [{ code: 'N09', days: '14' }],
       suspensions: [{ punishmentIndex: 0, days: '45' }],
     });
     const [period] = suspensionPeriods(form);
-    expect(period.endsOn).toBe(addDays('2026-08-20', 45));
+    expect(period.endsOnIfUninterrupted).toBe(addDays('2026-08-20', 45));
     expect(period.stated).toBe('45 days');
   });
 
@@ -181,7 +189,7 @@ describe('suspensionPeriods', () => {
       suspensions: [{ punishmentIndex: 0, months: '6' }],
     });
     const [period] = suspensionPeriods(form);
-    expect(period.endsOn).toBe(period.latestLawfulEnd);
+    expect(period.endsOnIfUninterrupted).toBe(period.latestLawfulEnd);
     expect(period.exceedsSixMonths).toBe(false);
   });
 
@@ -212,8 +220,24 @@ describe('suspensionPeriods', () => {
       suspensions: [{ punishmentIndex: 0, days: String(days) }],
     });
     const [period] = suspensionPeriods(form);
-    expect(period.endsOn).toBe(expectedEndsOn);
+    expect(period.endsOnIfUninterrupted).toBe(expectedEndsOn);
     expect(period.exceedsSixMonths).toBe(true);
+  });
+
+  it('carries suspensionIndex as its own position in item 7, distinct from punishmentIndex, even when two suspensions target the same punishment', () => {
+    const form = baseForm({
+      punishmentDate: '2026-08-20',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '3' },
+        { punishmentIndex: 0, months: '5' },
+      ],
+    });
+    const [first, second] = suspensionPeriods(form);
+    expect(first.suspensionIndex).toBe(0);
+    expect(second.suspensionIndex).toBe(1);
+    expect(first.punishmentIndex).toBe(0);
+    expect(second.punishmentIndex).toBe(0);
   });
 
   it('resolves code from the punishment the suspension points at', () => {
@@ -237,14 +261,14 @@ describe('suspensionPeriods', () => {
     expect(period.code).toBe('');
   });
 
-  it('an unreadable or empty period yields endsOn: null and exceedsSixMonths: false, never a false accusation from missing data', () => {
+  it('an unreadable or empty period yields endsOnIfUninterrupted: null and exceedsSixMonths: false, never a false accusation from missing data', () => {
     const emptyForm = baseForm({
       punishmentDate: '2026-08-20',
       punishments: [{ code: 'N09', days: '14' }],
       suspensions: [{ punishmentIndex: 0 }],
     });
     const [emptyPeriod] = suspensionPeriods(emptyForm);
-    expect(emptyPeriod.endsOn).toBeNull();
+    expect(emptyPeriod.endsOnIfUninterrupted).toBeNull();
     expect(emptyPeriod.exceedsSixMonths).toBe(false);
 
     const unreadableForm = baseForm({
@@ -253,18 +277,18 @@ describe('suspensionPeriods', () => {
       suspensions: [{ punishmentIndex: 0, months: 'abc' }],
     });
     const [unreadablePeriod] = suspensionPeriods(unreadableForm);
-    expect(unreadablePeriod.endsOn).toBeNull();
+    expect(unreadablePeriod.endsOnIfUninterrupted).toBeNull();
     expect(unreadablePeriod.exceedsSixMonths).toBe(false);
   });
 
-  it('an unreadable item 6 punishment date yields endsOn: null and latestLawfulEnd: null', () => {
+  it('an unreadable item 6 punishment date yields endsOnIfUninterrupted: null and latestLawfulEnd: null', () => {
     const form = baseForm({
       punishmentDate: 'garbage',
       punishments: [{ code: 'N09', days: '14' }],
       suspensions: [{ punishmentIndex: 0, months: '3' }],
     });
     const [period] = suspensionPeriods(form);
-    expect(period.endsOn).toBeNull();
+    expect(period.endsOnIfUninterrupted).toBeNull();
     expect(period.latestLawfulEnd).toBeNull();
   });
 });
@@ -325,6 +349,28 @@ describe('suspensionPeriodFindings', () => {
     });
     expect(suspensionPeriodFindings(form)).toEqual([]);
   });
+
+  it('gives two over-limit suspensions against the SAME punishmentIndex DIFFERENT ids, because the id is keyed on suspensionIndex not punishmentIndex', () => {
+    // Nothing forbids two item-7 suspensions from naming the same
+    // punishmentIndex. Before the id was keyed on suspensionIndex, both
+    // findings below would have produced the identical id
+    // "suspension-over-six-months-0", and downstream the identical
+    // ValidationIssue id "navmc10132-v22-suspension-over-six-months-0" —
+    // which components render with `key={issue.id}`, silently dropping one
+    // from the screen. Assert DISTINCTNESS, not the literal strings, so a
+    // future rewording of the id format does not break this test.
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '7' }, // over the cap
+        { punishmentIndex: 0, months: '9' }, // also over the cap, same punishment
+      ],
+    });
+    const findings = suspensionPeriodFindings(form);
+    expect(findings).toHaveLength(2);
+    expect(findings[0].id).not.toBe(findings[1].id);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -332,7 +378,7 @@ describe('suspensionPeriodFindings', () => {
 // ---------------------------------------------------------------------------
 
 describe('vacationDeadlines', () => {
-  it('produces one entry per suspension with a computable end date, carrying endsOn', () => {
+  it('produces one entry per suspension with a computable end date, carrying endsOnIfUninterrupted', () => {
     const njpDate = '2026-01-15';
     const form = baseForm({
       punishmentDate: njpDate,
@@ -341,7 +387,7 @@ describe('vacationDeadlines', () => {
     });
     const deadlines = vacationDeadlines(form);
     expect(deadlines).toHaveLength(1);
-    expect(deadlines[0].endsOn).toBe(addMonths(njpDate, 3));
+    expect(deadlines[0].endsOnIfUninterrupted).toBe(addMonths(njpDate, 3));
   });
 
   it('every caveat names both the automatic remission of 6.a(3) and the EAS limitation the app cannot check, because the computed date is conditional on an enlistment the form does not record', () => {
@@ -431,5 +477,291 @@ describe('suspensionPeriodIssues (V-22)', () => {
     });
     const compliantIssues = getExportBlockers(compliant, [], [], []);
     expect(compliantIssues.some((i) => i.id.startsWith('navmc10132-v22-'))).toBe(false);
+  });
+
+  it('gives two over-limit suspensions against the SAME punishmentIndex DIFFERENT ValidationIssue ids, the shape components actually key React lists on', () => {
+    // ComplianceDialog.tsx and PackageDialog.tsx both render validation
+    // lists with `key={issue.id}`. A duplicate id here is not cosmetic: it
+    // is React silently dropping one of the two issues from the rendered
+    // list. Assert distinctness, not the literal id strings.
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '7' },
+        { punishmentIndex: 0, months: '9' },
+      ],
+    });
+    const issues = suspensionPeriodIssues(form);
+    expect(issues).toHaveLength(2);
+    expect(issues[0].id).not.toBe(issues[1].id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SUSPENSION_ASSUMPTIONS and the caveat / assumptions the deadline carries
+//
+// THE CRUX: unauthorized absence and commencement of vacation proceedings
+// (JAGMAN 0118.c) INTERRUPT the running of the period, so the real end date
+// is LATER than computed. Expiration of the enlistment (MCM 6.a(2)) ends
+// the period early, so the real end date is EARLIER than computed. A test
+// merely asserting the words exist is worthless here: stating a lengthening
+// condition as a shortening one (or vice versa) is exactly the failure this
+// file exists to prevent, so every assertion below pins the DIRECTION, not
+// just presence.
+// ---------------------------------------------------------------------------
+
+describe('SUSPENSION_ASSUMPTIONS', () => {
+  it('names exactly the three conditions the governing sources name, no more and no fewer', () => {
+    expect(SUSPENSION_ASSUMPTIONS.map((a) => a.id).sort()).toEqual(
+      ['enlistment-expiration', 'unauthorized-absence', 'vacation-proceedings-commenced'].sort(),
+    );
+  });
+
+  it('unauthorized absence is a LATER-pushing (interrupting) condition, cited to JAGMAN 0118.c', () => {
+    const a = SUSPENSION_ASSUMPTIONS.find((x) => x.id === 'unauthorized-absence');
+    expect(a).toBeDefined();
+    expect(a?.direction).toBe('later');
+    expect(a?.citation).toContain('0118.c');
+  });
+
+  it('commencement of vacation proceedings is a LATER-pushing (interrupting) condition, cited to JAGMAN 0118.c', () => {
+    const a = SUSPENSION_ASSUMPTIONS.find((x) => x.id === 'vacation-proceedings-commenced');
+    expect(a).toBeDefined();
+    expect(a?.direction).toBe('later');
+    expect(a?.citation).toContain('0118.c');
+  });
+
+  it('enlistment expiration is an EARLIER-pushing (terminating) condition, cited to MCM 6.a(2), the OPPOSITE direction of the other two', () => {
+    const a = SUSPENSION_ASSUMPTIONS.find((x) => x.id === 'enlistment-expiration');
+    expect(a).toBeDefined();
+    expect(a?.direction).toBe('earlier');
+    expect(a?.citation).toContain('6.a(2)');
+  });
+
+  it('no assumption is worded as "no earlier than" or "at least", which would be wrong for the earlier-pushing condition', () => {
+    for (const a of SUSPENSION_ASSUMPTIONS) {
+      expect(a.effect.toLowerCase()).not.toContain('no earlier than');
+      expect(a.effect.toLowerCase()).not.toContain('at least');
+    }
+  });
+});
+
+describe('suspensionAssumptionsCaveat', () => {
+  it('states each condition with its correct direction word, not merely its name', () => {
+    const caveat = suspensionAssumptionsCaveat('2026-07-20');
+    // The two interrupting conditions must read as pushing the date LATER.
+    expect(caveat).toMatch(/interrupt[a-z]*.*LATER/i);
+    // The terminating condition must read as pushing the date EARLIER.
+    expect(caveat).toMatch(/terminat[a-z]*.*EARLIER/i);
+  });
+
+  it('does not call the computed date a floor or a ceiling, and does not say "no earlier than"', () => {
+    const caveat = suspensionAssumptionsCaveat('2026-07-20').toLowerCase();
+    expect(caveat).not.toContain('floor');
+    expect(caveat).not.toContain('no earlier than');
+    expect(caveat).not.toContain('at least');
+  });
+});
+
+describe('vacationDeadlines: assumptions', () => {
+  it('carries all three assumptions, with directions intact, on every deadline', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '3' }],
+    });
+    const [deadline] = vacationDeadlines(form);
+    expect(deadline.assumptions).toHaveLength(3);
+
+    const byId = Object.fromEntries(deadline.assumptions.map((a) => [a.id, a.direction]));
+    expect(byId['unauthorized-absence']).toBe('later');
+    expect(byId['vacation-proceedings-commenced']).toBe('later');
+    expect(byId['enlistment-expiration']).toBe('earlier');
+  });
+
+  it('the rendered caveat and the structured assumptions agree, because the caveat is built from the same list', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '3' }],
+    });
+    const [deadline] = vacationDeadlines(form);
+    for (const a of deadline.assumptions) {
+      expect(deadline.caveat).toContain(a.citation);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W-17: the computed end date is conditional, not a floor
+// ---------------------------------------------------------------------------
+
+describe('suspensionInterruptionAssumptionIssues (W-17)', () => {
+  it('fires with warn severity when a suspension with a computed end date exists', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '3' }],
+    });
+    const issues = suspensionInterruptionAssumptionIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].id.startsWith('navmc10132-w17-')).toBe(true);
+  });
+
+  it('names all three conditions, with the two interrupting ones read as later and the enlistment one read as earlier', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '3' }],
+    });
+    const [issue] = suspensionInterruptionAssumptionIssues(form);
+    expect(issue.citation).toContain('0118.c');
+    expect(issue.citation).toContain('6.a(2)');
+    expect(issue.detail).toMatch(/interrupt[a-z]*.*LATER/i);
+    expect(issue.detail).toMatch(/terminat[a-z]*.*EARLIER/i);
+    expect(issue.detail.toLowerCase()).toContain('unauthorized absence');
+    expect(issue.detail.toLowerCase()).toContain('vacate');
+    expect(issue.detail.toLowerCase()).toContain('enlistment');
+  });
+
+  it('is silent when item 7 carries no suspension at all', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [],
+    });
+    expect(suspensionInterruptionAssumptionIssues(form)).toEqual([]);
+  });
+
+  it('surfaces through punishmentIssues, not just the leaf function', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '3' }],
+    });
+    findIssue(punishmentIssues(form), 'navmc10132-w17-');
+  });
+
+  it('is NOT in getExportBlockers output: warn is advisory and must not gate the export', () => {
+    // months: 3 is well within the six-month cap, so this fixture trips
+    // W-17 (a computed date exists) without also tripping V-22 (the cap),
+    // isolating W-17's non-blocking behaviour from V-22's blocking one.
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '3' }],
+    });
+
+    // Confirm through the leaf function that W-17 actually fired for this
+    // fixture, so the absence check below is meaningful and not vacuous.
+    expect(suspensionInterruptionAssumptionIssues(form)).toHaveLength(1);
+
+    // The only proof that matters: getExportBlockers, the real gate.
+    const blockers = getExportBlockers(form, [], [], []);
+    expect(blockers.some((i) => i.id.startsWith('navmc10132-w17-'))).toBe(false);
+  });
+
+  it('gives two suspensions against the SAME punishmentIndex DIFFERENT ids, the shape components actually key React lists on', () => {
+    // Same failure class as V-22's equivalent test above: ComplianceDialog
+    // and PackageDialog render validation lists with `key={issue.id}`, so a
+    // duplicate id here would drop one of the two warnings off the screen.
+    // Both suspensions here are well within the six-month cap, so this
+    // isolates W-17's own id uniqueness from V-22.
+    const form = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '3' },
+        { punishmentIndex: 0, months: '4' },
+      ],
+    });
+    const issues = suspensionInterruptionAssumptionIssues(form);
+    expect(issues).toHaveLength(2);
+    expect(issues[0].id).not.toBe(issues[1].id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The handoff message and vacationDeadlines agree by construction
+// ---------------------------------------------------------------------------
+
+describe('vacationHandoff deadline agrees with vacationDeadlines', () => {
+  it('the handoff deadline text is built from the same VacationDeadline the module produces, not a re-authored sentence', () => {
+    const form = baseForm({
+      unit: '1st Marine Division',
+      accusedName: 'RIVERA, DIEGO M',
+      accusedRankGrade: 'LCpl, E3',
+      accusedEdipi: '1234567890',
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '3' }],
+    });
+
+    const [deadline] = vacationDeadlines(form);
+    const handoff = vacationHandoff(form, 0, { now: '2026-01-15', documentId: 'doc-1' });
+
+    // Not two independent assertions of the same literal: the handoff
+    // message must actually CONTAIN the deadline module's own caveat text,
+    // proving it was built from it rather than duplicated by hand.
+    expect(handoff.deadline).toContain(deadline.caveat);
+    expect(handoff.deadline).toContain(deadline.endsOnIfUninterrupted);
+  });
+
+  it('falls back to an explicit "not readable" message when the suspension has no computable end date, rather than silently omitting the deadline', () => {
+    const form = baseForm({
+      unit: '1st Marine Division',
+      accusedName: 'RIVERA, DIEGO M',
+      accusedRankGrade: 'LCpl, E3',
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0 }], // no months or days stated
+    });
+
+    expect(vacationDeadlines(form)).toEqual([]);
+    const handoff = vacationHandoff(form, 0, { now: '2026-01-15', documentId: 'doc-1' });
+    expect(handoff.deadline).toContain('not readable');
+  });
+
+  it('picks the deadline for the specific suspension index requested, not merely the first suspension against the same punishmentIndex, when two item-7 suspensions name the same punishmentIndex with different periods', () => {
+    // Nothing in the app forbids two suspensions from naming the same
+    // punishmentIndex (suspensionIndexBoundsIssues checks bounds only, not
+    // uniqueness), so this is valid input, not a malformed fixture. Before
+    // vacationHandoff matched on suspensionIndex, it matched on
+    // punishmentIndex and Array.prototype.find always returned the FIRST
+    // vacationDeadlines entry for that punishment — so asking for the
+    // SECOND suspension's deadline silently returned the FIRST suspension's
+    // deadline instead. This test fails on that older matching logic.
+    const njpDate = '2026-01-15';
+    const form = baseForm({
+      unit: '1st Marine Division',
+      accusedName: 'RIVERA, DIEGO M',
+      accusedRankGrade: 'LCpl, E3',
+      punishmentDate: njpDate,
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '3' }, // suspensionIndex 0
+        { punishmentIndex: 0, months: '5' }, // suspensionIndex 1, SAME punishmentIndex
+      ],
+    });
+
+    const deadlines = vacationDeadlines(form);
+    expect(deadlines).toHaveLength(2);
+    const [first, second] = deadlines;
+    expect(first.punishmentIndex).toBe(0);
+    expect(second.punishmentIndex).toBe(0);
+    expect(first.suspensionIndex).toBe(0);
+    expect(second.suspensionIndex).toBe(1);
+    // Sanity: the two deadlines actually differ, or this test proves nothing.
+    expect(first.endsOnIfUninterrupted).not.toBe(second.endsOnIfUninterrupted);
+
+    const handoffForFirst = vacationHandoff(form, 0, { now: njpDate, documentId: 'doc-1' });
+    expect(handoffForFirst.deadline).toContain(first.endsOnIfUninterrupted);
+    expect(handoffForFirst.deadline).not.toContain(second.endsOnIfUninterrupted);
+
+    const handoffForSecond = vacationHandoff(form, 1, { now: njpDate, documentId: 'doc-2' });
+    expect(handoffForSecond.deadline).toContain(second.endsOnIfUninterrupted);
+    expect(handoffForSecond.deadline).not.toContain(first.endsOnIfUninterrupted);
   });
 });

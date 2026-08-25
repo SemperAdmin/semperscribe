@@ -44,7 +44,7 @@ import type { FormData, SavedLetter } from '@/types';
 import type { Navmc10132PunishmentEntry } from '@/types/navmc';
 import { renderPunishment, resolvePunishment } from '@/lib/navmc10132-utils';
 import { formatNavalDate } from '@/lib/navmc10132-date';
-import { suspensionPeriods, type SuspensionPeriod } from '@/lib/njp-suspension-period';
+import { suspensionPeriods, vacationDeadlines, type SuspensionPeriod } from '@/lib/njp-suspension-period';
 
 /** SSIC and originator code as Figure 14-1 prints them. */
 export const VACATION_SSIC = '5800';
@@ -238,15 +238,32 @@ export function vacationHandoff(
     // the user already selected, which is the established behaviour there.
   };
 
+  // THE HANDOFF MESSAGE MUST NOT RESTATE THE DEADLINE SENTENCE. It used to
+  // (see D-51 in docs/NAVMC_10132_SPEC.md): two places authoring the same
+  // legal sentence can drift, and one drifted, understating the date's
+  // conditionality relative to the other. Consuming `vacationDeadlines`
+  // instead of re-deriving the wording here makes the two agree by
+  // construction, not by two hand-synced literals.
+  //
+  // MATCH ON suspensionIndex, NEVER punishmentIndex. Nothing in this app
+  // forbids two item-7 suspensions from naming the same punishmentIndex
+  // (suspensionIndexBoundsIssues checks bounds only, never uniqueness), so
+  // matching by punishmentIndex would silently hand a clerk the WRONG
+  // deadline whenever that happens — the first suspension against that
+  // punishment, not necessarily the one this handoff is for. suspensionIndex
+  // is this suspension's own position in item 7 and is unambiguous.
+  const deadline = vacationDeadlines(formData).find(
+    (d) => d.suspensionIndex === suspensionIndex,
+  );
+
   return {
     save,
     seed,
     period,
     deadline:
-      period.endsOn === null
+      deadline === undefined
         ? 'The suspension period is not readable, so the vacation deadline cannot be computed.'
-        : `Vacate on or before ${period.endsOn}. On that date the suspended punishment is ` +
-          'remitted without further action (MCM Part V para 6.a(3)).',
+        : `Vacate on or before ${deadline.endsOnIfUninterrupted}. ${deadline.caveat}`,
   };
 }
 

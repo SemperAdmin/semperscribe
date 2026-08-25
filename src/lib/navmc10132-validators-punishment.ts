@@ -2,9 +2,13 @@
  * NAVMC 10132 item 6/7/14 punishment validators.
  *
  * Covers the punishment-side blockers and warnings from docs/NAVMC_10132_SPEC.md
- * section 6: V-04, V-05, V-14, V-15, V-16, W-05, W-06, W-07, W-08. All other
- * rules in that section (offense/finding rules, date ordering, capacity rules
- * outside item 6, accused identity, unit, EDIPI) live in sibling modules.
+ * section 6: V-04, V-05 (plus its suspensionIndexBoundsIssues addendum), V-14,
+ * V-15, V-16, V-17, V-18, V-19, V-20, V-21, V-22, W-05, W-06, W-07, W-08, W-17.
+ * KEEP THIS LIST ACCURATE: it undercounted V-17 through V-22 and W-17 for a
+ * time, which is how a file can carry a rule nobody reading only the header
+ * would know to look for. All other rules in section 6 (offense/finding
+ * rules, date ordering, capacity rules outside item 6, accused identity,
+ * unit, EDIPI) live in sibling modules.
  *
  * Two rules here are deliberately weaker than their table description because
  * the underlying data cannot support the stronger claim. See the JSDoc on
@@ -47,7 +51,11 @@ import {
   payTableStatus,
 } from '@/lib/navmc10132-basic-pay';
 import { combinationFindings } from '@/lib/navmc10132-combination-limits';
-import { suspensionPeriodFindings } from '@/lib/njp-suspension-period';
+import {
+  suspensionPeriodFindings,
+  suspensionsWithComputedEnd,
+  SUSPENSION_ASSUMPTIONS,
+} from '@/lib/njp-suspension-period';
 
 const ITEM_6_FIELD = '6 PUNISHMENT IMPOSED';
 
@@ -878,6 +886,69 @@ export function suspensionPeriodIssues(formData: FormData): ValidationIssue[] {
 }
 
 /**
+ * W-17 (ADVISORY, NOT A BLOCKER — read this before touching the severity).
+ *
+ * docs/NAVMC_10132_SPEC.md's own row for W-17 describes the computed
+ * suspension end date as "a floor, not a fixed date." That wording is
+ * WRONG, not just loose. A floor only ever moves the real date later. MCM
+ * Part V para 6.a(2)'s second clause — expiration of the current enlistment
+ * "automatically terminates the period of suspension" — can make the real
+ * date EARLIER than computed, and JAGMAN 0118.c's two interruptions can
+ * make it LATER. The number njp-suspension-period.ts computes
+ * (`endsOnIfUninterrupted`) is neither a floor nor a ceiling: it is the date
+ * that holds only if none of three unmodeled conditions occurred. See the
+ * module docstring on njp-suspension-period.ts for the full argument. This
+ * rule implements the CORRECT statement, not the spec row's, and names all
+ * three conditions with their citations and directions rather than
+ * repeating "floor."
+ *
+ * WHY 'warn' AND NOT 'block' OR 'fail'. The app has no field for
+ * unauthorized absence, no field for a vacation proceeding already
+ * underway, and no EAS field. It cannot observe whether any of the three
+ * occurred, so it cannot prove the computed date is wrong — only that it
+ * rests on assumptions the app cannot check. That is exactly what 'warn'
+ * (Advisory) means under the severity contract at the top of this file.
+ * Do not upgrade this to 'block' or 'fail': doing so would stop, or
+ * mis-badge as non-compliant, an export the app has no basis to refuse.
+ *
+ * FIRES ONCE PER SUSPENSION WITH A COMPUTED END DATE, silent when item 7
+ * carries none. A suspension whose period is unreadable (see
+ * `suspensionsWithComputedEnd`) has no date for this warning to qualify, so
+ * it is left to whatever rule already flags the unreadable entry
+ * (`suspensionTermsIssues`, V-05) rather than duplicated here.
+ *
+ * THE ID IS KEYED ON suspensionIndex, NOT punishmentIndex. Nothing forbids
+ * two item-7 suspensions from naming the same punishmentIndex, so keying the
+ * id on punishmentIndex would let two suspensions against one punishment
+ * emit the SAME id here. That is not a cosmetic risk: this codebase renders
+ * validation lists with `key={issue.id}`, so a duplicate id can drop one of
+ * the two issues off the screen rather than merely reading oddly in a log.
+ * suspensionIndex is each suspension's own position in the array and is
+ * unique by construction. See the identical fix on `suspensionPeriodFindings`
+ * (V-22) in njp-suspension-period.ts.
+ */
+export function suspensionInterruptionAssumptionIssues(formData: FormData): ValidationIssue[] {
+  return suspensionsWithComputedEnd(formData).map((period) => {
+    const assumptionLines = SUSPENSION_ASSUMPTIONS.map(
+      (a) => `${a.effect} (${a.citation})`,
+    ).join(' ');
+    return issue(
+      `navmc10132-w17-${period.suspensionIndex}`,
+      'warn',
+      `The computed end date for the suspension of ${period.code || 'the item 6 punishment'} ` +
+        `(${period.endsOnIfUninterrupted}) is conditional, not fixed: three conditions this app ` +
+        'cannot see can move the real date earlier or later.',
+      'JAGMAN (JAGINST 5800.7G CH-2) para 0118.c; MCM Part V para 6.a(2)',
+      `Item 7's suspension of ${period.code || 'the item 6 punishment'} computes to end on ` +
+        `${period.endsOnIfUninterrupted} if nothing interrupts or terminates it first. ` +
+        `${assumptionLines} Confirm none of these occurred before treating ` +
+        `${period.endsOnIfUninterrupted} as the actual date the punishment was remitted or a ` +
+        'vacation deadline expired.',
+    );
+  });
+}
+
+/**
  * V-18 (BLOCKING). Item 6 carries both a reduction and a forfeiture, and the
  * forfeiture is not recorded as computed on the reduced grade.
  *
@@ -975,5 +1046,6 @@ export function punishmentIssues(formData: FormData): ValidationIssue[] {
     ...forfeitureCeilingIssues(formData),
     ...punishmentCombinationIssues(formData),
     ...suspensionPeriodIssues(formData),
+    ...suspensionInterruptionAssumptionIssues(formData),
   ];
 }
