@@ -316,6 +316,16 @@ Worth knowing, because the pattern repeated across both sessions.
   contradicted its brief three times and was right every time, including twice
   where the brief was wrong. Briefs must ask for "anything you could not prove"
   as a named deliverable.
+- **Sweeping the stage selector in a browser.** Driving all eight stages and
+  diffing the rendered `<label>` set between consecutive stages found D-61, the
+  item 16 leak, in one pass. The unit suite could not see it: it is written per
+  section, so it inherits the same blind spot as the code it tests, and thirteen
+  green section-level tests coexisted with two pass-7 inputs open at pass 1. Two
+  properties fall out of the diff for free, ADDITIVE (each stage's label set is a
+  superset of the last) and PLACED (a label appears no earlier than its pass).
+  Re-run the sweep after any change to `Navmc10132Sections` or to a section that
+  spans passes. Do not edit source while it runs, Fast Refresh kills the loop
+  mid-sweep and the partial result reads like a real non-monotonic diff.
 
 Working instruction: **render it and look at it.** A passing suite is not
 evidence that the output is right.
@@ -346,6 +356,11 @@ ruled on the two-moments split, which is the same shape as D-50.
 
 **Known gaps**
 
+- **The appeal DynamicForm opens items 11-15 all at pass 4.** Same defect class as
+  D-61, found by the same sweep, deliberately not fixed blind. Four of its eight
+  fields belong to passes 5, 6 and 7 by the 13.1 lock table. The fix is a
+  field-level `subDefinition` filter, and it is gated on measuring whether React
+  Hook Form clears a field dropped from a DynamicForm definition. Spec 13.4.
 - **MOS has no field anywhere.** Figure 14-1's To line needs it.
 - **EAS has no field.** MCM 6.a(2) terminates a suspension early at expiration of
   enlistment, so every computed suspension date carries that caveat, and D-51

@@ -1054,11 +1054,37 @@ Three sections carry fields from more than one pass, so gating them as a unit is
 wrong in one direction or the other. Each filters its own controls instead, on a
 `stage` prop:
 
-| Section | Early field | Opens at | Late field | Opens at |
-| --- | --- | --- | --- | --- |
-| OffensesSection | item 1, article and summary | pass 1 | item 5, finding | pass 3 |
-| AccusedElectionSection | `vesselException`, advisement | pass 1 | item 2, election | pass 2 |
-| RemarksSection | item 21, remarks | pass 1 | item 16, final admin action | pass 7 |
+| Section | Early field | Opens at | Late field | Opens at | State |
+| --- | --- | --- | --- | --- | --- |
+| OffensesSection | item 1, article and summary | pass 1 | item 5, finding | pass 3 | gated |
+| AccusedElectionSection | `vesselException`, advisement | pass 1 | item 2, election | pass 2 | gated |
+| RemarksSection | item 21, remarks | pass 1 | item 16, final admin action | pass 7 | gated |
+| `DEF_APPEAL` DynamicForm | item 11, advisement date | pass 4 | item 15, decision notice date | pass 7 | OPEN, see below |
+
+THE APPEAL BLOCK IS THE SAME DEFECT, UNFIXED. Found by the same sweep, in the same
+run that found D-61, and left open rather than fixed blind. All eight of its fields
+open together at pass 4, and the 13.1 lock table places them across four passes:
+
+| field | item | belongs to |
+| --- | --- | --- |
+| `appealAdvisementDate` | 11 | pass 4 |
+| `intendAppeal`, `appealIntentDate` | 12 | pass 5 |
+| `notAppealed`, `appealDate` | 13 | pass 6 |
+| `appealDecision`, `appealDecisionDate` | 14 | pass 6 |
+| `appealDecisionNoticeDate` | 15 | pass 7 |
+
+So four of the eight fields open up to three passes early, and a clerk at pass 4 is
+offered a decision on an appeal that has not been taken yet.
+
+WHY IT IS NOT FIXED IN THE SAME COMMIT AS D-61. This section is a `DynamicForm`
+driven by `Navmc10132Definition`, not a hand-written component, so the fix is a
+field-level `subDefinition` filter, one stable definition per stage at module scope
+because DynamicForm's memos require referential stability. That path crosses React
+Hook Form, which carries this codebase's known clobber rule, and whether a field
+dropped from the definition survives in `formData` or is cleared through
+`onDynamicSync` is UNMEASURED. Measure it before building the filter: the custom
+sections proved persistence for THEMSELVES in the browser, and that proves nothing
+about a DynamicForm section.
 
 Gating one of these by its EARLIEST field leaks the late one. Gating it by its
 LATEST field hides work the clerk has to do now. Both failures are silent: the
