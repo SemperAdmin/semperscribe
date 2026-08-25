@@ -1,19 +1,38 @@
+# Tests, typecheck, and lint.
+#
+# WHY THIS RUNS ON EVERY BRANCH. The previous version triggered only on main,
+# so an entire feature branch could be developed, committed, and merged with
+# no CI coverage at all. That is how the repo came to be failing `tsc` for
+# weeks while `npm test` stayed green: vitest does not typecheck.
+#
+# main and master are DELIBERATELY EXCLUDED from the push trigger. Pushes to
+# those run deploy.yml, which calls this workflow through workflow_call before
+# it builds. Excluding them here means the suite runs once per push rather
+# than twice.
 name: Tests
 
 on:
   push:
-    branches: [main]
+    branches-ignore: [main, master]
   pull_request:
-    branches: [main]
+  # Lets deploy.yml gate a release on this suite. See its `test` job.
+  workflow_call:
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Least privilege. Declared here rather than inherited, because when
+    # deploy.yml calls this workflow the caller holds pages:write and
+    # id-token:write, and nothing in this job needs either.
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
+          # Single source of truth for the Node version. deploy.yml reads the
+          # same file rather than hardcoding a number that can drift from it.
           node-version-file: .nvmrc
           cache: npm
 
@@ -26,6 +45,22 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # BLOCKING, and the reason this workflow exists in its current form.
+      # `next build` typechecks, but only on main, and only at deploy time.
+      # Catching it here is the difference between a bad five minutes and a
+      # bad fortnight.
+      - name: Typecheck the app
+        run: npm run typecheck
+
+      - name: Typecheck the tests
+        run: npm run typecheck:tests
+
+      # Blocking on ERRORS only. The repo carries 54 warnings today, almost
+      # all react-hooks/set-state-in-effect, and eslint exits 0 on warnings.
+      # Do not add --max-warnings 0 without clearing those first.
+      - name: Lint
+        run: npm run lint
 
       - name: Run tests
         run: npm test
