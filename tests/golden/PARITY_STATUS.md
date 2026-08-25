@@ -18,14 +18,35 @@ headless (Liberation fonts, metric-compatible with TNR/Courier New).
 
 Constraints on this result:
 
-1. The DOCX half requires `soffice`. Resolution order: the
-   `SOFFICE_PATH` environment variable (full binary path, checked
-   first, errors loudly if set but wrong), then `/usr/bin/soffice`,
-   `/usr/local/bin/soffice`, then `which soffice`. Absent all of
-   these, the test FAILS by design. It does not skip. CI installs
-   LibreOffice. Windows local runs: install LibreOffice, then
-   `$env:SOFFICE_PATH="C:\Program Files\LibreOffice\program\soffice.exe"`
-   before `npm test`.
+1. The DOCX half requires `soffice`. REVISED 2026-08-25, in both the
+   probe and what happens when it comes up empty.
+
+   Resolution order: the `SOFFICE_PATH` environment variable (full
+   binary path, checked first, errors loudly if set but wrong), then
+   the platform's default install directories, then PATH via `where`
+   on Windows and `which` elsewhere. The probe used to run `which`
+   unconditionally, which is not a Windows command, so on Windows it
+   threw and the test reported "not found" whether LibreOffice was
+   installed or not: `SOFFICE_PATH` was the only way to pass.
+
+   Absent all of these the behaviour now depends on WHO is asking.
+   In CI (`CI=true`) the test FAILS, unchanged and deliberately: a CI
+   run that quietly stops checking parity is worse than no check.
+   Locally it SKIPS, and says so twice, in the skipped test's name and
+   on stderr, naming what was not evaluated and where it still is.
+
+   That is a retreat from "fails everywhere", and the reason is that
+   the old rule cost more attention than it bought. A developer who
+   declines to install LibreOffice could never see a green suite, so
+   one known red became scenery. On 2026-08-25 a Windows run carried
+   this failure plus an unrelated 30-second timeout and the timeout
+   nearly went unremarked behind it.
+
+   The PDF half was split into its own test at the same time. It needs
+   no LibreOffice and now runs everywhere. Under the old single-test
+   structure a machine without `soffice` lost the PDF assertions too,
+   because the test aborted at the `soffice` check before reaching
+   them. Less LibreOffice, more local coverage.
 2. LibreOffice pagination is a proxy for Microsoft Word pagination.
    They agree on simple flows at these metrics, but Word is the
    authoritative renderer. Treat parity-green as "no known divergence,"
