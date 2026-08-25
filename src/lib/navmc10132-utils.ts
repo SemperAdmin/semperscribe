@@ -31,6 +31,14 @@
  *     warning. Fit is a WIDTH question, not a character count. The field map's
  *     capacity figure is a UI meter hint only.
  *
+ * A fifth module joined later, same reasoning as renderPunishment:
+ *
+ *   renderSuspension
+ *     Item 7 was free text, which let a clerk suspend a punishment never
+ *     imposed. Suspensions now name their punishment by index into item 6's
+ *     structured entries, and rendering refuses a dangling index rather than
+ *     printing a suspension for a punishment no longer on the form.
+ *
  * Import from this barrel rather than the individual modules so the phase reads
  * as one engine at the call sites.
  */
@@ -43,6 +51,13 @@ export {
   type RenderPunishmentOptions,
   type Navmc10132PunishmentEntry,
 } from '@/lib/navmc10132-punishment-render';
+
+export {
+  renderSuspension,
+  Navmc10132SuspensionRenderError,
+  type RenderSuspensionOptions,
+  type Navmc10132Suspension,
+} from '@/lib/navmc10132-suspension-render';
 
 export {
   composeRemarks,

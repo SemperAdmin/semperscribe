@@ -48,6 +48,7 @@ import {
 import {
   punishmentPresenceIssues,
   suspensionTermsIssues,
+  suspensionIndexBoundsIssues,
   punishmentAuthorizationIssues,
   punishmentFieldCapacityIssues,
   appealDecisionIncreaseIssues,
@@ -55,6 +56,7 @@ import {
   punishmentParameterCeilingIssues,
   forfeitureWholeDollarIssues,
   reductionPayGradeIssues,
+  forfeitureReducedGradeIssues,
   punishmentIssues,
 } from '@/lib/navmc10132-validators-punishment';
 
@@ -500,6 +502,42 @@ describe('V-05, item 7 suspension must be NONE or a specific suspension with ter
   });
 });
 
+describe('V-05 addendum, a structured suspension must name a punishment imposed in item 6', () => {
+  it('trips block when punishmentIndex points past the end of punishments', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '10' }],
+      suspensions: [{ punishmentIndex: 1, months: '6' }],
+    });
+    const issues = suspensionIndexBoundsIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].id).toBe('navmc10132-v05-suspension-index-0');
+    expect(issues[0].severity).toBe('block');
+  });
+
+  it('trips block when punishmentIndex is negative', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '10' }],
+      suspensions: [{ punishmentIndex: -1, months: '6' }],
+    });
+    const issues = suspensionIndexBoundsIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('block');
+  });
+
+  it('does not trip when every suspension names an index within punishments', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '10' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+    });
+    expect(suspensionIndexBoundsIssues(form)).toEqual([]);
+  });
+
+  it('does not trip when there are no suspensions', () => {
+    const form = baseForm({ punishments: [{ code: 'N09', days: '10' }], suspensions: [] });
+    expect(suspensionIndexBoundsIssues(form)).toEqual([]);
+  });
+});
+
 describe('V-14, a selected punishment code must be authorized for release one', () => {
   it('trips on an officer-only code, N01, which release one does not offer', () => {
     const form = baseForm({ punishments: [{ code: 'N01', days: '14', suspendedFromDuty: true }] });
@@ -598,20 +636,20 @@ describe('W-05, item 8A authority must satisfy the selected code required grade'
 });
 
 describe('W-06, an entered days or months value exceeds the code own ceiling', () => {
-  it('trips on days above N06 own 7 day ceiling', () => {
+  it('trips block on days above N06 own 7 day ceiling', () => {
     const form = baseForm({ punishments: [{ code: 'N06', days: '10', suspendedFromDuty: false }] });
     const issues = punishmentParameterCeilingIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toContain('navmc10132-w06-days-N06');
-    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].severity).toBe('block');
   });
 
-  it('trips on months above N04 own 2 month ceiling', () => {
+  it('trips block on months above N04 own 2 month ceiling', () => {
     const form = baseForm({ punishments: [{ code: 'N04', dollarsPerMonth: '100', months: '3' }] });
     const issues = punishmentParameterCeilingIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toContain('navmc10132-w06-months-N04');
-    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].severity).toBe('block');
   });
 
   it('does not trip when days is at or under the code own ceiling', () => {
@@ -674,6 +712,160 @@ describe('W-08, a reduction imposed on an E-6 or above accused', () => {
       punishments: [{ code: 'N16', oralOrWritten: 'orally' }],
     });
     expect(reductionPayGradeIssues(form)).toEqual([]);
+  });
+
+  // MCO 5800.16 Vol 14 para 010302.C sets TWO floors, not one: E-6 for
+  // Marines (USMC), E-7 for Sailors (USN). This is the fix for the bug that
+  // tested a single hardcoded E-6 floor for both services.
+  describe('service-aware floors', () => {
+    it('a USMC E-6 with a reduction still trips, and names the Marine E-6 floor', () => {
+      const form = baseForm({
+        accusedService: 'USMC',
+        accusedPayGrade: 'E6',
+        punishments: [{ code: 'N08', gradeReducedTo: 'E5' }],
+      });
+      const issues = reductionPayGradeIssues(form);
+      expect(issues).toHaveLength(1);
+      expect(issues[0].id).toBe('navmc10132-w08-reduction-e6-plus');
+      expect(issues[0].detail).toContain('Marines');
+      expect(issues[0].detail).toContain('E-6');
+    });
+
+    it('the SAME punishment set does not trip for a USN E-6: a Sailor E-6 may lawfully be reduced', () => {
+      const form = baseForm({
+        accusedService: 'USN',
+        accusedPayGrade: 'E6',
+        punishments: [{ code: 'N08', gradeReducedTo: 'E5' }],
+      });
+      expect(reductionPayGradeIssues(form)).toEqual([]);
+    });
+
+    it('a USN E-7 with a reduction trips, and names the Sailor E-7 floor', () => {
+      const form = baseForm({
+        accusedService: 'USN',
+        accusedPayGrade: 'E7',
+        punishments: [{ code: 'N08', gradeReducedTo: 'E6' }],
+      });
+      const issues = reductionPayGradeIssues(form);
+      expect(issues).toHaveLength(1);
+      expect(issues[0].id).toBe('navmc10132-w08-reduction-e6-plus');
+      expect(issues[0].detail).toContain('Sailors');
+      expect(issues[0].detail).toContain('E-7');
+    });
+  });
+});
+
+describe('V-18 (BLOCKING/fail), forfeiture must be based on the grade to which reduced', () => {
+  // MCM Part V para 5.c(8), verbatim: "If the punishment includes both
+  // reduction, whether or not suspended, and forfeiture of pay, the
+  // forfeiture must be based on the grade to which reduced."
+
+  it('no issue when only a forfeiture is imposed, no reduction present', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N07', dollars: '50' }],
+    });
+    expect(forfeitureReducedGradeIssues(form)).toEqual([]);
+  });
+
+  it('no issue when only a reduction is imposed, no forfeiture present', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N08', gradeReducedTo: 'LCpl' }],
+    });
+    expect(forfeitureReducedGradeIssues(form)).toEqual([]);
+  });
+
+  it('both present, reduction names no target grade: fails as basis-unknown', () => {
+    const form = baseForm({
+      punishments: [
+        { code: 'N08', gradeReducedTo: '' },
+        { code: 'N07', dollars: '50' },
+      ],
+    });
+    const issues = forfeitureReducedGradeIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].id).toBe('navmc10132-v18-forfeiture-basis-unknown');
+    expect(issues[0].severity).toBe('fail');
+  });
+
+  it('both present, gradeReducedTo LCpl (E3), forfeitureBasisGrade unset: fails as basis-grade', () => {
+    const form = baseForm({
+      punishments: [
+        { code: 'N08', gradeReducedTo: 'LCpl' },
+        { code: 'N07', dollars: '50' },
+      ],
+    });
+    const issues = forfeitureReducedGradeIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].id).toBe('navmc10132-v18-forfeiture-basis-grade');
+    expect(issues[0].severity).toBe('fail');
+  });
+
+  it('both present, forfeitureBasisGrade recorded as the PRE-reduction grade E4: fails, and names both E4 and E3', () => {
+    const form = baseForm({
+      punishments: [
+        { code: 'N08', gradeReducedTo: 'LCpl' },
+        { code: 'N07', dollars: '50' },
+      ],
+      forfeitureBasisGrade: 'E4',
+    });
+    const issues = forfeitureReducedGradeIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].id).toBe('navmc10132-v18-forfeiture-basis-grade');
+    expect(issues[0].severity).toBe('fail');
+    expect(issues[0].rule).toContain('E4');
+    expect(issues[0].rule).toContain('E3');
+  });
+
+  it('both present, forfeitureBasisGrade recorded as the reduced grade E3: no issue', () => {
+    const form = baseForm({
+      punishments: [
+        { code: 'N08', gradeReducedTo: 'LCpl' },
+        { code: 'N07', dollars: '50' },
+      ],
+      forfeitureBasisGrade: 'E3',
+    });
+    expect(forfeitureReducedGradeIssues(form)).toEqual([]);
+  });
+
+  it('normalizes dashes and case: forfeitureBasisGrade "e-3" also passes', () => {
+    const form = baseForm({
+      punishments: [
+        { code: 'N08', gradeReducedTo: 'LCpl' },
+        { code: 'N07', dollars: '50' },
+      ],
+      forfeitureBasisGrade: 'e-3',
+    });
+    expect(forfeitureReducedGradeIssues(form)).toEqual([]);
+  });
+
+  // The whole point of the rule: "whether or not suspended." The usual
+  // intuition, that a suspended reduction did not happen so the forfeiture
+  // may be based on the old grade, is exactly backwards.
+  it('a SUSPENDED reduction still requires the forfeiture basis to be the reduced grade', () => {
+    const form = baseForm({
+      punishments: [
+        { code: 'N08', gradeReducedTo: 'LCpl' },
+        { code: 'N07', dollars: '50' },
+      ],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      forfeitureBasisGrade: 'E4', // the pre-reduction grade, wrongly used as basis
+    });
+    const issues = forfeitureReducedGradeIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].id).toBe('navmc10132-v18-forfeiture-basis-grade');
+    expect(issues[0].severity).toBe('fail');
+  });
+
+  it('is wired into punishmentIssues, the aggregate export', () => {
+    const form = baseForm({
+      punishments: [
+        { code: 'N08', gradeReducedTo: 'LCpl' },
+        { code: 'N07', dollars: '50' },
+      ],
+      forfeitureBasisGrade: 'E4',
+    });
+    const issues = punishmentIssues(form);
+    expect(issues.some((i) => i.id === 'navmc10132-v18-forfeiture-basis-grade')).toBe(true);
   });
 });
 

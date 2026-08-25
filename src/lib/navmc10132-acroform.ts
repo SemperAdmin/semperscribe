@@ -23,11 +23,14 @@ import {
   coerceDemand,
   renderPunishment,
   Navmc10132PunishmentRenderError,
+  renderSuspension,
+  Navmc10132SuspensionRenderError,
   composeRemarks,
 } from '@/lib/navmc10132-utils';
 import type {
   Navmc10132PunishmentEntry,
   Navmc10132Remark,
+  Navmc10132Suspension,
 } from '@/types/navmc';
 
 /** What one AcroForm field accepts: text/dropdown export value, or a
@@ -107,6 +110,13 @@ function readRemarks(formData: FormData): Navmc10132Remark[] {
   return Array.isArray(value) ? (value as Navmc10132Remark[]) : [];
 }
 
+/** Reads `formData.suspensions` as Navmc10132Suspension[]. Same runtime-checked
+ * pattern as readPunishments and readRemarks above. */
+function readSuspensions(formData: FormData): Navmc10132Suspension[] {
+  const value = readUnknown(formData, 'suspensions');
+  return Array.isArray(value) ? (value as Navmc10132Suspension[]) : [];
+}
+
 // ---------------------------------------------------------------------------
 // Item 6 punishment text, with the overflow escape hatch checked FIRST so a
 // flagged-overflow row never even reaches renderPunishment.
@@ -122,6 +132,10 @@ function computePunishmentImposed(formData: FormData): string | undefined {
   if (readBoolean(formData, 'punishmentOverflowToItem21') === true) {
     return PUNISHMENT_OVERFLOW_LITERAL;
   }
+  return rawPunishmentImposed(formData);
+}
+
+function rawPunishmentImposed(formData: FormData): string | undefined {
   const punishments = readPunishments(formData);
   if (punishments.length === 0) return undefined;
   // Concurrency is a property of the SET of punishments, not of any one code,
@@ -145,12 +159,85 @@ function computePunishmentImposed(formData: FormData): string | undefined {
 }
 
 /**
+ * Derives item 7 ("SUSPENSION IF ANY") through renderSuspension, the same
+ * relationship computePunishmentImposed has to renderPunishment above.
+ *
+ * renderSuspension THROWS Navmc10132SuspensionRenderError on a dangling
+ * punishmentIndex or a suspension missing its period. Both are normal
+ * mid-edit state, not a bug, and this runs on the live preview's timer.
+ * Letting either escape would collapse the whole preview to the fallback
+ * notice page while the user is still typing, so item 7 is omitted instead,
+ * the same guard computePunishmentImposed applies to item 6. Any error
+ * other than a render error is a real defect and still escapes.
+ */
+function rawSuspension(
+  formData: FormData,
+  options?: { withDate?: boolean },
+): string | undefined {
+  const suspensions = readSuspensions(formData);
+  const punishments = readPunishments(formData);
+  const impositionDate = options?.withDate === false
+    ? undefined
+    : readString(formData, 'punishmentDate');
+
+  let rendered: { text: string; length: number };
+  try {
+    rendered = renderSuspension(suspensions, punishments, { impositionDate });
+  } catch (err) {
+    if (err instanceof Navmc10132SuspensionRenderError) return undefined;
+    throw err;
+  }
+  return rendered.text || undefined;
+}
+
+function computeSuspension(formData: FormData): string | undefined {
+  // Item 7 is a SINGLE LINE field and clips rather than wrapping. Once the
+  // rendered text passes the field, printing it anyway loses the tail with
+  // nothing on the page to show it, so the field carries the continuation
+  // literal and the full text moves to item 21. Mirrors item 6 exactly.
+  if (readBoolean(formData, 'suspensionOverflowToItem21') === true) {
+    return PUNISHMENT_OVERFLOW_LITERAL;
+  }
+  return rawSuspension(formData);
+}
+
+/**
+ * The item 21 continuation entries for items 6 and 7.
+ *
+ * Without these the overflow escape hatch DESTROYS text: item 6 would print
+ * "See Supplemental Page" while item 21 stayed empty, so the punishment
+ * would exist nowhere on the form. The supplemental page has to actually
+ * carry the supplement.
+ *
+ * The text is rendered WITHOUT its own date prefix, because the item 21 line
+ * already opens with the date the page 3 instruction prescribes. Printing
+ * both would date the entry twice.
+ */
+function overflowRemarks(formData: FormData): Navmc10132Remark[] {
+  const date = readString(formData, 'punishmentDate') ?? '';
+  const carried: Navmc10132Remark[] = [];
+
+  if (readBoolean(formData, 'punishmentOverflowToItem21') === true) {
+    const full = rawPunishmentImposed(formData);
+    if (full) carried.push({ date, kind: 'item6-overflow', detail: full });
+  }
+
+  if (readBoolean(formData, 'suspensionOverflowToItem21') === true) {
+    const full = rawSuspension(formData, { withDate: false });
+    if (full) carried.push({ date, kind: 'item7-overflow', detail: full });
+  }
+
+  return carried;
+}
+
+/**
  * Builds the AcroForm field-name to value table for NAVMC 10132.
  *
  * Order matters here in the same way it matters in the fill engine: the
- * three Phase 2 derivations (coerceDemand, bookerStatement, renderPunishment
- * by way of computePunishmentImposed, composeRemarks) are evaluated as this
- * function runs, BEFORE any caller reads the returned record. A caller that
+ * Phase 2 derivations (coerceDemand, bookerStatement, renderPunishment by way
+ * of computePunishmentImposed, renderSuspension by way of computeSuspension,
+ * composeRemarks) are evaluated as this function runs, BEFORE any caller
+ * reads the returned record. A caller that
  * tried to read the raw stored `demand` or `bookerStatement` fields instead
  * of this table's output would reproduce exactly the bug this table exists
  * to prevent, see the `2 DEMAND` and `2 BOOKER` entries below.
@@ -236,7 +323,12 @@ export function navmc10132Values(formData: FormData): Record<string, FieldValue>
   // --- Items 6-7: punishment ---------------------------------------------
   set('6 PUNISHMENT IMPOSED', computePunishmentImposed(formData));
   set('6 PUNISHMENT IMPOSITION DATE', readString(formData, 'punishmentDate'));
-  set('7 SUSPENSION IF ANY', readString(formData, 'suspension'));
+  // Derived through renderSuspension, the same relationship item 6 has to
+  // renderPunishment via computePunishmentImposed above. Reading the raw
+  // stored `suspension` string here would let item 7 print a suspension for
+  // a punishment item 6 no longer carries, exactly the defect this fix
+  // exists to close.
+  set('7 SUSPENSION IF ANY', computeSuspension(formData));
 
   // --- Item 8: NJP authority ---------------------------------------------
   set('8 NJP AUTHORITY NAME TITLE SERVICE', readString(formData, 'njpAuthorityName'));
@@ -264,7 +356,9 @@ export function navmc10132Values(formData: FormData): Record<string, FieldValue>
   // --- Item 21: remarks ---------------------------------------------------
   const remarks = readRemarks(formData);
   const remarksFreeText = readString(formData, 'remarksFreeText') ?? '';
-  set('21 REMARKS', composeRemarks(remarks, remarksFreeText));
+  // The overflow carriers go in WITH the clerk's own remarks so composeRemarks
+  // sorts the whole set chronologically, as the page 3 instruction requires.
+  set('21 REMARKS', composeRemarks([...remarks, ...overflowRemarks(formData)], remarksFreeText));
 
   // --- Item 22, row A only: victim demographics ---------------------------
   // Rows B through E are DELIBERATELY never written. The printed form's own

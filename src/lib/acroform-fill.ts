@@ -110,7 +110,12 @@ export interface AcroFormFieldMeta {
 
 export interface FillAcroFormOptions {
   /** Read-only fields to unlock, write, then re-lock. */
-  unlockReadOnly?: string[];
+  // READONLY because every real caller passes a frozen `as const` list, and
+  // the fields to unlock are a fixed property of a form rather than something
+  // this module mutates. Typing it mutable forced a cast at each call site,
+  // which is how three test files ended up failing `tsc -p tsconfig.tests.json`
+  // while vitest, which does not typecheck, stayed green.
+  unlockReadOnly?: readonly string[];
   /** Delete /Root /Perms. Defaults TRUE. See the D-12 note. */
   stripUsageRights?: boolean;
   /** Field metadata, normally the generated map's fields array. */

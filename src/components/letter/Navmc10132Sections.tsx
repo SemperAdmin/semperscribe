@@ -21,11 +21,13 @@
  * (prepare 1, 17-20, 22 first, then 2, then 3, then 4-11, then 12, then 13-16):
  *
  *   Accused and unit          items 17-20      DynamicForm
+ *   Rank and pay grade        item 19          custom picker, closed list
  *   Offenses and findings     items 1 and 5    custom grid
  *   Accused election          item 2 and 3     custom, Booker preview
  *   Unauthorised absence      item 4           DynamicForm, Art 85 or 86 only
  *   Punishment                items 6 and 10   custom builder
- *   Suspension and authority  items 7 and 8    DynamicForm
+ *   Suspension                item 7           custom picker over item 6
+ *   Authority                 item 8           DynamicForm
  *   Appeal                    items 11-15      DynamicForm
  *   Victims                   item 22          custom grid
  *   Remarks and final action  items 21 and 16  custom composer
@@ -38,7 +40,9 @@ import { DynamicForm } from '@/components/ui/DynamicForm';
 import { DOCUMENT_TYPES, DocumentTypeDefinition } from '@/lib/schemas';
 import { OffensesSection } from '@/components/letter/navmc10132/OffensesSection';
 import { AccusedElectionSection } from '@/components/letter/navmc10132/AccusedElectionSection';
+import { AccusedRankSection } from '@/components/letter/navmc10132/AccusedRankSection';
 import { PunishmentSection } from '@/components/letter/navmc10132/PunishmentSection';
+import { SuspensionSection } from '@/components/letter/navmc10132/SuspensionSection';
 import { VictimsSection } from '@/components/letter/navmc10132/VictimsSection';
 import { RemarksSection } from '@/components/letter/navmc10132/RemarksSection';
 import { UnitDiarySection } from '@/components/letter/navmc10132/UnitDiarySection';
@@ -59,7 +63,9 @@ function subDefinition(ids: string[]): DocumentTypeDefinition {
 }
 const DEF_ACCUSED = subDefinition(['accused']);
 const DEF_ABSENCE = subDefinition(['absence']);
-const DEF_PUNISHMENT_TAIL = subDefinition(['suspension', 'authority']);
+// Item 7 left this sub-definition when it became a custom section. Item 8
+// remains a plain scalar block.
+const DEF_PUNISHMENT_TAIL = subDefinition(['authority']);
 const DEF_APPEAL = subDefinition(['appeal']);
 
 /** Shared card chrome so every section reads the same. */
@@ -121,6 +127,11 @@ export function Navmc10132FormSections({
           defaultValues={formData}
         />
       </FormBlock>
+      <AccusedRankSection
+        formData={formData}
+        setFormData={setFormData}
+        SectionCard={SectionCard}
+      />
       <OffensesSection
         formData={formData}
         setFormData={setFormData}
@@ -142,6 +153,11 @@ export function Navmc10132FormSections({
         </FormBlock>
       )}
       <PunishmentSection
+        formData={formData}
+        setFormData={setFormData}
+        SectionCard={SectionCard}
+      />
+      <SuspensionSection
         formData={formData}
         setFormData={setFormData}
         SectionCard={SectionCard}

@@ -12,13 +12,18 @@
  * the reasoning. Both choices are documented at the call site rather than left
  * implicit, per the standing rule that every issue must carry a citation the
  * app can actually stand behind.
+ *
+ * `suspensionIndexBoundsIssues`, a V-05 addendum, is not weakened. It checks
+ * the structured `suspensions` array's punishmentIndex against `punishments`
+ * and blocks outright, the 1:1 guarantee renderSuspension itself enforces by
+ * throwing (navmc10132-suspension-render.ts).
  */
 
 import { FormData } from '@/types';
 // TYPE-ONLY. letter-validators imports this module at runtime, so a value
 // import here would create a module cycle.
 import type { ValidationIssue } from '@/lib/letter-validators';
-import type { Navmc10132PunishmentEntry } from '@/types/navmc';
+import type { Navmc10132PunishmentEntry, Navmc10132Suspension } from '@/types/navmc';
 import {
   fitsInField,
   overflowBy,
@@ -26,7 +31,21 @@ import {
   Navmc10132PunishmentRenderError,
   resolvePunishment,
   authoritySatisfies,
+  renderSuspension,
+  Navmc10132SuspensionRenderError,
 } from '@/lib/navmc10132-utils';
+import {
+  NAVMC_10132_REDUCTION_BAR_FLOOR,
+  reducedPayGrade,
+  reductionBarred,
+  type Navmc10132Service,
+} from '@/lib/navmc10132-ranks';
+import {
+  BASIC_PAY_SOURCE_URL,
+  forfeitureCeiling,
+  payTableStatus,
+} from '@/lib/navmc10132-basic-pay';
+import { combinationFindings } from '@/lib/navmc10132-combination-limits';
 
 const ITEM_6_FIELD = '6 PUNISHMENT IMPOSED';
 
@@ -48,6 +67,13 @@ function punishmentEntries(formData: FormData): Navmc10132PunishmentEntry[] {
     : [];
 }
 
+/** Reads the item 7 suspension entries array, tolerating an unset or non-array field. */
+function suspensionEntries(formData: FormData): Navmc10132Suspension[] {
+  return Array.isArray(formData.suspensions)
+    ? (formData.suspensions as Navmc10132Suspension[])
+    : [];
+}
+
 /**
  * Parses a numeric form field that is stored as a string. Returns null for
  * empty, missing, or non-numeric input rather than 0, so callers can tell
@@ -65,14 +91,6 @@ function parseNumericField(value: unknown): number | null {
  * Parses a bare enlisted pay grade such as 'E5' or 'E-6'. Returns null for a
  * missing, officer, or unparseable grade so W-08 can no-op rather than guess.
  */
-function parseEnlistedGrade(payGrade: unknown): number | null {
-  if (typeof payGrade !== 'string') return null;
-  const match = /^E-?(\d{1,2})$/i.exec(payGrade.trim());
-  if (!match) return null;
-  const n = Number(match[1]);
-  return Number.isFinite(n) ? n : null;
-}
-
 /**
  * V-04 (blocker). Item 6 punishment is non-empty.
  *
@@ -164,6 +182,50 @@ export function suspensionTermsIssues(formData: FormData): ValidationIssue[] {
 }
 
 /**
+ * V-05 addendum (blocker). A structured item 7 suspension names a
+ * punishmentIndex outside the bounds of the punishments array, i.e. it
+ * points at a punishment never imposed, or a punishment imposed and later
+ * removed after being suspended. This is the exact defect free-text item 7
+ * let through, "cant suspend somthing that is not imposed" in the reporting
+ * user's own words, so it is checked here as its own rule rather than
+ * folded into the free-text `suspensionTermsIssues` above.
+ *
+ * Runs against the structured `suspensions` array, not the derived
+ * `suspension` string, for the same reason `punishmentPresenceIssues` (V-04)
+ * reads structure instead of its own derived field. The derived string is
+ * prone to staleness, and the app must not trust it as the source of truth.
+ */
+export function suspensionIndexBoundsIssues(formData: FormData): ValidationIssue[] {
+  const punishments = punishmentEntries(formData);
+  const suspensions = suspensionEntries(formData);
+  const issues: ValidationIssue[] = [];
+
+  suspensions.forEach((suspension, index) => {
+    const { punishmentIndex } = suspension;
+    const inBounds =
+      Number.isInteger(punishmentIndex) &&
+      punishmentIndex >= 0 &&
+      punishmentIndex < punishments.length;
+    if (inBounds) return;
+
+    issues.push(
+      issue(
+        `navmc10132-v05-suspension-index-${index}`,
+        'block',
+        `Item 7 suspension entry ${index} names punishmentIndex ${punishmentIndex}, which is ` +
+          'not a punishment item 6 carries.',
+        'Item 7 instruction',
+        'A suspension must name a punishment actually imposed in item 6. Remove this ' +
+          'suspension, or point it at a valid index' +
+          (punishments.length > 0 ? `, 0 through ${punishments.length - 1}.` : '; item 6 carries no punishments to suspend.'),
+      ),
+    );
+  });
+
+  return issues;
+}
+
+/**
  * V-14 (blocker). Every selected punishment code must be authorized for
  * release one, which is enlisted only. N01 to N03 are officer punishments
  * under 10 U.S.C. 815(b)(1) and N05 is withheld pending spec decision D-10.
@@ -237,6 +299,60 @@ export function punishmentFieldCapacityIssues(formData: FormData): ValidationIss
         'duty running concurrently, renders to 160 characters and does not fit either. ' +
         'Either shorten the combination or check "See Supplemental Page" and carry the ' +
         'full text in item 21.',
+    ),
+  ];
+}
+
+/** Item 7's own field, measured in Phase 0. Single line, not multiline. */
+const ITEM_7_FIELD = '7 SUSPENSION IF ANY';
+
+/**
+ * V-17, blocker. The rendered item 7 suspension text does not fit the
+ * "7 SUSPENSION IF ANY" field.
+ *
+ * Item 7 is a SINGLE LINE field, 538.2pt wide, not multiline. It clips
+ * rather than wrapping, so an over-long entry loses text with no visible
+ * error. Two suspended punishments already overflow: a reduction and an
+ * extra duty each carrying the full automatic-remission clause render to
+ * 247 characters against a 534.2pt usable width, over by 320pt.
+ *
+ * Mirrors V-15 for item 6, including its escape hatch. The form's page 3
+ * ITEM 21 instruction prescribes carrying overflow into item 21 with a
+ * dated entry, and the same route serves item 7.
+ *
+ * A render error is NOT this rule's business. renderSuspension throws on a
+ * dangling index or a missing period, and the bounds rule reports that. A
+ * throw here returns no issue so one defect does not surface twice.
+ */
+export function suspensionOverflowIssues(formData: FormData): ValidationIssue[] {
+  const suspensions = suspensionEntries(formData);
+  if (suspensions.length === 0) return [];
+
+  let rendered: string;
+  try {
+    rendered = renderSuspension(suspensions, punishmentEntries(formData), {
+      impositionDate: typeof formData.punishmentDate === 'string' ? formData.punishmentDate : undefined,
+    }).text;
+  } catch (err) {
+    if (err instanceof Navmc10132SuspensionRenderError) return [];
+    throw err;
+  }
+
+  if (fitsInField(ITEM_7_FIELD, rendered)) return [];
+  if (formData.suspensionOverflowToItem21) return [];
+
+  const over = overflowBy(ITEM_7_FIELD, rendered);
+  return [
+    issue(
+      'navmc10132-v17-item7-overflow',
+      'block',
+      'Rendered item 7 suspension text does not fit the "7 SUSPENSION IF ANY" field.',
+      'NAVMC 10132 (REV. 08-2023) instructions, page 3, ITEM 7 and ITEM 21',
+      `Rendered text is ${rendered.length} characters, over by ${over}. Item 7 is a ` +
+        'single-line field and clips rather than wrapping, so the tail would be lost ' +
+        'silently. Two suspended punishments overflow it on their own. Either reduce ' +
+        'what is suspended or carry the full text into item 21 using the dated entry ' +
+        'format the page 3 instruction prescribes.',
     ),
   ];
 }
@@ -360,10 +476,16 @@ export function punishmentAuthorityGradeIssues(formData: FormData): ValidationIs
 }
 
 /**
- * W-06 (advisory). An entered days or months parameter exceeds the selected
+ * W-06 (blocker). An entered days or months parameter exceeds the selected
  * code's own ceiling. Cites the code's own `statute` field, since the ceiling
  * is printed in the code description itself and the statute subsection is the
  * source for that number, not a separately maintained constant.
+ *
+ * Promoted from advisory to blocker. The ceiling is the MCM Part V 5.b limit
+ * on the punishment the code names, not a style preference, so exceeding it
+ * is unlawful and export must refuse rather than merely note it. The rule ID
+ * prefix stays w06 even though the severity is now block, so an existing
+ * reference to navmc10132-w06-days or navmc10132-w06-months still resolves.
  *
  * Scope is deliberately limited to `days` against `maxDays` and `months`
  * against `maxMonths`, matching the task's stated scope. `dollars` against
@@ -383,7 +505,7 @@ export function punishmentParameterCeilingIssues(formData: FormData): Validation
       issues.push(
         issue(
           `navmc10132-w06-days-${entry.code}-${index}`,
-          'warn',
+          'block',
           `Punishment code ${entry.code} entered days (${days}) exceeds its own ceiling of ${code.maxDays}.`,
           code.statute,
           `${code.description}. Reduce the days entered for ${entry.code} to ${code.maxDays} or fewer.`,
@@ -396,7 +518,7 @@ export function punishmentParameterCeilingIssues(formData: FormData): Validation
       issues.push(
         issue(
           `navmc10132-w06-months-${entry.code}-${index}`,
-          'warn',
+          'block',
           `Punishment code ${entry.code} entered months (${months}) exceeds its own ceiling of ${code.maxMonths}.`,
           code.statute,
           `${code.description}. Reduce the months entered for ${entry.code} to ${code.maxMonths} or fewer.`,
@@ -472,9 +594,13 @@ export function forfeitureWholeDollarIssues(formData: FormData): ValidationIssue
  */
 export function reductionPayGradeIssues(formData: FormData): ValidationIssue[] {
   const entries = punishmentEntries(formData);
-  const grade = parseEnlistedGrade(formData.accusedPayGrade);
-  if (grade === null) return [];
-  if (grade < 6) return [];
+  const payGrade = typeof formData.accusedPayGrade === 'string' ? formData.accusedPayGrade : '';
+  const service = accusedService(formData);
+  // Service-aware since 2026-08-24. This rule tested a single E-6 floor for
+  // both services, which refused a lawful reduction of a Navy E-6 and let an
+  // unlawful reduction of a Navy E-7 through unwarned. The order names two
+  // floors; reductionBarred reads the right one.
+  if (!reductionBarred(payGrade, service)) return [];
 
   const reductionEntries = entries.filter((entry) => {
     const code = resolvePunishment(entry.code);
@@ -482,27 +608,299 @@ export function reductionPayGradeIssues(formData: FormData): ValidationIssue[] {
   });
   if (reductionEntries.length === 0) return [];
 
+  const floor = NAVMC_10132_REDUCTION_BAR_FLOOR[service];
+  const who = service === 'USN' ? 'Sailors' : 'Marines';
+
   return [
     issue(
       'navmc10132-w08-reduction-e6-plus',
       'warn',
-      'A reduction is imposed and the accused is E-6 or above.',
+      `A reduction is imposed and the accused is E-${floor} or above.`,
       'MCO 5800.16 Vol 14 para 010302.C',
-      `Accused pay grade is "${formData.accusedPayGrade}." Marines in the grade of E-6 ` +
+      `Accused pay grade is "${payGrade}." ${who} in the grade of E-${floor} ` +
         'or above may not be reduced in paygrade. Remove the reduction or confirm the ' +
         'accused pay grade is entered correctly.',
     ),
   ];
 }
 
+/** Item 19's service, defaulting to USMC on a NAVMC form. */
+function accusedService(formData: FormData): Navmc10132Service {
+  return formData.accusedService === 'USN' ? 'USN' : 'USMC';
+}
+
+/** Bare enlisted grade number, or null when unreadable. */
+function enlistedGradeNumber(payGrade: unknown): number | null {
+  if (typeof payGrade !== 'string') return null;
+  const match = /^E-?(\d)$/i.exec(payGrade.trim());
+  return match ? Number(match[1]) : null;
+}
+
+/**
+ * V-19 (BLOCKING). Correctional custody imposed on a Marine in pay grade E-4
+ * or above without an unsuspended reduction below E-4.
+ *
+ * JAGMAN 0111.b, verbatim: "Correctional custody. This punishment will not be
+ * imposed on persons in paygrade E-4 and above unless an unsuspended reduction
+ * below paygrade E-4 is also imposed."
+ *
+ * CONDITIONAL, NOT ABSOLUTE, and the condition is the part that gets missed.
+ * An NCO may receive correctional custody, but only riding along with a
+ * reduction that actually takes effect. A SUSPENDED reduction does not satisfy
+ * it, because the accused never leaves E-4, which is why the suspension list is
+ * consulted here rather than only the punishment list.
+ *
+ * This gates on the ACCUSED's grade, not the authority's. It is the second half
+ * of "which punishments are available," the first being the imposing officer's
+ * grade in releaseOnePunishmentsFor.
+ */
+export function correctionalCustodyGradeIssues(formData: FormData): ValidationIssue[] {
+  const entries = punishmentEntries(formData);
+  const accusedGrade = enlistedGradeNumber(formData.accusedPayGrade);
+  if (accusedGrade === null || accusedGrade < 4) return [];
+
+  const custodyIndexes = entries
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => {
+      const code = resolvePunishment(entry.code);
+      return !!code && /CORRECTIONAL CUSTODY/i.test(code.description);
+    });
+  if (custodyIndexes.length === 0) return [];
+
+  const suspendedIndexes = new Set(
+    suspensionEntries(formData).map((suspension) => suspension.punishmentIndex),
+  );
+
+  // A qualifying reduction: below E-4, and NOT suspended.
+  const qualifies = entries.some((entry, index) => {
+    const code = resolvePunishment(entry.code);
+    if (!code || !code.parameters.includes('gradeReducedTo')) return false;
+    if (suspendedIndexes.has(index)) return false;
+    const target = enlistedGradeNumber(reducedPayGrade(entry.gradeReducedTo ?? ''));
+    return target !== null && target < 4;
+  });
+  if (qualifies) return [];
+
+  const suspendedReduction = entries.some((entry, index) => {
+    const code = resolvePunishment(entry.code);
+    return !!code && code.parameters.includes('gradeReducedTo') && suspendedIndexes.has(index);
+  });
+
+  return [
+    issue(
+      'navmc10132-v19-correctional-custody-grade',
+      'fail',
+      suspendedReduction
+        ? `Correctional custody is imposed on an E-${accusedGrade} and the accompanying reduction is SUSPENDED.`
+        : `Correctional custody is imposed on an E-${accusedGrade} with no reduction below E-4.`,
+      'JAGMAN 0111.b',
+      'Correctional custody will not be imposed on persons in paygrade E-4 and above unless an ' +
+        'unsuspended reduction below paygrade E-4 is also imposed. A suspended reduction does ' +
+        'not satisfy this, because the accused never leaves E-4. Remove the correctional ' +
+        'custody, or impose an unsuspended reduction below E-4.',
+    ),
+  ];
+}
+
+/**
+ * V-20 (BLOCKING). A forfeiture exceeds the statutory ceiling for the grade it
+ * is based on.
+ *
+ * TWO CONDITIONS BEFORE THIS EVER FIRES, both deliberate. The app must hold the
+ * pay table in force on the punishment date (payTableStatus), and it must be
+ * able to compute a ceiling from the recorded grade, length of service, and sea
+ * or hardship duty pay. Miss either and this rule stays silent rather than
+ * blocking on a number it cannot stand behind. A stale table blocking a lawful
+ * forfeiture would be worse than no check.
+ *
+ * The grade used is `forfeitureBasisGrade` where one is recorded, which V-18
+ * has already forced to equal the reduction target. Only where no reduction is
+ * imposed does it fall back to item 19.
+ */
+export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
+  const entries = punishmentEntries(formData);
+
+  const status = payTableStatus(
+    typeof formData.punishmentDate === 'string' ? formData.punishmentDate : '',
+  );
+  if (!status.current) return [];
+
+  const basisGrade =
+    (typeof formData.forfeitureBasisGrade === 'string' && formData.forfeitureBasisGrade.trim()) ||
+    (typeof formData.accusedPayGrade === 'string' ? formData.accusedPayGrade : '');
+
+  const ceiling = forfeitureCeiling({
+    payGrade: basisGrade,
+    yearsOfService:
+      typeof formData.accusedYearsOfService === 'string' ? formData.accusedYearsOfService : '',
+    seaHardshipDutyPay:
+      typeof formData.accusedSeaHardshipDutyPay === 'string'
+        ? formData.accusedSeaHardshipDutyPay
+        : '',
+  });
+  if (ceiling === null) return [];
+
+  const issues: ValidationIssue[] = [];
+
+  entries.forEach((entry, index) => {
+    const code = resolvePunishment(entry.code);
+    if (!code) return;
+
+    if (code.parameters.includes('dollars')) {
+      const amount = Number((entry.dollars ?? '').trim());
+      if (Number.isFinite(amount) && amount > ceiling.sevenDaysPay) {
+        issues.push(
+          issue(
+            `navmc10132-v20-forfeiture-over-ceiling-${index}`,
+            'fail',
+            `${code.code} forfeits $${amount} but the ceiling at ${ceiling.payGrade} is $${ceiling.sevenDaysPay}.`,
+            '10 U.S.C. 815(b)(2)(C); JAGMAN 0111.i; DoD FMR Vol 7A Ch 1',
+            `Seven days' pay at ${ceiling.payGrade} is $${ceiling.sevenDaysPay}, from monthly pay ` +
+              `subject to forfeiture of $${ceiling.monthlySubjectToForfeiture.toFixed(2)} at one ` +
+              `thirtieth per day. Rate source: ${BASIC_PAY_SOURCE_URL}. If the accused draws sea ` +
+              'or hardship duty pay, enter it beside item 19 and this ceiling rises.',
+          ),
+        );
+      }
+    }
+
+    if (code.parameters.includes('dollarsPerMonth')) {
+      const amount = Number((entry.dollarsPerMonth ?? '').trim());
+      if (Number.isFinite(amount) && amount > ceiling.halfMonthPay) {
+        issues.push(
+          issue(
+            `navmc10132-v20-forfeiture-over-ceiling-${index}`,
+            'fail',
+            `${code.code} forfeits $${amount} per month but the ceiling at ${ceiling.payGrade} is $${ceiling.halfMonthPay}.`,
+            '10 U.S.C. 815(b)(2)(H)(iii); JAGMAN 0111.i',
+            `One-half of one month's pay at ${ceiling.payGrade} is $${ceiling.halfMonthPay}, from ` +
+              `monthly pay subject to forfeiture of $${ceiling.monthlySubjectToForfeiture.toFixed(2)}. ` +
+              `Rate source: ${BASIC_PAY_SOURCE_URL}. If the accused draws sea or hardship duty ` +
+              'pay, enter it beside item 19 and this ceiling rises.',
+          ),
+        );
+      }
+    }
+  });
+
+  return issues;
+}
+
+/**
+ * V-21 (BLOCKING). The set of punishments in item 6 is not a lawful
+ * combination.
+ *
+ * Delegates every rule to navmc10132-combination-limits.ts, which owns MCM
+ * Part V para 5.d and the per-case aggregate ceilings of 5.b. This function
+ * is only the bridge from findings to ValidationIssues, so the rules stay
+ * testable without the validator's plumbing.
+ *
+ * WHY BLOCKING RATHER THAN ADVISORY. Every finding here describes a
+ * punishment the commander has no authority to impose, which is the same
+ * class as V-06 and V-19 and not the same class as the W-series advisories.
+ * The app also states these exact rules on the A-1-d rights advisement, so
+ * passing a set that contradicts what the accused was told is the one outcome
+ * this rule exists to prevent.
+ */
+export function punishmentCombinationIssues(formData: FormData): ValidationIssue[] {
+  const findings = combinationFindings({
+    entries: punishmentEntries(formData),
+    authorityPayGrade:
+      typeof formData.njpAuthorityPayGrade === 'string' ? formData.njpAuthorityPayGrade : '',
+    concurrent: formData.punishmentsConcurrent === true,
+  });
+
+  return findings.map((finding) =>
+    issue(`navmc10132-v21-${finding.id}`, 'fail', finding.rule, finding.citation, finding.detail),
+  );
+}
+
+/**
+ * V-18 (BLOCKING). Item 6 carries both a reduction and a forfeiture, and the
+ * forfeiture is not recorded as computed on the reduced grade.
+ *
+ * MCM Part V para 5.c(8), verbatim: "If the punishment includes both
+ * reduction, whether or not suspended, and forfeiture of pay, the forfeiture
+ * must be based on the grade to which reduced."
+ *
+ * WHY THIS IS A GATE AND NOT A WARNING. It is the most common pay error in
+ * NJP, it produces an overcollection from the Marine's pay, and the words
+ * "whether or not suspended" mean the usual intuition (a suspended reduction
+ * did not happen, so pay him at the old grade) is exactly backwards.
+ *
+ * WHAT THIS CHECK CAN AND CANNOT VERIFY. It cannot check the arithmetic. The
+ * app holds no basic-pay table, so it does not know what a month's pay is at
+ * either grade and never claims to. What it CAN verify is the basis the clerk
+ * recorded: `forfeitureBasisGrade` must equal the pay grade the reduction
+ * targets. That turns an invisible assumption into a recorded, checkable one.
+ * Do not upgrade the message to imply the dollar figure was validated.
+ */
+export function forfeitureReducedGradeIssues(formData: FormData): ValidationIssue[] {
+  const entries = punishmentEntries(formData);
+
+  const reduction = entries.find((entry) => {
+    const code = resolvePunishment(entry.code);
+    return !!code && code.parameters.includes('gradeReducedTo');
+  });
+  if (!reduction) return [];
+
+  const forfeitures = entries.filter((entry) => {
+    const code = resolvePunishment(entry.code);
+    if (!code) return false;
+    return code.parameters.includes('dollars') || code.parameters.includes('dollarsPerMonth');
+  });
+  if (forfeitures.length === 0) return [];
+
+  const target = reducedPayGrade(reduction.gradeReducedTo ?? '');
+  if (target === '') {
+    return [
+      issue(
+        'navmc10132-v18-forfeiture-basis-unknown',
+        'fail',
+        'A reduction and a forfeiture are both imposed, but the reduction names no target grade.',
+        'MCM Part V para 5.c(8)',
+        'The forfeiture must be based on the grade to which reduced, so the reduction target ' +
+          'has to be set before the forfeiture basis can be checked. Select the grade reduced to ' +
+          'in item 6.',
+      ),
+    ];
+  }
+
+  const recorded =
+    typeof formData.forfeitureBasisGrade === 'string'
+      ? formData.forfeitureBasisGrade.trim().replace(/-/g, '').toUpperCase()
+      : '';
+
+  if (recorded === target) return [];
+
+  return [
+    issue(
+      'navmc10132-v18-forfeiture-basis-grade',
+      'fail',
+      recorded === ''
+        ? 'A reduction and a forfeiture are both imposed, and the forfeiture basis grade is not recorded.'
+        : `The forfeiture is recorded as computed on ${recorded}, not on the reduced grade ${target}.`,
+      'MCM Part V para 5.c(8)',
+      `The reduction targets ${target}, so the forfeiture must be based on ${target} pay, even ` +
+        'if the reduction is suspended. Set the forfeiture basis grade in item 6 and recompute ' +
+        'the dollar amount from the pay table at that grade. The app checks the basis you ' +
+        'record, not the arithmetic.',
+    ),
+  ];
+}
+
 /**
  * Aggregate export. Runs every punishment-side rule in table order, blockers
- * first (V-04, V-05, V-14, V-15, V-16), then warnings (W-05 through W-08).
+ * first (V-04, V-05, V-14, V-15, V-16), then the advisory and blocker rules
+ * reading the individual codes (W-05 through W-08). W-06 is a blocker
+ * despite sitting among the W-numbered rules, see its own JSDoc.
  */
 export function punishmentIssues(formData: FormData): ValidationIssue[] {
   return [
     ...punishmentPresenceIssues(formData),
     ...suspensionTermsIssues(formData),
+    ...suspensionIndexBoundsIssues(formData),
+    ...suspensionOverflowIssues(formData),
     ...punishmentAuthorizationIssues(formData),
     ...punishmentFieldCapacityIssues(formData),
     ...appealDecisionIncreaseIssues(formData),
@@ -510,5 +908,9 @@ export function punishmentIssues(formData: FormData): ValidationIssue[] {
     ...punishmentParameterCeilingIssues(formData),
     ...forfeitureWholeDollarIssues(formData),
     ...reductionPayGradeIssues(formData),
+    ...forfeitureReducedGradeIssues(formData),
+    ...correctionalCustodyGradeIssues(formData),
+    ...forfeitureCeilingIssues(formData),
+    ...punishmentCombinationIssues(formData),
   ];
 }
