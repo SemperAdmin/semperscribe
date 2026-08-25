@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Navmc10132FormSections } from '@/components/letter/Navmc10132Sections';
+import { Navmc10132FormSections, APPEAL_FIELD_PASS } from '@/components/letter/Navmc10132Sections';
 import { OffensesSection } from '@/components/letter/navmc10132/OffensesSection';
 import { AccusedElectionSection } from '@/components/letter/navmc10132/AccusedElectionSection';
 import { RemarksSection } from '@/components/letter/navmc10132/RemarksSection';
@@ -11,6 +11,7 @@ import {
   type Navmc10132Stage,
 } from '@/types/navmc';
 import { FormData } from '@/types';
+import { DOCUMENT_TYPES } from '@/lib/schemas';
 
 /**
  * Stage-based section visibility, docs/NAVMC_10132_SPEC.md section 13 and
@@ -62,6 +63,7 @@ const TITLES = {
   punishment: 'Punishment (Items 6 and 10)',
   suspension: 'Suspension of Punishment (Item 7)',
   authority: 'NJP Authority (Items 8, 8A, 8B)',
+  // The pass-7 name. The card is renamed per stage, see appealTitleForStage.
   appeal: 'Appeal (Items 11-15)',
   victims: 'Item 22, Victims',
   remarks: 'Items 21 and 16, Remarks',
@@ -161,11 +163,18 @@ describe('Later stages are additive', () => {
     expect(screen.queryByText(TITLES.unitDiary)).not.toBeInTheDocument();
   });
 
-  it('pass 4 (appeal advisement given) adds the appeal block on top of pass 3', () => {
+  // THIS ASSERTION CHANGED, and the change is the point rather than a
+  // loosening. It used to look for the card titled 'Appeal (Items 11-15)'
+  // at pass 4, which passed because all eight appeal fields opened at pass
+  // 4 together. The 13.1 lock table puts four of them at passes 5, 6 and 7,
+  // so what pass 4 opens is item 11 alone, and the card is named for that.
+  // The per-field placement is asserted in its own describe block below.
+  it('pass 4 (appeal advisement given) adds the appeal block, holding item 11 only', () => {
     renderSections(baseFormData({ stage: 4 }));
 
     expect(screen.getByText(TITLES.punishment)).toBeInTheDocument();
-    expect(screen.getByText(TITLES.appeal)).toBeInTheDocument();
+    expect(screen.getByText('Appeal (Item 11)')).toBeInTheDocument();
+    expect(screen.queryByText(TITLES.appeal)).not.toBeInTheDocument();
     expect(screen.queryByText(TITLES.unitDiary)).not.toBeInTheDocument();
   });
 
@@ -323,5 +332,122 @@ describe('RemarksSection: item 16 is gated to pass 7', () => {
 
     expect(screen.getByText(UD)).toBeInTheDocument();
     expect(screen.getByText(DTD)).toBeInTheDocument();
+  });
+});
+
+
+/**
+ * The appeal block spans passes 4 through 7 and used to open all eight of
+ * its fields at pass 4, offering a clerk a decision on an appeal that had
+ * not been taken yet. Same defect class as item 16 above, found by the same
+ * eight-stage browser sweep, and fixed differently because this section is
+ * a DynamicForm driven by `Navmc10132Definition` rather than hand-written
+ * JSX: it filters its DEFINITION per stage instead of its markup.
+ *
+ * The property that makes that safe, that DynamicForm omits unnamed keys
+ * rather than clearing them and page.tsx merges, is measured separately in
+ * tests/components/navmc10132-dynamicform-clobber.test.tsx. These tests
+ * cover placement; that file covers data survival. Both are required.
+ */
+describe('the appeal block opens its fields pass by pass, not all at once', () => {
+  const LABELS = {
+    item11: 'Item 11 - date accused advised of the right to appeal',
+    item12intent: 'Item 12 - accused intention',
+    item12date: 'Item 12 - date',
+    item13not: 'Item 13 - not appealed',
+    item13date: 'Item 13 - date of appeal, if any',
+    item14decision: 'Item 14 - decision on appeal',
+    item14date: 'Item 14 - date',
+    item15: 'Item 15 - date accused notified of the decision',
+  };
+
+  function labelsAt(stage: Navmc10132Stage): string[] {
+    const { unmount } = renderSections(baseFormData({ stage }));
+    const found = Object.entries(LABELS)
+      .filter(([, label]) => screen.queryByText(label) !== null)
+      .map(([key]) => key);
+    unmount();
+    return found;
+  }
+
+  it('shows only item 11 at pass 4, where the advisement is given', () => {
+    expect(labelsAt(4)).toEqual(['item11']);
+  });
+
+  it('adds item 12 at pass 5, where the accused records an intention', () => {
+    expect(labelsAt(5)).toEqual(['item11', 'item12intent', 'item12date']);
+  });
+
+  it('adds items 13 and 14 at pass 6, where the appeal is decided', () => {
+    expect(labelsAt(6)).toEqual([
+      'item11',
+      'item12intent',
+      'item12date',
+      'item13not',
+      'item13date',
+      'item14decision',
+      'item14date',
+    ]);
+  });
+
+  it('adds item 15 at pass 7, where notice of the decision is recorded', () => {
+    expect(labelsAt(7)).toEqual(Object.keys(LABELS));
+  });
+
+  it('keeps every field open once the case is closed out', () => {
+    expect(labelsAt('complete')).toEqual(Object.keys(LABELS));
+  });
+
+  // The card used to say "Items 11-15" while showing one field, which reads
+  // as a rendering failure rather than a stage gate.
+  it('names the card for the items it is actually showing', () => {
+    const titles: Record<string, string> = {};
+    for (const stage of [4, 5, 6, 7] as Navmc10132Stage[]) {
+      const { unmount } = renderSections(baseFormData({ stage }));
+      titles[String(stage)] =
+        screen.getByText(/^Appeal \(Item/).textContent?.trim() ?? '';
+      unmount();
+    }
+
+    expect(titles).toEqual({
+      '4': 'Appeal (Item 11)',
+      '5': 'Appeal (Items 11-12)',
+      '6': 'Appeal (Items 11-14)',
+      '7': 'Appeal (Items 11-15)',
+    });
+  });
+
+  /**
+   * META GUARD. `appealDefinitionForStage` shows a field it has no pass for,
+   * deliberately: appearing too early is visible and reportable, while
+   * disappearing entirely is found by its absence at an audit years later.
+   * That fail-open direction is a safety net, not the plan, and this is what
+   * makes it a net rather than a hiding place. A field added to the appeal
+   * section without a decision in APPEAL_FIELD_PASS fails here.
+   */
+  it('assigns every field in the appeal section to a pass', () => {
+    const appeal = DOCUMENT_TYPES['navmc10132'].sections.find((s) => s.id === 'appeal');
+    expect(appeal, 'the navmc10132 definition must still carry an appeal section').toBeTruthy();
+
+    const unassigned = appeal!.fields
+      .map((f) => f.name)
+      .filter((name) => APPEAL_FIELD_PASS[name] === undefined);
+
+    expect(
+      unassigned,
+      'Every appeal field needs a pass in APPEAL_FIELD_PASS (Navmc10132Sections.tsx), ' +
+        'from the section 13.1 lock table in docs/NAVMC_10132_SPEC.md. Unassigned fields ' +
+        'render at pass 4, which is earlier than most of them belong.',
+    ).toEqual([]);
+  });
+
+  // The reverse direction: a pass entry naming a field that no longer
+  // exists is dead weight that makes the map look more complete than it is.
+  it('has no pass entry for a field the appeal section does not carry', () => {
+    const appeal = DOCUMENT_TYPES['navmc10132'].sections.find((s) => s.id === 'appeal');
+    const names = new Set(appeal!.fields.map((f) => f.name));
+    const orphans = Object.keys(APPEAL_FIELD_PASS).filter((name) => !names.has(name));
+
+    expect(orphans, 'APPEAL_FIELD_PASS names fields the appeal section no longer has').toEqual([]);
   });
 });

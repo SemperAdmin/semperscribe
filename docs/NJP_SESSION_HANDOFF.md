@@ -375,11 +375,6 @@ ruled on the two-moments split, which is the same shape as D-50.
 
 **Known gaps**
 
-- **The appeal DynamicForm opens items 11-15 all at pass 4.** Same defect class as
-  D-61, found by the same sweep, deliberately not fixed blind. Four of its eight
-  fields belong to passes 5, 6 and 7 by the 13.1 lock table. The fix is a
-  field-level `subDefinition` filter, and it is gated on measuring whether React
-  Hook Form clears a field dropped from a DynamicForm definition. Spec 13.4.
 - **MOS has no field anywhere.** Figure 14-1's To line needs it.
 - **EAS has no field.** MCM 6.a(2) terminates a suspension early at expiration of
   enlistment, so every computed suspension date carries that caveat, and D-51

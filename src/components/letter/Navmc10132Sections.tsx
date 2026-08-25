@@ -37,12 +37,15 @@
  * one the document is currently at, per docs/NAVMC_10132_SPEC.md section 13
  * and decision rows D-43/D-46/D-47. Sections are ADDITIVE, never exclusive:
  * once a pass's fields open they stay visible at every later stage, because
- * a later pass can still need to read what an earlier one recorded. Three
+ * a later pass can still need to read what an earlier one recorded. FOUR
  * sections filter their OWN controls rather than being hidden outright,
  * because each carries fields from more than one pass: OffensesSection
  * (item 1 at pass 1, item 5 at pass 3), AccusedElectionSection (the vessel
- * flag at pass 1, item 2 at pass 2), and RemarksSection (item 21 throughout,
- * item 16 at pass 7). See each one's `stage` prop.
+ * flag at pass 1, item 2 at pass 2), RemarksSection (item 21 throughout,
+ * item 16 at pass 7), and the appeal block (items 11 through 15, across
+ * passes 4, 5, 6 and 7). The first three are hand-written JSX and take a
+ * `stage` prop. The appeal block is schema-driven, so it filters its
+ * DEFINITION instead, see `APPEAL_FIELD_PASS` below.
  */
 
 import React from 'react';
@@ -59,7 +62,12 @@ import { VictimsSection } from '@/components/letter/navmc10132/VictimsSection';
 import { RemarksSection } from '@/components/letter/navmc10132/RemarksSection';
 import { UnitDiarySection } from '@/components/letter/navmc10132/UnitDiarySection';
 import { StageSelector } from '@/components/letter/navmc10132/StageSelector';
-import { navmc10132Stage, navmc10132StageAtLeast } from '@/types/navmc';
+import {
+  navmc10132Stage,
+  navmc10132StageAtLeast,
+  NAVMC_10132_STAGE_VALUES,
+  type Navmc10132Stage,
+} from '@/types/navmc';
 
 interface Navmc10132SectionsProps {
   formData: FormData;
@@ -80,7 +88,84 @@ const DEF_ABSENCE = subDefinition(['absence']);
 // Item 7 left this sub-definition when it became a custom section. Item 8
 // remains a plain scalar block.
 const DEF_PUNISHMENT_TAIL = subDefinition(['authority']);
-const DEF_APPEAL = subDefinition(['appeal']);
+/**
+ * Which pass each appeal field belongs to, from the section 13.1 lock table
+ * in docs/NAVMC_10132_SPEC.md. Decision row D-61.
+ *
+ * THE APPEAL BLOCK SPANS FOUR PASSES, and it used to open all eight fields
+ * at pass 4 because it is gated as a section like every other DynamicForm.
+ * That offered a clerk a decision on an appeal that had not been taken yet.
+ * The other three spanning sections filter their own controls in hand-
+ * written JSX; this one is schema-driven, so it filters the DEFINITION
+ * instead and gets the same result.
+ *
+ * SAFE ONLY BECAUSE OF A MEASURED PROPERTY, and the measurement is a test
+ * rather than a comment: `tests/components/navmc10132-dynamicform-clobber.test.tsx`.
+ * DynamicForm's watch subscription OMITS keys its definition does not name,
+ * rather than emitting them empty, and `handleDynamicFormSubmit` in
+ * page.tsx merges with a spread. Together those mean a field dropped from
+ * this map's reach keeps its value in `formData`. If either half ever
+ * changes, dropping a field here becomes silent data loss on a legal
+ * record, and that test goes red before this does.
+ */
+export const APPEAL_FIELD_PASS: Record<string, 4 | 5 | 6 | 7> = {
+  appealAdvisementDate: 4, // item 11, closes at 11 APPEAL ADVISEMENT SIGNATURE
+  intendAppeal: 5, // item 12, closes at 12 APPEAL INTENT SIGNATURE
+  appealIntentDate: 5, // item 12
+  notAppealed: 6, // item 13, closes at 14 APPEAL DECISION SIGNATURE
+  appealDate: 6, // item 13
+  appealDecision: 6, // item 14
+  appealDecisionDate: 6, // item 14
+  appealDecisionNoticeDate: 7, // item 15, closes at 16 FINAL ADMIN INIT
+};
+
+/**
+ * What the appeal card is called at a given stage, so a clerk shown one
+ * field is not also told the card holds items 11 through 15.
+ */
+function appealTitleForStage(stage: Navmc10132Stage): string {
+  if (navmc10132StageAtLeast(stage, 7)) return 'Appeal (Items 11-15)';
+  if (navmc10132StageAtLeast(stage, 6)) return 'Appeal (Items 11-14)';
+  if (navmc10132StageAtLeast(stage, 5)) return 'Appeal (Items 11-12)';
+  return 'Appeal (Item 11)';
+}
+
+/**
+ * The appeal sub-definition holding only the fields open at `stage`.
+ *
+ * A FIELD THIS MAP DOES NOT KNOW IS SHOWN, NOT HIDDEN, and that direction is
+ * chosen rather than defaulted. A new appeal field added to
+ * `Navmc10132Definition` without a decision here appears too early, which a
+ * clerk can see and report. Hiding it instead would make it invisible at
+ * every stage, and an invisible field on a legal record is found by its
+ * absence at an audit years later. `navmc10132-stage-visibility.test.tsx`
+ * carries a guard that fails the moment such a field exists, so the fail-open
+ * behaviour is a safety net rather than the plan.
+ */
+function appealDefinitionForStage(stage: Navmc10132Stage): DocumentTypeDefinition {
+  const def = subDefinition(['appeal']);
+  return {
+    ...def,
+    sections: def.sections.map((section) => ({
+      ...section,
+      title: appealTitleForStage(stage),
+      fields: section.fields.filter((field) => {
+        const pass = APPEAL_FIELD_PASS[field.name];
+        return pass === undefined || navmc10132StageAtLeast(stage, pass);
+      }),
+    })),
+  };
+}
+
+/**
+ * One definition per stage, built once at module scope. DynamicForm memoizes
+ * `allowedTopLevelKeys` and `sanitizedDefaultValues` on the definition's
+ * IDENTITY, so building a fresh object each render would recompute both on
+ * every keystroke of every other section.
+ */
+const DEF_APPEAL_BY_STAGE: Record<string, DocumentTypeDefinition> = Object.fromEntries(
+  NAVMC_10132_STAGE_VALUES.map((stage) => [String(stage), appealDefinitionForStage(stage)]),
+);
 
 /** Shared card chrome so every section reads the same. */
 export function SectionCard({
@@ -195,8 +280,15 @@ export function Navmc10132FormSections({
       {navmc10132StageAtLeast(stage, 4) && (
         <FormBlock>
           <DynamicForm
-            key={`navmc10132-${formKey}-appeal`}
-            documentType={DEF_APPEAL}
+            // THE STAGE IS PART OF THE KEY ON PURPOSE. DynamicForm calls
+            // useForm once per mount and never resets, so a definition that
+            // gains fields on a stage change would render those fields
+            // against a form whose defaults predate them: they would show
+            // empty even where formData holds a value. Remounting reseeds
+            // them. Safe to remount because the values live in formData,
+            // not in the form instance.
+            key={`navmc10132-${formKey}-appeal-${stage}`}
+            documentType={DEF_APPEAL_BY_STAGE[String(stage)]}
             onSubmit={onDynamicSync}
             defaultValues={formData}
           />

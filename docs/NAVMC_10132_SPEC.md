@@ -1059,11 +1059,11 @@ wrong in one direction or the other. Each filters its own controls instead, on a
 | OffensesSection | item 1, article and summary | pass 1 | item 5, finding | pass 3 | gated |
 | AccusedElectionSection | `vesselException`, advisement | pass 1 | item 2, election | pass 2 | gated |
 | RemarksSection | item 21, remarks | pass 1 | item 16, final admin action | pass 7 | gated |
-| `DEF_APPEAL` DynamicForm | item 11, advisement date | pass 4 | item 15, decision notice date | pass 7 | OPEN, see below |
+| appeal DynamicForm | item 11, advisement date | pass 4 | item 15, decision notice date | pass 7 | gated, per field |
 
-THE APPEAL BLOCK IS THE SAME DEFECT, UNFIXED. Found by the same sweep, in the same
-run that found D-61, and left open rather than fixed blind. All eight of its fields
-open together at pass 4, and the 13.1 lock table places them across four passes:
+THE APPEAL BLOCK WAS THE SAME DEFECT AND IS NOW FIXED, differently, because it is
+the only one of the four that is schema-driven. All eight of its fields opened
+together at pass 4, and the 13.1 lock table places them across four passes:
 
 | field | item | belongs to |
 | --- | --- | --- |
@@ -1073,22 +1073,39 @@ open together at pass 4, and the 13.1 lock table places them across four passes:
 | `appealDecision`, `appealDecisionDate` | 14 | pass 6 |
 | `appealDecisionNoticeDate` | 15 | pass 7 |
 
-So four of the eight fields open up to three passes early, and a clerk at pass 4 is
-offered a decision on an appeal that has not been taken yet.
+Four of eight opened up to three passes early, offering a clerk a decision on an
+appeal that had not been taken yet. The other three sections filter their own JSX;
+this one filters its DEFINITION, through `APPEAL_FIELD_PASS` and
+`appealDefinitionForStage` in Navmc10132Sections.tsx, one stable definition per
+stage at module scope because DynamicForm memoizes on the definition's identity.
 
-WHY IT IS NOT FIXED IN THE SAME COMMIT AS D-61. This section is a `DynamicForm`
-driven by `Navmc10132Definition`, not a hand-written component, so the fix is a
-field-level `subDefinition` filter, one stable definition per stage at module scope
-because DynamicForm's memos require referential stability. That path crosses React
-Hook Form, which carries this codebase's known clobber rule, and whether a field
-dropped from the definition survives in `formData` or is cleared through
-`onDynamicSync` is UNMEASURED. Measure it before building the filter: the custom
-sections proved persistence for THEMSELVES in the browser, and that proves nothing
-about a DynamicForm section.
+THE FIX WAS GATED ON A MEASUREMENT, AND THE MEASUREMENT IS NOW A TEST. Dropping a
+field from a definition crosses React Hook Form, and whether a dropped field
+survives in `formData` or is cleared through `onDynamicSync` was unmeasured. It
+survives, for two reasons that live in two different files:
+`DynamicForm`'s watch subscription filters on `allowedTopLevelKeys` and OMITS an
+unnamed key rather than emitting it empty, and `handleDynamicFormSubmit` in
+page.tsx merges with a spread. Either half changing turns this gate into silent
+data loss on a legal record, so both are asserted in
+`tests/components/navmc10132-dynamicform-clobber.test.tsx`, including the
+distinction that matters: the key is ABSENT, not present-and-empty. An
+implementation emitting `appealDecision: ''` would pass a naive falsy check and
+still destroy the record.
 
-Gating one of these by its EARLIEST field leaks the late one. Gating it by its
-LATEST field hides work the clerk has to do now. Both failures are silent: the
-section renders, its title is present, and a test asserting the title passes.
+TWO SMALLER DECISIONS INSIDE IT. The card is RENAMED per stage, Appeal (Item 11)
+through Appeal (Items 11-15), because a card headed "Items 11-15" showing one
+field reads as a rendering failure rather than a gate. And a field with no entry
+in `APPEAL_FIELD_PASS` is SHOWN, not hidden: appearing too early is visible and
+reportable, while never appearing at all is found by its absence at an audit years
+later. That fail-open direction is a safety net rather than the plan, and a meta
+guard in `navmc10132-stage-visibility.test.tsx` fails the moment an unassigned
+field exists, in both directions.
+
+THE STAGE IS PART OF THE DYNAMICFORM KEY. `useForm` initializes once per mount and
+this codebase never calls `reset`, so a definition that gains fields on a stage
+change would render them against defaults that predate them: empty controls over
+populated `formData`. Remounting reseeds them, and is safe precisely because the
+values live in `formData` rather than in the form instance.
 
 WHAT THE HIDDEN CONTROL IS REPLACED WITH MATTERS. Each gate renders the label plus
 a sentence saying why the control is not there yet and which stage opens it. An
