@@ -8,6 +8,11 @@
 // JAGMAN 0118.d requires before the vacation notice, layered on the
 // `article31RightsReadDate` field D-54 added to Navmc10132Vacation.
 //
+// Also covers W-19 (decision row D-52), JAGMAN 0118.d's ten-working-day
+// limit on issuing the vacating order, measured from `noticeServedDate` to
+// `outcomeDate` per the owner's 2026-08-25 ruling that the two dates equate
+// (see vacationOrderDeadlineIssues's own JSDoc).
+//
 // Also covers V-29 and its W-21 companion (decision row D-49, the offence
 // window, layered on the new `offenceDate` field) and V-30 and its W-22
 // companion (decision row D-56, the vacating authority's competence,
@@ -44,6 +49,7 @@ import {
   vacationSuspensionIndexBoundsIssues,
   vacationNoticeAfterRemissionIssues,
   vacationRightsAdvisementIssues,
+  vacationOrderDeadlineIssues,
   vacationRemarkMissingIssues,
   vacationOffenceWindowIssues,
   vacationOffenceAfterRemissionIssues,
@@ -520,6 +526,210 @@ describe('W-18: Article 31 rights advisement before the vacation notice is advis
       vacations: [{ suspensionIndex: 0, noticeServedDate: '2026-03-01', status: 'pending' }],
     });
     expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-w18-'))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W-19 (advisory): decision row D-52, JAGMAN 0118.d's ten-working-day limit
+// on issuing the vacating order. 2026-03-01 is a Sunday: the ten weekdays
+// after it run Mon 3-02 through Fri 3-13, so an order issued ON 3-13 has
+// exactly 10 weekdays elapsed (compliant, silent) and one issued on Mon
+// 3-16 has 11 (warns). Must warn, never block, and must never claim its
+// weekday count is a confirmed working-day violation, since this codebase
+// has no federal-holiday table (see vacationOrderDeadlineIssues's own
+// JSDoc).
+// ---------------------------------------------------------------------------
+
+describe('W-19: the ten-working-day order deadline is advisory only', () => {
+  it('is silent at exactly the 10-weekday limit', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          outcomeDate: '2026-03-13',
+        },
+      ],
+    });
+    expect(vacationOrderDeadlineIssues(form)).toEqual([]);
+  });
+
+  it('warns once the order issues on the 11th weekday after the notice', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          outcomeDate: '2026-03-16',
+        },
+      ],
+    });
+    const issues = vacationOrderDeadlineIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].id).toBe('navmc10132-w19-vacation-order-late-0');
+  });
+
+  it('never claims its weekday count is a confirmed working-day violation', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          outcomeDate: '2026-03-16',
+        },
+      ],
+    });
+    const [found] = vacationOrderDeadlineIssues(form);
+    // Names the limitation rather than asserting a confirmed violation:
+    // no federal-holiday table exists, so a bare weekday count over the
+    // limit is not proof the order was actually late.
+    expect(found.detail).toMatch(/federal holiday/i);
+    expect(found.detail).toMatch(/not a confirmed violation/i);
+    expect(found.rule).not.toMatch(/—/);
+    expect(found.detail).not.toMatch(/—/);
+  });
+
+  it('is silent while the vacation is still pending, with no outcomeDate to measure', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, noticeServedDate: '2026-03-01', status: 'pending' }],
+    });
+    expect(vacationOrderDeadlineIssues(form)).toEqual([]);
+  });
+
+  it('is silent when noticeServedDate is unset', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'vacated-full', outcomeDate: '2026-03-16' }],
+    });
+    expect(vacationOrderDeadlineIssues(form)).toEqual([]);
+  });
+
+  it('is silent on a not-vacated decision, even with a computable weekday excess', () => {
+    // The commander decided NOT to vacate. outcomeDate is still set (the
+    // decision date), but there is no "order vacating a suspension" to
+    // have been late, so this must stay silent even though the same dates
+    // would warn on a vacated-full record.
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'not-vacated',
+          outcomeDate: '2026-03-16',
+        },
+      ],
+    });
+    expect(vacationOrderDeadlineIssues(form)).toEqual([]);
+  });
+
+  it('is silent when outcomeDate is on or before noticeServedDate', () => {
+    const sameDay = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          outcomeDate: '2026-03-01',
+        },
+      ],
+    });
+    expect(vacationOrderDeadlineIssues(sameDay)).toEqual([]);
+
+    const before = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          outcomeDate: '2026-02-27',
+        },
+      ],
+    });
+    expect(vacationOrderDeadlineIssues(before)).toEqual([]);
+  });
+
+  it('never appears in getExportBlockers even when it fires', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          outcomeDate: '2026-03-16',
+        },
+      ],
+    });
+    expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-w19-'))).toBe(true);
+    expect(
+      getExportBlockers(form, [], [], []).some((i) => i.id.startsWith('navmc10132-w19-')),
+    ).toBe(false);
+  });
+
+  it('is folded into the punishmentIssues aggregate', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          outcomeDate: '2026-03-16',
+        },
+      ],
+    });
+    expect(punishmentIssues(form).some((i) => i.id.startsWith('navmc10132-w19-'))).toBe(true);
+  });
+
+  it('is keyed on the vacation\'s own array index, not a shared counter', () => {
+    const form = baseForm({
+      punishments: [
+        { code: 'N09', days: '14' },
+        { code: 'N09', days: '14' },
+      ],
+      suspensions: [
+        { punishmentIndex: 0, months: '6' },
+        { punishmentIndex: 1, months: '6' },
+      ],
+      vacations: [
+        {
+          suspensionIndex: 0,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          outcomeDate: '2026-03-13', // compliant, silent
+        },
+        {
+          suspensionIndex: 1,
+          noticeServedDate: '2026-03-01',
+          status: 'vacated-full',
+          outcomeDate: '2026-03-16', // late, warns
+        },
+      ],
+    });
+    const issues = vacationOrderDeadlineIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].id).toBe('navmc10132-w19-vacation-order-late-1');
   });
 });
 

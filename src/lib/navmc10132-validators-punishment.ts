@@ -36,6 +36,19 @@
  * checks against the `article31RightsReadDate` field D-54 added to
  * `Navmc10132Vacation`.
  *
+ * Also carries W-19 (`vacationOrderDeadlineIssues`), decision row D-52:
+ * JAGMAN 0118.d's ten-working-day limit on issuing the vacating order,
+ * measured from `noticeServedDate` to `outcomeDate`. Stays 'warn' for the
+ * same reason as W-18 immediately above (history, not drafting: the app
+ * cannot un-issue a late order). Reads `noticeServedDate` as the
+ * commencement date JAGMAN 0118.d means SOLELY because of the owner's
+ * 2026-08-25 determination recorded on the function's own JSDoc, not
+ * because any published paragraph equates the two; see that JSDoc before
+ * touching this assumption. Also documents, in the same JSDoc, why a plain
+ * weekday count (this codebase has no federal-holiday table) is presented
+ * with its limitation named rather than as an authoritative working-day
+ * count.
+ *
  * Also carries V-34 (`vacationRemarkMissingIssues`), found while closing
  * W-18 above: an executed vacation record (`status` `'vacated-full'` or
  * `'vacated-part'`) for which `vacationRemarks` (navmc10132-acroform.ts)
@@ -122,6 +135,10 @@ import {
   suspensionsWithComputedEnd,
   SUSPENSION_ASSUMPTIONS,
 } from '@/lib/njp-suspension-period';
+// parseIsoDate, not a bare `new Date(iso)` call: see that module's own
+// header for the UTC-parses-a-bare-date-string trap it exists to avoid.
+// vacationOrderDeadlineIssues (W-19) below is the caller.
+import { parseIsoDate } from '@/lib/navmc10132-date';
 // Value import, not type-only: navmc10132-acroform.ts imports only
 // '@/types', '@/types/navmc' and navmc10132-utils.ts (itself import-free),
 // none of which reach back into this module or into letter-validators.ts,
@@ -1432,8 +1449,12 @@ export function vacationNoticeAfterRemissionIssues(formData: FormData): Validati
  * proceedings" DATE, because `Navmc10132Vacation` carries none. This rule
  * compares against `noticeServedDate` only, per that field's own JSDoc
  * warning against treating it as the commencement date. The ten-working-day
- * order deadline that DOES need a commencement date (spec row W-19) is a
- * separate, unbuilt rule (D-52) and out of this rule's scope.
+ * order deadline (spec row W-19, decision row D-52) is a SEPARATE rule,
+ * `vacationOrderDeadlineIssues` below, and out of this rule's scope. That
+ * rule DOES read `noticeServedDate` as the commencement date, but only
+ * because Stephen ruled the two the same date on 2026-08-25; see that
+ * function's own JSDoc for why this rule must not make the same
+ * assumption on its own authority.
  *
  * SILENT ON A VACATION WITH AN OUT-OF-BOUNDS `suspensionIndex`. That is
  * V-33's finding on the record's target, not this rule's concern; this rule
@@ -1480,6 +1501,174 @@ export function vacationRightsAdvisementIssues(formData: FormData): ValidationIs
           'notice of intent is that ask. This record shows the rights reading on the same ' +
           'day as or after the notice, which is the wrong order. Confirm the actual sequence ' +
           'and correct this date if the rights reading in fact came first.',
+      ),
+    ];
+  });
+}
+
+/** The 10-working-day limit JAGMAN 0118.d sets for the vacating order. */
+const VACATION_ORDER_WORKING_DAY_LIMIT = 10;
+
+/**
+ * Counts Monday-through-Friday calendar days strictly after `startIso`
+ * through `endIso` inclusive. `startIso` itself is day zero and is never
+ * counted, matching the ordinary forward-looking reading of "within N days
+ * of X". Returns 0, not an error, when `endIso` is on or before `startIso`.
+ * Returns null when either date fails strict ISO parsing.
+ *
+ * THIS COUNTS WEEKDAYS, NOT WORKING DAYS, AND CALLERS MUST NOT CONFUSE THE
+ * TWO. No federal-holiday table exists anywhere in this codebase (checked
+ * 2026-08-25), so a holiday that lands on a weekday inside the span is
+ * still counted here as if it were a working day, though it is not. The
+ * result can therefore only ever be greater than or equal to the true
+ * number of working days in the span, never less: this function OVERCOUNTS
+ * working days, it never undercounts them. See `vacationOrderDeadlineIssues`
+ * (W-19) below, the only caller, for why that direction of error is the one
+ * this rule can act on honestly and why the raw result must never be
+ * presented to a user as a working-day count on its own.
+ */
+function countWeekdaysAfter(startIso: string, endIso: string): number | null {
+  const start = parseIsoDate(startIso);
+  const end = parseIsoDate(endIso);
+  if (start === null || end === null) return null;
+  if (end <= start) return 0;
+
+  let count = 0;
+  const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1);
+  while (cursor <= end) {
+    const dayOfWeek = cursor.getDay(); // 0 Sun ... 6 Sat, local calendar.
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return count;
+}
+
+/**
+ * W-19 (ADVISORY, NOT A BLOCKER, read this before touching the severity).
+ * Decision row D-52.
+ *
+ * JAGMAN (JAGINST 5800.7G CH-2) para 0118.d, verbatim: "The order vacating
+ * a suspension must be issued within 10 working days of the commencement
+ * of the vacation proceedings."
+ *
+ * THE TWO DATES THIS RULE NEEDS, AND WHERE EACH ONE COMES FROM.
+ *
+ *   - "The order vacating a suspension is issued" is the commander's own
+ *     decision, which `Navmc10132Vacation.outcomeDate` already records: the
+ *     date `status` was decided.
+ *   - "the commencement of the vacation proceedings" has no field of its
+ *     own on this record. STEPHEN RULED, 2026-08-25, that commencement of
+ *     the vacation proceedings and `noticeServedDate` ARE THE SAME DATE.
+ *     THIS RESOLVES AN AMBIGUITY LEFT DELIBERATELY OPEN WHEN D-60 SHIPPED:
+ *     `noticeServedDate`'s own JSDoc (src/types/navmc.ts) states plainly
+ *     that no source in this codebase equates "commencement of proceedings"
+ *     with the date Figure 14-1 was served, and that a future rule needing
+ *     the commencement date "must state that assumption explicitly at its
+ *     own call site; it must not read this field and treat it as already
+ *     having done so." THIS IS THAT CALL SITE, and this paragraph is that
+ *     statement: this rule reads `noticeServedDate` as the commencement
+ *     date SOLELY because of the owner's determination recorded here, not
+ *     because JAGMAN, the MCO, or any other published paragraph says so. A
+ *     published paragraph equating the two, if one ever turns up, should
+ *     replace this citation with it, the same posture V-31 takes toward its
+ *     own SME-determined rule.
+ *
+ * THE OVERCOUNT PROBLEM, AND WHY THIS RULE STILL FIRES RATHER THAN GOING
+ * SILENT. No working-day or federal-holiday helper exists anywhere in this
+ * codebase. Counting Monday-through-Friday weekdays (`countWeekdaysAfter`
+ * above) is the only date arithmetic available without one, and it
+ * OVERCOUNTS working days whenever a federal holiday falls on a weekday
+ * inside the span: that day is not a working day, but the weekday count
+ * still includes it. So a weekday count over the 10-day limit does not, by
+ * itself, prove the order was late; a holiday inside the window could fully
+ * explain the excess and the order could in fact be timely.
+ *
+ * THIS RULE MUST NOT PRESENT THAT WEEKDAY COUNT AS AN AUTHORITATIVE
+ * WORKING-DAY COUNT. This codebase's standing principle, stated by name on
+ * a test in njp-suspension-period.ts ("an unreadable or empty period yields
+ * null, never a false accusation from missing data"), is not only about
+ * missing data: a computed number that can accuse a compliant commander of
+ * being late on the strength of an approximation it cannot verify is the
+ * same failure by another route. Two ways to honor that principle were
+ * available: NAME THE LIMITATION IN THE MESSAGE, or REFUSE TO FIRE wherever
+ * a holiday could explain the excess entirely. This rule takes the first.
+ * The second would require guessing how many federal holidays could
+ * plausibly fall inside a given span, and this codebase has no table and no
+ * citation to support any such guess; inventing a threshold for that would
+ * substitute one unfounded number for another, which is worse, not better,
+ * than the number it replaces. Naming the limitation costs nothing the app
+ * does not already know, and matches the established pattern for every
+ * other conditional computed date in this codebase (W-17, W-20, W-21:
+ * compute the number, name every unmodeled condition that could move it,
+ * never suppress it and never assert it as certain). So this rule ALWAYS
+ * COMPUTES the weekday count when both dates are readable, and its message
+ * says PLAINLY, every time it fires, that the count excludes weekends only,
+ * that the app holds no federal holiday table, and that a holiday inside
+ * the window could mean the order was in fact timely.
+ *
+ * WHY 'warn' AND NOT 'block', per this rule's own spec row: the app has no
+ * ability to un-issue a late order, and a block would trap a clerk
+ * recording history truthfully. Same posture as `vacationRightsAdvisementIssues`
+ * (W-18) immediately above, which cites this exact reasoning back at this
+ * rule by name.
+ *
+ * EVALUATED ONLY WHEN BOTH DATES EXIST AND AN ORDER WAS ACTUALLY ISSUED.
+ * JAGMAN 0118.d's ten-day clock is stated about "the order VACATING a
+ * suspension", so this rule fires only for `status` `'vacated-full'` or
+ * `'vacated-part'` — the two outcomes that mean an order vacating the
+ * suspension actually issued. A `pending` record has no `outcomeDate`:
+ * nothing has been decided yet, so there is no issued order to measure and
+ * this rule stays silent, the same "unset while status is pending" contract
+ * `outcomeDate` itself documents. A `not-vacated` record DOES carry an
+ * `outcomeDate` (the date the commander decided, per that field's own
+ * JSDoc), but the commander's decision there was NOT to vacate: there is no
+ * "order vacating a suspension" to have been late, and firing this rule on
+ * that record would accuse a commander of a late order over a decision that
+ * was never an order to vacate at all, exactly the false accusation this
+ * rule exists to avoid elsewhere. Every function in this module is pure and
+ * none of them read the current time, so an open-ended wait, a pending
+ * vacation already past ten working days with no decision yet, is not and
+ * cannot be measured here; that is a UI concern (if any), never this
+ * rule's.
+ *
+ * SILENT WHEN NOTHING HAS ELAPSED. `countWeekdaysAfter` returns 0 when
+ * `outcomeDate` is on or before `noticeServedDate`, which can never exceed
+ * the 10-day limit, so this rule never fires on that ordering. It asserts
+ * nothing about whether that ordering is itself sound; that is a different
+ * concern this rule does not check.
+ *
+ * THE ID IS KEYED ON EACH VACATION'S OWN POSITION in `vacations`, matching
+ * every other vacation-record rule above, for the identical `key={issue.id}`
+ * reason their own JSDocs give.
+ */
+export function vacationOrderDeadlineIssues(formData: FormData): ValidationIssue[] {
+  return vacationEntries(formData).flatMap((vacation, index) => {
+    if (vacation.status !== 'vacated-full' && vacation.status !== 'vacated-part') return [];
+
+    const noticeServedDate = (vacation.noticeServedDate ?? '').trim();
+    const outcomeDate = (vacation.outcomeDate ?? '').trim();
+    if (noticeServedDate === '' || outcomeDate === '') return [];
+
+    const weekdaysElapsed = countWeekdaysAfter(noticeServedDate, outcomeDate);
+    if (weekdaysElapsed === null || weekdaysElapsed <= VACATION_ORDER_WORKING_DAY_LIMIT) return [];
+
+    return [
+      issue(
+        `navmc10132-w19-vacation-order-late-${index}`,
+        'warn',
+        `Vacation record ${index}'s order issued ${weekdaysElapsed} weekdays after the notice ` +
+          `was served on ${noticeServedDate}, more than the ${VACATION_ORDER_WORKING_DAY_LIMIT} ` +
+          `working-day limit JAGMAN 0118.d allows.`,
+        'JAGMAN (JAGINST 5800.7G CH-2) para 0118.d',
+        'JAGMAN 0118.d requires the order vacating a suspension to issue within ' +
+          `${VACATION_ORDER_WORKING_DAY_LIMIT} working days of the commencement of the ` +
+          'vacation proceedings, which this app treats as the date the Figure 14-1 notice ' +
+          'was served, per the owner\'s determination that the two dates are the same. This ' +
+          'count excludes weekends only. The app holds no federal holiday table, so it cannot ' +
+          'exclude holidays from the count, and a holiday inside this window would make the ' +
+          'true number of working days lower than shown. This is not a confirmed violation. ' +
+          'Confirm whether a federal holiday fell between the notice and the order before ' +
+          'treating it as late.',
       ),
     ];
   });
@@ -1900,7 +2089,11 @@ export function forfeitureReducedGradeIssues(formData: FormData): ValidationIssu
  * against `offenceDate` and the same conditional end date W-17/W-20
  * already read (decision row D-49), and V-30/W-22 read it against
  * `vacatingAuthorityGrade` and the punishment's own required authority
- * (decision row D-56). All four are new as of this change.
+ * (decision row D-56). W-19 (`vacationOrderDeadlineIssues`, decision row
+ * D-52) sits last of all, immediately after W-18: it reads the same
+ * `vacations` array over `noticeServedDate` and `outcomeDate`, and per the
+ * owner's 2026-08-25 ruling documented on that function, treats the former
+ * as the commencement date JAGMAN 0118.d's ten-working-day clock runs from.
  */
 export function punishmentIssues(formData: FormData): ValidationIssue[] {
   return [
@@ -1927,6 +2120,7 @@ export function punishmentIssues(formData: FormData): ValidationIssue[] {
     ...suspensionInterruptionAssumptionIssues(formData),
     ...vacationNoticeAfterRemissionIssues(formData),
     ...vacationRightsAdvisementIssues(formData),
+    ...vacationOrderDeadlineIssues(formData),
     ...vacationOffenceWindowIssues(formData),
     ...vacationOffenceAfterRemissionIssues(formData),
     ...vacatingAuthorityInsufficientIssues(formData),
