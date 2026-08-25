@@ -4,7 +4,7 @@
  * Modelled on tools/aa-forms/verify_10132_app_fill.mjs: loads TypeScript
  * modules through jiti with an @ alias, no build step required.
  *
- * Usage: node tools/aa-forms/tmp_check_unit_diary.mjs
+ * Usage: node tools/aa-forms/verify_unit_diary.mjs
  */
 import { createRequire } from 'node:module';
 import path from 'node:path';

@@ -8,7 +8,7 @@
  * per instruction but is no longer part of this gate.
  *
  * Modelled on tools/aa-forms/verify_10132_app_fill.mjs and
- * tools/aa-forms/tmp_check_unit_diary.mjs: loads the real TypeScript
+ * tools/aa-forms/verify_unit_diary.mjs: loads the real TypeScript
  * modules through jiti with an @ alias, no build step required, no
  * re-implementation of any rule.
  *
@@ -31,7 +31,7 @@
  *     MCTFS code does not appear in the unit diary OFFENSES section.
  *
  * Must be run from the repo root so jiti's alias resolves:
- *   node tools/aa-forms/tmp_check_templates.mjs
+ *   node tools/aa-forms/verify_templates.mjs
  *
  * Left in place per standing instruction, the mount blocks delete.
  */
