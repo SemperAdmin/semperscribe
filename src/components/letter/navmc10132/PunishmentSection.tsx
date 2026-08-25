@@ -92,17 +92,23 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
   const basisGrade =
     (typeof formData.forfeitureBasisGrade === 'string' && formData.forfeitureBasisGrade.trim()) ||
     (typeof formData.accusedPayGrade === 'string' ? formData.accusedPayGrade : '');
-  const ceiling = payTable.current
-    ? forfeitureCeiling({
-        payGrade: basisGrade,
-        yearsOfService:
-          typeof formData.accusedYearsOfService === 'string' ? formData.accusedYearsOfService : '',
-        seaHardshipDutyPay:
-          typeof formData.accusedSeaHardshipDutyPay === 'string'
-            ? formData.accusedSeaHardshipDutyPay
-            : '',
-      })
-    : null;
+  // The status is passed in rather than checked here. forfeitureCeiling now
+  // requires it and returns a reason when it declines, so the "nothing
+  // computes on a superseded table" rule is enforced by the module rather
+  // than by this component remembering to ask first.
+  const ceilingResult = forfeitureCeiling({
+    status: payTable,
+    payGrade: basisGrade,
+    yearsOfService:
+      typeof formData.accusedYearsOfService === 'string' ? formData.accusedYearsOfService : '',
+    seaHardshipDutyPay:
+      typeof formData.accusedSeaHardshipDutyPay === 'string'
+        ? formData.accusedSeaHardshipDutyPay
+        : '',
+  });
+  const ceiling = ceilingResult.kind === 'ceiling' ? ceilingResult.ceiling : null;
+  const ceilingDetail =
+    ceilingResult.kind === 'ceiling' ? payTable.detail : ceilingResult.detail;
 
   // A code selected before item 8A was set can become unavailable once it is.
   // DERIVED, not cleared by an effect: the pending selection is read through
@@ -258,7 +264,7 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
                         typeof formData.accusedPayGrade === 'string' ? formData.accusedPayGrade : ''
                       }
                       ceiling={ceiling}
-                      ceilingDetail={payTable.detail}
+                      ceilingDetail={ceilingDetail}
                     />
                     <EntryWarnings code={code} entry={entry} authorityGrade={(formData.njpAuthorityPayGrade as string) ?? ''} />
                   </CardContent>

@@ -245,8 +245,15 @@ export function AccusedRankSection({ formData, setFormData, SectionCard }: Secti
           </div>
 
           <div className="space-y-1 rounded-md border border-dashed p-3">
+            {/*
+              "Completed years, round down" is not decoration. bracketIndex
+              treats the entry as completed years, and a Marine at 1 year 10
+              months entered as "2" jumps a bracket. One bracket is worth $42
+              on a seven days' pay forfeiture at the E-3 "Over 2" boundary and
+              $468 across two months at the E-7 "Over 26" boundary.
+            */}
             <Label className="text-xs" htmlFor="accused-years-of-service">
-              Years of service
+              Completed years of service, round down
             </Label>
             <Input
               id="accused-years-of-service"

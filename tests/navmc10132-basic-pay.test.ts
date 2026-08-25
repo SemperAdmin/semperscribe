@@ -2,6 +2,13 @@
 // payTableStatus, forfeitureCeiling) and the V-19/V-20 punishment validators
 // in src/lib/navmc10132-validators-punishment.ts that consume them.
 //
+// Rewritten 2026-08-25 against the reworked API: monthlyBasicPay and
+// forfeitureCeiling now return discriminated unions (BasicPayLookup /
+// ForfeitureCeilingResult) instead of `number | null`, forfeitureCeiling
+// requires a PayTableStatus, BASIC_PAY_EFFECTIVE_DATE is gone in favor of
+// PAY_TABLE_WINDOW, and payTableStatus validates a real calendar date. See
+// the module header for the seven defects this closed.
+//
 // Controlling authorities, quoted in the source and re-quoted here only where
 // an assertion depends on the exact words:
 //   JAGMAN 0111.b - correctional custody requires an unsuspended reduction
@@ -21,7 +28,12 @@ import {
   monthlyBasicPay,
   payTableStatus,
   forfeitureCeiling,
+  computePayTableCellDigest,
+  PAY_TABLE_CELL_DIGEST,
+  PAY_TABLE_WINDOW,
   SENIOR_ENLISTED_SPECIAL_POSITION_PAY,
+  E1_UNDER_FOUR_MONTHS,
+  CEILING_REASONS_WORTH_SURFACING,
 } from '@/lib/navmc10132-basic-pay';
 
 import {
@@ -53,6 +65,26 @@ function findIssue(issues: ValidationIssue[], idPrefix: string): ValidationIssue
   return found;
 }
 
+/**
+ * Unwraps a BasicPayLookup to its rate, failing loudly (not with a silent
+ * `undefined`) when the fixture does not actually resolve to a rate. Used so
+ * ceiling figures are computed from the table rather than hardcoded, per the
+ * rule that every ceiling figure in this suite traces back to monthlyBasicPay.
+ */
+function rate(payGrade: string, yearsOfService: string | number): number {
+  const lookup = monthlyBasicPay(payGrade, yearsOfService);
+  if (lookup.kind !== 'rate') {
+    throw new Error(
+      `Expected a rate for ${payGrade} at ${yearsOfService} years, got kind "${lookup.kind}"` +
+        (lookup.kind === 'unavailable' ? ` (${lookup.reason}: ${lookup.detail})` : ''),
+    );
+  }
+  return lookup.monthly;
+}
+
+/** A PayTableStatus that is current against the window this file holds. */
+const currentStatus = payTableStatus('2026-06-15');
+
 /** The enlisted grades the published table carries a row for, junior to senior. */
 const GRADES = ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9'];
 
@@ -72,45 +104,85 @@ const YOS_YEARS = [
 
 describe('monthlyBasicPay', () => {
   it('reads the E3 bracket boundaries, "Over 2" meaning >= 2', () => {
-    expect(monthlyBasicPay('E3', 1)).toBe(2836.8);
-    expect(monthlyBasicPay('E3', 2)).toBe(3015.0);
-    expect(monthlyBasicPay('E3', 3)).toBe(3198.0);
-    expect(monthlyBasicPay('E3', 40)).toBe(3198.0);
+    expect(rate('E3', 1)).toBe(2836.8);
+    expect(rate('E3', 2)).toBe(3015.0);
+    expect(rate('E3', 3)).toBe(3198.0);
+    expect(rate('E3', 40)).toBe(3198.0);
   });
 
-  it('returns null on a blank table cell, meaning the app states no rate, never zero', () => {
-    const e8 = monthlyBasicPay('E8', 2);
-    const e9 = monthlyBasicPay('E9', 5);
-    expect(e8).toBeNull();
-    expect(e9).toBeNull();
-    expect(e8).not.toBe(0);
-    expect(e9).not.toBe(0);
+  describe('the two meanings of unavailable (defect 6)', () => {
+    it('a blank table cell reads {kind:"unavailable", reason:"no-rate-published"}, never a rate of 0', () => {
+      const e8 = monthlyBasicPay('E8', 2);
+      const e9 = monthlyBasicPay('E9', 5);
+      expect(e8.kind).toBe('unavailable');
+      expect(e9.kind).toBe('unavailable');
+      if (e8.kind === 'unavailable') expect(e8.reason).toBe('no-rate-published');
+      if (e9.kind === 'unavailable') expect(e9.reason).toBe('no-rate-published');
+    });
+
+    it('a non-enlisted or out-of-range grade reads "unreadable-grade"', () => {
+      for (const bad of ['XYZ', 'LCpl', 'O5', 'E10']) {
+        const lookup = monthlyBasicPay(bad, 5);
+        expect(lookup.kind, bad).toBe('unavailable');
+        if (lookup.kind === 'unavailable') expect(lookup.reason, bad).toBe('unreadable-grade');
+      }
+    });
+
+    it('an empty grade reads "grade-not-set", distinct from "unreadable-grade"', () => {
+      const lookup = monthlyBasicPay('', 5);
+      expect(lookup.kind).toBe('unavailable');
+      if (lookup.kind === 'unavailable') expect(lookup.reason).toBe('grade-not-set');
+    });
+
+    it('empty years reads "years-not-set"; unparseable or negative years reads "unreadable-years"', () => {
+      const unset = monthlyBasicPay('E5', '');
+      expect(unset.kind).toBe('unavailable');
+      if (unset.kind === 'unavailable') expect(unset.reason).toBe('years-not-set');
+
+      const unreadable = monthlyBasicPay('E5', 'abc');
+      expect(unreadable.kind).toBe('unavailable');
+      if (unreadable.kind === 'unavailable') expect(unreadable.reason).toBe('unreadable-years');
+
+      const negative = monthlyBasicPay('E5', -1);
+      expect(negative.kind).toBe('unavailable');
+      if (negative.kind === 'unavailable') expect(negative.reason).toBe('unreadable-years');
+    });
+
+    it('"E-05", "E 5", and "e5" resolve to the same rate as "E5" — these used to miss every row and be indistinguishable from a blank cell', () => {
+      const canonical = rate('E5', 2);
+      expect(rate('E-05', 2)).toBe(canonical);
+      expect(rate('E 5', 2)).toBe(canonical);
+      expect(rate('e5', 2)).toBe(canonical);
+    });
   });
 
-  it('returns null for an unreadable pay grade', () => {
-    expect(monthlyBasicPay('', 5)).toBeNull();
-    expect(monthlyBasicPay('LCpl', 5)).toBeNull();
-    expect(monthlyBasicPay('O5', 5)).toBeNull();
-    expect(monthlyBasicPay('E10', 5)).toBeNull();
+  describe('CEILING_REASONS_WORTH_SURFACING', () => {
+    it('contains exactly the three unreadable-input reasons, and none of the ordinary or blocked ones', () => {
+      expect([...CEILING_REASONS_WORTH_SURFACING].sort()).toEqual(
+        ['unreadable-extra-pay', 'unreadable-grade', 'unreadable-years'].sort(),
+      );
+      expect(CEILING_REASONS_WORTH_SURFACING).not.toContain('no-rate-published');
+      expect(CEILING_REASONS_WORTH_SURFACING).not.toContain('grade-not-set');
+      expect(CEILING_REASONS_WORTH_SURFACING).not.toContain('years-not-set');
+      expect(CEILING_REASONS_WORTH_SURFACING).not.toContain('table-not-current');
+    });
   });
 
-  it('returns null for an unreadable length of service', () => {
-    expect(monthlyBasicPay('E5', '')).toBeNull();
-    expect(monthlyBasicPay('E5', 'abc')).toBeNull();
-    expect(monthlyBasicPay('E5', -1)).toBeNull();
-  });
+  describe('table integrity', () => {
+    it('computePayTableCellDigest() equals PAY_TABLE_CELL_DIGEST: monotonicity cannot catch a transposed digit because it preserves ordering — 5 of 6 injected transcription errors passed the row/column invariants below undetected', () => {
+      expect(computePayTableCellDigest()).toBe(PAY_TABLE_CELL_DIGEST);
+    });
 
-  it('tolerates a dash and lowercase grade: "e-5" resolves the same as "E5"', () => {
-    expect(monthlyBasicPay('e-5', 2)).toBe(monthlyBasicPay('E5', 2));
-    expect(monthlyBasicPay('e-5', 2)).not.toBeNull();
-  });
-
-  describe('structural invariants over the whole table', () => {
+    // Cheap, and catches a different error class than the digest (an out-of-
+    // order cell that isn't necessarily a transcription error). Kept, not
+    // deleted, per the module header's own instruction.
     it('every grade row is non-decreasing left to right across non-null cells', () => {
       for (const grade of GRADES) {
-        const values = YOS_YEARS.map((y) => monthlyBasicPay(grade, y)).filter(
-          (v): v is number => v !== null
-        );
+        const values: number[] = [];
+        for (const years of YOS_YEARS) {
+          const lookup = monthlyBasicPay(grade, years);
+          if (lookup.kind === 'rate') values.push(lookup.monthly);
+        }
         for (let i = 1; i < values.length; i++) {
           expect(
             values[i],
@@ -122,9 +194,11 @@ describe('monthlyBasicPay', () => {
 
     it('at every years-of-service bracket, pay is non-decreasing as grade rises E1 -> E9', () => {
       for (const years of YOS_YEARS) {
-        const values = GRADES.map((g) => monthlyBasicPay(g, years)).filter(
-          (v): v is number => v !== null
-        );
+        const values: number[] = [];
+        for (const grade of GRADES) {
+          const lookup = monthlyBasicPay(grade, years);
+          if (lookup.kind === 'rate') values.push(lookup.monthly);
+        }
         for (let i = 1; i < values.length; i++) {
           expect(
             values[i],
@@ -137,8 +211,9 @@ describe('monthlyBasicPay', () => {
     it('every non-null cell is a positive number with at most 2 decimal places', () => {
       for (const grade of GRADES) {
         for (const years of YOS_YEARS) {
-          const value = monthlyBasicPay(grade, years);
-          if (value === null) continue;
+          const lookup = monthlyBasicPay(grade, years);
+          if (lookup.kind !== 'rate') continue;
+          const value = lookup.monthly;
           expect(value, `${grade} at ${years} years`).toBeGreaterThan(0);
           const cents = value * 100;
           expect(
@@ -156,38 +231,39 @@ describe('monthlyBasicPay', () => {
 // ---------------------------------------------------------------------------
 
 describe('payTableStatus', () => {
-  it('is current for a 2026 punishment date (the file holds the 2026-01-01 table)', () => {
+  it('is current for a 2026 date inside the held window', () => {
     const status = payTableStatus('2026-03-15');
     expect(status.current).toBe(true);
-    expect(status.expectedEffective).toBe('2026-01-01');
+    expect(status.effectiveFrom).toBe(PAY_TABLE_WINDOW.effectiveFrom);
   });
 
-  it('is not current for a 2025 punishment date and names 2025-01-01 as expected', () => {
-    const status = payTableStatus('2025-06-01');
+  it('is not current for a date before effectiveFrom, and the detail says it predates the table', () => {
+    const status = payTableStatus('2025-12-31');
     expect(status.current).toBe(false);
-    expect(status.expectedEffective).toBe('2025-01-01');
+    expect(status.effectiveFrom).toBe(PAY_TABLE_WINDOW.effectiveFrom);
+    expect(status.detail).toContain('predates');
   });
 
-  it('is not current for a 2027 punishment date and names 2027-01-01 as expected', () => {
-    const status = payTableStatus('2027-01-05');
-    expect(status.current).toBe(false);
-    expect(status.expectedEffective).toBe('2027-01-01');
+  it('rejects a date that is not on the real calendar (defect 7): "2026-99-99" and "2026-02-30" are not current, "2026-02-28" is', () => {
+    expect(payTableStatus('2026-99-99').current).toBe(false);
+    expect(payTableStatus('2026-02-30').current).toBe(false);
+    expect(payTableStatus('2026-02-28').current).toBe(true);
   });
 
-  it('never treats an undated item 6 as current', () => {
-    const empty = payTableStatus('');
-    expect(empty.current).toBe(false);
-    expect(empty.expectedEffective).toBe('');
-
-    const malformed = payTableStatus('not a date');
-    expect(malformed.current).toBe(false);
-    expect(malformed.expectedEffective).toBe('');
+  it('never treats an undated or malformed item 6 date as current', () => {
+    expect(payTableStatus('').current).toBe(false);
+    expect(payTableStatus('not a date').current).toBe(false);
   });
 
   it('always populates detail', () => {
     expect(payTableStatus('2026-01-01').detail.length).toBeGreaterThan(0);
     expect(payTableStatus('2025-01-01').detail.length).toBeGreaterThan(0);
     expect(payTableStatus('').detail.length).toBeGreaterThan(0);
+  });
+
+  it('one calendar year carried two enlisted tables after the FY25 NDAA junior-enlisted raise, which is why a 2025-05-15 punishment is not current against this file\'s explicit window even though it falls in the same year as an old January table', () => {
+    const status = payTableStatus('2025-05-15');
+    expect(status.current).toBe(false);
   });
 });
 
@@ -197,90 +273,169 @@ describe('payTableStatus', () => {
 
 describe('forfeitureCeiling', () => {
   it('computes E2 at 3 years from the pay table: floor(monthly/30*7) and floor(monthly/2)', () => {
-    const monthly = monthlyBasicPay('E2', 3);
-    expect(monthly).not.toBeNull();
-    const basic = monthly as number;
-
-    const ceiling = forfeitureCeiling({ payGrade: 'E2', yearsOfService: 3 });
-    expect(ceiling).not.toBeNull();
-    expect(ceiling!.monthlyBasicPay).toBe(basic);
-    expect(ceiling!.sevenDaysPay).toBe(Math.floor((basic / 30) * 7));
-    expect(ceiling!.halfMonthPay).toBe(Math.floor(basic / 2));
+    const basic = rate('E2', 3);
+    const result = forfeitureCeiling({ status: currentStatus, payGrade: 'E2', yearsOfService: 3 });
+    expect(result.kind).toBe('ceiling');
+    if (result.kind !== 'ceiling') return;
+    expect(result.ceiling.monthlyBasicPay).toBe(basic);
+    expect(result.ceiling.sevenDaysPay).toBe(Math.floor((basic / 30) * 7));
+    expect(result.ceiling.halfMonthPay).toBe(Math.floor(basic / 2));
     // Pin the actual numbers so a silent table edit is caught too.
     expect(basic).toBe(2697.9);
-    expect(ceiling!.sevenDaysPay).toBe(629);
-    expect(ceiling!.halfMonthPay).toBe(1348);
+    expect(result.ceiling.sevenDaysPay).toBe(629);
+    expect(result.ceiling.halfMonthPay).toBe(1348);
   });
 
   it('rounds ceilings DOWN, never up, when the division is not whole', () => {
-    const monthly = monthlyBasicPay('E1', 5);
-    expect(monthly).not.toBeNull();
-    const basic = monthly as number;
+    const basic = rate('E1', 5);
     // Confirm this fixture actually exercises a non-whole division before
     // trusting the floor assertion below.
     expect(Number.isInteger((basic / 30) * 7)).toBe(false);
     expect(Number.isInteger(basic / 2)).toBe(false);
 
-    const ceiling = forfeitureCeiling({ payGrade: 'E1', yearsOfService: 5 });
-    expect(ceiling).not.toBeNull();
-    expect(ceiling!.sevenDaysPay).toBe(Math.floor((basic / 30) * 7));
-    expect(ceiling!.halfMonthPay).toBe(Math.floor(basic / 2));
-    expect(Number.isInteger(ceiling!.sevenDaysPay)).toBe(true);
-    expect(Number.isInteger(ceiling!.halfMonthPay)).toBe(true);
+    const result = forfeitureCeiling({ status: currentStatus, payGrade: 'E1', yearsOfService: 5 });
+    expect(result.kind).toBe('ceiling');
+    if (result.kind !== 'ceiling') return;
+    expect(result.ceiling.sevenDaysPay).toBe(Math.floor((basic / 30) * 7));
+    expect(result.ceiling.halfMonthPay).toBe(Math.floor(basic / 2));
+    expect(Number.isInteger(result.ceiling.sevenDaysPay)).toBe(true);
+    expect(Number.isInteger(result.ceiling.halfMonthPay)).toBe(true);
   });
 
   it('adds sea or hardship duty pay to the base, raising both ceilings', () => {
-    const withoutExtra = forfeitureCeiling({ payGrade: 'E5', yearsOfService: 5 });
+    const withoutExtra = forfeitureCeiling({ status: currentStatus, payGrade: 'E5', yearsOfService: 5 });
     const withExtra = forfeitureCeiling({
+      status: currentStatus,
       payGrade: 'E5',
       yearsOfService: 5,
       seaHardshipDutyPay: 150,
     });
-    expect(withoutExtra).not.toBeNull();
-    expect(withExtra).not.toBeNull();
+    expect(withoutExtra.kind).toBe('ceiling');
+    expect(withExtra.kind).toBe('ceiling');
+    if (withoutExtra.kind !== 'ceiling' || withExtra.kind !== 'ceiling') return;
 
-    expect(withExtra!.monthlySubjectToForfeiture).toBe(withoutExtra!.monthlyBasicPay + 150);
-    expect(withExtra!.sevenDaysPay).toBeGreaterThan(withoutExtra!.sevenDaysPay);
-    expect(withExtra!.halfMonthPay).toBeGreaterThan(withoutExtra!.halfMonthPay);
+    expect(withExtra.ceiling.monthlySubjectToForfeiture).toBe(withoutExtra.ceiling.monthlyBasicPay + 150);
+    expect(withExtra.ceiling.sevenDaysPay).toBeGreaterThan(withoutExtra.ceiling.sevenDaysPay);
+    expect(withExtra.ceiling.halfMonthPay).toBeGreaterThan(withoutExtra.ceiling.halfMonthPay);
   });
 
   it('notes JAGMAN 0111.i when sea/hardship pay is 0 or blank, but not when positive', () => {
-    const zero = forfeitureCeiling({ payGrade: 'E5', yearsOfService: 5, seaHardshipDutyPay: 0 });
-    const blank = forfeitureCeiling({ payGrade: 'E5', yearsOfService: 5, seaHardshipDutyPay: '' });
+    const zero = forfeitureCeiling({ status: currentStatus, payGrade: 'E5', yearsOfService: 5, seaHardshipDutyPay: 0 });
+    const blank = forfeitureCeiling({ status: currentStatus, payGrade: 'E5', yearsOfService: 5, seaHardshipDutyPay: '' });
     const positive = forfeitureCeiling({
+      status: currentStatus,
       payGrade: 'E5',
       yearsOfService: 5,
       seaHardshipDutyPay: 150,
     });
+    expect(zero.kind).toBe('ceiling');
+    expect(blank.kind).toBe('ceiling');
+    expect(positive.kind).toBe('ceiling');
+    if (zero.kind !== 'ceiling' || blank.kind !== 'ceiling' || positive.kind !== 'ceiling') return;
 
-    expect(zero!.notes.some((n) => n.includes('JAGMAN 0111.i'))).toBe(true);
-    expect(blank!.notes.some((n) => n.includes('JAGMAN 0111.i'))).toBe(true);
-    expect(positive!.notes.some((n) => n.includes('JAGMAN 0111.i'))).toBe(false);
+    expect(zero.ceiling.notes.some((n) => n.includes('JAGMAN 0111.i'))).toBe(true);
+    expect(blank.ceiling.notes.some((n) => n.includes('JAGMAN 0111.i'))).toBe(true);
+    expect(positive.ceiling.notes.some((n) => n.includes('JAGMAN 0111.i'))).toBe(false);
   });
 
   it('an E-9 always carries a note about the special-position rate; an E-5 does not', () => {
-    const e9 = forfeitureCeiling({ payGrade: 'E9', yearsOfService: 10, seaHardshipDutyPay: 100 });
-    const e5 = forfeitureCeiling({ payGrade: 'E5', yearsOfService: 10, seaHardshipDutyPay: 100 });
-    expect(e9).not.toBeNull();
-    expect(e5).not.toBeNull();
+    const e9 = forfeitureCeiling({ status: currentStatus, payGrade: 'E9', yearsOfService: 10, seaHardshipDutyPay: 100 });
+    const e5 = forfeitureCeiling({ status: currentStatus, payGrade: 'E5', yearsOfService: 10, seaHardshipDutyPay: 100 });
+    expect(e9.kind).toBe('ceiling');
+    expect(e5.kind).toBe('ceiling');
+    if (e9.kind !== 'ceiling' || e5.kind !== 'ceiling') return;
 
     const specialRateText = `$${SENIOR_ENLISTED_SPECIAL_POSITION_PAY.toFixed(2)}`;
-    expect(e9!.notes.some((n) => n.includes(specialRateText))).toBe(true);
-    expect(e5!.notes.some((n) => n.includes(specialRateText))).toBe(false);
+    expect(e9.ceiling.notes.some((n) => n.includes(specialRateText))).toBe(true);
+    expect(e5.ceiling.notes.some((n) => n.includes(specialRateText))).toBe(false);
   });
 
-  it('returns null when basic pay is null (a blank table cell)', () => {
-    expect(monthlyBasicPay('E8', 2)).toBeNull(); // fixture sanity check
-    expect(forfeitureCeiling({ payGrade: 'E8', yearsOfService: 2 })).toBeNull();
+  it('is unavailable/no-rate-published when basic pay is a blank table cell', () => {
+    expect(monthlyBasicPay('E8', 2).kind).toBe('unavailable'); // fixture sanity check
+    const result = forfeitureCeiling({ status: currentStatus, payGrade: 'E8', yearsOfService: 2 });
+    expect(result.kind).toBe('unavailable');
+    if (result.kind === 'unavailable') expect(result.reason).toBe('no-rate-published');
   });
 
-  it('returns null when sea/hardship duty pay is negative or unparseable', () => {
-    expect(
-      forfeitureCeiling({ payGrade: 'E5', yearsOfService: 5, seaHardshipDutyPay: -50 })
-    ).toBeNull();
-    expect(
-      forfeitureCeiling({ payGrade: 'E5', yearsOfService: 5, seaHardshipDutyPay: 'abc' })
-    ).toBeNull();
+  it('is unavailable/unreadable-extra-pay when sea/hardship duty pay is negative or unparseable', () => {
+    const negative = forfeitureCeiling({
+      status: currentStatus,
+      payGrade: 'E5',
+      yearsOfService: 5,
+      seaHardshipDutyPay: -50,
+    });
+    expect(negative.kind).toBe('unavailable');
+    if (negative.kind === 'unavailable') expect(negative.reason).toBe('unreadable-extra-pay');
+
+    const unreadable = forfeitureCeiling({
+      status: currentStatus,
+      payGrade: 'E5',
+      yearsOfService: 5,
+      seaHardshipDutyPay: 'abc',
+    });
+    expect(unreadable.kind).toBe('unavailable');
+    if (unreadable.kind === 'unavailable') expect(unreadable.reason).toBe('unreadable-extra-pay');
+  });
+
+  describe('the E-1 four-months note (defect 1, was dead code)', () => {
+    it('an E-1 ceiling carries a note naming four months, $2225.70, and the two lowered ceilings', () => {
+      const result = forfeitureCeiling({ status: currentStatus, payGrade: 'E1', yearsOfService: 5 });
+      expect(result.kind).toBe('ceiling');
+      if (result.kind !== 'ceiling') return;
+
+      const note = result.ceiling.notes.find((n) => n.includes('four months'));
+      expect(note).toBeDefined();
+      expect(note as string).toContain('2225.70');
+
+      const loweredSeven = Math.floor((E1_UNDER_FOUR_MONTHS / 30) * 7);
+      const loweredHalf = Math.floor(E1_UNDER_FOUR_MONTHS / 2);
+      expect(loweredSeven).toBe(519);
+      expect(loweredHalf).toBe(1112);
+      expect(note as string).toContain(String(loweredSeven));
+      expect(note as string).toContain(String(loweredHalf));
+    });
+
+    it('the printed E-1 ceiling itself (no sea pay) is 561 and 1203, computed from the ordinary E-1 rate, distinct from the lowered 519/1112 named in the note', () => {
+      const basic = rate('E1', 5);
+      const result = forfeitureCeiling({ status: currentStatus, payGrade: 'E1', yearsOfService: 5 });
+      expect(result.kind).toBe('ceiling');
+      if (result.kind !== 'ceiling') return;
+
+      expect(result.ceiling.sevenDaysPay).toBe(Math.floor((basic / 30) * 7));
+      expect(result.ceiling.halfMonthPay).toBe(Math.floor(basic / 2));
+      expect(result.ceiling.sevenDaysPay).toBe(561);
+      expect(result.ceiling.halfMonthPay).toBe(1203);
+    });
+
+    it('an E-3 ceiling carries no four-months note', () => {
+      const result = forfeitureCeiling({ status: currentStatus, payGrade: 'E3', yearsOfService: 5 });
+      expect(result.kind).toBe('ceiling');
+      if (result.kind !== 'ceiling') return;
+      expect(result.ceiling.notes.some((n) => n.includes('four months'))).toBe(false);
+    });
+
+    it('E1_UNDER_FOUR_MONTHS is actually read by the module now, not just declared: the E-1 note carries its exact value', () => {
+      const result = forfeitureCeiling({ status: currentStatus, payGrade: 'E1', yearsOfService: 5 });
+      expect(result.kind).toBe('ceiling');
+      if (result.kind !== 'ceiling') return;
+      expect(
+        result.ceiling.notes.some((n) => n.includes(`$${E1_UNDER_FOUR_MONTHS.toFixed(2)}`)),
+      ).toBe(true);
+    });
+  });
+
+  describe('requires the caller\'s status (defect 5)', () => {
+    it('the module enforces its own headline claim rather than trusting one caller\'s discipline: a not-current status returns table-not-current and computes nothing, even with a perfectly valid grade and years', () => {
+      const staleStatus = payTableStatus('2025-06-01');
+      expect(staleStatus.current).toBe(false); // fixture sanity check
+      expect(monthlyBasicPay('E2', 3).kind).toBe('rate'); // fixture sanity check: grade/years are fine on their own
+
+      const result = forfeitureCeiling({ status: staleStatus, payGrade: 'E2', yearsOfService: 3 });
+      expect(result.kind).toBe('unavailable');
+      if (result.kind !== 'unavailable') return;
+      expect(result.reason).toBe('table-not-current');
+      expect(result.detail).toBe(staleStatus.detail);
+    });
   });
 });
 
@@ -367,7 +522,7 @@ describe('correctionalCustodyGradeIssues (V-19)', () => {
 describe('forfeitureCeilingIssues (V-20)', () => {
   it('the app will not block on a table it cannot stand behind: silent when the table is not current, even for an absurd amount', () => {
     const form = baseForm({
-      punishmentDate: '2025-06-01', // not the held 2026-01-01 table
+      punishmentDate: '2025-06-01', // not the held 2026-01-01 window
       accusedPayGrade: 'E2',
       accusedYearsOfService: '3',
       punishments: [{ code: 'N07', dollars: '99999' }],
@@ -375,7 +530,7 @@ describe('forfeitureCeilingIssues (V-20)', () => {
     expect(forfeitureCeilingIssues(form)).toEqual([]);
   });
 
-  it('is silent when years of service is unset, since no ceiling can be computed', () => {
+  it('is silent when years of service is unset, since no ceiling can be computed (an ordinary half-filled form, not a data error)', () => {
     const form = baseForm({
       punishmentDate: '2026-01-01',
       accusedPayGrade: 'E2',
@@ -385,10 +540,26 @@ describe('forfeitureCeilingIssues (V-20)', () => {
     expect(forfeitureCeilingIssues(form)).toEqual([]);
   });
 
+  it('an unreadable forfeitureBasisGrade surfaces as exactly one fail issue whose id names it unreadable, rather than staying silent (defect 6 reaching V-20)', () => {
+    const form = baseForm({
+      punishmentDate: '2026-01-01',
+      accusedPayGrade: 'E2',
+      forfeitureBasisGrade: 'E-XX',
+      accusedYearsOfService: '3',
+      punishments: [{ code: 'N07', dollars: '100' }],
+    });
+    const issues = forfeitureCeilingIssues(form);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('fail');
+    expect(issues[0].id).toContain('v20-ceiling-unreadable');
+  });
+
   it('fires when a 2026-dated N07 forfeiture exceeds the seven-days ceiling, silent when equal', () => {
-    const ceiling = forfeitureCeiling({ payGrade: 'E2', yearsOfService: 3 });
-    expect(ceiling).not.toBeNull();
-    const sevenDaysPay = ceiling!.sevenDaysPay;
+    const status = payTableStatus('2026-01-01');
+    const ceiling = forfeitureCeiling({ status, payGrade: 'E2', yearsOfService: 3 });
+    expect(ceiling.kind).toBe('ceiling');
+    if (ceiling.kind !== 'ceiling') return;
+    const sevenDaysPay = ceiling.ceiling.sevenDaysPay;
 
     const over = baseForm({
       punishmentDate: '2026-01-01',
@@ -410,9 +581,11 @@ describe('forfeitureCeilingIssues (V-20)', () => {
   });
 
   it('fires when a 2026-dated N04 forfeiture exceeds the half-month ceiling, silent when equal', () => {
-    const ceiling = forfeitureCeiling({ payGrade: 'E2', yearsOfService: 3 });
-    expect(ceiling).not.toBeNull();
-    const halfMonthPay = ceiling!.halfMonthPay;
+    const status = payTableStatus('2026-01-01');
+    const ceiling = forfeitureCeiling({ status, payGrade: 'E2', yearsOfService: 3 });
+    expect(ceiling.kind).toBe('ceiling');
+    if (ceiling.kind !== 'ceiling') return;
+    const halfMonthPay = ceiling.ceiling.halfMonthPay;
 
     const over = baseForm({
       punishmentDate: '2026-01-01',
@@ -434,25 +607,27 @@ describe('forfeitureCeilingIssues (V-20)', () => {
   });
 
   it('uses forfeitureBasisGrade over accusedPayGrade when both are set (MCM 5.c(8))', () => {
-    const e2Ceiling = forfeitureCeiling({ payGrade: 'E2', yearsOfService: 3 });
-    const e5Ceiling = forfeitureCeiling({ payGrade: 'E5', yearsOfService: 3 });
-    expect(e2Ceiling).not.toBeNull();
-    expect(e5Ceiling).not.toBeNull();
+    const status = payTableStatus('2026-01-01');
+    const e2Ceiling = forfeitureCeiling({ status, payGrade: 'E2', yearsOfService: 3 });
+    const e5Ceiling = forfeitureCeiling({ status, payGrade: 'E5', yearsOfService: 3 });
+    expect(e2Ceiling.kind).toBe('ceiling');
+    expect(e5Ceiling.kind).toBe('ceiling');
+    if (e2Ceiling.kind !== 'ceiling' || e5Ceiling.kind !== 'ceiling') return;
     // Fixture sanity check: the two grades must actually have different
     // ceilings, or this test would not distinguish which one was used.
-    expect(e2Ceiling!.sevenDaysPay).not.toBe(e5Ceiling!.sevenDaysPay);
+    expect(e2Ceiling.ceiling.sevenDaysPay).not.toBe(e5Ceiling.ceiling.sevenDaysPay);
 
     const form = baseForm({
       punishmentDate: '2026-01-01',
       accusedPayGrade: 'E5',
       forfeitureBasisGrade: 'E2',
       accusedYearsOfService: '3',
-      punishments: [{ code: 'N07', dollars: String(e2Ceiling!.sevenDaysPay + 1) }],
+      punishments: [{ code: 'N07', dollars: String(e2Ceiling.ceiling.sevenDaysPay + 1) }],
     });
     const issues = forfeitureCeilingIssues(form);
     expect(issues).toHaveLength(1);
     const found = findIssue(issues, 'navmc10132-v20-forfeiture-over-ceiling');
-    expect(found.rule).toContain(`ceiling at E2 is $${e2Ceiling!.sevenDaysPay}`);
+    expect(found.rule).toContain(`ceiling at E2 is $${e2Ceiling.ceiling.sevenDaysPay}`);
     expect(found.rule).not.toContain('ceiling at E5');
   });
 });

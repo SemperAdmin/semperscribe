@@ -42,6 +42,7 @@ import {
 } from '@/lib/navmc10132-ranks';
 import {
   BASIC_PAY_SOURCE_URL,
+  CEILING_REASONS_WORTH_SURFACING,
   forfeitureCeiling,
   payTableStatus,
 } from '@/lib/navmc10132-basic-pay';
@@ -723,13 +724,13 @@ export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
   const status = payTableStatus(
     typeof formData.punishmentDate === 'string' ? formData.punishmentDate : '',
   );
-  if (!status.current) return [];
 
   const basisGrade =
     (typeof formData.forfeitureBasisGrade === 'string' && formData.forfeitureBasisGrade.trim()) ||
     (typeof formData.accusedPayGrade === 'string' ? formData.accusedPayGrade : '');
 
-  const ceiling = forfeitureCeiling({
+  const result = forfeitureCeiling({
+    status,
     payGrade: basisGrade,
     yearsOfService:
       typeof formData.accusedYearsOfService === 'string' ? formData.accusedYearsOfService : '',
@@ -738,8 +739,27 @@ export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
         ? formData.accusedSeaHardshipDutyPay
         : '',
   });
-  if (ceiling === null) return [];
 
+  // NOT ALL SILENCE IS EQUAL. A superseded table, an unset grade, an unset
+  // length of service, and a legitimately blank table cell are ordinary
+  // states of a half-filled form, and blocking on them would be noise. An
+  // UNREADABLE entry is a data error, and passing over it silently is how a
+  // mistyped pay grade used to switch this gate off with no warning at all.
+  if (result.kind === 'unavailable') {
+    if (!CEILING_REASONS_WORTH_SURFACING.includes(result.reason)) return [];
+    return [
+      issue(
+        `navmc10132-v20-ceiling-unreadable-${result.reason}`,
+        'fail',
+        'The forfeiture ceiling cannot be computed because an input is unreadable.',
+        'JAGMAN 0111.i; MCO 5800.16 Vol 14 para 010901',
+        `${result.detail} Until it is readable the app cannot check the forfeiture against its ` +
+          'statutory ceiling, so the check is not merely skipped, it is blocked.',
+      ),
+    ];
+  }
+
+  const ceiling = result.ceiling;
   const issues: ValidationIssue[] = [];
 
   entries.forEach((entry, index) => {
