@@ -334,6 +334,15 @@ evidence that the output is right.
 
 ## 7. Backlog
 
+**BLOCKED ON A SOURCE DOCUMENT.** `njp-vacation-post-action.ts` (D-55) is built
+and tested but its header carries a named debt: the verbatim text of MCO 5800.16
+Vol 14 para 011202 is not in this codebase, so nothing in that module is presented
+as a quotation, unlike `njp-appeal-package.ts` which quotes 011107 in full. Get the
+order, add the paragraph to the header, and check two inferences the module rests
+on: the ORDER of the five steps, and that step 1's "vacated punishment information"
+means the unit diary number and date rather than a description of the punishment.
+Do not ship the checklist to a user before that check.
+
 **Specified and unbuilt.** D-37 through D-57, V-23 through V-30 and W-17 through
 W-19 have no code. Twenty-one decision rows from one session. Start with D-51,
 alone: it corrupts `endsOn`, which both `njp-vacation-handoff.ts` and D-36
