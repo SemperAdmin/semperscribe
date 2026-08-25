@@ -669,7 +669,13 @@ function NavalLetterGeneratorInner() {
     handleImport(payload);
   };
 
-  const documentImport = useDocumentImport({ applyImport: applyDocumentImport, toast });
+  const documentImport = useDocumentImport({
+    applyImport: applyDocumentImport,
+    toast,
+    // So the review modal can name what confirming DESTROYS, not only what
+    // it creates. See replacementWarning in the hook.
+    currentDocumentType: formData.documentType,
+  });
 
   const handleClearSavedLetters = () => {
     clearSavedLetters();

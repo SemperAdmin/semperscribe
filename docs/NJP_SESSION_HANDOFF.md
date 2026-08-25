@@ -352,6 +352,33 @@ reversed assertions in `navmc10132-acroform.test.ts` (they defend behaviour D-40
 D-41 and D-42 overturned), unit tests for `navmc10132-booker` and
 `navmc10132-capacity`, and `verify_templates.mjs` into `test.yml`.
 
+**THE ROUND TRIP IS NOT BUILT, AND THE SPEC SAID IT WAS.** Audited 2026-08-25
+when Stephen asked whether he could re-upload a signed UPB and continue. He
+cannot, and nothing of it exists: no state carrier in the exported PDF (no
+embedded file, no `/Names`, no metadata, no XMP), no AcroForm reader on any
+import path, no incremental writer (`@cantoo/pdf-lib`, `saveIncremental`,
+`takeSnapshot`, `markRefForSave` are zero hits repo-wide), and V-23 through
+V-28 do not exist. Six spec rows claimed otherwise and were corrected; see
+the status vocabulary note at the head of the decision table.
+
+**The working carrier today is `.nldp` and the library, not the PDF.** Both
+serialize `formData` directly, so `stage`, `vesselException`, `punishments`,
+`suspensions`, `vacations`, `victims` and `remarks` all survive. The multi-pass
+flow that works right now: keep the app-side document, export a PDF each pass,
+treat the PDF as a terminal artifact. If the PDF round trip is ever built, most
+of the app state cannot come back from the form anyway. `punishments`,
+`suspensions`, `remarks` and `vacations` are all COLLAPSED into rendered strings
+on export, victims B-E go to item 21 prose, and `vesselException`, `stage`,
+`accusedYearsOfService` and `forfeitureBasisGrade` have no field at all. An
+embedded JSON carrier is not an optimisation there, it is the only mechanism.
+
+**A hole in the stage-seeding guard.** `navmc10132-stage-seeding-guard.test.ts`
+scans for `setFormData` calls producing a literal `'navmc10132'`. Both dynamic
+paths escape it: `resetDocumentState` uses a variable and `handleImport`
+spreads. So a `.nldp` saved before `stage` existed imports with `stage`
+undefined, and `navmc10132ExportGateStage` reads absent as `'complete'` and
+fires every later-pass blocker on a document at pass 1.
+
 **The CMC (JA) defect report needs a revision.** `docs/NAVMC_10132_DEFECT_REPORT.md`
 was delivered 2026-08-24 with thirteen numbered findings. Since then: 011402.G was
 DOWNGRADED and is no longer an MCO defect (D-57, the MCO transcribes 10 U.S.C. 815(e)
