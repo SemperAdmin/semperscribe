@@ -14,3 +14,18 @@ if (!('withResolvers' in Promise)) {
     return { promise, resolve: resolve!, reject: reject! };
   };
 }
+
+// jsdom has no ResizeObserver. Several Radix primitives (Checkbox among
+// them, via @radix-ui/react-use-size) call it in a layout effect on mount,
+// which throws ReferenceError in any test that renders one, whether or not
+// the test cares about sizing. No test exercised that mount path before the
+// NAVMC 10132 stage-visibility tests, which are the first to render the
+// appeal section's checkbox field.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  globalThis.ResizeObserver = ResizeObserverStub;
+}

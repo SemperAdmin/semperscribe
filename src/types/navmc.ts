@@ -1,5 +1,5 @@
 import type { Navmc10132Service } from '@/lib/navmc10132-ranks';
-import { ParagraphData } from './index';
+import { ParagraphData, FormData } from './index';
 
 export interface Navmc10274Data {
   actionNo: string;
@@ -612,7 +612,111 @@ export interface Navmc10132Remark {
   detail: string;
 }
 
+/**
+ * Which of the form's seven signature-locked passes the document is
+ * currently at, per docs/NAVMC_10132_SPEC.md section 13. `'complete'` is the
+ * state after pass 7's `16 FINAL ADMIN INIT` signature locks every field
+ * (`/Action /All`), a state the seven numbered passes never reach on their
+ * own, so it is a distinct value rather than an eighth pass number.
+ */
+export const NAVMC_10132_STAGE_VALUES = [1, 2, 3, 4, 5, 6, 7, 'complete'] as const;
+export type Navmc10132Stage = (typeof NAVMC_10132_STAGE_VALUES)[number];
+
+/**
+ * Clerk-facing name and explanation for each stage, keyed off what the stage
+ * unlocks rather than its pass number. Decision row D-46: the app shows
+ * sections derived from what the form itself still has open, so a clerk
+ * reads "punishment imposed," never "pass 3," which the form's own
+ * signature names never do either.
+ */
+export const NAVMC_10132_STAGE_INFO: Record<
+  Navmc10132Stage,
+  { label: string; description: string }
+> = {
+  1: {
+    label: 'Notification',
+    description:
+      "The charge sheet is being prepared and served. Opens the accused's information, the offenses, victims when the offenses involve one, and the NJP authority block. Findings and punishment stay closed, because the hearing has not happened yet.",
+  },
+  2: {
+    label: 'Awaiting the certifying officer',
+    description:
+      'The accused has signed the item 2 election and rights acknowledgment. The document is with the certifying officer for item 3. Nothing new opens at this stage.',
+  },
+  3: {
+    label: 'Punishment imposed',
+    description:
+      'The commander has heard the case and recorded findings and punishment. Opens the finding on each offense, the punishment builder, and any suspension of punishment.',
+  },
+  4: {
+    label: 'Appeal advisement given',
+    description:
+      'The accused has been advised of the right to appeal. Opens the appeal block.',
+  },
+  5: {
+    label: 'Appeal election recorded',
+    description:
+      'The accused has stated whether they intend to appeal. Nothing new opens at this stage.',
+  },
+  6: {
+    label: 'Appeal decided',
+    description:
+      'The reviewing authority has ruled on the appeal. Nothing new opens at this stage.',
+  },
+  7: {
+    label: 'Final action recorded',
+    description:
+      'The last entries, item 16 and any remaining remarks, are being made. Signing this pass locks the rest of the form.',
+  },
+  complete: {
+    label: 'Closed out',
+    description:
+      'The form is fully signed and every field is locked. Opens the unit diary transcription aid, so the punishment can be posted to the record.',
+  },
+};
+
+/**
+ * Reads `Navmc10132Data.stage` off a loose FormData bag, defaulting to pass 1
+ * exactly like `createEmptyNavmc10132Data` does for a fresh document. An
+ * unrecognized or missing value (a document from before this field existed,
+ * or a plain object built without it) falls back the same way.
+ */
+export function navmc10132Stage(formData: FormData): Navmc10132Stage {
+  const value = formData.stage;
+  return (NAVMC_10132_STAGE_VALUES as readonly unknown[]).includes(value)
+    ? (value as Navmc10132Stage)
+    : 1;
+}
+
+/**
+ * True once `stage` has reached `threshold` or later. Sections are additive
+ * (docs/NAVMC_10132_SPEC.md section 13.2): a pass's fields, once open, stay
+ * visible at every later stage, so callers gate visibility on this rather
+ * than an exact match. `'complete'` sorts after every numbered pass.
+ */
+export function navmc10132StageAtLeast(
+  stage: Navmc10132Stage,
+  threshold: 1 | 2 | 3 | 4 | 5 | 6 | 7,
+): boolean {
+  return stage === 'complete' ? true : stage >= threshold;
+}
+
 export interface Navmc10132Data {
+  /**
+   * Which pass the document is at. See `Navmc10132Stage`.
+   *
+   * APP STATE, NOT A FORM FIELD, exactly like `vesselException` below: it
+   * decides which sections this app shows, not a fact the form itself
+   * records, and it must never be written to the AcroForm. The app cannot
+   * yet read a signed PDF back to detect the pass on its own, that round
+   * trip is unbuilt, so a clerk sets this by hand today, and a fresh
+   * document defaults to pass 1. Typed as ordinary data rather than wired
+   * to a human-only control on purpose: once the round trip lands, an
+   * imported signed file sets this instead of the clerk, per decision row
+   * D-46, without any change to what reads it.
+   */
+  stage: Navmc10132Stage;
+
   // Items 17 to 20 - accused and unit
   unit: string;
   accusedName: string;
@@ -809,6 +913,7 @@ export const NAVMC_10132_EMPTY_VICTIM: Navmc10132Victim = {
 
 export function createEmptyNavmc10132Data(): Navmc10132Data {
   return {
+    stage: 1,
     unit: '',
     accusedName: '',
     accusedService: 'USMC',

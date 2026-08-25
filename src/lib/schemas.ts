@@ -8,6 +8,7 @@ import {
   NAVMC_10132_VICTIM_SEX,
   NAVMC_10132_VICTIM_RACE,
   NAVMC_10132_VICTIM_ETHNICITY,
+  NAVMC_10132_STAGE_VALUES,
 } from '@/types/navmc';
 
 // --- UI Schema Definitions ---
@@ -1398,8 +1399,23 @@ const Navmc10132RemarkRow = z.object({
 const edipiField = () =>
   z.string().regex(/^\d{10}$/, 'EDIPI is the 10-digit DOD ID number').or(z.literal(''));
 
+// Built off NAVMC_10132_STAGE_VALUES (src/types/navmc.ts) rather than a
+// second hardcoded literal list, so the two cannot drift. z.union needs a
+// literal tuple, which a plain `.map` loses, hence the cast.
+const Navmc10132StageSchema = z.union(
+  NAVMC_10132_STAGE_VALUES.map((value) => z.literal(value)) as [
+    z.ZodLiteral<(typeof NAVMC_10132_STAGE_VALUES)[number]>,
+    z.ZodLiteral<(typeof NAVMC_10132_STAGE_VALUES)[number]>,
+    ...z.ZodLiteral<(typeof NAVMC_10132_STAGE_VALUES)[number]>[],
+  ],
+);
+
 export const Navmc10132Schema = z.object({
   documentType: z.literal('navmc10132'),
+
+  // Which pass the document is at. APP STATE, never written to the
+  // AcroForm; see `stage`'s JSDoc on Navmc10132Data (src/types/navmc.ts).
+  stage: Navmc10132StageSchema.optional(),
 
   // Items 17 to 20
   unit: z.string().optional(),
@@ -1517,6 +1533,14 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
   // build twice.
   //
   // Deliberately absent, and owned by Phase 3 custom components:
+  //   stage                   - StageSelector (Navmc10132Sections.tsx). Not
+  //                             owned by a DynamicForm section for the same
+  //                             clobber reason as everything else on this
+  //                             list, even though nothing here writes it
+  //                             from a form widget: it is a custom
+  //                             component's plain setFormData call, and RHF
+  //                             would still stomp that on its next sync if
+  //                             this field ever appeared in `sections`.
   //   unit                    - UNITS search dialog writes it
   //   offenses[]              - OffensesSection grid
   //   demand, counselOpportunity, accusedRefusedToSign, electionDate,

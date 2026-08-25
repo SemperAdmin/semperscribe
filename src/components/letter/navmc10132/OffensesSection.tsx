@@ -22,6 +22,13 @@
  *    Phase 2 engine), not by character count. Every widget on this form is a
  *    fixed-width, non-shrinking field, and a proportional font overflows a
  *    field long before a naive character cap would warn anyone.
+ *
+ * THE FINDING CONTROL IS STAGE-GATED, hidden before "Punishment imposed"
+ * (pass 3). Item 5 findings close at the item 9 NJP authority signature, and
+ * a finding is the commander's determination made AFTER the election and
+ * the hearing, so showing it at notification invites recording one before
+ * either has happened, a process defect per decision row D-39. Item 1
+ * (article and summary) has no such gate; it belongs to pass 1.
  */
 
 import React from 'react';
@@ -39,7 +46,7 @@ import {
   resolveArticle, NAVMC_10132_ARTICLES, NAVMC_10132_ARTICLE_GROUPS,
 } from '@/lib/navmc10132-utils';
 import {
-  NAVMC_10132_EMPTY_OFFENSE, type Navmc10132Offense,
+  NAVMC_10132_EMPTY_OFFENSE, navmc10132StageAtLeast, type Navmc10132Offense, type Navmc10132Stage,
 } from '@/types/navmc';
 import { Gavel, Search, ShieldAlert, Plus } from 'lucide-react';
 
@@ -49,6 +56,8 @@ interface SectionProps {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   SectionCard: React.ComponentType<SectionCardProps>;
+  /** See the stage-gating note above the finding control below. */
+  stage: Navmc10132Stage;
 }
 
 /** The engine's own article row shape, borrowed rather than redeclared. */
@@ -71,8 +80,9 @@ function isOffenseActive(offense: Navmc10132Offense): boolean {
   return Boolean(offense.articleLabel || offense.summary || offense.finding);
 }
 
-export function OffensesSection({ formData, setFormData, SectionCard }: SectionProps) {
+export function OffensesSection({ formData, setFormData, SectionCard, stage }: SectionProps) {
   const offenses = fiveOffenses(formData);
+  const showFinding = navmc10132StageAtLeast(stage, 3);
 
   const lastActive = offenses.reduce(
     (acc, offense, index) => (isOffenseActive(offense) ? index : acc),
@@ -100,6 +110,7 @@ export function OffensesSection({ formData, setFormData, SectionCard }: SectionP
             letter={letter}
             offense={offenses[index]}
             onChange={(patch) => updateOffense(index, patch)}
+            showFinding={showFinding}
           />
         ))}
 
@@ -130,10 +141,12 @@ function OffenseRow({
   letter,
   offense,
   onChange,
+  showFinding,
 }: {
   letter: (typeof ROW_LETTERS)[number];
   offense: Navmc10132Offense;
   onChange: (patch: Partial<Navmc10132Offense>) => void;
+  showFinding: boolean;
 }) {
   const summaryField = `1${letter} SUMMARY`;
   const selectedArticle = offense.articleLabel ? resolveArticle(offense.articleLabel) : undefined;
@@ -184,27 +197,37 @@ function OffenseRow({
           )}
         </div>
 
-        <div className="w-40 space-y-1">
-          <Label className="text-[11px] text-muted-foreground">Finding, item 5{letter}</Label>
-          <Select
-            value={offense.finding || undefined}
-            onValueChange={(value) => onChange({ finding: value as Navmc10132Offense['finding'] })}
-            disabled={!offense.articleLabel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Blank" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Guilty">Guilty (G)</SelectItem>
-              <SelectItem value="Not Guilty">Not Guilty (NG)</SelectItem>
-            </SelectContent>
-          </Select>
-          {!offense.articleLabel && (
+        {showFinding ? (
+          <div className="w-40 space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Finding, item 5{letter}</Label>
+            <Select
+              value={offense.finding || undefined}
+              onValueChange={(value) => onChange({ finding: value as Navmc10132Offense['finding'] })}
+              disabled={!offense.articleLabel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Blank" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Guilty">Guilty (G)</SelectItem>
+                <SelectItem value="Not Guilty">Not Guilty (NG)</SelectItem>
+              </SelectContent>
+            </Select>
+            {!offense.articleLabel && (
+              <p className="text-[11px] text-muted-foreground">
+                Blank until item 1{letter} has an article, per the item 5 instruction.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="w-40 space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Finding, item 5{letter}</Label>
             <p className="text-[11px] text-muted-foreground">
-              Blank until item 1{letter} has an article, per the item 5 instruction.
+              Not yet. A finding is the commander's determination after the election and the
+              hearing, so this opens at the Punishment imposed stage.
             </p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {selectedArticle?.notOrdinarilyMinor && (

@@ -31,6 +31,15 @@
  *   Appeal                    items 11-15      DynamicForm
  *   Victims                   item 22          custom grid
  *   Remarks and final action  items 21 and 16  custom composer
+ *
+ * STAGE GATING. `formData.stage` (src/types/navmc.ts, set by StageSelector
+ * above) additionally hides sections that belong to a pass later than the
+ * one the document is currently at, per docs/NAVMC_10132_SPEC.md section 13
+ * and decision rows D-43/D-46/D-47. Sections are ADDITIVE, never exclusive:
+ * once a pass's fields open they stay visible at every later stage, because
+ * a later pass can still need to read what an earlier one recorded. Two
+ * sections filter their OWN controls at pass 1 rather than being hidden
+ * outright, see OffensesSection's `stage` prop and AccusedElectionSection's.
  */
 
 import React from 'react';
@@ -46,6 +55,8 @@ import { SuspensionSection } from '@/components/letter/navmc10132/SuspensionSect
 import { VictimsSection } from '@/components/letter/navmc10132/VictimsSection';
 import { RemarksSection } from '@/components/letter/navmc10132/RemarksSection';
 import { UnitDiarySection } from '@/components/letter/navmc10132/UnitDiarySection';
+import { StageSelector } from '@/components/letter/navmc10132/StageSelector';
+import { navmc10132Stage, navmc10132StageAtLeast } from '@/types/navmc';
 
 interface Navmc10132SectionsProps {
   formData: FormData;
@@ -117,8 +128,10 @@ export function Navmc10132FormSections({
   formKey,
 }: Navmc10132SectionsProps) {
   const showAbsence = hasAbsenceOffense(formData);
+  const stage = navmc10132Stage(formData);
   return (
     <>
+      <StageSelector formData={formData} setFormData={setFormData} />
       <FormBlock>
         <DynamicForm
           key={`navmc10132-${formKey}-accused`}
@@ -136,13 +149,15 @@ export function Navmc10132FormSections({
         formData={formData}
         setFormData={setFormData}
         SectionCard={SectionCard}
+        stage={stage}
       />
       <AccusedElectionSection
         formData={formData}
         setFormData={setFormData}
         SectionCard={SectionCard}
+        stage={stage}
       />
-      {showAbsence && (
+      {showAbsence && navmc10132StageAtLeast(stage, 3) && (
         <FormBlock>
           <DynamicForm
             key={`navmc10132-${formKey}-absence`}
@@ -152,16 +167,20 @@ export function Navmc10132FormSections({
           />
         </FormBlock>
       )}
-      <PunishmentSection
-        formData={formData}
-        setFormData={setFormData}
-        SectionCard={SectionCard}
-      />
-      <SuspensionSection
-        formData={formData}
-        setFormData={setFormData}
-        SectionCard={SectionCard}
-      />
+      {navmc10132StageAtLeast(stage, 3) && (
+        <>
+          <PunishmentSection
+            formData={formData}
+            setFormData={setFormData}
+            SectionCard={SectionCard}
+          />
+          <SuspensionSection
+            formData={formData}
+            setFormData={setFormData}
+            SectionCard={SectionCard}
+          />
+        </>
+      )}
       <FormBlock>
         <DynamicForm
           key={`navmc10132-${formKey}-punishment-tail`}
@@ -170,14 +189,16 @@ export function Navmc10132FormSections({
           defaultValues={formData}
         />
       </FormBlock>
-      <FormBlock>
-        <DynamicForm
-          key={`navmc10132-${formKey}-appeal`}
-          documentType={DEF_APPEAL}
-          onSubmit={onDynamicSync}
-          defaultValues={formData}
-        />
-      </FormBlock>
+      {navmc10132StageAtLeast(stage, 4) && (
+        <FormBlock>
+          <DynamicForm
+            key={`navmc10132-${formKey}-appeal`}
+            documentType={DEF_APPEAL}
+            onSubmit={onDynamicSync}
+            defaultValues={formData}
+          />
+        </FormBlock>
+      )}
       <VictimsSection
         formData={formData}
         setFormData={setFormData}
@@ -188,11 +209,13 @@ export function Navmc10132FormSections({
         setFormData={setFormData}
         SectionCard={SectionCard}
       />
-      <UnitDiarySection
-        formData={formData}
-        setFormData={setFormData}
-        SectionCard={SectionCard}
-      />
+      {stage === 'complete' && (
+        <UnitDiarySection
+          formData={formData}
+          setFormData={setFormData}
+          SectionCard={SectionCard}
+        />
+      )}
     </>
   );
 }
