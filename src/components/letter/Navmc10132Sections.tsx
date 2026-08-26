@@ -63,6 +63,7 @@ import { ProceedingScriptButton } from '@/components/letter/navmc10132/Proceedin
 import { SuspensionSection } from '@/components/letter/navmc10132/SuspensionSection';
 import { VictimsSection } from '@/components/letter/navmc10132/VictimsSection';
 import { NjpAuthoritySection } from '@/components/letter/navmc10132/NjpAuthoritySection';
+import { Page11Section } from '@/components/letter/navmc10132/Page11Section';
 import { RemarksSection } from '@/components/letter/navmc10132/RemarksSection';
 import { UnitDiarySection } from '@/components/letter/navmc10132/UnitDiarySection';
 import { VacationSection } from '@/components/letter/navmc10132/VacationSection';
@@ -427,6 +428,21 @@ export function Navmc10132FormSections({
         setFormData={setFormData}
         SectionCard={SectionCard}
       />
+      {/* AFTER THE PROCEEDINGS, BEFORE THE APPEAL. Stephen's placement,
+          2026-08-26: "towards the end after the NJP proceedings and before an
+          appeal". Both entries are made BECAUSE of the punishment, so neither
+          can be written before item 6 is, and the promotion restriction
+          states the period a suspension runs, which is item 7. Same pass-3
+          gate the punishment carries, for that reason: an entry counseling a
+          Marine over deficiencies nobody has found guilty yet would be
+          written before the hearing that finds them. */}
+      {navmc10132StageAtLeast(stage, 3) && (
+        <Page11Section
+          formData={formData}
+          setFormData={setFormData}
+          SectionCard={SectionCard}
+        />
+      )}
       {navmc10132StageAtLeast(stage, 4) && (
         <FormBlock>
           <DynamicForm

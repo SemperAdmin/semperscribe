@@ -1426,6 +1426,18 @@ export const Navmc10132Schema = z.object({
    *  on other services. Never printed on its own: item 8A prints the composed
    *  `njpAuthorityGrade`. */
   njpAuthorityService: z.string().optional(),
+
+  // --- The NAVMC 118(11) entries this NJP produces ------------------------
+  // Owned exclusively by Page11Section, so ABSENT from the section list
+  // below by the clobber rule. IRAM 4006.2r requires a recommendation for
+  // corrective action and the assistance available in the counseling entry,
+  // and no field on the NAVMC 10132 carries either: they are the
+  // commander's and the unit's, not the charge sheet's.
+  page11CorrectiveAction: z.string().optional(),
+  page11AssistanceAvailable: z.string().optional(),
+  /** '' | 'processing' | 'not-processing'. See SeparationIntent. */
+  page11SeparationIntent: z.string().optional(),
+  page11ProcessingDetail: z.string().optional(),
   accusedRankGrade: z.string().optional(),
   accusedEdipi: edipiField().optional(),
   accusedPayGrade: z.string().optional(),

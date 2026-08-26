@@ -45,6 +45,9 @@
 //     transcription aid block it carries, and the MCTFS transaction
 //     statements. All three compose text a clerk reads off a page or types
 //     into the diary. Added 2026-08-26 with the worksheet export.
+//   - navmc10132-page11.ts: the 6105 counseling entry and the promotion
+//     restriction entry, both composed in full and both filed in the
+//     Marine's OMPF. Added 2026-08-26.
 //
 // DELIBERATELY LEFT OUT, AND WHY:
 //   - classification.ts: this IS the marking authority. It is SUPPOSED to
@@ -123,6 +126,9 @@ describe('Meta: no document-generating module hardcodes a CUI marking', () => {
       'navmc10132-unit-diary-worksheet.ts',
       'navmc10132-unit-diary.ts',
       'navmc10132-mctfs.ts',
+      // Added 2026-08-26 with the Page 11 entries. It composes two service
+      // record entries in full, which is squarely what this list is for.
+      'navmc10132-page11.ts',
     ];
 
     type Offense = { file: string; line: number; text: string };
