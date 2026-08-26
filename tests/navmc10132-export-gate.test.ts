@@ -264,6 +264,49 @@ describe('V-05 stops the export: item 7 suspension text is empty', () => {
     expect(getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v05-'))).toBe(false);
   });
 
+  /**
+   * V-35, promoted from advisory W-08 on 2026-08-26. Stephen: "we should
+   * block the reduction punishment for Marine SSgt and above and navy
+   * chiefs and above." MCO 5800.16 Vol 14 para 010302.C: "Marines in the
+   * grade of E-6 or above and Sailors in the grade of E-7 or above may not
+   * be reduced in paygrade."
+   *
+   * The blocking and compliant fixtures differ ONLY in the accused's pay
+   * grade, so nothing but the rule under test explains the difference.
+   */
+  it('blocks a reduction on a Marine at E-6, and clears one grade lower', () => {
+    const reduction = [{ code: 'N08', gradeReducedTo: 'E5' }];
+    const blocking = baseForm({ accusedPayGrade: 'E6', punishments: reduction, stage: 3 });
+    expect(
+      getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v35-')),
+    ).toBe(true);
+
+    const compliant = baseForm({ accusedPayGrade: 'E5', punishments: reduction, stage: 3 });
+    expect(
+      getExportBlockers(compliant, [], [], []).some((i) => i.id.startsWith('navmc10132-v35-')),
+    ).toBe(false);
+  });
+
+  // The floors differ by service, and a Sailor at E-6 may lawfully be
+  // reduced where a Marine at E-6 may not. Same grade, same punishment,
+  // opposite results, which is the whole reason the rule reads the service.
+  it('blocks a Navy chief at E-7 but clears a Sailor at E-6', () => {
+    const reduction = [{ code: 'N08', gradeReducedTo: 'E6' }];
+    const chief = baseForm({
+      accusedService: 'USN', accusedPayGrade: 'E7', punishments: reduction, stage: 3,
+    });
+    expect(
+      getExportBlockers(chief, [], [], []).some((i) => i.id.startsWith('navmc10132-v35-')),
+    ).toBe(true);
+
+    const sailor = baseForm({
+      accusedService: 'USN', accusedPayGrade: 'E6', punishments: reduction, stage: 3,
+    });
+    expect(
+      getExportBlockers(sailor, [], [], []).some((i) => i.id.startsWith('navmc10132-v35-')),
+    ).toBe(false);
+  });
+
   it('blocks when a structured suspension names a punishmentIndex item 6 does not carry', () => {
     // This is the V-05 addendum (suspensionIndexBoundsIssues), not weakened
     // like the free-text checks above: it is the exact defect a reporting
@@ -1757,6 +1800,8 @@ describe('Meta: every source-level export blocker has a recorded stage-scoping d
         'NOT-ABSENCE: requires an existing vacations[] entry with offenceDate set (V-29)',
       'navmc10132-v30-vacation-authority-insufficient-':
         'NOT-ABSENCE: requires an existing vacated-full vacations[] entry (V-30)',
+      'navmc10132-v35-reduction-barred-grade':
+        'NOT-ABSENCE: requires an existing reduction punishments[] entry, which is empty pre-pass-3 (V-35, promoted from W-08 2026-08-26)',
       'navmc10132-v18-forfeiture-basis-unknown':
         'NOT-ABSENCE: requires an existing reduction AND forfeiture punishments[] entry (V-18)',
       'navmc10132-v18-forfeiture-basis-grade':

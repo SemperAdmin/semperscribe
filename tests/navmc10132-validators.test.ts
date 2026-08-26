@@ -799,16 +799,31 @@ describe('W-07, a forfeiture amount must be whole dollars', () => {
   });
 });
 
-describe('W-08, a reduction imposed on an E-6 or above accused', () => {
-  it('trips when the accused is E-6 and a reduction code is selected', () => {
+/**
+ * PROMOTED FROM W-08 (advisory) TO V-35 (blocking) on 2026-08-26, on
+ * Stephen's ruling: "we should block the reduction punishment for Marine
+ * SSgt and above and navy chiefs and above." SSgt is E-6 and a Navy chief
+ * is E-7, the pair MCO 5800.16 Vol 14 para 010302.C already names.
+ *
+ * "May not be reduced" is a prohibition, not guidance, and the app was
+ * rendering it as a warning a clerk could export straight past onto a
+ * signed legal record. A warning is right where the app cannot tell a
+ * lawful case from an unlawful one. Here it reads the grade from item 19
+ * and the floor from the service, both out of one sentence of the order.
+ *
+ * The id moved with the severity, w08 to v35, because the id prefix is how
+ * the export-gate meta guards tell a blocker from a warning.
+ */
+describe('V-35, a reduction imposed on an accused barred from reduction', () => {
+  it('blocks when the accused is E-6 and a reduction code is selected', () => {
     const form = baseForm({
       accusedPayGrade: 'E6',
       punishments: [{ code: 'N08', gradeReducedTo: 'E5' }],
     });
     const issues = reductionPayGradeIssues(form);
     expect(issues).toHaveLength(1);
-    expect(issues[0].id).toBe('navmc10132-w08-reduction-e6-plus');
-    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].id).toBe('navmc10132-v35-reduction-barred-grade');
+    expect(issues[0].severity).toBe('block');
   });
 
   it('does not trip when the accused is below E-6', () => {
@@ -839,7 +854,7 @@ describe('W-08, a reduction imposed on an E-6 or above accused', () => {
       });
       const issues = reductionPayGradeIssues(form);
       expect(issues).toHaveLength(1);
-      expect(issues[0].id).toBe('navmc10132-w08-reduction-e6-plus');
+      expect(issues[0].id).toBe('navmc10132-v35-reduction-barred-grade');
       expect(issues[0].detail).toContain('Marines');
       expect(issues[0].detail).toContain('E-6');
     });
@@ -861,7 +876,7 @@ describe('W-08, a reduction imposed on an E-6 or above accused', () => {
       });
       const issues = reductionPayGradeIssues(form);
       expect(issues).toHaveLength(1);
-      expect(issues[0].id).toBe('navmc10132-w08-reduction-e6-plus');
+      expect(issues[0].id).toBe('navmc10132-v35-reduction-barred-grade');
       expect(issues[0].detail).toContain('Sailors');
       expect(issues[0].detail).toContain('E-7');
     });

@@ -1010,8 +1010,22 @@ export function forfeitureWholeDollarIssues(formData: FormData): ValidationIssue
 }
 
 /**
- * W-08 (advisory). A reduction is imposed and the accused is E-6 or above.
- * Marines in the grade of E-6 or above may not be reduced in paygrade.
+ * V-35 (BLOCKING, promoted from advisory W-08 on 2026-08-26). A reduction is
+ * imposed on an accused the order bars from reduction.
+ *
+ * STEPHEN: "we should block the reduction punishment for Marine SSgt and
+ * above and navy chiefs and above." SSgt is E-6 and a Navy chief is E-7,
+ * which is the pair MCO 5800.16 Vol 14 para 010302.C already names:
+ * "Marines in the grade of E-6 or above and Sailors in the grade of E-7 or
+ * above may not be reduced in paygrade."
+ *
+ * WHY THIS BECAME A BLOCKER. "May not be reduced" is a prohibition, not
+ * guidance, and the app was rendering it as a warning a clerk could export
+ * straight past onto a signed legal record. Nothing about the rule was
+ * uncertain: the grade is read from item 19, the floor is read from the
+ * accused's service, and both come from one sentence of the order. A
+ * warning is the right severity where the app cannot tell a lawful case
+ * from an unlawful one. Here it can.
  *
  * A punishment entry counts as "a reduction" when its resolved code has
  * `gradeReducedTo` among its parameters, N08 in the current table, rather
@@ -1043,13 +1057,14 @@ export function reductionPayGradeIssues(formData: FormData): ValidationIssue[] {
 
   return [
     issue(
-      'navmc10132-w08-reduction-e6-plus',
-      'warn',
+      'navmc10132-v35-reduction-barred-grade',
+      'block',
       `A reduction is imposed and the accused is E-${floor} or above.`,
       'MCO 5800.16 Vol 14 para 010302.C',
       `Accused pay grade is "${payGrade}." ${who} in the grade of E-${floor} ` +
-        'or above may not be reduced in paygrade. Remove the reduction or confirm the ' +
-        'accused pay grade is entered correctly.',
+        'or above may not be reduced in paygrade. Remove the reduction, or correct ' +
+        'item 19 if the grade is wrong. Export stays blocked until one or the other ' +
+        'is done, because the order states a prohibition rather than a caution.',
     ),
   ];
 }

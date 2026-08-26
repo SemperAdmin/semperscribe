@@ -104,7 +104,10 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
   // Derived on every render from a pure function of one string, so there is
   // nothing to memoise and nothing to keep in sync.
   const authorityGrade = (formData.njpAuthorityPayGrade as string) ?? '';
-  const options = releaseOnePunishmentsFor(authorityGrade);
+  const options = releaseOnePunishmentsFor(authorityGrade, {
+    payGrade: typeof formData.accusedPayGrade === 'string' ? formData.accusedPayGrade : '',
+    service: formData.accusedService === 'USN' ? 'USN' : 'USMC',
+  });
 
   // Forfeiture ceilings. Computed on the BASIS grade, which V-18 has already
   // forced to the reduction target whenever a reduction is imposed, falling

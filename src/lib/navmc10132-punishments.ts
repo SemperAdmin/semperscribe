@@ -37,6 +37,12 @@
  *    and enlisted 60-day restriction routes to N14 or N15.
  */
 
+import {
+  reductionBarred,
+  NAVMC_10132_REDUCTION_BAR_FLOOR,
+  type Navmc10132Service,
+} from '@/lib/navmc10132-ranks';
+
 /** Who the punishment may be imposed upon. */
 export type PunishmentAppliesTo = 'officer' | 'enlisted' | 'either';
 
@@ -487,8 +493,40 @@ export interface PunishmentAvailability {
  * preparation order. Those options come back with `unverified` true so the
  * caller can say the check has not run rather than implying it passed.
  */
-export function releaseOnePunishmentsFor(authorityPayGrade: string): PunishmentAvailability[] {
+export function releaseOnePunishmentsFor(
+  authorityPayGrade: string,
+  accused: { payGrade?: string; service?: Navmc10132Service } = {},
+): PunishmentAvailability[] {
+  /**
+   * THE ACCUSED'S OWN GRADE BARS A REDUCTION, whatever the authority holds.
+   * MCO 5800.16 Vol 14 para 010302.C: "Marines in the grade of E-6 or above
+   * and Sailors in the grade of E-7 or above may not be reduced in
+   * paygrade." Stephen, 2026-08-26: "we should block the reduction
+   * punishment for Marine SSgt and above and navy chiefs and above."
+   *
+   * OFFERED AND DISABLED, NOT HIDDEN, matching D-21's ruling for the
+   * authority-grade codes. A hidden code reads as one the app cannot
+   * produce; the real fact is that THIS accused may not receive it, and the
+   * reason is worth naming where the clerk is choosing.
+   */
+  const accusedGrade = (accused.payGrade ?? '').trim();
+  const service = accused.service ?? 'USMC';
+  const barred = accusedGrade !== '' && reductionBarred(accusedGrade, service);
+
   return NAVMC_10132_RELEASE_ONE_PUNISHMENTS.map((punishment) => {
+    if (barred && punishment.parameters.includes('gradeReducedTo')) {
+      const floor = NAVMC_10132_REDUCTION_BAR_FLOOR[service];
+      const who = service === 'USN' ? 'Sailors' : 'Marines';
+      return {
+        punishment,
+        available: false,
+        unverified: false,
+        reason:
+          `${who} in the grade of E-${floor} or above may not be reduced in paygrade ` +
+          `(MCO 5800.16 Vol 14 para 010302.C). Item 19 is ${accusedGrade}.`,
+      };
+    }
+
     const result = authoritySatisfies(punishment.requiredAuthority, authorityPayGrade);
 
     if (result === true) {

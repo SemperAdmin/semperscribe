@@ -1,3 +1,4 @@
+import { releaseOnePunishmentsFor } from '@/lib/navmc10132-punishments';
 /**
  * The rank and pay grade vocabularies, items 8A, 19, and 24.
  *
@@ -290,5 +291,57 @@ describe('splitRankGrade is the inverse of formatRankGrade, and validates', () =
 
   it('is empty-safe', () => {
     expect(splitRankGrade('', ENLISTED)).toEqual({ rank: '', payGrade: null });
+  });
+});
+
+describe('the item 6 picker refuses a reduction the accused cannot receive', () => {
+  /**
+   * STEPHEN, 2026-08-26: "we should block the reduction punishment for
+   * Marine SSgt and above and navy chiefs and above."
+   *
+   * V-35 blocks it at export. This stops it being chosen at all, which is
+   * the better place: a clerk who picks N08, types a target grade and then
+   * meets a blocker has done work the app knew was wasted before they
+   * started.
+   *
+   * OFFERED AND DISABLED, NOT HIDDEN, matching D-21's ruling for the
+   * authority-grade codes. A hidden code reads as one the app cannot
+   * produce; the real fact is that THIS accused may not receive it.
+   */
+  const n08 = (authority: string, accused: { payGrade?: string; service?: 'USMC' | 'USN' }) =>
+    releaseOnePunishmentsFor(authority, accused).find((entry) => entry.punishment.code === 'N08')!;
+
+  it('refuses N08 for a Marine at E-6, naming the order', () => {
+    const entry = n08('O5', { payGrade: 'E6' });
+    expect(entry.available).toBe(false);
+    expect(entry.reason).toContain('may not be reduced in paygrade');
+    expect(entry.reason).toContain('010302.C');
+    expect(entry.reason).toContain('E6');
+  });
+
+  it('offers it one grade lower', () => {
+    expect(n08('O5', { payGrade: 'E5' }).available).toBe(true);
+  });
+
+  // Two floors, not one. A Sailor at E-6 may lawfully be reduced.
+  it('refuses a Navy chief at E-7 but offers it to a Sailor at E-6', () => {
+    expect(n08('O5', { payGrade: 'E7', service: 'USN' }).available).toBe(false);
+    expect(n08('O5', { payGrade: 'E6', service: 'USN' }).available).toBe(true);
+  });
+
+  // The app declines to assert a bar it cannot support.
+  it('offers it when item 19 carries no grade yet', () => {
+    expect(n08('O5', {}).available).toBe(true);
+    expect(n08('O5', { payGrade: '' }).available).toBe(true);
+  });
+
+  // The bar touches the reduction alone.
+  it('leaves every other code alone for a barred accused', () => {
+    const offered = releaseOnePunishmentsFor('O5', { payGrade: 'E6' })
+      .filter((entry) => entry.available)
+      .map((entry) => entry.punishment.code);
+    expect(offered).toContain('N09');
+    expect(offered).toContain('N11');
+    expect(offered).not.toContain('N08');
   });
 });
