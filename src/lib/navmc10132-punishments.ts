@@ -368,7 +368,14 @@ export const NJP_AUTHORITY_LEVEL_LABEL: Readonly<Record<NjpAuthorityLevel, strin
  * claim a level", and every caller honors that rather than defaulting.
  */
 export function resolveAuthorityLevel(payGrade: string): NjpAuthorityLevel | null {
-  const match = /^O(\d+)$/i.exec(payGrade.trim().replace(/-/g, ''));
+  // THE E VARIANTS RESOLVE THE SAME WAY. O1E, O2E and O3E are the rates paid
+  // to an officer with prior enlisted service, and the page 3 note lists all
+  // three as pay grades this form accepts. An O3E is exactly as much a
+  // company-grade officer as an O3, and before this an item 8A recorded as
+  // O3E returned null here, printing a BLANK maximum punishment on A-1-d and
+  // reporting the grade as unreadable. Found while building the item 8A
+  // picker, 2026-08-26, because the picker offers what the form allows.
+  const match = /^O(\d+)E?$/i.exec(payGrade.trim().replace(/-/g, ''));
   if (!match) return null;
   const grade = Number(match[1]);
   if (!Number.isFinite(grade) || grade < 1 || grade > 10) return null;

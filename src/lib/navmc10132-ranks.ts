@@ -18,8 +18,10 @@
  * Three consequences drive everything below.
  *
  * 1. The Marine list is CLOSED, so it is a selection rather than free text.
- *    Only the enlisted ranks appear here. This app is enlisted only, and the
- *    officer ranks the note lists belong to the separate officer element.
+ *    The ACCUSED is always enlisted on this form, so the enlisted ranks and
+ *    the officer ranks are kept as separate tables. The officer table is not
+ *    for an accused: it is for item 8A, the grade of the officer IMPOSING
+ *    the punishment, who is by definition a commanding officer.
  *
  * 2. Navy is NOT a closed E1 through E9 list. The note requires the RATING
  *    abbreviation for petty officers, so an E5 corpsman is HM2, never PO2.
@@ -77,6 +79,93 @@ export const NAVMC_10132_USMC_ENLISTED_RANKS: readonly Navmc10132Rank[] = [
   { abbreviation: 'MGySgt', title: 'Master Gunnery Sergeant', payGrade: 'E9' },
   { abbreviation: 'SgtMaj', title: 'Sergeant Major', payGrade: 'E9' },
 ];
+
+/**
+ * Officer and warrant pay grades, byte-exact from the page 3 note. No dashes.
+ *
+ * THE E VARIANTS ARE PAY GRADES, NOT RANKS. O1E, O2E and O3E are the rates
+ * paid to an officer with at least four years of prior enlisted service. The
+ * officer wears 2ndLt, 1stLt or Capt either way, which is why they appear
+ * here and not in the rank table.
+ */
+export const NAVMC_10132_OFFICER_PAY_GRADES = [
+  'W1', 'W2', 'W3', 'W4', 'W5',
+  'O1', 'O1E', 'O2', 'O2E', 'O3', 'O3E',
+  'O4', 'O5', 'O6', 'O7', 'O8', 'O9', 'O10',
+] as const;
+
+export type OfficerPayGrade = (typeof NAVMC_10132_OFFICER_PAY_GRADES)[number];
+
+/** A rank in the officer and warrant half of the page 3 note's closed list. */
+export interface Navmc10132OfficerRank {
+  abbreviation: string;
+  title: string;
+  payGrade: OfficerPayGrade;
+}
+
+/**
+ * Marine officer and warrant ranks, the CLOSED list from the page 3 note, in
+ * order: "WO, CWO2, CWO3, CWO4, CWO5, 2ndLt, 1stLt, Capt, Maj, LtCol, Col,
+ * BGen, MajGen, LtGen, Gen".
+ *
+ * WARRANT RANKS ARE IN THE LIST BECAUSE THE FORM PUTS THEM THERE, and item
+ * 8A has to be able to record whatever the form allows. What the APP can do
+ * with a warrant grade is a separate question, and a narrower one: the
+ * maximum-punishment ceiling in JAGMAN A-1-d resolves from a commissioned
+ * grade only (10 U.S.C. 815(b)(2), which speaks of a commanding officer of
+ * the grade of major or above), so a W grade leaves paragraph 3 blank. The
+ * UI says so rather than letting the blank read as a bug.
+ */
+export const NAVMC_10132_USMC_OFFICER_RANKS: readonly Navmc10132OfficerRank[] = [
+  { abbreviation: 'WO', title: 'Warrant Officer', payGrade: 'W1' },
+  { abbreviation: 'CWO2', title: 'Chief Warrant Officer 2', payGrade: 'W2' },
+  { abbreviation: 'CWO3', title: 'Chief Warrant Officer 3', payGrade: 'W3' },
+  { abbreviation: 'CWO4', title: 'Chief Warrant Officer 4', payGrade: 'W4' },
+  { abbreviation: 'CWO5', title: 'Chief Warrant Officer 5', payGrade: 'W5' },
+  { abbreviation: '2ndLt', title: 'Second Lieutenant', payGrade: 'O1' },
+  { abbreviation: '1stLt', title: 'First Lieutenant', payGrade: 'O2' },
+  { abbreviation: 'Capt', title: 'Captain', payGrade: 'O3' },
+  { abbreviation: 'Maj', title: 'Major', payGrade: 'O4' },
+  { abbreviation: 'LtCol', title: 'Lieutenant Colonel', payGrade: 'O5' },
+  { abbreviation: 'Col', title: 'Colonel', payGrade: 'O6' },
+  { abbreviation: 'BGen', title: 'Brigadier General', payGrade: 'O7' },
+  { abbreviation: 'MajGen', title: 'Major General', payGrade: 'O8' },
+  { abbreviation: 'LtGen', title: 'Lieutenant General', payGrade: 'O9' },
+  { abbreviation: 'Gen', title: 'General', payGrade: 'O10' },
+];
+
+/** Looks up a Marine officer or warrant rank by its printed abbreviation. */
+export function resolveUsmcOfficerRank(
+  abbreviation: string,
+): Navmc10132OfficerRank | undefined {
+  const wanted = abbreviation.trim();
+  return NAVMC_10132_USMC_OFFICER_RANKS.find((r) => r.abbreviation === wanted);
+}
+
+/**
+ * The pay grade normally held at a Marine officer rank, or undefined.
+ *
+ * A DEFAULT, exactly as `payGradeOf` is for the enlisted table. An officer
+ * with prior enlisted service wears Capt and is paid O3E, so the pair is
+ * seeded and never enforced.
+ */
+export function officerPayGradeOf(abbreviation: string): OfficerPayGrade | undefined {
+  return resolveUsmcOfficerRank(abbreviation)?.payGrade;
+}
+
+/**
+ * True when a Marine officer rank and pay grade pair is not the usual one.
+ *
+ * NOT AN ERROR, and the E variants are the ordinary case rather than the
+ * exception: a Capt paid O3E diverges by this test and is entirely correct.
+ * Surfaced so a divergence is deliberate rather than a typo left unnoticed.
+ */
+export function officerRankGradeDiverges(abbreviation: string, payGrade: string): boolean {
+  const expected = officerPayGradeOf(abbreviation);
+  if (expected === undefined) return false;
+  if (payGrade.trim() === '') return false;
+  return expected !== payGrade.trim();
+}
 
 /**
  * Navy E1 through E3 apprenticeship abbreviations, grouped by community.

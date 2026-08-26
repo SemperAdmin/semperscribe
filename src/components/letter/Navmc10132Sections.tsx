@@ -59,6 +59,7 @@ import { AccusedRankSection } from '@/components/letter/navmc10132/AccusedRankSe
 import { PunishmentSection } from '@/components/letter/navmc10132/PunishmentSection';
 import { SuspensionSection } from '@/components/letter/navmc10132/SuspensionSection';
 import { VictimsSection } from '@/components/letter/navmc10132/VictimsSection';
+import { NjpAuthoritySection } from '@/components/letter/navmc10132/NjpAuthoritySection';
 import { RemarksSection } from '@/components/letter/navmc10132/RemarksSection';
 import { UnitDiarySection } from '@/components/letter/navmc10132/UnitDiarySection';
 import { VacationSection } from '@/components/letter/navmc10132/VacationSection';
@@ -90,7 +91,6 @@ const DEF_ACCUSED = subDefinition(['accused']);
 const DEF_ABSENCE = subDefinition(['absence']);
 // Item 7 left this sub-definition when it became a custom section. Item 8
 // remains a plain scalar block.
-const DEF_PUNISHMENT_TAIL = subDefinition(['authority']);
 /**
  * Which pass each appeal field belongs to, from the section 13.1 lock table
  * in docs/NAVMC_10132_SPEC.md. Decision row D-61.
@@ -288,16 +288,11 @@ export function Navmc10132FormSections({
           />
         </>
       )}
-      <FormBlock>
-        <DynamicForm
-          key={`navmc10132-${formKey}-punishment-tail`}
-          lockedFields={lockedKeys}
-          lockedBadge={<LockedBadge />}
-          documentType={DEF_PUNISHMENT_TAIL}
-          onSubmit={onDynamicSync}
-          defaultValues={formData}
-        />
-      </FormBlock>
+      <NjpAuthoritySection
+        formData={formData}
+        setFormData={setFormData}
+        SectionCard={SectionCard}
+      />
       {navmc10132StageAtLeast(stage, 4) && (
         <FormBlock>
           <DynamicForm

@@ -1421,6 +1421,11 @@ export const Navmc10132Schema = z.object({
   unit: z.string().optional(),
   accusedName: z.string().min(1, 'Accused name is required (Last, First Middle)'),
   accusedService: z.enum(['USMC', 'USN']).optional(),
+  /** Item 8A's picker only. 'USMC' selects the page 3 note's closed officer
+   *  list; anything else takes the free-text abbreviation the note calls for
+   *  on other services. Never printed on its own: item 8A prints the composed
+   *  `njpAuthorityGrade`. */
+  njpAuthorityService: z.string().optional(),
   accusedRankGrade: z.string().optional(),
   accusedEdipi: edipiField().optional(),
   accusedPayGrade: z.string().optional(),
@@ -1657,28 +1662,15 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
     // survives as the DERIVED string, written by renderSuspension exactly
     // as `punishmentImposed` is written by renderPunishment, so a text box
     // bound to it would be silently discarded at export. Do not re-add it.
-    {
-      id: 'authority',
-      title: 'NJP Authority (Items 8, 8A, 8B)',
-      fields: [
-        {
-          name: 'njpAuthorityName',
-          label: 'Name, title, service branch if other than USMC',
-          type: 'text',
-          className: 'md:col-span-2',
-        },
-        { name: 'njpAuthorityGrade', label: 'Rank / Grade', type: 'text', placeholder: 'LtCol, O5' },
-        { name: 'njpAuthorityEdipi', label: 'EDIPI', type: 'text' },
-        {
-          name: 'njpAuthorityPayGrade',
-          label: 'Pay grade only',
-          type: 'text',
-          placeholder: 'O5',
-          description:
-            'Not printed. Decides whether the selected punishment codes require field-grade authority (10 U.S.C. 815(b)(2)(H)).',
-        },
-      ],
-    },
+    // ITEMS 8, 8A AND 8B ARE GONE FROM HERE, and must not come back.
+    // NjpAuthoritySection.tsx owns them now, for the reason its own header
+    // gives: this section carried TWO free-text grade fields with nothing
+    // tying them together, `njpAuthorityGrade` printing in item 8A and
+    // `njpAuthorityPayGrade` driving the punishment picker, the A-1-d
+    // ceiling and V-20. A clerk could type "Capt, O3" in one and "O5" in the
+    // other and every consequence split down the middle. One picker feeds
+    // both now, and RHF would stomp its writes on the next debounced sync if
+    // these fields ever reappeared in `sections`.
     {
       id: 'appeal',
       title: 'Appeal (Items 11-15)',
