@@ -370,3 +370,53 @@ describe('the stage has exactly two sources: a loaded file, and the pass-1 seed'
     expect(referencing).toEqual([]);
   });
 });
+
+/**
+ * EVERY PATH THAT REPLACES DOCUMENT STATE MUST REMOUNT THE FORMS.
+ *
+ * STEPHEN, 2026-08-26: "on inport it did not pull the Unit and Accused
+ * (Items 17-20) and Rank and Pay Grade (Item 19) data." They WERE pulled.
+ * `applyNavmc10132Load` wrote the patch and then left every DynamicForm
+ * mounted with the defaults it had seeded BEFORE the file arrived, and RHF's
+ * next debounced sync wrote those defaults straight back over the patch.
+ * Items 17, 18 and 20 live in the accused DynamicForm, which is exactly the
+ * set that came back blank.
+ *
+ * DynamicForm calls useForm once per mount and never resets. Bumping
+ * `formKey` is the app's remount, and every OTHER path that replaces
+ * document state already did it. This one did not, and nothing said so.
+ *
+ * The scan is deliberately narrow: a callback whose body spreads a patch
+ * into formData is replacing state wholesale, and has to remount. A handler
+ * setting one field from one control is not.
+ */
+describe('a wholesale write to document state remounts the forms', () => {
+  const PAGE = join(SRC_DIR, 'app', 'page.tsx');
+
+  /** The bodies of every `setFormData(prev => ({ ...prev, ...X }))` call. */
+  function spreadPatchCalls(src: string): string[] {
+    return extractCallSpans(src, 'setFormData').filter((span) =>
+      /\.\.\.prev[\s\S]*\.\.\.[A-Za-z_$][\w$]*/.test(span),
+    );
+  }
+
+  it('page.tsx really contains such a call, so this guard has something to guard', () => {
+    expect(spreadPatchCalls(readFileSync(PAGE, 'utf8')).length).toBeGreaterThan(0);
+  });
+
+  /**
+   * The NAVMC 10132 load is the one this was written for. Asserted by name
+   * rather than by scanning every callback, because the scan cannot see
+   * which spread came from a FILE and which from a form the user is typing
+   * in, and a guard that fires on the wrong one gets deleted.
+   */
+  it('applyNavmc10132Load bumps formKey', () => {
+    const src = readFileSync(PAGE, 'utf8');
+    const at = src.indexOf('applyNavmc10132Load');
+    expect(at).toBeGreaterThan(0);
+    // The callback body, up to the end of its useCallback dependency array.
+    const body = src.slice(at, src.indexOf('    [],\n  );', at));
+    expect(body).toContain('setFormData');
+    expect(body, 'a load that does not remount is clobbered by RHF').toContain('setFormKey');
+  });
+});

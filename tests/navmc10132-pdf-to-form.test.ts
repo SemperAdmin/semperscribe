@@ -201,14 +201,30 @@ describe('the structures that do and do not come back', () => {
     expect(result.notes.join(' ')).toMatch(/cannot rebuild/);
   });
 
-  // "Cpl, E4" and "GySgt, E7" are both comma separated, and nothing
-  // guarantees the next one is. A wrong split writes a wrong grade onto a
-  // legal record.
-  it('does not split item 19 back into a rank and a pay grade', () => {
+  /**
+   * REVERSED 2026-08-26. This test asserted that item 19 is never split, on
+   * the reasoning that "Cpl, E4" and "GySgt, E7" are comma separated by
+   * happenstance and a wrong split writes a wrong grade onto a legal record.
+   *
+   * THE FIRST HALF WAS WRONG: `formatRankGrade` joins with a literal ", "
+   * and lives beside the splitter, so the separator is a contract. THE
+   * SECOND HALF WAS RIGHT and is now answered by validating the tail against
+   * the closed pay-grade list rather than by refusing to read it, which is
+   * the case asserted just below and in the recovery block at the end of
+   * this file.
+   *
+   * The refusal cost more than a display: `accusedPayGrade` feeds the
+   * forfeiture ladder, V-20, the priced A-1-d ceiling and the reduction
+   * picker, and every one of them was dead on a loaded document until
+   * Stephen reported the empty picker.
+   *
+   * What survives unchanged is the CARRIED report, so the panel still tells
+   * the clerk where the value came from.
+   */
+  it('splits item 19 only as far as the closed list confirms, and still reports it carried', () => {
     const result = navmc10132PdfToForm(read({ values: { '19 ACCUSED RANK/GRADE': 'Cpl, E4' } }), form());
 
-    expect(result.patch.accusedRank).toBeUndefined();
-    expect(result.patch.accusedPayGrade).toBeUndefined();
+    expect(result.patch.accusedPayGrade).toBe('E4');
     expect(result.carriedFromFile).toContainEqual({
       label: 'Rank and grade (item 19)',
       value: 'Cpl, E4',
@@ -264,5 +280,103 @@ describe('the file decides the pass, and page 2 is only a cross-check', () => {
     );
 
     expect(result.notes.join(' ')).toMatch(/2 signature\(s\) applied, closing 2 fields/);
+  });
+});
+
+describe('the composed grades come back, and the derived halves with them', () => {
+  /**
+   * STEPHEN, 2026-08-26: "on inport it did not pull the Unit and Accused
+   * (Items 17-20) and Rank and Pay Grade (Item 19) data."
+   *
+   * Item 19 was read, reported as carried from the file, and never written
+   * into the patch. The original note reasoned that "Cpl, E4" is comma
+   * separated by happenstance and a wrong split writes a wrong grade onto a
+   * legal record. The separator is a contract, since `formatRankGrade` joins
+   * with a literal ", ", and the real risk is answered by validating the
+   * tail rather than by refusing to read it.
+   *
+   * THE COST WAS NOT THE DISPLAY. `accusedPayGrade` feeds the forfeiture
+   * ladder, V-20, the priced ceiling on A-1-d and the reduction picker;
+   * `njpAuthorityPayGrade` decides which punishment codes item 6 offers. On
+   * every loaded document all of it was dead.
+   */
+  it('writes item 19, its pay grade, and the service on a Marine rank', () => {
+    const { patch } = navmc10132PdfToForm(
+      read({ values: { '19 ACCUSED RANK/GRADE': 'Cpl, E4' } }),
+      form(),
+    );
+    expect(patch.accusedRankGrade).toBe('Cpl, E4');
+    expect(patch.accusedPayGrade).toBe('E4');
+    expect(patch.accusedService).toBe('USMC');
+  });
+
+  it('recovers the authority pay grade from item 8A, which the file never carries directly', () => {
+    const { patch } = navmc10132PdfToForm(
+      read({ values: { '8A NJP AUTHORITY GRADE': 'LtCol, O5' } }),
+      form(),
+    );
+    expect(patch.njpAuthorityPayGrade).toBe('O5');
+  });
+
+  it('reads the prior-enlisted rates the same way', () => {
+    const { patch } = navmc10132PdfToForm(
+      read({ values: { '8A NJP AUTHORITY GRADE': 'Capt, O3E' } }),
+      form(),
+    );
+    expect(patch.njpAuthorityPayGrade).toBe('O3E');
+  });
+
+  /**
+   * THE ORIGINAL CONCERN, ANSWERED RATHER THAN DISMISSED. A tail the closed
+   * list does not contain costs the derived field and never produces a wrong
+   * one. The composed string is still written, because it is the exact value
+   * the file carries.
+   */
+  it('keeps the composed string but derives nothing from an unreadable grade', () => {
+    const { patch } = navmc10132PdfToForm(
+      read({ values: { '19 ACCUSED RANK/GRADE': 'Cpl, E-4' } }),
+      form(),
+    );
+    expect(patch.accusedRankGrade).toBe('Cpl, E-4');
+    expect(patch).not.toHaveProperty('accusedPayGrade');
+  });
+
+  it('derives nothing at all from a value with no separator', () => {
+    const { patch } = navmc10132PdfToForm(
+      read({ values: { '19 ACCUSED RANK/GRADE': 'Corporal' } }),
+      form(),
+    );
+    expect(patch.accusedRankGrade).toBe('Corporal');
+    expect(patch).not.toHaveProperty('accusedPayGrade');
+  });
+
+  // A Navy rating is not in the Marine closed list, so the app declines to
+  // claim a service rather than labelling a Sailor a Marine.
+  it('takes the pay grade off a Navy rating but claims no service', () => {
+    const { patch } = navmc10132PdfToForm(
+      read({ values: { '19 ACCUSED RANK/GRADE': 'HM2, E5' } }),
+      form(),
+    );
+    expect(patch.accusedPayGrade).toBe('E5');
+    expect(patch).not.toHaveProperty('accusedService');
+  });
+
+  // Item 19 still reports as carried from the file, so the panel keeps
+  // telling the clerk where the value came from.
+  it('still reports item 19 as carried from the file', () => {
+    const { carriedFromFile } = navmc10132PdfToForm(
+      read({ values: { '19 ACCUSED RANK/GRADE': 'Cpl, E4' } }),
+      form(),
+    );
+    expect(carriedFromFile.map((c) => c.label)).toContain('Rank and grade (item 19)');
+  });
+
+  // A clean load raises nothing, which is the rule the conflict list follows.
+  it('raises no conflict when the app held nothing', () => {
+    const { conflicts } = navmc10132PdfToForm(
+      read({ values: { '19 ACCUSED RANK/GRADE': 'Cpl, E4', '8A NJP AUTHORITY GRADE': 'LtCol, O5' } }),
+      form(),
+    );
+    expect(conflicts).toEqual([]);
   });
 });

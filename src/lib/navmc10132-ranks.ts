@@ -254,6 +254,42 @@ export function formatRankGrade(abbreviation: string, payGrade: string): string 
   return `${rank}, ${grade}`;
 }
 
+/**
+ * Splits a composed "RANK, GRADE" string back into its two halves.
+ *
+ * THE INVERSE OF `formatRankGrade`, AND ONLY THAT. The original reader
+ * refused to split at all, on the reasoning that "Cpl, E4" is comma
+ * separated by happenstance and "a wrong split writes a wrong grade onto a
+ * legal record". The first half of that is not so: `formatRankGrade` joins
+ * with a literal ", " and lives in this file, so the separator is a contract
+ * rather than a coincidence. The second half is a real risk, and it is what
+ * the VALIDATION below answers.
+ *
+ * `payGrade` comes back only when the tail is a member of the closed list
+ * passed in. Anything else returns a null grade, and the caller keeps the
+ * composed string without deriving anything from it. So a value this
+ * function cannot read confidently costs a derived field, never a wrong one.
+ *
+ * SPLIT ON THE LAST SEPARATOR, not the first. Nothing in the current
+ * vocabularies contains a comma, and reading from the right means a rank
+ * that ever gains one loses nothing.
+ */
+export function splitRankGrade(
+  composed: string,
+  allowedGrades: readonly string[],
+): { rank: string; payGrade: string | null } {
+  const value = composed.trim();
+  const at = value.lastIndexOf(',');
+  if (at < 0) return { rank: value, payGrade: null };
+
+  const rank = value.slice(0, at).trim();
+  const tail = value.slice(at + 1).trim();
+  return {
+    rank,
+    payGrade: allowedGrades.includes(tail) ? tail : null,
+  };
+}
+
 /** Looks up a Marine enlisted rank by its printed abbreviation. */
 export function resolveUsmcRank(abbreviation: string): Navmc10132Rank | undefined {
   const wanted = abbreviation.trim();

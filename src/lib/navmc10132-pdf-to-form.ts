@@ -46,6 +46,12 @@
 import type { FormData } from '@/types';
 import type { Navmc10132PdfRead } from '@/lib/navmc10132-pdf-read';
 import type { Navmc10132Offense, Navmc10132Victim } from '@/types/navmc';
+import {
+  splitRankGrade,
+  resolveUsmcRank,
+  NAVMC_10132_ENLISTED_PAY_GRADES,
+  NAVMC_10132_OFFICER_PAY_GRADES,
+} from '@/lib/navmc10132-ranks';
 
 /** One place the file and the open document disagree. */
 export interface Navmc10132Conflict {
@@ -211,17 +217,57 @@ export function navmc10132PdfToForm(
     patch[key] = fromFile;
   }
 
-  // --- Item 19, rank and grade, which is composed on the way out --------
-  // `navmc10132Values` writes one string built from the rank and the pay
-  // grade. There is no safe split back: "Cpl, E4" happens to be comma
-  // separated and "GySgt, E7" does too, but nothing guarantees it and a
-  // wrong split writes a wrong grade onto a legal record. The composed
-  // value is kept for display and the components are left alone.
+  /**
+   * --- Item 19, rank and grade, and item 8A, the authority's --------------
+   *
+   * BOTH ARE COMPOSED ON THE WAY OUT AND NOW SPLIT ON THE WAY BACK.
+   *
+   * The original reader wrote NEITHER into the patch, on the reasoning that
+   * "Cpl, E4" is comma separated by happenstance and a wrong split writes a
+   * wrong grade onto a legal record. Stephen found the cost on 2026-08-26:
+   * "on inport it did not pull the Unit and Accused (Items 17-20) and Rank
+   * and Pay Grade (Item 19) data". The rank picker came back empty on a file
+   * that plainly carried MSgt, E8.
+   *
+   * AND THE COST WAS LARGER THAN THE DISPLAY. `accusedPayGrade` feeds the
+   * forfeiture ladder, V-20's ceiling check, the priced maximum punishment
+   * on JAGMAN A-1-d and the reduction picker. `njpAuthorityPayGrade` decides
+   * which punishment codes item 6 offers and which ceiling A-1-d states. On
+   * every loaded document all of that was dead, because neither derived
+   * grade was ever recovered.
+   *
+   * THE SEPARATOR IS A CONTRACT, NOT A COINCIDENCE. `formatRankGrade` joins
+   * with a literal ", " and lives beside `splitRankGrade`. The real risk in
+   * the original note is answered by VALIDATION instead of by refusal: the
+   * derived pay grade is written only when it is a member of the closed list
+   * the form's own page 3 note fixes. A value the app cannot read
+   * confidently costs a derived field and never produces a wrong one.
+   *
+   * THE COMPOSED STRING IS WRITTEN EITHER WAY, because it is the exact value
+   * the file carries and the picker's own display reads it back the same way.
+   */
   const rankGrade = (read.values['19 ACCUSED RANK/GRADE'] ?? '').trim();
   if (rankGrade) {
     carriedFromFile.push({ label: 'Rank and grade (item 19)', value: rankGrade });
     const formRankGrade = currentString(formData, 'accusedRankGrade');
     flag('Rank and grade (item 19)', '19 ACCUSED RANK/GRADE', rankGrade, formRankGrade);
+
+    patch.accusedRankGrade = rankGrade;
+    const { rank, payGrade } = splitRankGrade(rankGrade, NAVMC_10132_ENLISTED_PAY_GRADES);
+    if (payGrade !== null) patch.accusedPayGrade = payGrade;
+    // SERVICE ONLY ON A CONFIDENT MATCH. A rank in the Marine closed list is
+    // proof; anything else is a rating or another service's abbreviation and
+    // the app declines to guess, leaving the picker's own default alone.
+    if (resolveUsmcRank(rank)) patch.accusedService = 'USMC';
+  }
+
+  const authorityGrade = (read.values['8A NJP AUTHORITY GRADE'] ?? '').trim();
+  if (authorityGrade) {
+    const { payGrade } = splitRankGrade(authorityGrade, NAVMC_10132_OFFICER_PAY_GRADES);
+    // `njpAuthorityPayGrade` is app state and is NOT printed, so the file
+    // never carries it directly. It is recoverable from item 8A and nowhere
+    // else, which is why a loaded document had no working punishment picker.
+    if (payGrade !== null) patch.njpAuthorityPayGrade = payGrade;
   }
 
   // --- Item 1 and item 5: the offense rows, which DO invert -------------

@@ -694,6 +694,20 @@ function NavalLetterGeneratorInner() {
     (patch: Record<string, unknown>, report: unknown, bytes: ArrayBuffer, fileName: string) => {
       setFormData(prev => ({ ...prev, ...patch, navmc10132LoadReport: report }));
 
+      // REMOUNT EVERY DYNAMICFORM, and this line is the whole of Stephen's
+      // 2026-08-26 report: "on inport it did not pull the Unit and Accused
+      // (Items 17-20) ... data". They were pulled. RHF then wrote its own
+      // stale defaults straight back over them.
+      //
+      // DynamicForm calls useForm once per mount and never resets, so a load
+      // that only writes formData leaves every mounted form holding the
+      // values it seeded BEFORE the file arrived, and its next debounced
+      // sync clobbers the patch. Item 17, item 18 and item 20 live in the
+      // accused DynamicForm, which is exactly the set that came back blank.
+      // Every other path replacing document state already bumps this;
+      // this one did not.
+      setFormKey(prev => prev + 1);
+
       // THE FILE ITSELF IS KEPT, not just what was read out of it. Every
       // later export writes an incremental update INTO these bytes so the
       // CAC signatures stay valid, and the live preview renders them, so a
