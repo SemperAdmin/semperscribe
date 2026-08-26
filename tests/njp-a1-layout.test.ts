@@ -86,6 +86,20 @@ describe('a sentence is never split by a blank line', () => {
    * generated output: the (2)/(3) gap, then "Para 4.a is broken and shouild
    * wrap properly", then the consultation block.
    */
+  // Paragraph 5, the fourth instance. A-1-c carries the same paragraph with
+  // no blank, which is what makes this a repair rather than a rewrite.
+  it('A-1-d paragraph 5 runs unbroken from "feasible, a" to "military lawyer"', () => {
+    const at = APPENDIX_A_1_D.text.findIndex((line) => line.endsWith('operationally feasible, a'));
+    expect(at).toBeGreaterThan(0);
+    expect(APPENDIX_A_1_D.text[at + 1]).toContain('military lawyer will be made available');
+  });
+
+  it('A-1-c never had that break, which is why this is a repair', () => {
+    const at = APPENDIX_A_1_C.text.findIndex((line) => line.endsWith('operationally feasible, a'));
+    expect(at).toBeGreaterThan(0);
+    expect(APPENDIX_A_1_C.text[at + 1]).toContain('military lawyer will be made available');
+  });
+
   it('A-1-d paragraph 4.a runs unbroken from "hereby informed" to "remain silent"', () => {
     const text = APPENDIX_A_1_D.text;
     const at = text.findIndex((line) => line.includes('You are hereby informed'));
@@ -225,11 +239,24 @@ describe('the maximum punishment list is spaced', () => {
     expect(lines[source - 1].trim()).toBe('');
   });
 
-  // A leading blank would open paragraph 3 with white space under its own
-  // lead sentence.
-  it('never opens with a blank line', () => {
+  /**
+   * REVERSED ON 2026-08-26, and the earlier assertion was my assumption
+   * rather than Stephen's instruction. He asked for "a hard space betwen"
+   * the refusal paragraph and the ceiling's lead sentence. The appendix runs
+   * "accept NJP is:" straight into its blank rules, so without this the
+   * ceiling reads as a continuation of the paragraph rather than as the
+   * answer to "is:".
+   */
+  it('opens with a blank line, separating it from "accept NJP is:"', () => {
     const lines = renderMaximumPunishment({ authorityPayGrade: 'O3', accusedPayGrade: 'E3' }, 63)!;
-    expect(lines[0].trim()).not.toBe('');
+    expect(lines[0].trim()).toBe('');
+    expect(lines[1].trim()).not.toBe('');
+  });
+
+  // One blank, not two. The appendix carries none of its own at that seam.
+  it('opens with exactly one blank line', () => {
+    const lines = renderMaximumPunishment({ authorityPayGrade: 'O5', accusedPayGrade: 'E3' }, 63)!;
+    expect(lines[1].trim()).not.toBe('');
   });
 });
 

@@ -421,7 +421,21 @@ export function renderMaximumPunishment(
   // the rest of paragraph 3.
   const ITEM_INDENT = '   ';
 
-  const lines: string[] = [];
+  /**
+   * A BLANK LINE OPENS THE BLOCK, separating it from the sentence it
+   * answers.
+   *
+   * Stephen, 2026-08-26: "we need a hard space betwen [paragraph 3] and [In
+   * addition to or in lieu of a punitive admonition...]". The appendix runs
+   * "accept NJP is:" straight into its own blank rules, so the fill lands
+   * hard against the end of the refusal paragraph and the ceiling reads as
+   * a continuation of it rather than as the answer to "is:".
+   *
+   * IN THE FILL, NOT THE APPENDIX. Where item 8A is unset nothing is filled
+   * and the appendix's own rules print as they always have; the separation
+   * belongs to the content this module writes, not to the form.
+   */
+  const lines: string[] = [''];
   max.blocks.forEach((block, index) => {
     /**
      * A BLANK LINE BEFORE EVERY BLOCK BUT THE FIRST, items included.

@@ -1090,6 +1090,12 @@ line was individually correct.
 | A-1-d, rights (2) and (3) | no blank where every other numbered right has one | blank restored, matching A-1-c |
 | A-1-d, paragraph 4.a | "You are hereby informed" / blank / "that you have the right to remain silent" | blank removed, one sentence |
 | A-1-c and A-1-d, the consultation entry | "I consulted with ____, a" / blank / "lawyer, on ____." | blank removed, and both rules squared to end where the signature rule ends |
+| A-1-d, paragraph 5 | "when operationally feasible, a" / blank / "military lawyer will be made available" | blank removed, matching A-1-c |
+
+THE SAME APPENDIX PAIR IS THE ORACLE IN THREE OF THE FOUR. A-1-c and A-1-d carry much of
+the same text, so where one has the blank and the other does not, the one WITHOUT it is the
+defect. That is why none of these is a rewrite of JAGMAN, and why a diff between the two
+appendices is the first thing to run when a paragraph looks wrong.
 
 TWO, the signature and its date on one line. His instruction: "This will remove the date
 placeholders and allow then to write it on the same line as teh signature." Four blocks
@@ -1131,8 +1137,14 @@ Four rules govern it:
 4. THE PAY TABLE IS NAMED ONLY WHERE A FIGURE PRICED ON IT WAS PRINTED, and the figures are
    called ceilings, not amounts imposed.
 
-THE LIST IS SPACED. `renderMaximumPunishment` puts a blank line before every block but the
-first, items included, on Stephen's report: "we need proper hard spaces between each max
+THE BLOCK OPENS WITH A BLANK LINE. The appendix runs "accept NJP is:" straight into its own
+blank rules, so the filled ceiling landed hard against the end of the refusal paragraph and
+read as a continuation of it rather than as the answer to "is:". The separation lives in the
+FILL, not in the appendix: where item 8A is unset nothing is filled and the form's own rules
+print as they always have.
+
+THE LIST IS SPACED. `renderMaximumPunishment` puts a blank line before every block,
+items included, on Stephen's report: "we need proper hard spaces between each max
 punishment." Each entry is a separate punishment and several wrap to three lines. On the
 page an accused reads before deciding whether to refuse NJP, an unbroken wall is not a
 cosmetic problem.

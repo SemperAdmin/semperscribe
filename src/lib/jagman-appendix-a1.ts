@@ -362,7 +362,10 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     'or not to exercise any of the rights explained above, you may',
     'obtain the advice of a lawyer before any decision. If you wish',
     'to consult with a lawyer, when operationally feasible, a',
-    '',
+    // FOURTH INSTANCE of the page-break artifact, and A-1-c proves it
+    // again: the identical paragraph there runs "...operationally feasible,
+    // a" straight into "military lawyer will be made available", with no
+    // blank. Stephen, 2026-08-26: "We need to remove the break betwen ...".
     'military lawyer will be made available to you, either in person',
     'or by telephone, free of charge, or you may obtain advice from',
     'a civilian lawyer at your own expense. Consultation with a',
