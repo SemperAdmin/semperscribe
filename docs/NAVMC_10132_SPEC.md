@@ -840,6 +840,7 @@ UNBUILT. A row is a record of a ruling, not a receipt for work.
 | D-62 | A-1-f prints a punishment worksheet, not a blank rule | CLOSED 2026-08-26, on Stephen's stated workflow: the script is printed and handed to the CO BEFORE the proceeding, and the clerk transcribes the marked paper afterwards, so item 6 is empty when it prints. The rule under "Accordingly, I impose the following punishment" carries a checkbox menu derived from the punishment table's own templates, filtered by item 8A, and the app-computed forfeiture ceilings. Menu and imposed punishment are MUTUALLY EXCLUSIVE: a record copy of a completed proceeding states what was imposed, and a menu of unchosen options under that sentence would contradict it. Neither block gates generation. See section 11.7 |
 | D-63 | The forfeiture maximum is shown at the current grade AND at every reduction target | CLOSED 2026-08-26, Stephen's ruling, choosing among three options: show both, mark the reduced grade operative. MCM Part V para 5.c(8) makes the reduced grade the lawful basis whenever a reduction is imposed, and it always prices lower, so one figure computed on the current grade errs toward an unlawful forfeiture every time. `navmc10132-forfeiture-ladder.ts` returns every rung; PunishmentSection shows the table; the A-1-f worksheet prints it. An unreadable reduction target marks NOTHING operative rather than falling back to the higher figure. See section 11.8 |
 | D-64 | The forfeiture ladder and the worksheet carry ONE reduction rung | CLOSED 2026-08-26 by Stephen: "there can only be a reduction of one rank." MCO 5800.16 Vol 14 para 010302.C narrows Marine reductions to the next inferior paygrade, stricter than 10 U.S.C. 815(b)(2)(H)(iv), and N08 is the only reduction code release one offers. `forfeitureLadder` now passes `nextInferiorOnly`, matching the reduction picker, which had passed it from the start. A reduction of more than one grade marks NOTHING operative, and N08 is dropped from the worksheet entirely for an accused para 010302.C bars from reduction at all. THE LESSON: `reducibleGrades` was correct and its option was correct; the rule was still broken on a printed page because one of its two callers omitted the option. A rule enforced in one caller is not enforced |
+| D-65 | Two layout departures on A-1-c and A-1-d, and a priced ceiling | CLOSED 2026-08-26 by Stephen, three instructions in one message. A blank line between rights (2) and (3) on A-1-d, restoring parity with A-1-c, which carries it in the same paragraph. The signature label and its date merged onto one line in all four signature blocks, removing the standalone `(Date)` rows so both are written beside the rule. And A-1-d paragraph 3 now prints the forfeiture ceiling in dollars at the accused's grade and length of service, priced on the ADVISEMENT date rather than the item 6 date, since the advisement is served before the hearing. No word of JAGMAN text changes. See section 11.9 |
 
 ---
 
@@ -1065,6 +1066,58 @@ accused is the worst line the page could carry.
 A WORKSHEET THAT CANNOT COMPUTE A CEILING PRINTS THE REASON, never a blank. A page with no
 ceiling and no explanation reads as a page with no LIMIT, which is the most dangerous thing
 it could say.
+
+### 11.9 Two layout departures from the printed appendices, and the priced ceiling
+
+`jagman-appendix-a1.ts` reproduces JAGMAN Appendix A-1-c through A-1-h verbatim. Two lines
+of it no longer match the printed form. Both are Stephen's, both are layout, and NEITHER
+changes a word of JAGMAN text.
+
+ONE, the blank line between rights (2) and (3) on A-1-d. His report, 2026-08-26: "we need a
+hard space betwen (2) and (3)." Every other numbered right in that list is separated by a
+blank line, and A-1-c carries the blank at the same position in the same paragraph. The
+extraction dropped it from A-1-d alone, so this is PARITY BETWEEN THE TWO APPENDICES rather
+than a new layout.
+
+TWO, the signature and its date on one line. His instruction: "This will remove the date
+placeholders and allow then to write it on the same line as teh signature." Four blocks
+across A-1-c and A-1-d now read
+
+    _______________________________ _______________________________
+    (Signature of witness) (Date)   (Signature of Accused) (Date)
+
+in place of a label line, a blank, and a separate `(Date)` row. The same two signatures and
+the same two dates are still collected. A-1-g already prints "(Signature of Accused and
+Date)" on one line, so the pattern comes from the appendix set itself. This is the ONLY
+deliberate departure in the file, and `tests/njp-a1-layout.test.ts` is where it is
+recorded, so a future reader diffing against the printed form finds the reason rather than
+a discrepancy.
+
+THE CEILING NOW CARRIES A NUMBER. "We should list the max based on the rank and times of
+service." An accused deciding whether to refuse NJP and demand a court-martial was told he
+faced "one-half of one month's pay per month for two months", which is a fraction. A-1-d
+paragraph 3 now reads, for a SSgt with twelve years:
+
+    (2) Forfeiture of not more than one-half of one month's pay per month
+        for 2 months, which at E-6 with 12 years of service is $2,521 per
+        month.
+
+`MaximumPunishmentInput` gains an optional `forfeiture` ladder and `accusedYearsOfService`.
+Four rules govern it:
+
+1. ABSENT MEANS THE WORDS ALONE. The ladder declines whenever the pay table cannot be
+   selected or item 19 is unset, and a dollar figure on a rights advisement the app cannot
+   stand behind is worse than the fraction.
+2. PRICED ON THE ADVISEMENT DATE, not the item 6 date. A-1-c and A-1-d are served BEFORE the
+   hearing, so item 6 carries no date and pricing on it would decline on every advisement
+   ever generated. `advisementForfeitureLadder` reads item 2's election date, then item 3's
+   attestation, then item 6.
+3. THE REDUCED-GRADE RESTATEMENT NAMES ONLY THE CEILING THE LIST CARRIES. The first version
+   restated both the monthly and the seven-day figure regardless of authority level, so a
+   company-grade advisement offered a monthly forfeiture no company-grade commander may
+   impose, under a list that correctly omitted it.
+4. THE PAY TABLE IS NAMED ONLY WHERE A FIGURE PRICED ON IT WAS PRINTED, and the figures are
+   called ceilings, not amounts imposed.
 
 ### 11.8 The forfeiture ladder, MCM Part V para 5.c(8)
 

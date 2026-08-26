@@ -27,6 +27,7 @@ import { fillAppendix, type A1Fill, type A1FillReport } from '@/lib/jagman-a1-fi
 import { appendixWidth, wrapHanging } from '@/lib/jagman-a1-wrap';
 import { renderMaximumPunishment, resolveAuthorityLevel } from '@/lib/njp-maximum-punishment';
 import type { Navmc10132Service } from '@/lib/navmc10132-ranks';
+import type { ForfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
 
 /**
  * What is known BEFORE the hearing. Deliberately carries NO finding and NO
@@ -56,6 +57,14 @@ export interface NjpRightsCase {
   /** Item 19 pay grade. Empty applies no reduction bar. */
   accusedPayGrade: string;
   accusedService?: Navmc10132Service;
+  /**
+   * Forfeiture ceilings priced for this accused, when the app can price
+   * them. Absent prints the statutory fractions alone. See
+   * MaximumPunishmentInput.forfeiture.
+   */
+  forfeiture?: ForfeitureLadder;
+  /** Item 19's completed years, named in the priced sentence. */
+  accusedYearsOfService?: string;
 }
 
 export interface HandFillBlank {
@@ -241,6 +250,8 @@ export function renderNjpRights(
         authorityPayGrade: input.authorityPayGrade,
         accusedPayGrade: input.accusedPayGrade,
         accusedService: input.accusedService,
+        forfeiture: input.forfeiture,
+        accusedYearsOfService: input.accusedYearsOfService,
       },
       appendixWidth(appendix),
     );

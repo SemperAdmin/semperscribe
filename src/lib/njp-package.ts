@@ -175,6 +175,8 @@ export function maximumPunishmentStatus(formData: FormData): MaximumPunishmentSt
     authorityPayGrade,
     accusedPayGrade: str(formData, 'accusedPayGrade'),
     accusedService: formData.accusedService as Navmc10132Service | undefined,
+    accusedYearsOfService: str(formData, 'accusedYearsOfService'),
+    forfeiture: advisementForfeitureLadder(formData),
   });
 
   return {
@@ -205,6 +207,11 @@ export function buildRightsCase(formData: FormData): NjpRightsCase {
     authorityPayGrade: str(formData, 'njpAuthorityPayGrade'),
     accusedPayGrade: str(formData, 'accusedPayGrade'),
     accusedService: formData.accusedService as Navmc10132Service | undefined,
+    accusedYearsOfService: str(formData, 'accusedYearsOfService'),
+    // Stephen, 2026-08-26: "We should list the max based on the rank and
+    // times of service." Declines to nothing whenever the app cannot price
+    // it, and paragraph 3 then prints the statutory fractions alone.
+    forfeiture: advisementForfeitureLadder(formData),
   };
 }
 
@@ -339,6 +346,37 @@ export function announcedPunishment(formData: FormData): string {
  * a reduction IS recorded, `gradeReducedTo` names the operative rung and the
  * same function serves the app's own display.
  */
+/**
+ * The ladder as the RIGHTS ADVISEMENT needs it, priced on the advisement's
+ * own date.
+ *
+ * WHY NOT THE ITEM 6 DATE. A-1-c and A-1-d are served BEFORE the hearing, so
+ * item 6 carries no date and `scriptForfeitureLadder` would decline on every
+ * advisement ever generated. The date that matters here is the day the
+ * accused is advised, because that is the day he decides whether to refuse
+ * NJP on the strength of the figure. Item 2's election date is that day;
+ * item 3's attestation is the same sitting; item 6 is the fallback for a
+ * record copy produced after the fact.
+ *
+ * NO REDUCTION TARGET IS PASSED, on purpose. Nothing has been imposed when
+ * an advisement is served, so the accused's present grade is the operative
+ * basis and the reduced rung is the "if a reduction is imposed as well"
+ * case, which njp-maximum-punishment.ts states separately.
+ */
+export function advisementForfeitureLadder(formData: FormData): ForfeitureLadder {
+  const when =
+    str(formData, 'electionDate') ||
+    str(formData, 'rightsAttestDate') ||
+    str(formData, 'punishmentDate');
+
+  return forfeitureLadder({
+    payGrade: str(formData, 'accusedPayGrade'),
+    yearsOfService: str(formData, 'accusedYearsOfService'),
+    seaHardshipDutyPay: str(formData, 'accusedSeaHardshipDutyPay'),
+    punishmentDate: when,
+  });
+}
+
 export function scriptForfeitureLadder(formData: FormData): ForfeitureLadder {
   const reduction = (Array.isArray(formData.punishments)
     ? (formData.punishments as Navmc10132PunishmentEntry[])

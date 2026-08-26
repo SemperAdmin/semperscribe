@@ -170,10 +170,15 @@ export const APPENDIX_A_1_C: JagmanAppendix = {
     'evidence in aggravation at a later court-martial of the accused',
     'for other offenses.)',
     '',
+    // SIGNATURE AND DATE ON ONE LINE, Stephen 2026-08-26: "This will remove
+    // the date placeholders and allow then to write it on the same line as
+    // teh signature". A DELIBERATE DEPARTURE from the printed appendix's
+    // layout, and the only one in this file. The words are unchanged and no
+    // blank is removed: the same two signatures and the same two dates are
+    // still collected. A-1-g already prints "(Signature of Accused and Date)"
+    // on one line, so the pattern is the appendix set's own.
     '_______________________________ _______________________________',
-    '(Signature of witness)                  (Signature of Accused)',
-    '',
-    '    (Date)                                   (Date)',
+    '(Signature of witness) (Date)   (Signature of Accused) (Date)',
     '',
     '    (Note: If the accused wishes to consult with a lawyer, and',
     'consultation is operationally feasible, the remainder of this',
@@ -184,10 +189,15 @@ export const APPENDIX_A_1_C: JagmanAppendix = {
     '',
     'lawyer, on __________________________________.',
     '',
+    // SIGNATURE AND DATE ON ONE LINE, Stephen 2026-08-26: "This will remove
+    // the date placeholders and allow then to write it on the same line as
+    // teh signature". A DELIBERATE DEPARTURE from the printed appendix's
+    // layout, and the only one in this file. The words are unchanged and no
+    // blank is removed: the same two signatures and the same two dates are
+    // still collected. A-1-g already prints "(Signature of Accused and Date)"
+    // on one line, so the pattern is the appendix set's own.
     '_______________________________ _______________________________',
-    '     (Signature of witness)             (Signature of Accused)',
-    '',
-    '    (Date)                                   (Date)',
+    '(Signature of witness) (Date)   (Signature of Accused) (Date)',
     '',
     '   b.   Personal appearance. (Check one)',
     '',
@@ -298,6 +308,13 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     '',
     '        (2) To be informed of the information against you',
     'relating to the offenses alleged;',
+    // ONE BLANK LINE, ADDED 2026-08-26 on Stephen's report: "we need a hard
+    // space betwen (2) and (3)". Every other numbered right in this list is
+    // separated by one, and A-1-c carries the blank at this exact position
+    // in the same paragraph. The extraction dropped it here alone, so this
+    // restores parity between the two appendices rather than inventing a
+    // layout. No word of JAGMAN text changes.
+    '',
     '        (3) To be accompanied by a spokesperson provided or',
     'arranged by you. A spokesperson is not entitled to travel or',
     'similar expenses, and the proceedings will not be delayed to',
@@ -363,10 +380,15 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     'evidence in aggravation during the sentencing proceedings of a',
     'later court-martial of the accused for other offenses.)',
     '',
+    // SIGNATURE AND DATE ON ONE LINE, Stephen 2026-08-26: "This will remove
+    // the date placeholders and allow then to write it on the same line as
+    // teh signature". A DELIBERATE DEPARTURE from the printed appendix's
+    // layout, and the only one in this file. The words are unchanged and no
+    // blank is removed: the same two signatures and the same two dates are
+    // still collected. A-1-g already prints "(Signature of Accused and Date)"
+    // on one line, so the pattern is the appendix set's own.
     '_______________________________ _______________________________',
-    '(Signature of witness)                  (Signature of Accused)',
-    '',
-    '    (Date)                                    (Date)',
+    '(Signature of witness) (Date)   (Signature of Accused) (Date)',
     '',
     '    (Note: If the accused wishes to consult with a lawyer, and',
     'the consultation is operationally feasible, the remainder of',
@@ -377,10 +399,15 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     '',
     'lawyer, on __________________________________.',
     '',
+    // SIGNATURE AND DATE ON ONE LINE, Stephen 2026-08-26: "This will remove
+    // the date placeholders and allow then to write it on the same line as
+    // teh signature". A DELIBERATE DEPARTURE from the printed appendix's
+    // layout, and the only one in this file. The words are unchanged and no
+    // blank is removed: the same two signatures and the same two dates are
+    // still collected. A-1-g already prints "(Signature of Accused and Date)"
+    // on one line, so the pattern is the appendix set's own.
     '_______________________________ _______________________________',
-    '     (Signature of witness)             (Signature of Accused)',
-    '',
-    '    (Date)                                    (Date)',
+    '(Signature of witness) (Date)   (Signature of Accused) (Date)',
     '',
     '  b.    Right to refuse NJP. (Check one)',
     '',

@@ -662,7 +662,7 @@ describe('renderNjpRights', () => {
     const untouchedFromSource = [
       '                       ELECTION OF RIGHTS',
       '   a.   Lawyer.   (Check one or more, as applicable)',
-      '(Signature of witness)                  (Signature of Accused)',
+      '(Signature of witness) (Date)   (Signature of Accused) (Date)',
       '   b.   Personal appearance. (Check one)',
     ];
     for (const sourceLine of untouchedFromSource) {

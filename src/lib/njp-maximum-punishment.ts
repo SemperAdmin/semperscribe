@@ -65,6 +65,7 @@ import {
   type Navmc10132Service,
 } from '@/lib/navmc10132-ranks';
 import { wrapHanging } from '@/lib/jagman-a1-wrap';
+import { operativeRung, type ForfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
 
 export interface MaximumPunishmentInput {
   /** Item 8A pay grade of the NJP authority, e.g. 'O5'. */
@@ -73,6 +74,25 @@ export interface MaximumPunishmentInput {
   accusedPayGrade: string;
   /** Item 19 service. Decides whether the USMC reduction bar applies. */
   accusedService?: Navmc10132Service;
+  /**
+   * The forfeiture ceilings priced for THIS accused, when the app can price
+   * them. Optional, and absent is the ordinary case.
+   *
+   * STEPHEN, 2026-08-26: "We should list the max based on the rank and times
+   * of service." The statutory ceiling alone tells an accused he faces "one-
+   * half of one month's pay per month for two months", which is a fraction,
+   * not a number. He is being asked to decide whether to refuse NJP and
+   * demand a court-martial on the strength of that sentence, so the sentence
+   * should carry the figure.
+   *
+   * ABSENT MEANS THE WORDS ALONE, never a guess. The ladder declines
+   * whenever the pay table cannot be selected or the grade and length of
+   * service are unset, and a dollar figure on a rights advisement that the
+   * app cannot stand behind is worse than the fraction.
+   */
+  forfeiture?: ForfeitureLadder;
+  /** Item 19's completed years, named in the priced sentence. Optional. */
+  accusedYearsOfService?: string;
 }
 
 /** One printed element of the ceiling. `label` opens an enumerated item. */
@@ -152,6 +172,42 @@ const LEAD =
  * Builds the ceiling. Returns null when the authority grade is unreadable,
  * which is guard 1 above and is the normal state before item 8A is filled.
  */
+/** Whole dollars with separators, as the advisement prints them. */
+function money(value: number): string {
+  return `$${value.toLocaleString('en-US')}`;
+}
+
+/** "E3" as the pay table stores it, "E-3" as this appendix reads it. */
+function hyphenated(payGrade: string): string {
+  const match = /^E(\d)$/i.exec(payGrade.trim());
+  return match ? `E-${match[1]}` : payGrade;
+}
+
+/**
+ * "which at E-6 with 12 years of service is $2,371 per month", or empty.
+ *
+ * PRICED ON THE ACCUSED'S PRESENT GRADE, always, even where a reduction
+ * would move the lawful basis. This sentence answers "what am I facing", and
+ * at the moment the advisement is served no reduction has been imposed. The
+ * reduced-grade figures follow in their own note, so the accused sees both
+ * and neither is presented as the other.
+ */
+function forfeitureAt(
+  ladder: ForfeitureLadder | undefined,
+  pick: (rung: ForfeitureLadder['rungs'][number]) => number,
+  suffix: string,
+  yearsOfService: string,
+): string {
+  const present = ladder?.rungs[0];
+  if (present === undefined) return '';
+  const years = yearsOfService.trim();
+  const grade = hyphenated(present.ceiling.payGrade);
+  const at = years === ''
+    ? `at ${grade}`
+    : `at ${grade} with ${years} years of service`;
+  return `, which ${at} is ${money(pick(present))}${suffix}`;
+}
+
 export function maximumPunishment(input: MaximumPunishmentInput): MaximumPunishment | null {
   const level = resolveAuthorityLevel(input.authorityPayGrade);
   if (level === null) return null;
@@ -190,16 +246,28 @@ export function maximumPunishment(input: MaximumPunishmentInput): MaximumPunishm
         const days = familyCap(codes, family, 'maxDaysPay');
         const monthly = familyCap(codes, 'forfeiture-monthly', 'maxMonths');
         if (days !== null && monthly === null) {
-          items.push(`Forfeiture of not more than ${days} days’ pay.`);
+          const figure = forfeitureAt(
+            input.forfeiture,
+            (rung) => rung.ceiling.sevenDaysPay,
+            '',
+            input.accusedYearsOfService ?? '',
+          );
+          items.push(`Forfeiture of not more than ${days} days’ pay${figure}.`);
         }
         break;
       }
       case 'forfeiture-monthly': {
         const months = familyCap(codes, family, 'maxMonths');
         if (months !== null) {
+          const figure = forfeitureAt(
+            input.forfeiture,
+            (rung) => rung.ceiling.halfMonthPay,
+            ' per month',
+            input.accusedYearsOfService ?? '',
+          );
           items.push(
             'Forfeiture of not more than one-half of one month’s pay per ' +
-              `month for ${months} months.`,
+              `month for ${months} months${figure}.`,
           );
         }
         break;
@@ -269,15 +337,65 @@ export function maximumPunishment(input: MaximumPunishmentInput): MaximumPunishm
       'the maximum amounts.',
   );
 
+  /**
+   * The reduced-grade figures, where a reduction is on the table.
+   *
+   * MCM Part V para 5.c(8) prices a forfeiture imposed WITH a reduction on
+   * the grade reduced to, which is always the smaller figure. An accused
+   * told only the present-grade number has been told the higher of two
+   * ceilings and none of the reason it might be lower. Omitted entirely
+   * where reduction is barred or where the ladder carries no reduced rung,
+   * because there is then no second basis to state.
+   */
+  const reduced = input.forfeiture?.rungs.find((rung) => rung.reduced);
+
+  /**
+   * ONLY THE CEILINGS THIS AUTHORITY CAN ACTUALLY IMPOSE. The first version
+   * printed both the monthly and the seven-day figure at the reduced grade
+   * regardless of level, so a company-grade advisement offered a monthly
+   * forfeiture no company-grade commander may impose, under a list that
+   * correctly omitted it. The note now restates whichever forfeiture the
+   * list above actually carries, and nothing else.
+   */
+  const restated: string[] = [];
+  if (reduced !== undefined) {
+    if (items.some((text) => text.includes('one-half of one month'))) {
+      restated.push(`${money(reduced.ceiling.halfMonthPay)} per month`);
+    }
+    if (items.some((text) => /Forfeiture of not more than \d+ days/.test(text))) {
+      restated.push(`${money(reduced.ceiling.sevenDaysPay)}`);
+    }
+  }
+
+  const reductionNote: string =
+    !barred && reduced !== undefined && restated.length > 0 &&
+    items.some((text) => text.startsWith('Reduction'))
+      ? 'If a reduction is imposed as well, the forfeiture must be computed on the grade ' +
+        `reduced to (MCM Part V para 5.c(8)). At ${hyphenated(reduced.ceiling.payGrade)} the ` +
+        `ceiling above is ${restated.join(' and ')}.`
+      : '';
+
+  // The pay table is named ONLY where a figure priced on it was printed. A
+  // source line citing a table nothing was computed from would suggest the
+  // words above carry a number they do not.
+  const payTableSource =
+    input.forfeiture !== undefined && input.forfeiture.rungs.length > 0
+      ? ` Dollar figures computed by this app from the basic pay table ` +
+        `effective ${input.forfeiture.payTable.effectiveFrom}, and are ceilings, ` +
+        'not amounts imposed.'
+      : '';
+
   const blocks: MaximumPunishmentBlock[] = [
     { kind: 'lead', text: LEAD },
     ...items.map((text, i) => ({ kind: 'item' as const, label: `(${i + 1}) `, text })),
     { kind: 'tail', text: tail.join(' ') },
+    ...(reductionNote === '' ? [] : [{ kind: 'tail' as const, text: reductionNote }]),
     {
       kind: 'source',
       text:
         'Source: MCM, 2024 ed., Part V, paras 5.b(2) and 5.d, and ' +
-        'MCO 5800.16 Vol 14 para 010302.C.',
+        'MCO 5800.16 Vol 14 para 010302.C.' +
+        payTableSource,
     },
   ];
 
