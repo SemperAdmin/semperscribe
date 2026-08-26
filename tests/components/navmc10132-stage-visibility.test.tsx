@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Navmc10132FormSections, APPEAL_FIELD_PASS } from '@/components/letter/Navmc10132Sections';
 import { OffensesSection } from '@/components/letter/navmc10132/OffensesSection';
 import { AccusedElectionSection } from '@/components/letter/navmc10132/AccusedElectionSection';
@@ -498,5 +498,67 @@ describe('section order, and the one section this form does not get', () => {
   // Scoped to this type, not removed from the app.
   it('leaves every other document type able to place them', () => {
     expect(DOCUMENT_TYPES['basic'].features.showSignature).toBe(true);
+  });
+});
+
+describe('Start a new case, at the top of the form', () => {
+  /**
+   * STEPHEN, 2026-08-26: "Clear Form deletes it add a button for this at the
+   * top". On every other document type Clear Form discards typing. On this
+   * one it also discards the SIGNED PDF the app is writing into, and the
+   * only ways to reach it were a header dropdown and the command palette.
+   * A data-integrity action was harder to find than a formatting one.
+   */
+  const withButton = (formData: FormData, onClearForm = vi.fn()) => {
+    const view = render(
+      <Navmc10132FormSections
+        formData={formData}
+        setFormData={vi.fn()}
+        onDynamicSync={vi.fn()}
+        formKey="test"
+        onClearForm={onClearForm}
+      />,
+    );
+    return { view, onClearForm };
+  };
+
+  it('renders above the load panel and every section', () => {
+    withButton(baseFormData({ stage: 'complete' } as Partial<FormData>));
+    const button = screen.getByRole('button', { name: /Start a new case/ });
+    const first = screen.getByText(TITLES.offenses);
+    expect(
+      (button.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    ).toBe(true);
+  });
+
+  // ONE reset path, not a second implementation. resetDocumentState already
+  // drops the working copy's stored files, the base among them.
+  it('calls the app own Clear Form action rather than resetting anything itself', () => {
+    const { onClearForm } = withButton(baseFormData());
+    fireEvent.click(screen.getByRole('button', { name: /Start a new case/ }));
+    expect(onClearForm).toHaveBeenCalledTimes(1);
+  });
+
+  // The consequence changes with the state, so the copy does.
+  it('names the uploaded file and warns what the next export would go into', () => {
+    withButton(
+      baseFormData({
+        navmc10132LoadReport: { fileName: 'THOMPSON.pdf', lockedFields: [] },
+      } as unknown as Partial<FormData>),
+    );
+    expect(screen.getByText(/discards THOMPSON\.pdf/)).toBeInTheDocument();
+    expect(screen.getByText(/before beginning a different Marine/)).toBeInTheDocument();
+  });
+
+  it('says only that it clears the fields when no file is loaded', () => {
+    withButton(baseFormData());
+    expect(screen.getByText(/starts a blank one/)).toBeInTheDocument();
+    expect(screen.queryByText(/discards/)).not.toBeInTheDocument();
+  });
+
+  // Optional prop: every existing harness renders without one.
+  it('renders nothing when no action is supplied', () => {
+    renderSections(baseFormData());
+    expect(screen.queryByRole('button', { name: /Start a new case/ })).not.toBeInTheDocument();
   });
 });

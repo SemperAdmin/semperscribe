@@ -50,6 +50,8 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { RotateCcw } from 'lucide-react';
 import { FormData } from '@/types';
 import { DynamicForm } from '@/components/ui/DynamicForm';
 import { DOCUMENT_TYPES, DocumentTypeDefinition } from '@/lib/schemas';
@@ -79,6 +81,12 @@ interface Navmc10132SectionsProps {
   /** The page-level dynamic form merge handler. */
   onDynamicSync: (data: any) => void;
   formKey: number | string;
+  /**
+   * The app's Clear Form action. OPTIONAL so every existing test harness and
+   * any other caller keeps working without it; the button renders only when
+   * one is supplied.
+   */
+  onClearForm?: () => void;
 }
 
 // Narrow sub-definitions sharing the registered schema. Module scope keeps them
@@ -225,6 +233,7 @@ export function Navmc10132FormSections({
   setFormData,
   onDynamicSync,
   formKey,
+  onClearForm,
 }: Navmc10132SectionsProps) {
   const showAbsence = hasAbsenceOffense(formData);
   const stage = navmc10132Stage(formData);
@@ -236,6 +245,7 @@ export function Navmc10132FormSections({
   const lockedKeys = navmc10132LockedKeys(formData);
   return (
     <>
+      {onClearForm && <StartNewCaseButton onClearForm={onClearForm} formData={formData} />}
       {/* THE ONLY PLACE THE STAGE IS SHOWN, now that nobody sets it by hand.
           The panel reports the pass the uploaded file put the document at,
           which is also the pass the sections below are gated on. With no
@@ -361,5 +371,62 @@ export function Navmc10132FormSections({
         />
       )}
     </>
+  );
+}
+
+/**
+ * Start a new case, at the top of the form.
+ *
+ * STEPHEN, 2026-08-26, answering where the uploaded base file goes away:
+ * "Clear Form deletes it add a button for this at the top".
+ *
+ * IT IS THE SAME CLEAR FORM ACTION, deliberately, not a second reset path.
+ * `resetDocumentState` already drops the working copy's stored files through
+ * `fileDeleteForDoc`, and the uploaded NAVMC 10132 base is one of them. A
+ * second implementation would be one more place for those two to drift.
+ *
+ * WHY IT NEEDED SURFACING AT ALL. On every other document type Clear Form
+ * discards typing. On this one it also discards the SIGNED PDF the app is
+ * writing into, and until now the only ways to reach it were a header
+ * dropdown and the command palette. Starting a second case by any other
+ * route leaves the app exporting into the previous Marine's signed file,
+ * because switching document type away and back merges rather than resets.
+ * A data-integrity action was harder to find than a formatting one.
+ *
+ * THE COPY CHANGES WITH THE STATE, because the consequence does. With a file
+ * loaded the button says the file is what goes away, and names it.
+ */
+function StartNewCaseButton({
+  onClearForm,
+  formData,
+}: {
+  onClearForm: () => void;
+  formData: FormData;
+}) {
+  const report: unknown = formData.navmc10132LoadReport;
+  const fileName =
+    report && typeof report === 'object' && typeof (report as { fileName?: unknown }).fileName === 'string'
+      ? (report as { fileName: string }).fileName
+      : '';
+
+  return (
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed p-3">
+      <div>
+        <p className="text-sm font-medium">
+          {fileName === '' ? 'Start a new case' : 'Start a new case, and drop the uploaded file'}
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          {fileName === ''
+            ? 'Clears every field on this Unit Punishment Book and starts a blank one.'
+            : `Clears every field and discards ${fileName}, which the app is currently writing ` +
+              'into. Do this before beginning a different Marine, or the next export goes into ' +
+              'that file.'}
+        </p>
+      </div>
+      <Button type="button" variant="outline" size="sm" onClick={onClearForm}>
+        <RotateCcw className="mr-1 h-4 w-4" />
+        Start a new case
+      </Button>
+    </div>
   );
 }

@@ -33,6 +33,15 @@ interface DocumentLayoutProps {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   formKey: number;
+  /**
+   * The app's existing Clear Form action, which already confirms and which
+   * `resetDocumentState` uses to drop the working copy's stored files. Passed
+   * down so the NAVMC 10132 can offer it in the form itself: on that type it
+   * is the only thing that discards an uploaded signed PDF, and burying the
+   * only way to start a clean case in a header dropdown made a data-integrity
+   * action harder to find than a formatting one.
+   */
+  onClearForm: () => void;
   // Unit info
   setCurrentUnitCode: (code: string | undefined) => void;
   setCurrentUnitName: (name: string | undefined) => void;
@@ -96,6 +105,7 @@ export function DocumentLayout({
   formData,
   setFormData,
   formKey,
+  onClearForm,
   setCurrentUnitCode,
   setCurrentUnitName,
   vias,
@@ -227,6 +237,7 @@ export function DocumentLayout({
               setFormData={setFormData}
               onDynamicSync={handleDynamicFormSubmit}
               formKey={formKey}
+              onClearForm={onClearForm}
             />
           ) : (
             /* Dynamic Header Form based on Document Type */

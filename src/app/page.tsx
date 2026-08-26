@@ -996,6 +996,7 @@ function NavalLetterGeneratorInner() {
         formData={formData}
         setFormData={setFormData}
         formKey={formKey}
+        onClearForm={handleClearForm}
         setCurrentUnitCode={setCurrentUnitCode}
         setCurrentUnitName={setCurrentUnitName}
         vias={vias}
