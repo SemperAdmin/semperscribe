@@ -15,6 +15,7 @@ import {
   filePut, fileGet, fileDeleteIfOwnedBy, fileDeleteForDoc, fileReparentByIds,
   WORKING_COPY_DOC_ID,
 } from '@/lib/document-library';
+import { putNavmc10132Base } from '@/lib/navmc10132-base-file';
 import { backupDocument } from '@/lib/auto-backup';
 import { runLetterValidators } from '@/lib/letter-validators';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
@@ -690,8 +691,23 @@ function NavalLetterGeneratorInner() {
    * and does not preload anything.
    */
   const applyNavmc10132Load = useCallback(
-    (patch: Record<string, unknown>, report: unknown) => {
+    (patch: Record<string, unknown>, report: unknown, bytes: ArrayBuffer, fileName: string) => {
       setFormData(prev => ({ ...prev, ...patch, navmc10132LoadReport: report }));
+
+      // THE FILE ITSELF IS KEPT, not just what was read out of it. Every
+      // later export writes an incremental update INTO these bytes so the
+      // CAC signatures stay valid, and the live preview renders them, so a
+      // loaded document previews as itself rather than as a fresh blank.
+      // Five megabytes, so IndexedDB rather than document state, which is
+      // JSON-serialized on every autosave. See navmc10132-base-file.ts.
+      //
+      // FIRE AND FORGET, DELIBERATELY. The form is already populated and
+      // usable; a storage failure costs the incremental path, not the load,
+      // and the export degrades to filling the blank rather than failing.
+      putNavmc10132Base(bytes, fileName).catch((error) =>
+        console.error('Storing the uploaded NAVMC 10132 failed; exports will fill the blank instead:', error),
+      );
+
       debugFormChange('NAVMC 10132 Loaded From PDF', patch);
     },
     [],

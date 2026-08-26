@@ -41,7 +41,13 @@ interface UseDocumentImportDeps {
    * first; this one must NOT, because the whole point is to carry the
    * open case forward with what the file adds.
    */
-  applyNavmc10132?: (patch: Record<string, unknown>, report: unknown) => void;
+  applyNavmc10132?: (
+    patch: Record<string, unknown>,
+    report: unknown,
+    /** The file's own bytes, kept as the base every later export writes into. */
+    bytes: ArrayBuffer,
+    fileName: string,
+  ) => void;
 }
 
 /**
@@ -129,7 +135,7 @@ export function useDocumentImport({
           (currentFormData ?? {}) as never,
           file.name,
         );
-        applyNavmc10132(patch, report);
+        applyNavmc10132(patch, report, data, file.name);
         const conflictCount = report.conflicts.length;
         toast({
           title: 'Unit Punishment Book loaded',

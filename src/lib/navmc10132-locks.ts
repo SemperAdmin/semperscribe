@@ -79,6 +79,18 @@ export const NAVMC_10132_SECTION_LOCKS: Readonly<Record<string, readonly string[
 /** Offense row letters, matching the form and navmc10132-acroform.ts. */
 const ROW_LETTERS = ['A', 'B', 'C', 'D', 'E'] as const;
 
+/**
+ * The locked FORM FIELD names recorded by the last load, if any.
+ *
+ * Exported because the incremental writer needs the form's vocabulary, not
+ * the document-state keys the UI asks about: it refuses by field name, and
+ * the fields it must refuse include ones that have no input at all, such as
+ * `2 BOOKER` and the derived items 6, 7 and 21.
+ */
+export function navmc10132LockedFieldNames(formData: FormData): Set<string> {
+  return lockedFieldNames(formData);
+}
+
 /** Reads the locked form-field names recorded by the last load, if any. */
 function lockedFieldNames(formData: FormData): Set<string> {
   const report: unknown = formData.navmc10132LoadReport;
