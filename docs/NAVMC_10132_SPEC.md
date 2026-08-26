@@ -837,6 +837,8 @@ UNBUILT. A row is a record of a ruling, not a receipt for work.
 | D-59 | Only one suspension per punishment | CLOSED BUILT 2026-08-25 by Stephen's ruling, and the citation is UNUSUAL ON PURPOSE. Two or more item 7 entries must never target the same item 6 punishment. NOTHING IN THE MCM, THE JAGMAN OR MCO 5800.16 VOL 14 SAYS THIS. Two independent searches found no paragraph, so the rule rests on the subject-matter expert's determination, and V-31 cites it that way rather than borrowing a regulation that does not say it. A validator message citing a paragraph which does not support it is the exact failure class this app exists to prevent, so this is a boundary worth holding even when a plausible-looking cite is available. STRUCTURAL CORROBORATION, stated separately and never as the authority: the NAVMC 10132 carries ONE item 7 field, so the printed record has no way to express two independent suspensions distinctly. WHY IT MATTERS BEYOND TIDINESS: duplicate-target suspensions were ordinary valid input until today, and that is what made D-58's id collision and the vacation-letter mis-lookup reachable from a valid form rather than from malformed data. If a published paragraph ever turns up, replace the citation in V-31 with it |
 | D-60 | Nothing records a vacation's OUTCOME back onto the UPB | CLOSED BUILT 2026-08-25 by Stephen's ruling, structured record on the UPB. THE OBVIOUS FIX WAS WRONG AND WAS NOT BUILT: a rule warning when a suspension has no vacation remark would fire on every correct form, because most suspensions are never vacated, they simply run out and remit under MCM Part V para 6.a(3). Detection is only possible once the app knows a notice went out, which is why this needed a record rather than a rule. `vacations[]` carries the target `suspensionIndex`, the notice-served date, a FOUR-state outcome, and the outcome date with detail for a partial. Four states because 011201 requires an opportunity to respond BEFORE vacating, so pending and not-vacated are as real as vacated in full or in part. THE GAP IS CLOSED BY DERIVATION, NOT BY NAGGING: `vacationRemarks(formData)` emits the item 21 `suspension-vacated-njp` line for executed vacations only, merged in `navmc10132-acroform.ts` exactly as `overflowRemarks` already was, dated by the OUTCOME date rather than the notice date, and verified against `isPrescribedFormat`. A pending or not-vacated record emits nothing, because nothing was vacated. UI BUILT 2026-08-25 as `VacationSection.tsx`, after the record shipped deliberately headless because the owner was away from the machine and this codebase browser-tests every UI phase before trusting it. IT OPENS ONLY AT `'complete'`, AND WITH A SUSPENSION PRESENT, grounded in the order rather than in symmetry with the unit diary aid beside it: para 011202 has block 16 on the ORIGINAL UPB updated after a vacation, and block 16 is pass 7, so a vacation is by construction something that happens to a UPB already closed out. Nothing can be vacated before item 7 carries a suspension either. Both conditions are one expression in `Navmc10132Sections`, easy to relax if a unit turns out to vacate before final action. THE PANEL WRITES ONLY THE RECORD. It does not write the item 21 remark, which `vacationRemarks` derives so a remark can never drift from the record it describes; it does not offer the FULL / PART election, which is Figure 14-1's own blank and the commander's decision; and it does not judge lawfulness, which V-29, V-30, W-21 and W-22 do on export. TWO CONDITIONAL FIELDS, both asserted in both directions: `outcomeDate` is hidden while pending and CLEARED when a record is moved back to pending, because a decision date left behind asserts a decision that has been withdrawn; `vacatedDetail` appears only on a partial, because `suspensionIndex` already names the whole thing a full vacation took. THE REMISSION DATE IS SHOWN WITH ITS CAVEAT, never as a bare date: two of the three conditions in `SUSPENSION_ASSUMPTIONS` move it EARLIER, so a clerk reading only the date could plan against a deadline that has already passed. `vacations` is NOT in any `Navmc10132Definition` section, and the exclusion list carries a note saying why, so nobody later "fixes" the gap by wiring a plain field in and reintroducing the React Hook Form clobber. Rules that fell out: V-32, V-33, W-20 |
 | D-61 | Section-level stage gating leaks fields from sections that SPAN passes | CLOSED FIXED 2026-08-25. `Navmc10132Sections` gates whole sections on `navmc10132StageAtLeast`, which is correct for a section whose fields all belong to one pass and WRONG for the three that do not. RemarksSection renders items 21 AND 16: item 21 accrues throughout the case, item 16 signs with the form's own FINAL ADMIN INIT lock and closes every remaining field in Adobe. Gating the section by its earliest field left both item 16 inputs open at notification, offering a clerk a unit diary number for an entry that has not been made, on a document with six passes of work left. THE SECTION-LEVEL TESTS COULD NOT SEE THIS: `navmc10132-stage-visibility.test.tsx` asserted the section TITLE was present at pass 1, which it correctly was, so thirteen green tests coexisted with the leak. FOUND BY BROWSER SWEEP, NOT BY THE SUITE: driving the real StageSelector through all eight stages and diffing the rendered label set surfaced it in one pass. The fix is the OffensesSection pattern, a `stage` prop and a placeholder explaining why the control is not there yet, and the guard is six new per-pass assertions that go red when the gate is removed. THE OTHER TWO SPANNING SECTIONS WERE ALREADY CORRECT: OffensesSection (item 1 at pass 1, item 5 at pass 3) and AccusedElectionSection (vessel flag at pass 1, item 2 at pass 2). No fourth spanning section exists today; a new one is the case to check first when a section title stops matching a single pass |
+| D-62 | A-1-f prints a punishment worksheet, not a blank rule | CLOSED 2026-08-26, on Stephen's stated workflow: the script is printed and handed to the CO BEFORE the proceeding, and the clerk transcribes the marked paper afterwards, so item 6 is empty when it prints. The rule under "Accordingly, I impose the following punishment" carries a checkbox menu derived from the punishment table's own templates, filtered by item 8A, and the app-computed forfeiture ceilings. Menu and imposed punishment are MUTUALLY EXCLUSIVE: a record copy of a completed proceeding states what was imposed, and a menu of unchosen options under that sentence would contradict it. Neither block gates generation. See section 11.7 |
+| D-63 | The forfeiture maximum is shown at the current grade AND at every reduction target | CLOSED 2026-08-26, Stephen's ruling, choosing among three options: show both, mark the reduced grade operative. MCM Part V para 5.c(8) makes the reduced grade the lawful basis whenever a reduction is imposed, and it always prices lower, so one figure computed on the current grade errs toward an unlawful forfeiture every time. `navmc10132-forfeiture-ladder.ts` returns every rung; PunishmentSection shows the table; the A-1-f worksheet prints it. An unreadable reduction target marks NOTHING operative rather than falling back to the higher figure. See section 11.8 |
 
 ---
 
@@ -1007,6 +1009,91 @@ with parameters, suspension terms, and appeal status.
 Recommend shipping it as a copyable text block or CSV in release 1, not an MCTFS transaction.
 The app has no MCTFS connectivity and should not pretend to. Reuse the `edms-handoff.ts`
 pattern already in the repo.
+
+### 11.7 The hearing worksheet, and what the app prints on a JAGMAN appendix
+
+STEPHEN'S WORKFLOW, 2026-08-26, verbatim: "The script will be printed and provided to the
+co. Once the event is done that take that and upload the form where they will then add the
+punishments and suspensions."
+
+That one sentence settles the shape of JAGMAN Appendix A-1-f in this app. The script is a
+WORKING DOCUMENT, printed BEFORE the proceeding. Item 6 is empty when it prints, because
+the commanding officer has not decided yet, and the clerk transcribes the marked paper
+afterwards. A script that could only state what item 6 already held would state nothing.
+
+So the blank rule under "Accordingly, I impose the following punishment" carries two app-built
+blocks, and `src/lib/njp-hearing-worksheet.ts` owns both:
+
+| block | source | absent when |
+|---|---|---|
+| punishment menu, one checkbox line per code with the parameters blanked | `NAVMC_10132_PUNISHMENTS` templates, filtered by item 8A | item 8A carries no readable pay grade |
+| forfeiture ceilings at the accused's grade and every reduction target | `navmc10132-forfeiture-ladder.ts` | item 19 or the item 6 date is unset |
+
+NEITHER GATES GENERATION. A-1-f without a menu is still the appendix, with the blank rule
+the printed form carries, and the commanding officer still needs the paper. The missing
+inputs surface as ADVICE in the panel through `scriptWorksheetGaps`, kept apart from
+`njpScriptReadiness`, which is the gate.
+
+THE MENU IS DERIVED, NEVER HAND-AUTHORED. Every line is the same `template` string
+`renderPunishment` interpolates into item 6, with its parameters replaced by blanks. Two
+things follow, and both are the point: the paper speaks the abbreviation vocabulary the
+clerk will type back in, and a change to the code table changes the paper. A second list
+written out by hand would drift from the first the day a code moved.
+
+THE FILTER RUNS ONE WAY ON PURPOSE. `punishmentMenu` prints NOTHING when item 8A is unset
+or unreadable, rather than printing the full list. A company-grade commander handed a
+field-grade menu has been invited to impose beyond the authority. A field-grade commander
+handed a shorter list has lost nothing but a line.
+
+WHAT IS JAGMAN TEXT AND WHAT IS NOT. Stephen ruled the same day that the computed dollar
+ceilings DO print on the paper, labeled as app output. The block therefore names the table
+and its effective date and says "App output, not JAGMAN text" on its face. A commanding
+officer reading a dollar figure at a hearing is entitled to know it came from a pay table
+this app holds and a grade a clerk typed rather than from the Manual. The DFAS URL is
+deliberately NOT printed: it is one unbreakable token far wider than the appendix measure,
+and it belongs on screen where it can be clicked.
+
+A WORKSHEET THAT CANNOT COMPUTE A CEILING PRINTS THE REASON, never a blank. A page with no
+ceiling and no explanation reads as a page with no LIMIT, which is the most dangerous thing
+it could say.
+
+### 11.8 The forfeiture ladder, MCM Part V para 5.c(8)
+
+"If the punishment includes both reduction, whether or not suspended, and forfeiture of pay,
+the forfeiture must be based on the grade to which reduced."
+
+The reduced grade always prices LOWER, so a clerk or a commander working from the current
+grade alone errs toward an UNLAWFUL forfeiture rather than a lenient one. One number on
+screen answers half the question and answers it with the larger figure.
+
+`forfeitureLadder` (src/lib/navmc10132-forfeiture-ladder.ts) returns the ceiling at the
+accused's grade and at every grade a reduction could reach, senior to junior, each rung
+carrying the same figures `forfeitureCeiling` already computed. Measured for a Cpl/E-4 at
+four years on the table effective 2026-01-01:
+
+| grade | one-half month's pay, per month | seven days' pay |
+|---|---|---|
+| E-4, present | $1,829 | $853 |
+| if reduced to E-3 | $1,599 | $746 |
+| if reduced to E-2 | $1,348 | $629 |
+| if reduced to E-1 | $1,203 | $561 |
+
+THREE RULES THE MODULE ENFORCES, each with its own test:
+
+1. NO TARGET and an UNREADABLE TARGET are different. With no reduction recorded the
+   accused's own grade IS the lawful basis. With a reduction recorded to a grade the app
+   cannot price, NOTHING is marked operative, because marking the current grade would
+   present the higher figure as lawful. The first implementation collapsed the two and its
+   own test caught it before the code shipped.
+2. A BARRED REDUCTION is reported as barred, not as a missing figure. MCO 5800.16 Vol 14
+   bars reduction above a floor, so a single rung at E-7 is the law rather than an unset
+   input, and the panel says which.
+3. RUNGS AND A DECLINE ARE NEVER BOTH PRESENT. A caller printing the reason beside a figure
+   would be showing a ceiling and an explanation of why there is none.
+
+V-20 still blocks an over-ceiling forfeiture at export with the same arithmetic. The ladder
+does not duplicate that gate; it shows the limit while the clerk types, rather than after
+being refused.
 
 ## 13. The pass model
 

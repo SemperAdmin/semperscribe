@@ -33,6 +33,8 @@ import {
 } from '@/lib/njp-maximum-punishment';
 import type { Navmc10132Service } from '@/lib/navmc10132-ranks';
 import { renderAppendixPdf, type AppendixPdfResult } from '@/lib/jagman-a1-pdf';
+import { punishmentMenu, forfeitureCeilingBlock } from '@/lib/njp-hearing-worksheet';
+import { forfeitureLadder, type ForfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
 
 export interface PackageReadiness {
   ready: boolean;
@@ -328,6 +330,58 @@ export function announcedPunishment(formData: FormData): string {
   }
 }
 
+/**
+ * The forfeiture ladder for this accused, priced on the item 6 date.
+ *
+ * READ FROM ITEM 19 AND ITEM 6, not from the punishment entries. At the
+ * moment the hearing script prints, item 6 is empty and no reduction has
+ * been chosen, so every rung is a "what if" and none is operative yet. Once
+ * a reduction IS recorded, `gradeReducedTo` names the operative rung and the
+ * same function serves the app's own display.
+ */
+export function scriptForfeitureLadder(formData: FormData): ForfeitureLadder {
+  const reduction = (Array.isArray(formData.punishments)
+    ? (formData.punishments as Navmc10132PunishmentEntry[])
+    : []
+  ).find((entry) => typeof entry?.gradeReducedTo === 'string' && entry.gradeReducedTo.trim() !== '');
+
+  return forfeitureLadder({
+    payGrade: str(formData, 'accusedPayGrade'),
+    yearsOfService: str(formData, 'accusedYearsOfService'),
+    seaHardshipDutyPay: str(formData, 'accusedSeaHardshipDutyPay'),
+    punishmentDate: str(formData, 'punishmentDate'),
+    gradeReducedTo: reduction?.gradeReducedTo ?? '',
+  });
+}
+
+/**
+ * What the worksheet cannot print yet, and what to set to fix it.
+ *
+ * SEPARATE FROM READINESS ON PURPOSE. None of these stops the script being
+ * generated: A-1-f without a menu is still the appendix, with a blank rule
+ * for hand completion, and Stephen's commanding officer still needs the
+ * paper. These are things the clerk can improve before printing, so they
+ * belong in the panel as advice rather than in `njpScriptReadiness` as a
+ * gate.
+ */
+export function scriptWorksheetGaps(formData: FormData): string[] {
+  const gaps: string[] = [];
+  if (punishmentMenu(str(formData, 'njpAuthorityPayGrade')).length === 0) {
+    gaps.push(
+      "set item 8A's pay grade to print the menu of punishments this commander may impose",
+    );
+  }
+  const ladder = scriptForfeitureLadder(formData);
+  if (ladder.rungs.length === 0) {
+    gaps.push(
+      ladder.unavailable?.reason === 'table-not-current'
+        ? 'set the item 6 punishment date to the hearing date to print the forfeiture ceilings'
+        : "set item 19's pay grade and years of service to print the forfeiture ceilings",
+    );
+  }
+  return gaps;
+}
+
 export function buildScriptCase(formData: FormData): NjpScriptCase {
   const readiness = njpScriptReadiness(formData);
   if (!readiness.ready) {
@@ -335,10 +389,18 @@ export function buildScriptCase(formData: FormData): NjpScriptCase {
       `Cannot build the hearing script yet. Still needed: ${readiness.missing.join(', ')}.`,
     );
   }
+  const imposed = announcedPunishment(formData);
+
   return {
     offenses: chargedOffenses(formData),
     findings: announcedFindings(formData),
-    punishmentImposed: announcedPunishment(formData),
+    punishmentImposed: imposed,
+    // COMPUTED ONLY WHERE NOTHING IS IMPOSED. A record copy of a completed
+    // proceeding states what was imposed, and a menu of unchosen options
+    // printed beneath that sentence would contradict it.
+    punishmentOptions: imposed === '' ? punishmentMenu(str(formData, 'njpAuthorityPayGrade')) : [],
+    ceilingBlock:
+      imposed === '' ? forfeitureCeilingBlock(scriptForfeitureLadder(formData)) : [],
     // NOT ON THE NAVMC 10132, either of them. Left blank so the printed rule
     // is completed by hand, rather than inventing a superior authority.
     appealAuthority: '',

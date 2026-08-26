@@ -49,7 +49,20 @@ function fitToRule(
   values: readonly string[],
 ): string[] {
   const budget = Math.max(appendixWidth(appendix) - ruleIndent(appendix, anchor).length, 1);
-  return values.flatMap((value) => wrapHanging(value, budget));
+  return values.flatMap((value) => {
+    // A VALUE ALREADY INSIDE THE MEASURE PASSES THROUGH UNTOUCHED.
+    //
+    // wrapHanging builds its first line as `labelPrefix + tokens[0].word`,
+    // dropping the first token's own leading separator, so re-wrapping a
+    // line that needs no wrapping SILENTLY STRIPS ITS INDENT. That is
+    // invisible for prose and fatal for a worksheet: the punishment menu
+    // hangs its continuations under the checkbox label, and the ceiling
+    // table indents its rows, and both came out flush at the margin because
+    // this function wrapped them a second time. Caught by rendering the page
+    // and looking at it, not by any unit test of either module alone.
+    if (value.length <= budget) return [value];
+    return wrapHanging(value, budget);
+  });
 }
 
 /** What is known AT the hearing. Extends the pre-hearing set. */
@@ -59,6 +72,24 @@ export interface NjpScriptCase {
   findings: readonly string[];
   /** Already rendered by renderPunishment. Empty leaves the rule blank. */
   punishmentImposed: string;
+  /**
+   * The punishment menu the commanding officer marks at the hearing, used
+   * ONLY where `punishmentImposed` is empty.
+   *
+   * THE TWO ARE MUTUALLY EXCLUSIVE BY DESIGN. A script printed BEFORE the
+   * hearing carries the menu, because nothing has been imposed yet and the
+   * paper is what the commander decides on. A script produced AFTER, as the
+   * record copy, carries the punishment as item 6 renders it. Printing both
+   * would put a menu of unimposed options under a sentence announcing what
+   * was imposed.
+   */
+  punishmentOptions?: readonly string[];
+  /**
+   * App-computed forfeiture ceilings, printed under the menu. Carried
+   * separately from `punishmentOptions` so the caller decides whether a
+   * worksheet gets figures, and so the block is testable on its own.
+   */
+  ceilingBlock?: readonly string[];
   /** Superior authority by name and organizational title, JAGMAN 0116/0117. */
   appealAuthority: string;
   /** Who advises the accused more fully of the appeal right. */
@@ -80,6 +111,23 @@ function formatOffenses(offenses: NjpScriptCase['offenses']): string[] {
 const VIOLATIONS_ANCHOR = 'of the Uniform Code of Military Justice:';
 const FINDINGS_ANCHOR = 'I find that you have committed the following offenses:';
 const PUNISHMENT_ANCHOR = 'Accordingly, I impose the following punishment:';
+
+/**
+ * The measure available under the punishment anchor, after the margin
+ * fillRule applies there.
+ *
+ * EXPORTED BECAUSE THE WORKSHEET WRAPS ITS OWN LINES. A menu line carries a
+ * checkbox and a code as its label, and a continuation wrapped at the margin
+ * reads as a second checkbox-less item. Only a caller holding the label can
+ * hang the continuation under it, so the caller needs the budget, and
+ * hard-coding the number in two files is how the two drift.
+ */
+export function punishmentRuleBudget(): number {
+  return Math.max(
+    appendixWidth(APPENDIX_A_1_F) - ruleIndent(APPENDIX_A_1_F, PUNISHMENT_ANCHOR).length,
+    1,
+  );
+}
 
 export function renderNjpScript(
   input: NjpScriptCase,
@@ -104,12 +152,29 @@ export function renderNjpScript(
     });
   }
 
-  if (input.punishmentImposed !== '') {
+  // WHAT GOES UNDER "Accordingly, I impose the following punishment".
+  //
+  // Imposed wins. A record copy states what was imposed. Otherwise the
+  // worksheet: the menu, then a blank spacer, then the ceilings. With
+  // neither, the rule stays as the appendix prints it, a blank line for
+  // hand completion.
+  //
+  // NOT WRAPPED AS ONE VALUE. fitToRule wraps each entry independently, so a
+  // menu line too long for the measure folds under its own hanging indent
+  // and the checkbox stays at the margin where it can be marked.
+  const punishmentLines =
+    input.punishmentImposed !== ''
+      ? [input.punishmentImposed]
+      : (input.punishmentOptions ?? []).length > 0
+        ? [...(input.punishmentOptions ?? []), '', ...(input.ceilingBlock ?? [])]
+        : [];
+
+  if (punishmentLines.length > 0) {
     fills.push({
       id: 'punishment',
       anchor: PUNISHMENT_ANCHOR,
       mode: 'fillRule',
-      value: fitToRule(APPENDIX_A_1_F, PUNISHMENT_ANCHOR, [input.punishmentImposed]),
+      value: fitToRule(APPENDIX_A_1_F, PUNISHMENT_ANCHOR, punishmentLines),
     });
   }
 

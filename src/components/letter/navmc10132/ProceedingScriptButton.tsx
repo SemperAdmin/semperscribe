@@ -32,6 +32,7 @@ import {
   renderNjpProceedingScript,
   announcedFindings,
   chargedOffenses,
+  scriptWorksheetGaps,
 } from '@/lib/njp-package';
 
 export function ProceedingScriptButton({ formData }: { formData: FormData }) {
@@ -45,6 +46,9 @@ export function ProceedingScriptButton({ formData }: { formData: FormData }) {
   // different document from the one the button produces.
   const guilty = announcedFindings(formData).length;
   const punishments = Array.isArray(formData.punishments) ? formData.punishments.length : 0;
+  // ADVICE, NOT A GATE. Neither the menu nor the ceilings stop the script
+  // printing, so these sit apart from `readiness.missing`, which does.
+  const gaps = scriptWorksheetGaps(formData);
 
   const generate = async () => {
     setBusy(true);
@@ -91,6 +95,14 @@ export function ProceedingScriptButton({ formData }: { formData: FormData }) {
         </p>
       )}
 
+      {readiness.ready && punishments === 0 && (
+        <p className="text-[11px] text-muted-foreground">
+          {gaps.length === 0
+            ? 'The punishment menu and the forfeiture ceilings will print under item 6 for the commanding officer to mark at the hearing.'
+            : `Before printing: ${gaps.join('; ')}.`}
+        </p>
+      )}
+
       {readiness.ready && (
         <p className="text-[11px] text-muted-foreground">
           {offenses.length} violation{offenses.length === 1 ? '' : 's'} will be read out.{' '}
@@ -98,8 +110,8 @@ export function ProceedingScriptButton({ formData }: { formData: FormData }) {
             ? 'No guilty finding is recorded yet, so the findings rule prints blank for the hearing.'
             : `${guilty} guilty finding${guilty === 1 ? '' : 's'} will be announced.`}{' '}
           {punishments === 0
-            ? 'No punishment is recorded yet, so that rule prints blank too.'
-            : 'The punishment will be announced as item 6 renders it.'}
+            ? 'No punishment is recorded yet, so the script prints as a worksheet for the hearing.'
+            : 'The punishment will be announced as item 6 renders it, and no menu prints.'}
         </p>
       )}
 
