@@ -12,7 +12,9 @@ import {
   promotionRestrictionEntry,
   separationCounselingEntry,
   NO_SEPARATION_SENTENCE,
+  PARAGRAPH_BREAK,
   REBUTTAL_ADVISORY,
+  REBUTTAL_CHOICE,
   type CounselingInput,
 } from '@/lib/navmc10132-page11';
 
@@ -387,5 +389,98 @@ describe('the helpers, on the cases the entries above do not reach', () => {
     expect(separationCounselingEntry(guiltyCorporal(), COUNSELING).text).toContain(
       REBUTTAL_ADVISORY,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE PARAGRAPH BREAKS.
+//
+// STEPHEN, 2026-08-26: "we should have hard spaces in the Pg. 11", with the
+// breaks laid out sentence by sentence. The entry used to print as one
+// unbroken block, which on a Page 11 is a wall of text a Marine signs
+// without reading.
+// ---------------------------------------------------------------------------
+describe('the 6105 prints as paragraphs', () => {
+  const blank: CounselingInput = {
+    correctiveAction: '',
+    assistanceAvailable: '',
+    intent: 'not-processing',
+    processingDetail: '',
+  };
+
+  it('breaks into the five paragraphs Stephen laid out, in that order', () => {
+    const entry = separationCounselingEntry(guiltyCorporal(), blank);
+    expect(entry.paragraphs).toHaveLength(5);
+    expect(entry.paragraphs[0].startsWith('20130501. Counseled this date')).toBe(true);
+    // The corrective action closes the FIRST paragraph. Date, deficiencies
+    // and what to do about them are one thought.
+    expect(entry.paragraphs[0]).toContain('Recommended corrective action:');
+    expect(entry.paragraphs[1].startsWith('Assistance available:')).toBe(true);
+    expect(entry.paragraphs[2]).toBe(NO_SEPARATION_SENTENCE);
+    expect(entry.paragraphs[3]).toBe(REBUTTAL_ADVISORY);
+    expect(entry.paragraphs[4]).toBe(REBUTTAL_CHOICE);
+  });
+
+  it('joins them with a blank line, and the text is the paragraphs', () => {
+    const entry = separationCounselingEntry(guiltyCorporal(), blank);
+    expect(entry.text).toBe(entry.paragraphs.join(PARAGRAPH_BREAK));
+    expect(entry.text.split(PARAGRAPH_BREAK)).toHaveLength(5);
+    // No paragraph runs into the next.
+    for (const paragraph of entry.paragraphs) {
+      expect(paragraph.trim()).toBe(paragraph);
+      expect(paragraph).not.toContain('\n');
+    }
+  });
+
+  // The election is the one sentence the Marine acts on. Buried at the end
+  // of the advisory paragraph it is easy to sign past.
+  it('puts the rebuttal election on its own paragraph', () => {
+    const entry = separationCounselingEntry(guiltyCorporal(), blank);
+    expect(REBUTTAL_ADVISORY).not.toContain('I choose');
+    expect(entry.paragraphs[entry.paragraphs.length - 1]).toBe(REBUTTAL_CHOICE);
+  });
+
+  it('keeps five paragraphs when the commander is processing for separation', () => {
+    const entry = separationCounselingEntry(guiltyCorporal(), {
+      ...blank,
+      intent: 'processing',
+      processingDetail: 'administrative separation',
+    });
+    expect(entry.paragraphs).toHaveLength(5);
+    expect(entry.paragraphs[2]).toContain('administrative separation');
+  });
+
+  /**
+   * THE BREAKS HAVE TO REACH THE PRINTED FORM. xfaEscape turns a newline
+   * into &#xD;, the carriage return an XFA multiline field breaks on. A
+   * version of this that stripped them would look right in the panel and
+   * print as one block, which is the defect being fixed.
+   */
+  it('survives into the NAVMC 118(11) datasets as carriage returns', async () => {
+    const { buildNavmc11811Xml } = await import('@/lib/xfa-form-fill');
+    const page = njpPage11(guiltyCorporal(), blank);
+    const xml = buildNavmc11811Xml({
+      documentType: 'page11',
+      name: page.name,
+      edipi: page.edipi,
+      remarksLeft: page.remarksLeft,
+      remarksRight: page.remarksRight,
+    } as unknown as FormData);
+    // Four blank lines between five paragraphs, each a doubled carriage
+    // return, and no raw newline left in the XML.
+    expect(xml.match(/&#xD;&#xD;/g)).toHaveLength(4);
+    expect(xml).not.toContain('\n');
+  });
+
+  /**
+   * THE RIGHT COLUMN IS DELIBERATELY LEFT AS ONE BLOCK. Stephen's two worked
+   * examples for 4006.3e print the promotion restriction as a single
+   * flowing entry, and those examples are what this reproduces byte for
+   * byte. Breaking it would be a better-looking entry that no longer matches
+   * the source it was built from.
+   */
+  it('leaves the promotion restriction unbroken, as its own source prints it', () => {
+    const page = njpPage11(guiltyCorporal(), blank);
+    expect(page.remarksRight).not.toContain(PARAGRAPH_BREAK);
   });
 });

@@ -304,7 +304,10 @@ export interface CounselingInput {
 }
 
 export interface CounselingEntry {
+  /** The whole entry, paragraphs separated by a blank line. */
   text: string;
+  /** The same content, one string per paragraph, in order. */
+  paragraphs: string[];
   /** Named parts 4006.2r requires that the form does not carry. */
   missing: string[];
 }
@@ -345,8 +348,31 @@ export const NO_SEPARATION_SENTENCE =
  */
 export const REBUTTAL_ADVISORY =
   'I was advised that within 5 working days after acknowledgment of this entry a written ' +
-  'rebuttal can be submitted and this rebuttal will be filed in my OMPF. I choose (to) ' +
-  '(not to) make a rebuttal.';
+  'rebuttal can be submitted and this rebuttal will be filed in my OMPF.';
+
+/**
+ * The Marine's election, on its own line.
+ *
+ * SEPARATE FROM THE ADVISORY ABOVE because it is the one sentence on the
+ * entry the Marine acts on: they strike one option at acknowledgment.
+ * Buried at the end of a paragraph it is easy to sign past.
+ */
+export const REBUTTAL_CHOICE = 'I choose (to) (not to) make a rebuttal.';
+
+/**
+ * The blank line between two paragraphs of an entry.
+ *
+ * STEPHEN, 2026-08-26: "we should have hard spaces in the Pg. 11", with the
+ * paragraph breaks he wants laid out sentence by sentence. A 6105 runs to
+ * five paragraphs and the entry used to print as one unbroken block, which
+ * on a Page 11 is a wall of text a Marine signs without reading.
+ *
+ * SURVIVES THE FORM. `xfaEscape` in xfa-form-fill.ts turns every newline
+ * into &#xD;, which is the carriage return an XFA multiline field breaks
+ * on, so these reach the printed NAVMC 118(11) as real blank lines rather
+ * than as collapsed whitespace.
+ */
+export const PARAGRAPH_BREAK = '\n\n';
 
 /**
  * The 6105 administrative separation counseling entry, IRAM 4006.2r.
@@ -382,11 +408,15 @@ export function separationCounselingEntry(
     missing.push('the assistance available, required by IRAM 4006.2r');
   }
 
+  // ONE PARAGRAPH PER ELEMENT OF THE ENTRY, in the breaks Stephen laid out
+  // on 2026-08-26. The date, the deficiencies and the corrective action are
+  // one thought and stay together; everything after it is a separate
+  // statement the Marine is being told, and the last is the one they answer.
   const parts: string[] = [
     `${date || '[DATE]'}. Counseled this date concerning deficiencies; ` +
       `${deficiencies.join('; ') || '[DEFICIENCIES]'}. ` +
-      `Recommended corrective action: ${corrective || '[CORRECTIVE ACTION]'}. ` +
-      `Assistance available: ${assistance || '[ASSISTANCE AVAILABLE]'}.`,
+      `Recommended corrective action: ${corrective || '[CORRECTIVE ACTION]'}.`,
+    `Assistance available: ${assistance || '[ASSISTANCE AVAILABLE]'}.`,
   ];
 
   if (input.intent === 'processing') {
@@ -413,8 +443,9 @@ export function separationCounselingEntry(
   }
 
   parts.push(REBUTTAL_ADVISORY);
+  parts.push(REBUTTAL_CHOICE);
 
-  return { text: parts.join(' '), missing };
+  return { text: parts.join(PARAGRAPH_BREAK), paragraphs: parts, missing };
 }
 
 export interface NjpPage11 {
