@@ -839,6 +839,7 @@ UNBUILT. A row is a record of a ruling, not a receipt for work.
 | D-61 | Section-level stage gating leaks fields from sections that SPAN passes | CLOSED FIXED 2026-08-25. `Navmc10132Sections` gates whole sections on `navmc10132StageAtLeast`, which is correct for a section whose fields all belong to one pass and WRONG for the three that do not. RemarksSection renders items 21 AND 16: item 21 accrues throughout the case, item 16 signs with the form's own FINAL ADMIN INIT lock and closes every remaining field in Adobe. Gating the section by its earliest field left both item 16 inputs open at notification, offering a clerk a unit diary number for an entry that has not been made, on a document with six passes of work left. THE SECTION-LEVEL TESTS COULD NOT SEE THIS: `navmc10132-stage-visibility.test.tsx` asserted the section TITLE was present at pass 1, which it correctly was, so thirteen green tests coexisted with the leak. FOUND BY BROWSER SWEEP, NOT BY THE SUITE: driving the real StageSelector through all eight stages and diffing the rendered label set surfaced it in one pass. The fix is the OffensesSection pattern, a `stage` prop and a placeholder explaining why the control is not there yet, and the guard is six new per-pass assertions that go red when the gate is removed. THE OTHER TWO SPANNING SECTIONS WERE ALREADY CORRECT: OffensesSection (item 1 at pass 1, item 5 at pass 3) and AccusedElectionSection (vessel flag at pass 1, item 2 at pass 2). No fourth spanning section exists today; a new one is the case to check first when a section title stops matching a single pass |
 | D-62 | A-1-f prints a punishment worksheet, not a blank rule | CLOSED 2026-08-26, on Stephen's stated workflow: the script is printed and handed to the CO BEFORE the proceeding, and the clerk transcribes the marked paper afterwards, so item 6 is empty when it prints. The rule under "Accordingly, I impose the following punishment" carries a checkbox menu derived from the punishment table's own templates, filtered by item 8A, and the app-computed forfeiture ceilings. Menu and imposed punishment are MUTUALLY EXCLUSIVE: a record copy of a completed proceeding states what was imposed, and a menu of unchosen options under that sentence would contradict it. Neither block gates generation. See section 11.7 |
 | D-63 | The forfeiture maximum is shown at the current grade AND at every reduction target | CLOSED 2026-08-26, Stephen's ruling, choosing among three options: show both, mark the reduced grade operative. MCM Part V para 5.c(8) makes the reduced grade the lawful basis whenever a reduction is imposed, and it always prices lower, so one figure computed on the current grade errs toward an unlawful forfeiture every time. `navmc10132-forfeiture-ladder.ts` returns every rung; PunishmentSection shows the table; the A-1-f worksheet prints it. An unreadable reduction target marks NOTHING operative rather than falling back to the higher figure. See section 11.8 |
+| D-64 | The forfeiture ladder and the worksheet carry ONE reduction rung | CLOSED 2026-08-26 by Stephen: "there can only be a reduction of one rank." MCO 5800.16 Vol 14 para 010302.C narrows Marine reductions to the next inferior paygrade, stricter than 10 U.S.C. 815(b)(2)(H)(iv), and N08 is the only reduction code release one offers. `forfeitureLadder` now passes `nextInferiorOnly`, matching the reduction picker, which had passed it from the start. A reduction of more than one grade marks NOTHING operative, and N08 is dropped from the worksheet entirely for an accused para 010302.C bars from reduction at all. THE LESSON: `reducibleGrades` was correct and its option was correct; the rule was still broken on a printed page because one of its two callers omitted the option. A rule enforced in one caller is not enforced |
 
 ---
 
@@ -1027,7 +1028,7 @@ blocks, and `src/lib/njp-hearing-worksheet.ts` owns both:
 | block | source | absent when |
 |---|---|---|
 | punishment menu, one checkbox line per code with the parameters blanked | `NAVMC_10132_PUNISHMENTS` templates, filtered by item 8A | item 8A carries no readable pay grade |
-| forfeiture ceilings at the accused's grade and every reduction target | `navmc10132-forfeiture-ladder.ts` | item 19 or the item 6 date is unset |
+| forfeiture ceilings at the accused's grade and the ONE grade a reduction may reach | `navmc10132-forfeiture-ladder.ts` | item 19 or the item 6 date is unset |
 
 NEITHER GATES GENERATION. A-1-f without a menu is still the appendix, with the blank rule
 the printed form carries, and the commanding officer still needs the paper. The missing
@@ -1053,6 +1054,14 @@ this app holds and a grade a clerk typed rather than from the Manual. The DFAS U
 deliberately NOT printed: it is one unbreakable token far wider than the appendix measure,
 and it belongs on screen where it can be clicked.
 
+THE REDUCTION LINE NAMES ITS ONE LAWFUL TARGET, and disappears where there is none. N08
+prints as "To be red to ______ (next inferior grade only: LCpl, E3)" once item 19 is set,
+because a bare blank invites a commanding officer to write a grade two down and leaves the
+clerk holding a signed page the app will refuse to record. Where para 010302.C bars
+reduction outright, at E-6 and above for a Marine and E-7 and above for a Sailor, the line
+is DROPPED rather than annotated: a checkbox for a punishment nobody may impose on this
+accused is the worst line the page could carry.
+
 A WORKSHEET THAT CANNOT COMPUTE A CEILING PRINTS THE REASON, never a blank. A page with no
 ceiling and no explanation reads as a page with no LIMIT, which is the most dangerous thing
 it could say.
@@ -1075,8 +1084,16 @@ four years on the table effective 2026-01-01:
 |---|---|---|
 | E-4, present | $1,829 | $853 |
 | if reduced to E-3 | $1,599 | $746 |
-| if reduced to E-2 | $1,348 | $629 |
-| if reduced to E-1 | $1,203 | $561 |
+
+TWO RUNGS, NEVER A LADDER TO E-1. Stephen, 2026-08-26: "there can only be a reduction of
+one rank." He is right, and every other part of this app already agreed. MCO 5800.16 Vol 14
+para 010302.C narrows Marine reductions to the next inferior paygrade, stricter than 10
+U.S.C. 815(b)(2)(H)(iv), and N08, the only reduction code release one offers, reads
+"REDUCTION TO THE NEXT INFERIOR GRADE". The reduction picker in PunishmentSection had passed
+`nextInferiorOnly` since the day it was written. The ladder's first version did not, and
+priced three reductions no Marine commander may impose. ONE CALLER OUT OF TWO IS HOW A RULE
+THAT IS ENFORCED STILL PRINTS THE WRONG THING, and no test of `reducibleGrades` could see
+it, because the option was working exactly as written.
 
 THREE RULES THE MODULE ENFORCES, each with its own test:
 
@@ -1085,10 +1102,12 @@ THREE RULES THE MODULE ENFORCES, each with its own test:
    cannot price, NOTHING is marked operative, because marking the current grade would
    present the higher figure as lawful. The first implementation collapsed the two and its
    own test caught it before the code shipped.
-2. A BARRED REDUCTION is reported as barred, not as a missing figure. MCO 5800.16 Vol 14
+2. A REDUCTION OF MORE THAN ONE GRADE marks nothing operative, by the same rule as an
+   unreadable target: no rung prices it, because no commander may impose it.
+3. A BARRED REDUCTION is reported as barred, not as a missing figure. MCO 5800.16 Vol 14
    bars reduction above a floor, so a single rung at E-7 is the law rather than an unset
    input, and the panel says which.
-3. RUNGS AND A DECLINE ARE NEVER BOTH PRESENT. A caller printing the reason beside a figure
+4. RUNGS AND A DECLINE ARE NEVER BOTH PRESENT. A caller printing the reason beside a figure
    would be showing a ceiling and an explanation of why there is none.
 
 V-20 still blocks an over-ceiling forfeiture at export with the same arithmetic. The ladder

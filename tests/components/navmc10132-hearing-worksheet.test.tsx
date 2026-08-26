@@ -78,6 +78,49 @@ describe('the menu is derived from the punishment table, not hand-authored', () 
   });
 });
 
+describe('the reduction line names the one lawful target', () => {
+  /**
+   * "There can only be a reduction of one rank", Stephen, 2026-08-26. A bare
+   * blank invites a commanding officer to write a grade two down, and the
+   * clerk is then holding a signed page the app will refuse to record.
+   */
+  /** One menu entry with its wrapped continuations, joined back together. */
+  const entry = (menu: string[], code: string): string => {
+    const at = menu.findIndex((line) => line.includes(code));
+    if (at < 0) return '';
+    const rest: string[] = [];
+    for (let i = at + 1; i < menu.length && !menu[i].startsWith('[ ]'); i += 1) rest.push(menu[i].trim());
+    return [menu[at], ...rest].join(' ');
+  };
+
+  it('names the next inferior grade and its rank beside N08', () => {
+    const n08 = entry(punishmentMenu('O5', { payGrade: 'E4' }), 'N08');
+    expect(n08).toContain('next inferior grade only');
+    expect(n08).toContain('LCpl');
+    expect(n08).toContain('E3');
+  });
+
+  it('leaves the target unnamed when item 19 carries no grade', () => {
+    const n08 = entry(punishmentMenu('O5'), 'N08');
+    expect(n08).not.toBe('');
+    expect(n08).not.toContain('next inferior grade only');
+  });
+
+  // MCO 5800.16 Vol 14 para 010302.C: a Marine at E-6 or above may not be
+  // reduced at all. A checkbox for a punishment nobody may impose on THIS
+  // accused is the worst line the page could carry.
+  it('drops the reduction line entirely for an accused who cannot be reduced', () => {
+    const menu = punishmentMenu('O5', { payGrade: 'E6' }).join('\n');
+    expect(menu).not.toContain('N08');
+    expect(menu).toContain('N09');
+  });
+
+  it('keeps it for a Navy E-6, whose floor is one grade higher', () => {
+    const menu = punishmentMenu('O5', { payGrade: 'E6', service: 'USN' }).join('\n');
+    expect(menu).toContain('N08');
+  });
+});
+
 describe('the menu is filtered by item 8A', () => {
   it('a field-grade authority is offered the field-grade codes', () => {
     const menu = punishmentMenu('O5').join('\n');
@@ -161,11 +204,14 @@ describe('the menu fits the appendix measure', () => {
 describe('the printed ceiling block', () => {
   const ladder = () => forfeitureLadder({ payGrade: 'E4', yearsOfService: '4', punishmentDate: DATE });
 
-  it('names the current grade and every reduced grade', () => {
+  // ONE GRADE DOWN. "There can only be a reduction of one rank", Stephen,
+  // 2026-08-26, and MCO 5800.16 Vol 14 para 010302.C agrees.
+  it('names the current grade and the one grade a reduction may reach', () => {
     const block = forfeitureCeilingBlock(ladder()).join('\n');
     expect(block).toContain('At E4 now');
     expect(block).toContain('If red to E3');
-    expect(block).toContain('If red to E1');
+    expect(block).not.toContain('If red to E2');
+    expect(block).not.toContain('If red to E1');
   });
 
   // Stephen ruled: print them, labeled as app-computed. A commanding officer
@@ -305,13 +351,17 @@ function show(formData: FormData) {
 }
 
 describe('the ladder on screen', () => {
-  it('shows the current grade and every reduced grade', () => {
+  it('shows the accused grade and the one grade a reduction may reach', () => {
     show(doc());
     expect(screen.getByText('Maximum forfeiture by grade')).toBeInTheDocument();
     expect(screen.getByText('E4')).toBeInTheDocument();
     expect(screen.getByText('if reduced to E3')).toBeInTheDocument();
     expect(screen.getByText('$1,829')).toBeInTheDocument();
     expect(screen.getByText('$1,599')).toBeInTheDocument();
+    // A row for E-2 or E-1 prices a reduction no Marine commander may
+    // impose, MCO 5800.16 Vol 14 para 010302.C.
+    expect(screen.queryByText('if reduced to E2')).not.toBeInTheDocument();
+    expect(screen.queryByText('if reduced to E1')).not.toBeInTheDocument();
   });
 
   it('marks the accused own grade as the basis before a reduction is recorded', () => {

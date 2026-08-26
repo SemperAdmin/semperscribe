@@ -48,7 +48,25 @@ export interface ForfeitureRung {
 export interface ForfeitureLadder {
   /** The accused's grade as item 19 carries it, or the empty string. */
   currentPayGrade: string;
-  /** Current grade first, then each reduction target, senior to junior. */
+  /**
+   * The accused's grade, then the ONE grade a reduction may reach.
+   *
+   * ONE RUNG DOWN, NEVER A WHOLE LADDER TO E-1. Stephen, 2026-08-26: "there
+   * can only be a reduction of one rank." He is right and the code already
+   * said so everywhere else. MCO 5800.16 Vol 14 para 010302.C narrows Marine
+   * reductions to the next inferior paygrade by policy, stricter than 10
+   * U.S.C. 815(b)(2)(H)(iv), which lets a field-grade authority reach the
+   * lowest or any intermediate grade. N08, the only reduction code this app
+   * offers, reads "REDUCTION TO THE NEXT INFERIOR GRADE" and nothing else, so
+   * a rung two grades down prices a punishment the app cannot record and no
+   * Marine commander may impose.
+   *
+   * The first version of this module walked every grade below the accused's,
+   * because it called `reducibleGrades` without the `nextInferiorOnly` option
+   * that exists for exactly this. The reduction picker in PunishmentSection
+   * had passed it since the day it was written. One caller out of two, which
+   * is how a rule that IS enforced still shows the wrong thing on a page.
+   */
   rungs: ForfeitureRung[];
   /**
    * Why no rung could be computed. Present ONLY when `rungs` is empty, and
@@ -139,7 +157,9 @@ export function forfeitureLadder(input: ForfeitureLadderInput): ForfeitureLadder
     { ceiling: base.ceiling, reduced: false, operative: raw === '' },
   ];
 
-  for (const grade of reducibleGrades(current, { service })) {
+  // nextInferiorOnly matches the reduction picker, and both match N08. See
+  // the note on `rungs` above.
+  for (const grade of reducibleGrades(current, { service, nextInferiorOnly: true })) {
     const result = compute(grade);
     if (result.kind !== 'ceiling') continue;
     rungs.push({
@@ -152,8 +172,10 @@ export function forfeitureLadder(input: ForfeitureLadderInput): ForfeitureLadder
   // A target naming a grade no rung covers leaves NOTHING operative, which is
   // truthful: the app has been told the forfeiture rests on a grade it cannot
   // price, and marking the current grade operative instead would print the
-  // higher figure as lawful. V-18 already blocks export on a target this app
-  // cannot resolve, so the gap is visible elsewhere too.
+  // higher figure as lawful. That now covers a SECOND case besides an
+  // unreadable target: a reduction of more than one grade, which no rung
+  // carries because no Marine commander may impose one. V-18 already blocks
+  // export on a target this app cannot resolve.
   return {
     currentPayGrade: current,
     rungs,

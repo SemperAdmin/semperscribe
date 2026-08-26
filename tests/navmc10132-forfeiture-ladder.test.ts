@@ -17,23 +17,34 @@ import { forfeitureLadder, operativeRung } from '@/lib/navmc10132-forfeiture-lad
 const DATE = '2026-08-20';
 
 describe('the rungs', () => {
-  it('starts at the accused grade and descends to E-1', () => {
+  /**
+   * ONE RUNG DOWN, NEVER A LADDER TO E-1. Stephen, 2026-08-26: "there can
+   * only be a reduction of one rank." MCO 5800.16 Vol 14 para 010302.C
+   * narrows Marine reductions to the next inferior paygrade, stricter than
+   * 10 U.S.C. 815(b)(2)(H)(iv), and N08 is the only reduction code this app
+   * offers. The first version of this module listed every grade below the
+   * accused's, pricing punishments no commander may impose.
+   */
+  it('is the accused grade and the ONE grade below it, not every grade below', () => {
     const ladder = forfeitureLadder({ payGrade: 'E4', yearsOfService: '4', punishmentDate: DATE });
-    expect(ladder.rungs.map((r) => r.ceiling.payGrade)).toEqual(['E4', 'E3', 'E2', 'E1']);
+    expect(ladder.rungs.map((r) => r.ceiling.payGrade)).toEqual(['E4', 'E3']);
     expect(ladder.rungs[0].reduced).toBe(false);
-    expect(ladder.rungs.slice(1).every((r) => r.reduced)).toBe(true);
+    expect(ladder.rungs[1].reduced).toBe(true);
+  });
+
+  it('stops one grade down from every grade, not only from E-4', () => {
+    for (const [from, to] of [['E5', 'E4'], ['E3', 'E2'], ['E2', 'E1']] as const) {
+      const ladder = forfeitureLadder({ payGrade: from, yearsOfService: '4', punishmentDate: DATE });
+      expect(ladder.rungs.map((r) => r.ceiling.payGrade)).toEqual([from, to]);
+    }
   });
 
   // The whole reason the ladder exists. If these were equal there would be
   // nothing to choose between and 5.c(8) would be decoration.
-  it('every reduced rung prices strictly lower than the one above it', () => {
+  it('the reduced rung prices strictly lower than the accused own grade', () => {
     const ladder = forfeitureLadder({ payGrade: 'E5', yearsOfService: '6', punishmentDate: DATE });
-    const halves = ladder.rungs.map((r) => r.ceiling.halfMonthPay);
-    const sevens = ladder.rungs.map((r) => r.ceiling.sevenDaysPay);
-    for (let i = 1; i < halves.length; i += 1) {
-      expect(halves[i]).toBeLessThan(halves[i - 1]);
-      expect(sevens[i]).toBeLessThan(sevens[i - 1]);
-    }
+    expect(ladder.rungs[1].ceiling.halfMonthPay).toBeLessThan(ladder.rungs[0].ceiling.halfMonthPay);
+    expect(ladder.rungs[1].ceiling.sevenDaysPay).toBeLessThan(ladder.rungs[0].ceiling.sevenDaysPay);
   });
 
   it('an E-1 has one rung, because there is nowhere below', () => {
@@ -87,6 +98,19 @@ describe('which rung is operative', () => {
       payGrade: 'E4', yearsOfService: '4', punishmentDate: DATE, gradeReducedTo: 'Sergeant Major',
     });
     expect(ladder.rungs.length).toBeGreaterThan(0);
+    expect(operativeRung(ladder)).toBeNull();
+  });
+
+  // The same rule reached a second way. A reduction of two grades is not a
+  // punishment any Marine commander may impose, so no rung prices it, and
+  // marking the accused's own grade operative would present the HIGHER
+  // figure as the lawful basis for a forfeiture nobody may lawfully pair
+  // with that reduction.
+  it('marks nothing operative for a reduction of more than one grade', () => {
+    const ladder = forfeitureLadder({
+      payGrade: 'E4', yearsOfService: '4', punishmentDate: DATE, gradeReducedTo: 'E1',
+    });
+    expect(ladder.rungs.map((r) => r.ceiling.payGrade)).toEqual(['E4', 'E3']);
     expect(operativeRung(ladder)).toBeNull();
   });
 });

@@ -366,7 +366,11 @@ export function scriptForfeitureLadder(formData: FormData): ForfeitureLadder {
  */
 export function scriptWorksheetGaps(formData: FormData): string[] {
   const gaps: string[] = [];
-  if (punishmentMenu(str(formData, 'njpAuthorityPayGrade')).length === 0) {
+  if (
+    punishmentMenu(str(formData, 'njpAuthorityPayGrade'), {
+      payGrade: str(formData, 'accusedPayGrade'),
+    }).length === 0
+  ) {
     gaps.push(
       "set item 8A's pay grade to print the menu of punishments this commander may impose",
     );
@@ -398,7 +402,12 @@ export function buildScriptCase(formData: FormData): NjpScriptCase {
     // COMPUTED ONLY WHERE NOTHING IS IMPOSED. A record copy of a completed
     // proceeding states what was imposed, and a menu of unchosen options
     // printed beneath that sentence would contradict it.
-    punishmentOptions: imposed === '' ? punishmentMenu(str(formData, 'njpAuthorityPayGrade')) : [],
+    punishmentOptions:
+      imposed === ''
+        ? punishmentMenu(str(formData, 'njpAuthorityPayGrade'), {
+            payGrade: str(formData, 'accusedPayGrade'),
+          })
+        : [],
     ceilingBlock:
       imposed === '' ? forfeitureCeilingBlock(scriptForfeitureLadder(formData)) : [],
     // NOT ON THE NAVMC 10132, either of them. Left blank so the printed rule

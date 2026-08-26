@@ -31,6 +31,12 @@ import {
   type Navmc10132Punishment,
 } from '@/lib/navmc10132-punishments';
 import { PAY_TABLE_WINDOW } from '@/lib/navmc10132-basic-pay';
+import {
+  reducibleGrades,
+  reductionBarred,
+  ranksAtGrade,
+  type Navmc10132Service,
+} from '@/lib/navmc10132-ranks';
 import { punishmentRuleBudget } from '@/lib/njp-a1-script';
 import { wrapHanging } from '@/lib/jagman-a1-wrap';
 import type { ForfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
@@ -74,15 +80,38 @@ export interface MenuLine {
   body: string;
 }
 
+/**
+ * What the reduction line names as its target, given the accused's grade.
+ *
+ * "THERE CAN ONLY BE A REDUCTION OF ONE RANK", Stephen, 2026-08-26. MCO
+ * 5800.16 Vol 14 para 010302.C narrows Marine reductions to the next
+ * inferior paygrade, and N08 reads "REDUCTION TO THE NEXT INFERIOR GRADE".
+ * A bare blank on the paper invites a commanding officer to write a grade
+ * two down, and the clerk then has an entry the app will refuse and a
+ * signed page saying otherwise. Naming the target closes that.
+ *
+ * Empty where item 19 is unset, because the app has no target to name and a
+ * guess on a hearing document is worse than a blank.
+ */
+function reductionTargetNote(accusedPayGrade: string, service: Navmc10132Service): string {
+  const [target] = reducibleGrades(accusedPayGrade, { nextInferiorOnly: true, service });
+  if (target === undefined) return '';
+  const ranks = ranksAtGrade(target).map((rank) => rank.abbreviation);
+  const named = ranks.length > 0 ? `${ranks.join(' / ')}, ${target}` : target;
+  return `next inferior grade only: ${named}`;
+}
+
 /** One menu line, unwrapped. The caller fits it to the appendix measure. */
-export function menuLine(punishment: Navmc10132Punishment): MenuLine {
+export function menuLine(punishment: Navmc10132Punishment, targetNote = ''): MenuLine {
   const body = punishment.template
     .replace(/\{(\w+)\}/g, (match, name: string) => BLANKS[name] ?? match)
     // The template's trailing period closes a SENTENCE in item 6. On a form
     // line with a blank still in it, it reads as an end where none has been
     // reached yet.
     .replace(/\.$/, '');
-  const cap = capNote(punishment);
+  // The reduction code carries no numeric cap of its own, so its note is the
+  // lawful target instead. Nothing else uses one.
+  const cap = punishment.code === 'N08' && targetNote !== '' ? targetNote : capNote(punishment);
   return {
     label: `[ ] ${punishment.code}  `,
     body: `${body}${cap === '' ? '' : ` (${cap})`}`,
@@ -98,18 +127,32 @@ export function menuLine(punishment: Navmc10132Punishment): MenuLine {
  * no menu at all. `releaseOnePunishmentsFor` reports an unreadable or absent
  * grade as `unverified` rather than available, and this refuses to guess.
  */
-export function punishmentMenu(authorityPayGrade: string): string[] {
+export function punishmentMenu(
+  authorityPayGrade: string,
+  accused: { payGrade?: string; service?: Navmc10132Service } = {},
+): string[] {
   if (authorityPayGrade.trim() === '') return [];
   const available = releaseOnePunishmentsFor(authorityPayGrade);
   if (available.some((entry) => entry.unverified)) return [];
+
+  const accusedPayGrade = (accused.payGrade ?? '').trim();
+  const service = accused.service ?? 'USMC';
+  const targetNote = reductionTargetNote(accusedPayGrade, service);
+  // MCO 5800.16 Vol 14 para 010302.C: a Marine at E-6 or above, or a Sailor
+  // at E-7 or above, may not be reduced at all. A checkbox for a punishment
+  // no commander may impose on THIS accused is the worst line the page could
+  // carry, so it is dropped rather than annotated.
+  const barred = accusedPayGrade !== '' && reductionBarred(accusedPayGrade, service);
+
   const budget = punishmentRuleBudget();
   return available
     .filter((entry) => entry.available)
     // The NAVMC 10132 is an ENLISTED record. An officer-only code has no
     // place on its worksheet even where the authority could impose one.
     .filter((entry) => entry.punishment.appliesTo !== 'officer')
+    .filter((entry) => !(barred && entry.punishment.code === 'N08'))
     .flatMap((entry) => {
-      const line = menuLine(entry.punishment);
+      const line = menuLine(entry.punishment, targetNote);
       return wrapHanging(line.body, budget, line.label);
     });
 }
