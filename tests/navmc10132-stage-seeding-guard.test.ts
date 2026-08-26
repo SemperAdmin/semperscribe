@@ -251,3 +251,41 @@ describe('The stage-seeding guard, run against the real source tree', () => {
 //      level directory, or FormData constructed by a script or migration
 //      outside the React tree entirely, is outside this scan.
 // ===========================================================================
+
+/**
+ * THE HOLE THE SCAN ABOVE COULD NOT SEE, closed 2026-08-26.
+ *
+ * The scan looks for `setFormData` calls that produce a LITERAL
+ * `'navmc10132'` without also assigning `stage`. Two paths in page.tsx
+ * escape it because neither writes the literal:
+ *
+ *   - `resetDocumentState(documentType)` sets `documentType: currentType`,
+ *     a variable. This is Clear Form, and the Word/PDF import's
+ *     replace-on-confirm.
+ *   - `handleImport` spreads a payload.
+ *
+ * The consequence is not cosmetic. An absent `stage` reads as 1 for display
+ * and as `'complete'` for the export gate, so Clear Form on a UPB left a
+ * blank document showing "Notification" while every later-pass blocker
+ * fired at once.
+ *
+ * This asserts the seed by reading the source, because `resetDocumentState`
+ * is a closure inside a 1100-line client component with no export.
+ */
+describe('the dynamic reset paths seed the stage too', () => {
+  it('resetDocumentState seeds stage when it is building a NAVMC 10132', async () => {
+    const { readFileSync } = await import('fs');
+    const { resolve } = await import('path');
+    const source = readFileSync(resolve(__dirname, '../src/app/page.tsx'), 'utf8');
+
+    const start = source.indexOf('const resetDocumentState');
+    expect(start, 'resetDocumentState should still exist in page.tsx').toBeGreaterThan(-1);
+    const body = source.slice(start, start + 4000);
+
+    expect(
+      /currentType === 'navmc10132'\s*\?\s*\{\s*stage:\s*1\s*\}/.test(body),
+      'resetDocumentState must seed stage for a NAVMC 10132. Without it, Clear Form leaves ' +
+        'stage undefined, which the export gate reads as complete.',
+    ).toBe(true);
+  });
+});

@@ -634,7 +634,16 @@ function NavalLetterGeneratorInner() {
             amhsOfficeCode: '',
             amhsPocs: [],
             amhsReferences: [],
-            amhsTextBody: ''
+            amhsTextBody: '',
+            // SEEDED HERE TOO, and this is the hole the D-43 guard could
+            // not see. That guard scans for setFormData calls producing a
+            // LITERAL 'navmc10132'; this one uses a variable, so it passed
+            // the scan while leaving `stage` undefined. An absent stage is
+            // read as 1 for display and as 'complete' by the export gate,
+            // so Clear Form on a UPB produced a blank document that fired
+            // every later-pass blocker at once. Undefined for every other
+            // document type, which is what those types expect.
+            ...(currentType === 'navmc10132' ? { stage: 1 } : {}),
         });
         setParagraphs([{ id: 1, level: 1, content: '', acronymError: '' }]);
         setVias(['']);
