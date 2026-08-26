@@ -187,6 +187,19 @@ export function HeaderActions({
     setSearchQuery, 
   } = useTemplates({ documentType, currentUnitCode, currentUnitName });
 
+  /**
+   * The NAVMC forms, where "import a document" means uploading a signed
+   * copy of THIS form rather than converting a letter. Only the 10132 can
+   * actually be read back today; the other three are XFA and the detector
+   * refuses them with an explanation, which is a better answer than a menu
+   * item that quietly does nothing useful.
+   */
+  const isFormDocument =
+    documentType === 'navmc10132' ||
+    documentType === 'navmc10922' ||
+    documentType === 'page11' ||
+    documentType === 'aa-form';
+
   // GunnyBot opens from the store, the same wiring the header bot button used
   // before the regrouping. No prop and no ModernAppShell change needed.
   const openGunnyBot = useGunnyStore((s) => s.setPanelOpen);
@@ -383,13 +396,44 @@ export function HeaderActions({
           
           <DropdownMenuItem onClick={handleImportClick} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
             <Upload className="w-4 h-4 mr-2" />
-            Import Data Package (.nldp)
+            <div className="flex flex-col">
+              <span>Import Data Package (.nldp)</span>
+              <span className="text-[11px] text-muted-foreground">
+                A document saved out of this app, not a PDF
+              </span>
+            </div>
           </DropdownMenuItem>
 
+          {/* TWO IMPORT ITEMS, AND THE NAMES HAVE TO DO THE WORK. Stephen
+              reached for the wrong one on 2026-08-26 with a signed UPB in
+              hand and reported the file "not showing" when he chose it:
+              the .nldp picker filters to .nldp and .json, so a PDF is
+              invisible in it. Nothing was broken, the dialog was doing what
+              it was told. "Import Data Package" reads like the real import
+              and "Import Word/PDF Document" reads like a converter, which
+              is backwards for anyone holding a signed form. So each item
+              now says what it TAKES and, on a form, what it is for. */}
           {onImportDocument && (
-            <DropdownMenuItem onClick={handleImportDocumentClick} disabled={isImportingDocument} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+            <DropdownMenuItem
+              onClick={handleImportDocumentClick}
+              disabled={isImportingDocument}
+              className="cursor-pointer focus:bg-accent focus:text-accent-foreground"
+            >
               <FileUp className="w-4 h-4 mr-2" />
-              {isImportingDocument ? 'Reading Document...' : 'Import Word/PDF Document...'}
+              <div className="flex flex-col">
+                <span>
+                  {isImportingDocument
+                    ? 'Reading Document...'
+                    : isFormDocument
+                      ? 'Upload a signed form (.pdf)'
+                      : 'Import Word/PDF Document...'}
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  {isFormDocument
+                    ? 'Reads the signed PDF back in and continues the case'
+                    : 'Word or PDF, read as correspondence'}
+                </span>
+              </div>
             </DropdownMenuItem>
           )}
 
