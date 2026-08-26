@@ -1093,24 +1093,45 @@ the two. A classic xref table appended to this form's xref stream is rejected by
 with "Unexpected byte range values defining scope of signed data", which is a structural
 rejection thrown before any hash check rather than a tamper report.
 
-NONE OF THE PASS-2-ONWARD PATH IS BUILT, and this paragraph claimed it was verified and
-shipped until 2026-08-25.
+THE PASS-2-ONWARD PATH IS BUILT, and this paragraph has now been wrong in both
+directions. Read the history before trusting any status line here.
 
-What actually happened: the incremental write was PROVEN in a throwaway script in a cloud
-container during the 2026-08-25 session, against Stephen's real CAC-signed file. The signed
-revision was preserved byte-for-byte, the ByteRange was unchanged, every written value read
-back through an independent parser, and the locked accused name was untouched. That result
-is real and it is why `useObjectStreams: TRUE` is recorded above as the correct setting.
+UNTIL 2026-08-25 it claimed the path was verified and shipped when no line of it existed.
+The incremental write had been PROVEN in a throwaway script in a cloud container against
+Stephen's real CAC-signed file, and the finding was written here in the perfect tense as
+though the app did it. The script never entered this repository. That correction stood, and
+the lesson from it stands: a measurement taken outside the repository is evidence about the
+FORMAT, never about the app. Record where it ran.
 
-The script never entered this repository, and the finding was written here in the perfect
-tense as though the app did it. It does not. Searched repo-wide, excluding `node_modules`:
-`saveIncremental`, `takeSnapshot`, `markRefForSave` and `@cantoo/pdf-lib` return ZERO hits
-across `src`, `tests`, `tools`, `scripts` and `_scratch`. `package.json` carries stock
-`pdf-lib ^1.17.1`, which has no incremental-update API at all, so this cannot be a naming
-difference. Every pass after the first would need a dependency this project does not have.
+WHAT IS IN THE REPOSITORY NOW, measured 2026-08-26, not asserted:
 
-THE LESSON, and it generalises past this paragraph: a measurement taken outside the
-repository is evidence about the FORMAT, never about the app. Record where it ran.
+- `src/lib/navmc10132-incremental-write.ts`, `writeNavmc10132Incremental`. It refuses
+  locked fields, skips empty app values with checkboxes exempted, skips values the file
+  already agrees with, and appends the delta to the original bytes rather than returning it
+  alone.
+- `tests/navmc10132-incremental-write.test.ts`, 13 tests, including stacking a second pass
+  on top of the first.
+- `package.json` carries BOTH `@cantoo/pdf-lib ^2.9.1`, which has the incremental API, and
+  stock `pdf-lib ^1.17.1`, which has none. The two coexist deliberately: the full-rewrite
+  pass-1 path stays on stock, the incremental path uses cantoo. Do not consolidate them.
+- `saveIncremental`, `takeSnapshot`, `markRefForSave` and `@cantoo/pdf-lib` now return hits
+  in exactly two files, the two above, and nowhere else in `src`, `tests`, `tools` or
+  `scripts`.
+
+VERIFIED IN ACROBAT BY A HUMAN, 2026-08-26. Stephen opened
+`_scratch\THOMPSON-pass3-incremental-TEST.pdf`, produced by the app from his own
+CAC-signed pass-2 file, and reported BOTH signatures valid. Items 5, 6, 7, 8, 8A, 8B and 10
+render as written and the item 2 and item 3 signature blocks still display their signer
+detail. This is the first verification of this path by a signature-validating reader rather
+than by a byte comparison, and it is what the byte comparison could never establish on its
+own.
+
+WHAT THAT VERIFICATION DOES NOT COVER. Only the top-level verdict was read. Whether
+Acrobat's signature panel additionally reports a permitted post-signing modification against
+either signature is NOT recorded here, and the two statements are different: a valid
+signature over a document with later revisions is normal and lawful for an incremental
+update, and a reader who sees the note without understanding it will call the record
+altered. Record the per-signature detail line before treating this as closed.
 
 ### 13.4 Sections that span passes, and why section-level gating is not enough
 
