@@ -1092,6 +1092,22 @@ line was individually correct.
 | A-1-c and A-1-d, the consultation entry | "I consulted with ____, a" / blank / "lawyer, on ____." | blank removed, and both rules squared to end where the signature rule ends |
 | A-1-d, paragraph 5 | "when operationally feasible, a" / blank / "military lawyer will be made available" | blank removed, matching A-1-c |
 
+THE RULE GEOMETRY WAS DAMAGED THE SAME WAY. Extraction also mangled the lines an accused
+writes ON, and these are not page-break artifacts but broken runs of underscores:
+
+| where | what read wrong | fix |
+|---|---|---|
+| A-1-c, A-1-d, A-1-g, above the signature labels | 23 underscores, a gap, ONE stray underscore, 27 more, another gap, another stray | the clean 31 + 31 rule the name block below already used |
+| A-1-c, the name rule | 30 + 3 spaces + 31, uneven against the block above it | the same 31 + 31 rule |
+| A-1-d, the five witness rules | the first two one column right, one character longer, and with no blank between them | all five on the geometry the last three already had |
+| A-1-c, the four witness rules | one blank short between the last two | evenly spaced |
+| A-1-c and A-1-d, the name labels | the right label at column 35 or 34, under a rule starting at 32 | both squared to column 32 |
+
+`tests/njp-a1-layout.test.ts` guards the SHAPE rather than those known lines: across every
+appendix, a line made entirely of underscores and spaces must be one rule or two side by
+side, and never a run shorter than three characters. A rule embedded in prose is exempt,
+having its own geometry. Neither appendix changed measure through any of it.
+
 THE SAME APPENDIX PAIR IS THE ORACLE IN THREE OF THE FOUR. A-1-c and A-1-d carry much of
 the same text, so where one has the blank and the other does not, the one WITHOUT it is the
 defect. That is why none of these is a rewrite of JAGMAN, and why a diff between the two

@@ -226,21 +226,28 @@ export const APPENDIX_A_1_C: JagmanAppendix = {
     '    ________ I request that the following witnesses be present',
     'at my NJP proceeding:',
     '',
+    // The same unevenness in A-1-c, one blank short between the last two.
     '         __________________________________________________',
     '',
     '         __________________________________________________',
     '',
     '         __________________________________________________',
+    '',
     '         __________________________________________________',
     '',
     '    ________ I request that my NJP proceeding be open to the',
     'public.',
     '',
-    '_______________________      _ ___________________________    _',
+    // A RULE WITH HOLES IN IT, from the extraction: 23 underscores, a gap, a
+    // stray single underscore, 27 more, another gap, another stray. It reads
+    // as a broken line above a signature. Stephen, 2026-08-26: these "need
+    // to match teh same length as those below them". They now are the same
+    // 31 + 31 rule the name block below already used.
+    '_______________________________ _______________________________',
     '(Signature of Accused and Date) (Signature of Witness and Date)',
     '',
-    '______________________________   _______________________________',
-    '(Name of Accused)                   (Name of witness)',
+    '_______________________________ _______________________________',
+    '(Name of Accused)               (Name of witness)',
   ],
 };
 
@@ -469,8 +476,15 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     '    ________ I request that the following witnesses be present',
     'at my NJP proceeding:',
     '',
-    '                ______________________________________',
-    '                ______________________________________',
+    // THE FIVE WITNESS RULES ARE ONE GRID. Stephen, 2026-08-26: "we now have
+    // 5 lines ... however they are not even and teh same. the last three are
+    // speced and place correctly. I want all 5 to be the same." The first
+    // two sat one column further right, ran a character longer, and had no
+    // blank between them. The last three were the correct geometry, so they
+    // are the pattern the other two now follow.
+    '               ______________________________________',
+    '',
+    '               ______________________________________',
     '',
     '               ______________________________________',
     '',
@@ -481,11 +495,16 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     '    ________ I request that my nonjudicial punishment',
     'proceeding be open to the public.',
     '',
-    '_______________________      _ ___________________________    _',
+    // A RULE WITH HOLES IN IT, from the extraction: 23 underscores, a gap, a
+    // stray single underscore, 27 more, another gap, another stray. It reads
+    // as a broken line above a signature. Stephen, 2026-08-26: these "need
+    // to match teh same length as those below them". They now are the same
+    // 31 + 31 rule the name block below already used.
+    '_______________________________ _______________________________',
     '(Signature of Accused and Date) (Signature of Witness and Date)',
     '',
     '_______________________________ _______________________________',
-    '(Name of Accused)                  (Name of witness)',
+    '(Name of Accused)               (Name of witness)',
   ],
 };
 
@@ -708,7 +727,12 @@ export const APPENDIX_A_1_G: JagmanAppendix = {
     'military lawyer for consideration and advice before action is',
     'taken on my appeal.',
     '',
-    '_______________________      _ ___________________________    _',
+    // A RULE WITH HOLES IN IT, from the extraction: 23 underscores, a gap, a
+    // stray single underscore, 27 more, another gap, another stray. It reads
+    // as a broken line above a signature. Stephen, 2026-08-26: these "need
+    // to match teh same length as those below them". They now are the same
+    // 31 + 31 rule the name block below already used.
+    '_______________________________ _______________________________',
     '(Signature of Accused and Date) (Signature of Witness and Date)',
   ],
 };

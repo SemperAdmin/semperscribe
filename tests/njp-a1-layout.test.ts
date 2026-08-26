@@ -7,7 +7,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { APPENDIX_A_1_C, APPENDIX_A_1_D } from '@/lib/jagman-appendix-a1';
+import {
+  APPENDIX_A_1_C, APPENDIX_A_1_D, APPENDIX_A_1_E,
+  APPENDIX_A_1_F, APPENDIX_A_1_G, APPENDIX_A_1_H,
+} from '@/lib/jagman-appendix-a1';
 import { appendixWidth } from '@/lib/jagman-a1-wrap';
 import { maximumPunishment, renderMaximumPunishment } from '@/lib/njp-maximum-punishment';
 import { forfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
@@ -140,6 +143,85 @@ describe('a sentence is never split by a blank line', () => {
     expect(appendixWidth(APPENDIX_A_1_C)).toBe(64);
     expect(appendixWidth(APPENDIX_A_1_D)).toBe(63);
   });
+});
+
+describe('the rules an accused writes on are even', () => {
+  const ALL = [APPENDIX_A_1_C, APPENDIX_A_1_D, APPENDIX_A_1_E, APPENDIX_A_1_F, APPENDIX_A_1_G, APPENDIX_A_1_H];
+
+  /**
+   * A GENERAL GUARD, not a check on two known lines.
+   *
+   * The extraction produced rules with holes in them: 23 underscores, a gap,
+   * a stray single underscore, 27 more, another gap, another stray, all on
+   * the line above a signature. Stephen found it by looking at the page.
+   * Nothing distinguishes that line from a correct one except its shape, so
+   * the shape is what this asserts, across every appendix.
+   *
+   * Only lines made ENTIRELY of underscores and spaces are examined. A rule
+   * embedded in prose ("______, on the morning of ____ April 20____") is a
+   * fill-in-the-blank sentence and has its own geometry.
+   */
+  for (const appendix of ALL) {
+    it(`${appendix.designator} has no rule line broken into stray fragments`, () => {
+      const bad = appendix.text.filter((line) => {
+        if (!/^[_ ]+$/.test(line) || (line.match(/_/g) ?? []).length < 10) return false;
+        const runs = line.trim().split(/ +/);
+        // One rule, or two side by side. Never a run of a single underscore.
+        return runs.length > 2 || runs.some((run) => run.length < 3);
+      });
+      expect(bad).toEqual([]);
+    });
+  }
+
+  /**
+   * "we now have 5 lines ... however they are not even and teh same. the
+   * last three are speced and place correctly. I want all 5 to be the
+   * same." The first two sat a column further right, ran a character
+   * longer, and had no blank between them.
+   */
+  for (const appendix of [APPENDIX_A_1_C, APPENDIX_A_1_D]) {
+    it(`${appendix.designator} writes every witness rule to one grid`, () => {
+      const at = appendix.text.findIndex((line) => line.includes('following witnesses be present'));
+      expect(at).toBeGreaterThan(0);
+      const block: string[] = [];
+      for (let i = at + 2; i < appendix.text.length; i += 1) {
+        const line = appendix.text[i];
+        if (!/^[_ ]*$/.test(line)) break;
+        block.push(line);
+      }
+      const rules = block.filter((line) => line.trim() !== '');
+      expect(rules.length).toBeGreaterThanOrEqual(4);
+      // Identical, so indent and length both match.
+      expect(new Set(rules).size).toBe(1);
+      // Exactly one blank between each, and none doubled.
+      // Trimmed of the blanks that open and close the block, the shape must
+      // alternate: rule, blank, rule, and never two blanks or two rules.
+      const shape = block
+        .map((line) => (line.trim() === '' ? '.' : 'R'))
+        .join('')
+        .replace(/^\.+/, '')
+        .replace(/\.+$/, '');
+      expect(shape).toMatch(/^R(\.R)*$/);
+    });
+  }
+
+  /**
+   * "the teo lines above (Signature of Accused and Date) ... need to match
+   * teh same length as those below them that are above (Name of Accused)".
+   */
+  for (const appendix of ALL) {
+    it(`${appendix.designator} rules its signature and its name blocks alike`, () => {
+      const sig = appendix.text.findIndex((line) => line.includes('Signature of Accused and Date'));
+      if (sig < 0) return;
+      const name = appendix.text.findIndex((line) => line.includes('Name of Accused'));
+      expect(appendix.text[sig - 1]).toMatch(/^_{31} _{31}$/);
+      if (name < 0) return;
+      expect(appendix.text[name - 1]).toBe(appendix.text[sig - 1]);
+      // Both right-hand labels open under their own rule, at column 32.
+      expect(appendix.text[name].indexOf('(Name of witness)')).toBe(32);
+      expect(appendix.text[sig].indexOf('(Signature of Witness and Date)')).toBe(32);
+    });
+  }
 });
 
 // ---------------------------------------------------------------------------
