@@ -423,9 +423,20 @@ export function renderMaximumPunishment(
 
   const lines: string[] = [];
   max.blocks.forEach((block, index) => {
-    // A blank line before the tail and before the source, so the list does
-    // not run straight into the combination limits as one wall of text.
-    if ((block.kind === 'tail' || block.kind === 'source') && index > 0) {
+    /**
+     * A BLANK LINE BEFORE EVERY BLOCK BUT THE FIRST, items included.
+     *
+     * Stephen, 2026-08-26: "we need proper hard spaces between each max
+     * punishment." The list ran as one unbroken wall, and each entry is a
+     * separate punishment a commanding officer may impose, several of them
+     * wrapping to three lines. Without separation a reader cannot see where
+     * one ends and the next begins, which on the page an accused reads
+     * before deciding whether to refuse NJP is not a cosmetic problem.
+     *
+     * The tail and the source already had their blank. This extends the
+     * same rule to the items rather than adding a second rule beside it.
+     */
+    if (index > 0) {
       lines.push('');
     }
     const indent = block.kind === 'item' ? ITEM_INDENT : '';

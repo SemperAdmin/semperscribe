@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { APPENDIX_A_1_C, APPENDIX_A_1_D } from '@/lib/jagman-appendix-a1';
 import { appendixWidth } from '@/lib/jagman-a1-wrap';
-import { maximumPunishment } from '@/lib/njp-maximum-punishment';
+import { maximumPunishment, renderMaximumPunishment } from '@/lib/njp-maximum-punishment';
 import { forfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
 import { advisementForfeitureLadder } from '@/lib/njp-package';
 import { createEmptyNavmc10132Data } from '@/types/navmc';
@@ -78,6 +78,56 @@ describe('the signature and its date sit on one line', () => {
   }
 });
 
+describe('a sentence is never split by a blank line', () => {
+  /**
+   * THE SAME EXTRACTION ARTIFACT, THREE TIMES. A page break in the source
+   * PDF became a blank line in the middle of a paragraph, so one sentence
+   * read as two across white space. Stephen found all three by reading
+   * generated output: the (2)/(3) gap, then "Para 4.a is broken and shouild
+   * wrap properly", then the consultation block.
+   */
+  it('A-1-d paragraph 4.a runs unbroken from "hereby informed" to "remain silent"', () => {
+    const text = APPENDIX_A_1_D.text;
+    const at = text.findIndex((line) => line.includes('You are hereby informed'));
+    expect(at).toBeGreaterThan(0);
+    expect(text[at + 1]).toContain('that you have the right to remain silent');
+  });
+
+  for (const appendix of [APPENDIX_A_1_C, APPENDIX_A_1_D]) {
+    it(`${appendix.designator} runs the consultation entry across two adjacent lines`, () => {
+      const at = appendix.text.findIndex((line) => line.includes('I consulted with'));
+      expect(at).toBeGreaterThan(0);
+      expect(appendix.text[at + 1]).toContain('lawyer, on');
+    });
+
+    /**
+     * "make a more semetrical and better spaced whitness listing the last
+     * three lines are good but teh first to are off". The two consultation
+     * rules ran to different columns while the signature rules beneath them
+     * both ended at the same one. All four now end together.
+     */
+    it(`${appendix.designator} ends the consultation rules where the signature rule ends`, () => {
+      const at = appendix.text.findIndex((line) => line.includes('I consulted with'));
+      const rule = appendix.text.findIndex((line) => /^_{31} _{31}$/.test(line));
+      expect(rule).toBeGreaterThan(0);
+      expect(appendix.text[at].length).toBe(appendix.text[rule].length);
+      expect(appendix.text[at + 1].length).toBe(appendix.text[rule].length);
+    });
+  }
+
+  /**
+   * appendixWidth is the LONGEST line, so any line this file adds sets the
+   * page's right margin and every wrap budget derived from it. These two
+   * numbers were measured against the committed appendix before the layout
+   * changes above, and neither moved. A future edit that widens a line
+   * silently rewraps paragraphs elsewhere in the document.
+   */
+  it('neither appendix changed measure through any of these edits', () => {
+    expect(appendixWidth(APPENDIX_A_1_C)).toBe(64);
+    expect(appendixWidth(APPENDIX_A_1_D)).toBe(63);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // The priced ceiling
 // ---------------------------------------------------------------------------
@@ -141,6 +191,45 @@ describe('the maximum punishment carries the figure, not only the fraction', () 
 
   it('calls the figures ceilings rather than amounts imposed', () => {
     expect(textOf(priced('O5', 'E6', '12'))).toContain('ceilings, not amounts imposed');
+  });
+});
+
+describe('the maximum punishment list is spaced', () => {
+  /**
+   * "we need proper hard spaces between each max punishment", Stephen,
+   * 2026-08-26. Each entry is a separate punishment, several wrap to three
+   * lines, and unseparated a reader cannot see where one ends. On the page
+   * an accused reads before deciding whether to refuse NJP, that is not
+   * cosmetic.
+   */
+  it('puts a blank line before every enumerated punishment', () => {
+    const lines = renderMaximumPunishment(
+      { authorityPayGrade: 'O5', accusedPayGrade: 'E3', accusedYearsOfService: '2',
+        forfeiture: ladder('E3', '2') },
+      63,
+    )!;
+    const items = lines.map((line, i) => [line, i] as const).filter(([line]) => /^ {3}\(\d\) /.test(line));
+    expect(items.length).toBeGreaterThan(3);
+    for (const [, i] of items) {
+      expect(i, 'an item must not open the block').toBeGreaterThan(0);
+      expect(lines[i - 1].trim(), `no blank line before line ${i}`).toBe('');
+    }
+  });
+
+  it('keeps the blank before the combination limits and the source', () => {
+    const lines = renderMaximumPunishment(
+      { authorityPayGrade: 'O5', accusedPayGrade: 'E3' },
+      63,
+    )!;
+    const source = lines.findIndex((line) => line.startsWith('Source:'));
+    expect(lines[source - 1].trim()).toBe('');
+  });
+
+  // A leading blank would open paragraph 3 with white space under its own
+  // lead sentence.
+  it('never opens with a blank line', () => {
+    const lines = renderMaximumPunishment({ authorityPayGrade: 'O3', accusedPayGrade: 'E3' }, 63)!;
+    expect(lines[0].trim()).not.toBe('');
   });
 });
 

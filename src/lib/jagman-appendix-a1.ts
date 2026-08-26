@@ -185,9 +185,15 @@ export const APPENDIX_A_1_C: JagmanAppendix = {
     'form will not be completed until the accused has been given a',
     'reasonable opportunity to do so.)',
     '',
-    '   _____ I consulted with _________________________________, a',
-    '',
-    'lawyer, on __________________________________.',
+    // SAME ARTIFACT, SAME FIX, and then squared to the rule below it.
+    // Stephen, 2026-08-26: "make a more semetrical and better spaced
+    // whitness listing the last three lines are good but teh first to are
+    // off". The blank split one sentence at ", a / lawyer, on", and the two
+    // rules ran to different columns while the signature rules beneath them
+    // both end at column 62. Both now end there too, so the four lines read
+    // as one block.
+    '   _____ I consulted with __________________________________, a',
+    '   lawyer, on ________________________________________________.',
     '',
     // SIGNATURE AND DATE ON ONE LINE, Stephen 2026-08-26: "This will remove
     // the date placeholders and allow then to write it on the same line as
@@ -293,8 +299,13 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     'the right to submit any written matters you desire for the',
     'commanding officer’s consideration in determining whether or',
     'not you committed the offenses alleged, and, if so, in',
+    // NO BLANK HERE. The extraction turned a page break inside paragraph
+    // 4.a into a blank line, splitting one sentence across what read as two
+    // paragraphs: "You are hereby informed" then white space then "that you
+    // have the right to remain silent". Stephen, 2026-08-26: "Para 4.a is
+    // broken and shouild wrap properly." The lines themselves were already
+    // wrapped correctly, so removing the blank is the whole fix.
     'determining an appropriate punishment. You are hereby informed',
-    '',
     'that you have the right to remain silent and that anything you',
     'do submit for consideration may be used against you in a trial',
     'by court-martial.',
@@ -395,9 +406,15 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     'this form will not be completed until the accused has been',
     'given a reasonable opportunity to do so.)',
     '',
-    '   _____ I consulted with _________________________________, a',
-    '',
-    'lawyer, on __________________________________.',
+    // SAME ARTIFACT, SAME FIX, and then squared to the rule below it.
+    // Stephen, 2026-08-26: "make a more semetrical and better spaced
+    // whitness listing the last three lines are good but teh first to are
+    // off". The blank split one sentence at ", a / lawyer, on", and the two
+    // rules ran to different columns while the signature rules beneath them
+    // both end at column 62. Both now end there too, so the four lines read
+    // as one block.
+    '   _____ I consulted with __________________________________, a',
+    '   lawyer, on ________________________________________________.',
     '',
     // SIGNATURE AND DATE ON ONE LINE, Stephen 2026-08-26: "This will remove
     // the date placeholders and allow then to write it on the same line as

@@ -1079,6 +1079,18 @@ blank line, and A-1-c carries the blank at the same position in the same paragra
 extraction dropped it from A-1-d alone, so this is PARITY BETWEEN THE TWO APPENDICES rather
 than a new layout.
 
+THE PAGE-BREAK ARTIFACT, THREE INSTANCES. All three departures below are the same bug in
+the source extraction: a page break in the JAGMAN PDF became a blank line in the middle of a
+paragraph, so one sentence read as two across white space. Stephen found every one of them
+by reading generated output, and none was visible in any unit test, because each appendix
+line was individually correct.
+
+| where | what read wrong | fix |
+|---|---|---|
+| A-1-d, rights (2) and (3) | no blank where every other numbered right has one | blank restored, matching A-1-c |
+| A-1-d, paragraph 4.a | "You are hereby informed" / blank / "that you have the right to remain silent" | blank removed, one sentence |
+| A-1-c and A-1-d, the consultation entry | "I consulted with ____, a" / blank / "lawyer, on ____." | blank removed, and both rules squared to end where the signature rule ends |
+
 TWO, the signature and its date on one line. His instruction: "This will remove the date
 placeholders and allow then to write it on the same line as teh signature." Four blocks
 across A-1-c and A-1-d now read
@@ -1118,6 +1130,18 @@ Four rules govern it:
    impose, under a list that correctly omitted it.
 4. THE PAY TABLE IS NAMED ONLY WHERE A FIGURE PRICED ON IT WAS PRINTED, and the figures are
    called ceilings, not amounts imposed.
+
+THE LIST IS SPACED. `renderMaximumPunishment` puts a blank line before every block but the
+first, items included, on Stephen's report: "we need proper hard spaces between each max
+punishment." Each entry is a separate punishment and several wrap to three lines. On the
+page an accused reads before deciding whether to refuse NJP, an unbroken wall is not a
+cosmetic problem.
+
+A NOTE ON `appendixWidth`, which is the LONGEST line in the appendix. Any line added to
+jagman-appendix-a1.ts sets the page's right margin and every wrap budget derived from it.
+A-1-c measures 64 and A-1-d measures 63, both unchanged through every edit above, and
+tests/njp-a1-layout.test.ts asserts those two numbers so a future edit cannot silently
+rewrap paragraphs elsewhere in the document.
 
 ### 11.8 The forfeiture ladder, MCM Part V para 5.c(8)
 
