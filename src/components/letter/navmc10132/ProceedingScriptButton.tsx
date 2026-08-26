@@ -9,11 +9,18 @@
  * the script." Exactly the state the rights advisement was in before its
  * button landed, and the same fix.
  *
- * WHY IT SITS IN THE PUNISHMENT SECTION. A-1-f is read ALOUD at the
- * hearing, and the hearing is where findings are made and punishment is
- * announced, which is pass 3. The rights advisement sits with item 2
- * because that is the moment it is SERVED; this sits with item 6 for the
- * same reason.
+ * WHY IT HAS ITS OWN SECTION, and no longer sits inside the punishment
+ * card. Stephen, 2026-08-26: it "should be in the Offenses and findings
+ * (items 1 and 5) or in its own section and not in the Punishment (Items 6
+ * and 10) as the results of the form will be added to the Punishment (Items
+ * 6 and 10) section."
+ *
+ * He is right and the original placement had the causation backwards. The
+ * script is the INPUT to the hearing: the commanding officer carries it in,
+ * reads it, and what comes out is written into items 5 and 6 afterwards.
+ * Filing it inside the card holding those results put the cause inside the
+ * effect. Its own card, between the offenses it reads out and the punishment
+ * it produces, is the order the proceeding actually runs in.
  *
  * IT GENERATES BEFORE THE HEARING, ON PURPOSE. The commanding officer reads
  * the script IN ORDER TO reach the findings and the punishment, so
@@ -35,7 +42,18 @@ import {
   scriptWorksheetGaps,
 } from '@/lib/njp-package';
 
-export function ProceedingScriptButton({ formData }: { formData: FormData }) {
+export function ProceedingScriptButton({
+  formData,
+  SectionCard,
+}: {
+  formData: FormData;
+  /** Optional, so the bare panel still renders for any caller without one. */
+  SectionCard?: React.ComponentType<{
+    icon: React.ReactNode;
+    title: string;
+    children: React.ReactNode;
+  }>;
+}) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const readiness = njpScriptReadiness(formData);
@@ -72,11 +90,10 @@ export function ProceedingScriptButton({ formData }: { formData: FormData }) {
     }
   };
 
-  return (
-    <div className="mt-4 space-y-2 rounded-md border border-dashed p-3">
+  const panel = (
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-medium">NJP proceeding script, JAGMAN Appendix A-1-f</p>
           <p className="text-[11px] text-muted-foreground">
             What the commanding officer reads aloud at the hearing. The violations are filled
             from item 1; the findings and the punishment are filled from items 5 and 6 if they
@@ -129,5 +146,18 @@ export function ProceedingScriptButton({ formData }: { formData: FormData }) {
         </p>
       )}
     </div>
+  );
+
+  // NO SECTION CARD, NO CARD. The button still renders bare where a caller
+  // has no SectionCard to give it, so nothing has to change twice.
+  if (!SectionCard) return <div className="mt-4 rounded-md border border-dashed p-3">{panel}</div>;
+
+  return (
+    <SectionCard
+      icon={<FileText className="mr-2 h-5 w-5" />}
+      title="NJP proceeding script (JAGMAN Appendix A-1-f)"
+    >
+      {panel}
+    </SectionCard>
   );
 }

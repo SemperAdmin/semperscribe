@@ -63,7 +63,7 @@ import {
   NAVMC_10132_EMPTY_OFFENSE, navmc10132StageAtLeast, type Navmc10132Offense, type Navmc10132Stage,
 } from '@/types/navmc';
 import { Gavel, Search, ShieldAlert, Plus, Lock, Trash2 } from 'lucide-react';
-import { navmc10132OffenseRowLocks } from '@/lib/navmc10132-locks';
+import { navmc10132ChargesClosed, navmc10132OffenseRowLocks } from '@/lib/navmc10132-locks';
 
 type SectionCardProps = { icon: React.ReactNode; title: string; children: React.ReactNode };
 
@@ -120,6 +120,14 @@ function isOffenseActive(offense: Navmc10132Offense): boolean {
 export function OffensesSection({ formData, setFormData, SectionCard, stage }: SectionProps) {
   const offenses = fiveOffenses(formData);
   const showFinding = navmc10132StageAtLeast(stage, 3);
+
+  /**
+   * NO SIXTH OFFENSE OVER A SIGNED ITEM 3. Stephen, 2026-08-26. The field
+   * locks close each FILLED row; an empty row carried no lock, because the
+   * form has none to place on a field with no value, so row F stayed addable
+   * over a certified charge sheet. See navmc10132ChargesClosed.
+   */
+  const chargesClosed = navmc10132ChargesClosed(formData);
 
   const lastActive = offenses.reduce(
     (acc, offense, index) => (isOffenseActive(offense) ? index : acc),
@@ -184,7 +192,7 @@ export function OffensesSection({ formData, setFormData, SectionCard, stage }: S
           />
         ))}
 
-        {visible < 5 && (
+        {visible < 5 && !chargesClosed && (
           <Button
             type="button"
             variant="outline"
@@ -194,6 +202,15 @@ export function OffensesSection({ formData, setFormData, SectionCard, stage }: S
             <Plus className="mr-1 h-3.5 w-3.5" />
             Add offense
           </Button>
+        )}
+
+        {chargesClosed && (
+          <p className="flex items-start gap-1 text-[11px] text-muted-foreground">
+            <Lock className="mt-0.5 h-3 w-3 shrink-0" />
+            The charge sheet is closed. Item 3 certifies the accused was advised of the
+            offenses as they stood when it was signed, so an offense added now is one the
+            accused was never advised of. A further offense needs a new proceeding.
+          </p>
         )}
 
         <p className="text-[11px] text-muted-foreground">

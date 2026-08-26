@@ -59,6 +59,7 @@ import { OffensesSection } from '@/components/letter/navmc10132/OffensesSection'
 import { AccusedElectionSection } from '@/components/letter/navmc10132/AccusedElectionSection';
 import { AccusedRankSection } from '@/components/letter/navmc10132/AccusedRankSection';
 import { PunishmentSection } from '@/components/letter/navmc10132/PunishmentSection';
+import { ProceedingScriptButton } from '@/components/letter/navmc10132/ProceedingScriptButton';
 import { SuspensionSection } from '@/components/letter/navmc10132/SuspensionSection';
 import { VictimsSection } from '@/components/letter/navmc10132/VictimsSection';
 import { NjpAuthoritySection } from '@/components/letter/navmc10132/NjpAuthoritySection';
@@ -286,6 +287,11 @@ export function Navmc10132FormSections({
       )}
       {navmc10132StageAtLeast(stage, 3) && (
         <>
+          {/* BEFORE THE PUNISHMENT, because the script is what the hearing is
+              conducted FROM and item 6 is what it produces. Same pass-3 gate
+              it had inside that card, so nothing about when it appears
+              changes; only where. */}
+          <ProceedingScriptButton formData={formData} SectionCard={SectionCard} />
           <PunishmentSection
             formData={formData}
             setFormData={setFormData}

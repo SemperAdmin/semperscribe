@@ -212,11 +212,15 @@ describe('the punishment section on a document whose item 9 is signed', () => {
     expect(screen.getByRole('button', { name: /^Add$/ })).toBeDisabled();
   });
 
-  // The record copy of what was read aloud is still wanted after the fact,
-  // and generating it changes nothing on the form.
-  it('leaves the A-1-f script generator reachable', () => {
+  /**
+   * MOVED OUT 2026-08-26. The script now has its own card ahead of this one,
+   * so the assertion here is the inverse: locking the punishment builder
+   * cannot hide the generator, because the generator is no longer inside it.
+   * Its own coverage lives in navmc10132-proceeding-script.test.tsx.
+   */
+  it('no longer carries the A-1-f generator at all', () => {
     show(signed());
-    expect(screen.getByText(/JAGMAN Appendix A-1-f/)).toBeInTheDocument();
+    expect(screen.queryByText(/JAGMAN Appendix A-1-f/)).not.toBeInTheDocument();
   });
 });
 

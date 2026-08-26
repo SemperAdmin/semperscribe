@@ -236,6 +236,44 @@ export function navmc10132OffenseRowLocks(
   };
 }
 
+/**
+ * Whether one named signature is APPLIED on the loaded file.
+ *
+ * DISTINCT FROM A LOCK, and the difference is the point. A lock says a
+ * signature closed a particular FIELD. This says a signature exists at all,
+ * which is what governs a question no field can answer: whether a new row
+ * may be added.
+ *
+ * Empty on a document with no file behind it, so nothing is ever closed by
+ * a signature the app has not read.
+ */
+export function navmc10132SignatureApplied(formData: FormData, signature: string): boolean {
+  const report: unknown = formData.navmc10132LoadReport;
+  if (!report || typeof report !== 'object') return false;
+  const signed = (report as { signedSignatures?: unknown }).signedSignatures;
+  return Array.isArray(signed) && signed.includes(signature);
+}
+
+/**
+ * The item 3 attestation, which closes the CHARGE SHEET rather than a field.
+ *
+ * STEPHEN, 2026-08-26: "once a signed item 3 is done we should not eb able
+ * to add more offenses". Item 3 reads "The accused has been afforded these
+ * rights under Article 31, UCMJ, and advised of the right to demand trial by
+ * court-martial", and the commanding officer certifies it. THESE rights are
+ * the ones concerning the offenses as they stood at that moment. A sixth
+ * offense added afterwards is one the accused was never advised of, and the
+ * certificate above it would say otherwise.
+ *
+ * The FIELD locks are a separate matter and already handled: the item 2
+ * signature closes each filled row's article and summary. Nothing closed an
+ * EMPTY row, because the form has no lock to place on a field with no value,
+ * which is why an empty row F stayed addable over a signed charge sheet.
+ */
+export function navmc10132ChargesClosed(formData: FormData): boolean {
+  return navmc10132SignatureApplied(formData, '3 RIGHTS ATTEST SIGNATURE');
+}
+
 /** True when this document was loaded from a file carrying signatures. */
 export function navmc10132HasLocks(formData: FormData): boolean {
   return lockedFieldNames(formData).size > 0;

@@ -28,7 +28,6 @@ import {
 } from '@/components/ui/select';
 import { IsoDatePicker } from '@/components/letter/navmc10132/IsoDatePicker';
 import { FormData } from '@/types';
-import { ProceedingScriptButton } from '@/components/letter/navmc10132/ProceedingScriptButton';
 import { LockedBadge, ReadOnlyValue } from '@/components/letter/navmc10132/OffensesSection';
 import {
   isNavmc10132KeyLocked,
@@ -492,7 +491,6 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
           </div>
         </div>
       </div>
-      <ProceedingScriptButton formData={formData} />
     </SectionCard>
   );
 }

@@ -23,7 +23,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { readFileSync, readdirSync } from 'fs';
 import { join, extname } from 'path';
 import { render, screen } from '@testing-library/react';
-import { PunishmentSection } from '@/components/letter/navmc10132/PunishmentSection';
+import { ProceedingScriptButton } from '@/components/letter/navmc10132/ProceedingScriptButton';
 import {
   njpScriptReadiness,
   announcedFindings,
@@ -106,13 +106,45 @@ describe('the A-1-f renderer is reachable from the UI', () => {
       .not.toHaveLength(0);
   });
 
-  it('the button is mounted by a section, not left as an orphan file', () => {
-    const callers = callersOf(
-      files,
-      'ProceedingScriptButton',
-      'components/letter/navmc10132/ProceedingScriptButton.tsx',
+  /**
+   * MOVED 2026-08-26, out of PunishmentSection and into its own card in the
+   * section list. Stephen: it "should be in the Offenses and findings (items
+   * 1 and 5) or in its own section and not in the Punishment (Items 6 and
+   * 10) as the results of the form will be added to the Punishment (Items 6
+   * and 10) section." The original placement had the causation backwards:
+   * the script is the INPUT to the hearing and items 5 and 6 are its output,
+   * so filing it inside the card holding the results put the cause inside
+   * the effect.
+   */
+  /**
+   * RENDERED, NOT MERELY IMPORTED, and the difference was found by testing
+   * the guard rather than the code. Deleting the JSX line while leaving the
+   * import behind kept this green: `callersOf` matches the NAME, and an
+   * unused import is a name. An imported-but-never-rendered component is the
+   * same dead code as an orphan file, one step further along.
+   */
+  it('the button is RENDERED by a section, not merely imported', () => {
+    const mounting = files.filter(
+      ([path, src]) =>
+        path !== 'components/letter/navmc10132/ProceedingScriptButton.tsx' &&
+        src.includes('<ProceedingScriptButton'),
     );
-    expect(callers).toContain('components/letter/navmc10132/PunishmentSection.tsx');
+    expect(mounting.map(([path]) => path)).toContain('components/letter/Navmc10132Sections.tsx');
+  });
+
+  // The same tightening on the rights advisement, the other A-1 generator.
+  it('the same holds for the rights election button', () => {
+    const mounting = files.filter(([, src]) => src.includes('<RightsElectionButton'));
+    expect(mounting).not.toHaveLength(0);
+  });
+
+  // The card it used to live inside no longer carries it.
+  it('the punishment card no longer holds it', () => {
+    const punishment = files.find(
+      ([path]) => path === 'components/letter/navmc10132/PunishmentSection.tsx',
+    );
+    expect(punishment).toBeDefined();
+    expect(punishment![1]).not.toContain('ProceedingScriptButton');
   });
 
   // The rights advisement was in this same state once. Asserting it beside
@@ -344,38 +376,43 @@ function StubSectionCard({ title, children }: { icon: React.ReactNode; title: st
   );
 }
 
-function renderPunishmentSection(formData: FormData) {
-  return render(
-    <PunishmentSection formData={formData} setFormData={vi.fn()} SectionCard={StubSectionCard} />,
-  );
+function renderScriptCard(formData: FormData) {
+  return render(<ProceedingScriptButton formData={formData} SectionCard={StubSectionCard} />);
 }
 
-describe('the panel in the punishment section', () => {
-  it('is on screen where findings and punishment are recorded', () => {
-    renderPunishmentSection(doc({ offenses: [AWOL] }));
-    expect(screen.getByText(/JAGMAN Appendix A-1-f/)).toBeInTheDocument();
+describe('the script card', () => {
+  it('is a card of its own, titled for the appendix it produces', () => {
+    renderScriptCard(doc({ offenses: [AWOL] }));
+    expect(screen.getByRole('heading', { name: /JAGMAN Appendix A-1-f/ })).toBeInTheDocument();
+  });
+
+  // Every caller in the app supplies one, and the bare panel stays available
+  // so a future caller without a card is not forced to invent one.
+  it('renders bare when no section card is supplied', () => {
+    render(<ProceedingScriptButton formData={doc({ offenses: [AWOL] })} />);
+    expect(screen.getByRole('button', { name: /Generate/ })).toBeInTheDocument();
   });
 
   it('the Generate button is disabled until an offense is charged', () => {
-    renderPunishmentSection(doc());
+    renderScriptCard(doc());
     expect(screen.getByRole('button', { name: /Generate/ })).toBeDisabled();
     expect(screen.getByText(/Still needed/)).toBeInTheDocument();
   });
 
   it('the Generate button is live on one charged offense, with nothing else set', () => {
-    renderPunishmentSection(doc({ offenses: [AWOL] }));
+    renderScriptCard(doc({ offenses: [AWOL] }));
     expect(screen.getByRole('button', { name: /Generate/ })).toBeEnabled();
   });
 
   // Saying so up front is the difference between a CO who knows the rule is
   // blank and a CO who finds out at the hearing.
   it('says the findings rule will print blank when no guilty finding is recorded', () => {
-    renderPunishmentSection(doc({ offenses: [AWOL] }));
+    renderScriptCard(doc({ offenses: [AWOL] }));
     expect(screen.getByText(/No guilty finding is recorded yet/)).toBeInTheDocument();
   });
 
   it('counts the guilty findings it will announce, not the offenses', () => {
-    renderPunishmentSection(
+    renderScriptCard(
       doc({ offenses: [{ ...AWOL, finding: 'Guilty' }, { ...DISRESPECT, finding: 'Not Guilty' }] }),
     );
     expect(screen.getByText(/1 guilty finding will be announced/)).toBeInTheDocument();
