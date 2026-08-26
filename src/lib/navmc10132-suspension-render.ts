@@ -131,7 +131,21 @@ function renderOneSuspension(
  * each 1:1 with an entry in `punishments`.
  *
  * Empty `suspensions` renders the literal word NONE, matching the item 7
- * instruction's own prescribed text for no suspension.
+ * instruction's own prescribed text for no suspension, BUT ONLY WHERE A
+ * PUNISHMENT HAS BEEN IMPOSED. With item 6 empty the result is the empty
+ * string.
+ *
+ * STEPHEN, 2026-08-26: "item 7 cannot show NONE until after they conduct the
+ * NJP otherwise its predetermined." He is right, and the reasoning is the
+ * definition of the field. A suspension is a decision ABOUT an imposed
+ * punishment: which punishment is suspended, for how long, and on what terms
+ * it is remitted. With nothing imposed there is no decision to record, and
+ * NONE is not a neutral placeholder, it is an assertion that the commanding
+ * officer considered suspension and declined it. Printed before the
+ * proceeding, it states an outcome nobody has reached.
+ *
+ * The item 7 instruction prescribing NONE governs a COMPLETED form, which is
+ * the only kind of form it was written about.
  *
  * A non-empty `suspensions` renders each entry through renderOneSuspension
  * and joins them with a single space, so each suspension reads as its own
@@ -164,7 +178,9 @@ export function renderSuspension(
   length: number;
 } {
   if (suspensions.length === 0) {
-    const text = 'NONE';
+    // NO PUNISHMENT, NO DECISION. See the note above: NONE asserts that
+    // suspension was considered and declined, so it waits for item 6.
+    const text = punishments.length === 0 ? '' : 'NONE';
     return { text, length: text.length };
   }
 

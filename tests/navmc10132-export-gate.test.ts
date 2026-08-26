@@ -97,6 +97,22 @@ function offensesWith(...rows: Partial<Navmc10132Offense>[]): Navmc10132Offense[
 // leaving it allowlisted.
 // ---------------------------------------------------------------------------
 
+/**
+ * V-05's SUBJECT IS A PUNISHMENT WITH NO SUSPENSION RECORDED, from
+ * 2026-08-26. Its empty branch is silent while item 6 is empty, because
+ * telling a clerk to "Enter the literal word NONE" on a document with
+ * nothing imposed instructs the exact predetermination Stephen ruled out
+ * ("item 7 cannot show NONE until after they conduct the NJP otherwise its
+ * predetermined"), and it fired beside the empty-item-6 blocker, stating one
+ * fact twice.
+ *
+ * So V-04 and V-05 are probed on DIFFERENT shapes below: item 6 empty for
+ * V-04, and item 6 filled with item 7 blank for V-05. Both boundaries stay
+ * tested, and neither rule is asserted on a document where it has nothing
+ * to say.
+ */
+const V05_SHAPE = { punishments: [{ code: 'N09', days: '10' }], suspension: '' };
+
 describe('V-01 stops the export: no offense row carries an article', () => {
   it('blocks when every offense row is empty, clears when one row has an article', () => {
     // The official form's own item 1 /V (validate) script tests row A only
@@ -240,7 +256,7 @@ describe('V-05 stops the export: item 7 suspension text is empty', () => {
     // the same pass as item 6, and the empty-item-7 branch is stage-scoped:
     // it stays silent before pass 3. See the "stage-scoped" describe block
     // below for the pass-1-stays-silent proof.
-    const blocking = baseForm({ suspension: '', stage: 3 });
+    const blocking = baseForm({ ...V05_SHAPE, stage: 3 });
     expect(getExportBlockers(blocking, [], [], []).some((i) => i.id.startsWith('navmc10132-v05-'))).toBe(true);
 
     // Only `suspension` changes, to the literal word the instruction asks for.
@@ -1096,11 +1112,19 @@ describe('Stage scoping: a fresh pass-1 document is not blocked on pass-3/pass-6
 
     const atPass2 = getExportBlockers(baseForm({ ...shape, stage: 2 }), [], [], []);
     expect(atPass2.some((i) => i.id.startsWith('navmc10132-v04-punishment-empty'))).toBe(false);
-    expect(atPass2.some((i) => i.id.startsWith('navmc10132-v05-suspension-empty'))).toBe(false);
+    expect(
+      getExportBlockers(baseForm({ ...V05_SHAPE, stage: 2 }), [], [], []).some((i) =>
+        i.id.startsWith('navmc10132-v05-suspension-empty'),
+      ),
+    ).toBe(false);
 
     const atPass3 = getExportBlockers(baseForm({ ...shape, stage: 3 }), [], [], []);
     expect(atPass3.some((i) => i.id.startsWith('navmc10132-v04-punishment-empty'))).toBe(true);
-    expect(atPass3.some((i) => i.id.startsWith('navmc10132-v05-suspension-empty'))).toBe(true);
+    expect(
+      getExportBlockers(baseForm({ ...V05_SHAPE, stage: 3 }), [], [], []).some((i) =>
+        i.id.startsWith('navmc10132-v05-suspension-empty'),
+      ),
+    ).toBe(true);
     // Item 13 has not opened yet at pass 3.
     expect(atPass3.some((i) => i.id.startsWith('navmc10132-v08-item13-neither'))).toBe(false);
 
@@ -1129,7 +1153,11 @@ describe('Stage scoping does not weaken the gate on a finished document', () => 
     });
     const blockers = getExportBlockers(form, [], [], []);
     expect(blockers.some((i) => i.id.startsWith('navmc10132-v04-punishment-empty'))).toBe(true);
-    expect(blockers.some((i) => i.id.startsWith('navmc10132-v05-suspension-empty'))).toBe(true);
+    expect(
+      getExportBlockers(baseForm({ ...V05_SHAPE, stage: 7 }), [], [], []).some((i) =>
+        i.id.startsWith('navmc10132-v05-suspension-empty'),
+      ),
+    ).toBe(true);
     expect(blockers.some((i) => i.id.startsWith('navmc10132-v08-item13-neither'))).toBe(true);
   });
 
@@ -1143,7 +1171,11 @@ describe('Stage scoping does not weaken the gate on a finished document', () => 
     });
     const blockers = getExportBlockers(form, [], [], []);
     expect(blockers.some((i) => i.id.startsWith('navmc10132-v04-punishment-empty'))).toBe(true);
-    expect(blockers.some((i) => i.id.startsWith('navmc10132-v05-suspension-empty'))).toBe(true);
+    expect(
+      getExportBlockers(baseForm({ ...V05_SHAPE, stage: 'complete' }), [], [], []).some((i) =>
+        i.id.startsWith('navmc10132-v05-suspension-empty'),
+      ),
+    ).toBe(true);
     expect(blockers.some((i) => i.id.startsWith('navmc10132-v08-item13-neither'))).toBe(true);
   });
 
@@ -1170,7 +1202,13 @@ describe('Stage scoping does not weaken the gate on a finished document', () => 
 
     const blockers = getExportBlockers(form, [], [], []);
     expect(blockers.some((i) => i.id.startsWith('navmc10132-v04-punishment-empty'))).toBe(true);
-    expect(blockers.some((i) => i.id.startsWith('navmc10132-v05-suspension-empty'))).toBe(true);
+    const noStageV05 = baseForm({ ...V05_SHAPE, appealDate: '', notAppealed: false });
+    delete (noStageV05 as { stage?: unknown }).stage;
+    expect(
+      getExportBlockers(noStageV05, [], [], []).some((i) =>
+        i.id.startsWith('navmc10132-v05-suspension-empty'),
+      ),
+    ).toBe(true);
     expect(blockers.some((i) => i.id.startsWith('navmc10132-v08-item13-neither'))).toBe(true);
   });
 });

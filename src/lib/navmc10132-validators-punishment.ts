@@ -293,6 +293,18 @@ export function suspensionTermsIssues(formData: FormData): ValidationIssue[] {
 
   if (trimmed === '') {
     if (!navmc10132StageAtLeast(navmc10132ExportGateStage(formData), 3)) return [];
+    /**
+     * SILENT WHILE ITEM 6 IS EMPTY, added 2026-08-26 with Stephen's ruling
+     * that "item 7 cannot show NONE until after they conduct the NJP
+     * otherwise its predetermined".
+     *
+     * This rule told the clerk to "Enter the literal word NONE", so on a
+     * document with no punishment imposed it was instructing exactly the
+     * predetermination he objected to. It also fired BESIDE the empty-item-6
+     * blocker, which is the same fact stated once as a cause and once as its
+     * consequence. One truth, one blocker: no punishment imposed.
+     */
+    if (punishmentEntries(formData).length === 0) return [];
     return [
       issue(
         'navmc10132-v05-suspension-empty',

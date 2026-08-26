@@ -486,6 +486,13 @@ describe('V-04, item 6 punishment must not be empty', () => {
 });
 
 describe('V-05, item 7 suspension must be NONE or a specific suspension with terms', () => {
+  // The other half of the same rule: no punishment, no complaint about the
+  // suspension of one.
+  it('stays silent on an empty item 7 while item 6 is empty', () => {
+    const form = baseForm({ suspension: '', stage: 3, punishments: [] });
+    expect(suspensionTermsIssues(form)).toEqual([]);
+  });
+
   it('trips block when item 7 is empty', () => {
     // stage: 3 — item 7 is a pass-3 field (D-43, D-46, spec section 13.1),
     // the same pass as item 6. The empty-item-7 branch is stage-scoped and
@@ -494,7 +501,18 @@ describe('V-05, item 7 suspension must be NONE or a specific suspension with ter
     // the export-gate stage tests (tests/navmc10132-export-gate.test.ts)
     // for the pass-1 case proving this same branch stays SILENT on a
     // fresh document.
-    const form = baseForm({ suspension: '', stage: 3 });
+    //
+    // A PUNISHMENT IS PART OF THE FIXTURE NOW, from 2026-08-26. V-05's empty
+    // branch is silent while item 6 is empty: it told the clerk to "Enter
+    // the literal word NONE", which on a document with nothing imposed
+    // instructs the exact predetermination Stephen ruled out, and it fired
+    // beside the empty-item-6 blocker, stating one fact twice. Its real
+    // subject is a punishment imposed with item 7 left blank.
+    const form = baseForm({
+      suspension: '',
+      stage: 3,
+      punishments: [{ code: 'N09', days: '10' }],
+    });
     const issues = suspensionTermsIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toBe('navmc10132-v05-suspension-empty');

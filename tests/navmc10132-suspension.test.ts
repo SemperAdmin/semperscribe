@@ -30,10 +30,23 @@ function baseForm(overrides: Record<string, unknown> = {}): FormData {
 }
 
 describe('renderSuspension, empty suspensions', () => {
-  it('renders exactly NONE with no suspensions and no punishments', () => {
+  /**
+   * REVERSED 2026-08-26. This asserted NONE with nothing imposed. Stephen:
+   * "item 7 cannot show NONE until after they conduct the NJP otherwise its
+   * predetermined."
+   *
+   * NONE IS NOT A NEUTRAL PLACEHOLDER. It asserts the commanding officer
+   * considered suspension and declined it, and a suspension is a decision
+   * ABOUT an imposed punishment: which one, for how long, remitted on what
+   * terms. With item 6 empty there is no decision to record, and printing
+   * NONE states an outcome nobody has reached. The item 7 instruction
+   * prescribing NONE governs a COMPLETED form, the only kind it was written
+   * about.
+   */
+  it('renders EMPTY with no punishment imposed, because NONE would predetermine', () => {
     const result = renderSuspension([], []);
-    expect(result.text).toBe('NONE');
-    expect(result.length).toBe(4);
+    expect(result.text).toBe('');
+    expect(result.length).toBe(0);
   });
 
   it('renders exactly NONE even when punishments are imposed but none is suspended', () => {
