@@ -90,7 +90,6 @@ const OFFENSE_CODE_WIDTH = 8;
 /** Column width for a punishment code or the CONCURRENT marker. */
 const PUNISHMENT_LABEL_WIDTH = 11;
 
-const NOT_CAPTURED = '[not captured in SemperScribe]';
 
 // ---------------------------------------------------------------------------
 // Narrowing accessors, copied from navmc10132-acroform.ts's pattern.
@@ -329,11 +328,15 @@ export function unitDiaryBlock(formData: FormData): UnitDiaryBlock {
   lines.push(requiredLine('GRADE', accusedRankGrade, 'accused rank/grade (item 19)', missing));
   lines.push(requiredLine('EDIPI', accusedEdipi, 'accused EDIPI (item 20)', missing));
   lines.push(requiredLine('UNIT', unit, 'unit (item 17)', missing));
-  // RUC has no field on Navmc10132Data at all (src/types/navmc.ts). No
-  // amount of filling out this form produces it, so unlike every other
-  // blank line above, it is not added to `missing`, that list is for data
-  // the form COULD still carry.
-  lines.push(`${label('RUC', LABEL_WIDTH)}${NOT_CAPTURED}`);
+  // NO RUC LINE. Stephen, 2026-08-26: take it off the panel and the export.
+  //
+  // It used to print `RUC  [not captured in SemperScribe]`, which was true
+  // and useless. The NAVMC 10132 has no RUC field, so no amount of filling
+  // out this form produces one, and the clerk reading this block is entering
+  // it in their OWN unit's diary and already knows the RUC. A permanent
+  // placeholder for something that was never going to arrive reads as a gap
+  // in the handoff rather than as a fact about the form, and it took a line
+  // on every printed worksheet to say nothing.
   lines.push('');
   lines.push(
     requiredLine('NJP DATE', punishmentDate, 'punishment imposition date (item 6 date)', missing)
@@ -369,9 +372,10 @@ export function unitDiaryBlock(formData: FormData): UnitDiaryBlock {
   );
   // The UD number does not exist until AFTER the clerk acts on this very
   // block (see the alreadyReported comment above), so an empty item 16 is
-  // the same class of gap as RUC, something no amount of filling out THIS
-  // form produces, not the same class as EDIPI, something the form could
-  // carry right now. It is never added to `missing` for that reason.
+  // not the same class of gap as EDIPI, which the form could carry right
+  // now. It is never added to `missing` for that reason. It still PRINTS,
+  // unlike the RUC line removed above, because this one is filled in by the
+  // clerk's own action and is the round trip back into item 16.
   lines.push(
     `${label('UD ENTRY', LABEL_WIDTH)}${alreadyReported ? alreadyReported.ud : '[not yet recorded]'}`
   );

@@ -472,3 +472,49 @@ describe('appealPending', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// THE RUC LINE, REMOVED 2026-08-26 ON STEPHEN'S RULING.
+//
+// It printed `RUC  [not captured in SemperScribe]` on every block, and so on
+// every printed worksheet. True and useless: the NAVMC 10132 has no RUC
+// field, so no amount of filling the form produces one, and the clerk
+// entering this block is working in their own unit's diary and knows their
+// own RUC. A permanent placeholder for something that was never going to
+// arrive reads as a gap in the handoff rather than a fact about the form.
+//
+// GUARDED RATHER THAN JUST DELETED. Nothing asserted the line existed, so
+// nothing failed when it went, which means nothing would fail if it came
+// back either. This is that assertion, inverted.
+// ---------------------------------------------------------------------------
+describe('the block carries no RUC placeholder', () => {
+  const guilty = {
+    ...IDENTITY_FIELDS,
+    offenses: offensesWith({
+      articleLabel: resolveArticle('Art. 86  Absence without leave')?.formLabel ?? '',
+      summary: 'UA 3 days',
+      finding: 'Guilty',
+    }),
+  };
+
+  it('prints no RUC label and no "not captured" placeholder', () => {
+    const text = unitDiaryBlock(baseForm(guilty)).text;
+    expect(text).not.toContain('not captured in SemperScribe');
+    expect(text.split('\n').some((line) => /^RUC\b/.test(line))).toBe(false);
+  });
+
+  it('still prints the four identity lines around where it used to sit', () => {
+    // Guards the guard: a block that lost MARINE, GRADE, EDIPI and UNIT too
+    // would pass the assertion above for the wrong reason.
+    const text = unitDiaryBlock(baseForm(guilty)).text;
+    for (const label of ['MARINE', 'GRADE', 'EDIPI', 'UNIT']) {
+      expect(text.split('\n').some((line) => line.startsWith(label))).toBe(true);
+    }
+  });
+
+  it('keeps UD ENTRY, which is filled by the clerk rather than never arriving', () => {
+    const text = unitDiaryBlock(baseForm(guilty)).text;
+    expect(text).toContain('UD ENTRY');
+    expect(text).toContain('[not yet recorded]');
+  });
+});
