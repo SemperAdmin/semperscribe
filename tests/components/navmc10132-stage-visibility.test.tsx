@@ -451,3 +451,52 @@ describe('the appeal block opens its fields pass by pass, not all at once', () =
     expect(orphans, 'APPEAL_FIELD_PASS names fields the appeal section no longer has').toEqual([]);
   });
 });
+
+describe('section order, and the one section this form does not get', () => {
+  /** True when `first` appears before `second` in the rendered document. */
+  const precedes = (first: HTMLElement, second: HTMLElement): boolean =>
+    (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+
+  /**
+   * ITEM 2 SITS AFTER ITEM 22, which is not form order. Stephen's placement,
+   * 2026-08-26. On paper item 2 is near the top of page 1 and item 22 is on
+   * page 2, so this is deliberate, and it is asserted here so a future
+   * reader finds the intent rather than assuming a mistake.
+   *
+   * THE REASON IS WORK ORDER, NOT PRINT ORDER. The election is what the
+   * accused signs, and the A-1-c/A-1-d advisement generated from that card
+   * needs the offenses, the rank and the unit already entered. Reaching it
+   * last puts every input it depends on behind the clerk.
+   *
+   * NOTHING ABOUT THE EXPORT DEPENDS ON THIS. navmc10132-acroform.ts writes
+   * by field name, never by section order.
+   */
+  it('renders the accused election after the victim block', () => {
+    renderSections(baseFormData({ stage: 'complete' } as Partial<FormData>));
+    expect(precedes(screen.getByText(TITLES.victims), screen.getByText(TITLES.election))).toBe(true);
+  });
+
+  it('still renders the offenses before both of them', () => {
+    renderSections(baseFormData({ stage: 'complete' } as Partial<FormData>));
+    expect(precedes(screen.getByText(TITLES.offenses), screen.getByText(TITLES.victims))).toBe(true);
+    expect(precedes(screen.getByText(TITLES.offenses), screen.getByText(TITLES.election))).toBe(true);
+  });
+
+  /**
+   * The section places NEW CAC signature fields on a generated PDF, which is
+   * right for a letter the app authors from nothing. The NAVMC 10132 already
+   * CARRIES seven signature fields in its official AcroForm, and those are
+   * the ones a signer signs and navmc10132-pdf-read.ts reads back to decide
+   * the pass and the locks. A further field placed on top would be a
+   * signature no part of this app looks at, over a form whose own fields
+   * were left empty.
+   */
+  it('turns off signature-field placement for this document type', () => {
+    expect(DOCUMENT_TYPES['navmc10132'].features.showSignature).toBe(false);
+  });
+
+  // Scoped to this type, not removed from the app.
+  it('leaves every other document type able to place them', () => {
+    expect(DOCUMENT_TYPES['basic'].features.showSignature).toBe(true);
+  });
+});

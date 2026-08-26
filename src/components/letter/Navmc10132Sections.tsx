@@ -263,12 +263,6 @@ export function Navmc10132FormSections({
         SectionCard={SectionCard}
         stage={stage}
       />
-      <AccusedElectionSection
-        formData={formData}
-        setFormData={setFormData}
-        SectionCard={SectionCard}
-        stage={stage}
-      />
       {showAbsence && navmc10132StageAtLeast(stage, 3) && (
         <FormBlock>
           <DynamicForm
@@ -328,6 +322,22 @@ export function Navmc10132FormSections({
         formData={formData}
         setFormData={setFormData}
         SectionCard={SectionCard}
+      />
+      {/* ITEM 2 SITS AFTER ITEM 22, NOT IN FORM ORDER. Stephen's placement,
+          2026-08-26. On paper item 2 is near the top of page 1 and item 22 is
+          on page 2, so this deliberately breaks form order, and the reason is
+          the WORK order rather than the print order: the election is what the
+          accused SIGNS, and the JAGMAN A-1-c/A-1-d advisement generated from
+          this card needs the offenses, the rank and the unit already entered.
+          Reaching it last means every input it depends on is behind the
+          clerk rather than ahead. Nothing about the exported PDF changes:
+          navmc10132-acroform.ts writes by field name, never by section
+          order. */}
+      <AccusedElectionSection
+        formData={formData}
+        setFormData={setFormData}
+        SectionCard={SectionCard}
+        stage={stage}
       />
       <RemarksSection
         formData={formData}

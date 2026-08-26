@@ -1523,6 +1523,25 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
     // The official form carries its own CUI artwork. The app adds no
     // markings, consistent with the 10922 decision.
     showClassification: false,
+    /**
+     * NO SIGNATURE-FIELD PLACEMENT ON THIS FORM. Stephen, 2026-08-26:
+     * "remove the Configure Signature Fields section".
+     *
+     * The section exists to place NEW CAC signature fields onto a generated
+     * PDF, which is right for a naval letter the app authors from nothing.
+     * The NAVMC 10132 already CARRIES its signature fields: seven of them,
+     * `2 ACC ELECTION AND RIGHTS SIGNATURE` through `16 FINAL ADMIN INIT`,
+     * built into the official AcroForm. Those are the fields a signer signs
+     * and the ones navmc10132-pdf-read.ts reads back to decide the pass and
+     * the locks. Placing a further field on top would produce a signature
+     * no part of this app looks at, over a form whose own fields were left
+     * empty.
+     *
+     * SCOPED TO THIS DOCUMENT TYPE, not removed from the app. Every other
+     * type still inherits `showSignature: true` from
+     * STANDARD_LETTER_FEATURES.
+     */
+    showSignature: false,
     category: 'forms',
     pdfPipeline: 'navmc10132',
     exportFormats: ['pdf'],
