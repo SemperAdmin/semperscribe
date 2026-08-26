@@ -92,7 +92,16 @@ export function generateShareableUrl(
   try {
     const encoded = encodeStateForUrl({ ...state, version: CURRENT_VERSION });
     const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '');
-    const url = `${base}?share=${encoded}`;
+    // THE FRAGMENT, NOT THE QUERY STRING. A query string is sent to the
+    // server on every request and lands in server logs, proxy logs, and the
+    // Referer header of whatever the page loads next. This link carries a
+    // whole document, and for a NAVMC 10132 that is the accused's name,
+    // EDIPI, offenses and punishment. The fragment never leaves the browser.
+    //
+    // The encrypted variant below has used the fragment since it was
+    // written; this one did not, which meant the UNPROTECTED format was the
+    // one leaking. Legacy `?share=` links still decode, see getStateFromUrl.
+    const url = `${base}${SHARE_HASH_PREFIX}${encoded}`;
 
     const isLong = url.length > MAX_URL_LENGTH;
 
@@ -111,27 +120,55 @@ export function generateShareableUrl(
 }
 
 /**
- * Extracts and decodes state from URL search params
+ * Where an unencrypted share link carries its payload.
+ *
+ * Declared above `generateShareableUrl` in reading order but hoisted here
+ * beside the reader, because the two have to agree and a reader looking at
+ * one should see the other.
+ */
+export const SHARE_HASH_PREFIX = '#s=';
+
+/**
+ * Extracts and decodes state from a share link.
+ *
+ * READS BOTH FORMS. `#s=` is what this app now writes. `?share=` is what it
+ * wrote before 2026-08-26, and links in circulation carry it, so they keep
+ * working rather than opening an app with an empty document.
+ *
+ * BOTH ARE UNPROTECTED and both go through the same consent gate in
+ * useShareLinkLoader. Moving the payload out of the query string stops it
+ * reaching server logs; it does nothing about the link being
+ * attacker-constructable, which is a different problem with its own answer.
  */
 export function getStateFromUrl(): ShareableState | null {
   if (typeof window === 'undefined') return null;
 
+  const hash = window.location.hash;
+  if (hash.startsWith(SHARE_HASH_PREFIX)) {
+    const encoded = hash.slice(SHARE_HASH_PREFIX.length);
+    if (encoded.length > 0) return decodeStateFromUrl(encoded);
+  }
+
   const params = new URLSearchParams(window.location.search);
   const encoded = params.get('share');
-
   if (!encoded) return null;
 
   return decodeStateFromUrl(encoded);
 }
 
 /**
- * Clears the share parameter from the URL without reloading
+ * Clears the share payload from the URL without reloading.
+ *
+ * CLEARS BOTH, because either one could have brought the document in and
+ * leaving the payload in the address bar means it reaches the next
+ * screenshot, the next copied URL, and the browser history.
  */
 export function clearShareParam(): void {
   if (typeof window === 'undefined') return;
 
   const url = new URL(window.location.href);
   url.searchParams.delete('share');
+  if (url.hash.startsWith(SHARE_HASH_PREFIX)) url.hash = '';
   window.history.replaceState({}, '', url.toString());
 }
 

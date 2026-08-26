@@ -165,12 +165,20 @@ export function ShareLinkDialog({ open, onOpenChange, onCreate }: ShareLinkDialo
             <Label htmlFor="share-no-password" className="cursor-pointer">
               Create an unprotected link
             </Label>
+            {/* CORRECTED 2026-08-26 rather than added to. This warning said
+                unprotected links "appear in server logs", which was true while
+                the payload rode the query string and stopped being true when
+                it moved to the fragment (url-state.ts). A warning naming a
+                risk the code no longer has teaches a user to discount the ones
+                it does have. What survives the move is the bigger half: the
+                document is IN the link. */}
             {noPassword && (
               <p className="text-xs text-destructive flex items-start gap-1">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
-                Anyone with the link reads the full document. Unprotected links
-                also appear in server logs and browser history. Never use one
-                for sensitive content.
+                Anyone with the link reads the full document. The document travels
+                inside the link itself, so it goes wherever the link goes: email,
+                chat, browser history, a screenshot of the address bar. Never use
+                one for sensitive content.
               </p>
             )}
           </div>
