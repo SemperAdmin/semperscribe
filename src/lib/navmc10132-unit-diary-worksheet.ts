@@ -250,9 +250,15 @@ export function unitDiaryWorksheet(formData: FormData, perPage: number): UnitDia
 
   // --- 1. The HIST text -------------------------------------------------
   const histLines = [
-    ...heading(1, 'HIST statement text'),
-    'MCTFSPRIUM 70503 wants the statistical information and all punishment awarded',
-    'on the TTC 268 history statement. This is that text.',
+    ...heading(1, 'The case at a glance'),
+    // THIS SECTION IS NOT THE HIST SEGMENT, and saying it was became wrong on
+    // 2026-08-26. MCTFSPRIUM 70503 puts the history statement ON the TTC 268
+    // line, and since Stephen supplied that paragraph the transaction in
+    // section 3 carries it. What follows is the fuller transcription aid: a
+    // labelled block a clerk reads to check the entry against the form.
+    'What the form carries, laid out to be read against the entry. The history',
+    'statement the TTC 268 needs is ON that transaction in section 3, built from',
+    'this same data.',
     '',
     ...block.text.split('\n').flatMap(fitProseLine),
     '',

@@ -363,6 +363,75 @@ export function reducedGradeField(gradeReducedTo: string): {
   return { value, overLength: value.length > TTC_056_GRADE_BYTES };
 }
 
+/**
+ * The history statement the TTC 268 line carries.
+ *
+ * MCTFSPRIUM 70503 does not give this one a bracketed placeholder the way
+ * 70507.4 gives TTC 056 its `[E]`. It writes the requirement into the
+ * template itself: "HIST: History statement should include statistical
+ * information (That is, Violation Article 92) and all punishment awarded."
+ * So the SHAPE is quoted and the CONTENT is prescribed rather than
+ * positional, and both halves of what it prescribes are on the form.
+ *
+ * THE STATISTICAL INFORMATION is the article violated, which the paragraph's
+ * own parenthetical settles by example. Every guilty finding's article, in
+ * row order, deduplicated the same way the TTC 212 slots are, because two
+ * offense labels can be one punitive article.
+ *
+ * ALL PUNISHMENT AWARDED is item 6, rendered through its own template so the
+ * history statement and the form say the same words, exactly as the
+ * standalone history statements below do.
+ *
+ * WHY THIS IS NOT A POINTER TO THE TRANSCRIPTION AID. The aid is a multi
+ * line block with labels and columns; a transaction line is one string. The
+ * aid remains what a clerk reads for the fuller picture, and this is what
+ * goes in the entry.
+ */
+export function njpHistoryStatement(formData: FormData): string {
+  const parts: string[] = [];
+
+  const articles = guiltyArticles(formData).articles;
+  if (articles.length > 0) {
+    parts.push(articles.map((article) => `VIOLATION ARTICLE ${article.code}`).join(', '));
+  }
+
+  const awarded: string[] = [];
+  for (const entry of punishmentEntries(formData)) {
+    const punishment = resolvePunishment(entry.code);
+    if (!punishment) continue;
+
+    // A REDUCTION IS SAID THE WAY THE PRIUM SAYS IT, not the way item 6 does.
+    //
+    // Item 6's template is written for a 123-character field and renders
+    // "To be red to LCpl", which uppercases to "TO BE RED TO LCPL". In a
+    // remark MCTFS retains permanently, "RED" reads as a colour. MCTFSPRIUM
+    // 70507.4 gives this app the words for a reduction, "REDUCED" followed
+    // by the 6-byte grade abbreviation, and the TTC 056 on the same sheet
+    // already prints exactly that. So the two agree, and they agree on the
+    // vocabulary of the record rather than on an abbreviation invented for a
+    // narrow box.
+    //
+    // ONLY THE REDUCTION. Every other punishment keeps item 6's wording,
+    // because for those the PRIUM gives this app no vocabulary of its own
+    // and item 6 is the only source there is. The rule is: prefer the
+    // paragraph's words where the paragraph has been supplied.
+    if (punishment.parameters.includes('gradeReducedTo')) {
+      const grade = reducedGradeField(entry.gradeReducedTo ?? '');
+      awarded.push(`REDUCED ${grade.value || '[GRADE]'}`);
+      continue;
+    }
+
+    const text = historyPunishmentText(punishment, entry);
+    // A punishment item 6 has not finished collecting is named without its
+    // amount rather than dropped. Dropping it would understate the record in
+    // the remark MCTFS retains permanently.
+    awarded.push(text ?? `${punishment.description} [AMOUNT]`);
+  }
+  if (awarded.length > 0) parts.push(awarded.join(', '));
+
+  return parts.join('. ');
+}
+
 export function mctfsNjpStatements(formData: FormData): MctfsReport {
   const statements: MctfsStatement[] = [];
   const blockers: string[] = [];
@@ -435,21 +504,43 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
   }
 
   // --- TTC 268 000, the NJP itself -------------------------------------
-  statements.push(cautionUnlessQuoted({
+  // BUILT AGAINST THE TEMPLATE, supplied by Stephen on 2026-08-26:
+  //
+  //   TTC 268 000 [A] NJP AWD VESSEL OPT [B] LAWYER OPT [C] ED [D] | HIST: ...
+  //
+  //   [A] 8-byte Date of Action (YYYYMMDD)
+  //   [B] VESSEL OPT
+  //   [C] LAWYER OPT
+  //   [D] 8-byte Effective Date (YYYYMMDD) of the nonjudicial punishment
+  //
+  // THE LINE USED TO STOP AT THE PIPE. The HIST segment is part of the
+  // template, not advice about it, and the app carried it only as a note
+  // telling the clerk to go and find the text somewhere else. A clerk keying
+  // what the sheet showed entered a TTC 268 with no history statement, and
+  // 70503 says this posts to the Marine's record and is retained permanently
+  // in the MCTFS 119 remark. See njpHistoryStatement for what fills it.
+  //
+  // NO TRAILING PIPE, and the difference from TTC 056 is in the source
+  // rather than in a decision here. 70507.4 writes "| HIST: [E] |" with a
+  // bracketed field and a closing delimiter; 70503 writes "| HIST:" and then
+  // runs the requirement in as prose with no closing delimiter and no
+  // placeholder. Adding one would be inventing a delimiter the paragraph
+  // does not show.
+  const historyStatement = njpHistoryStatement(formData);
+  statements.push({
     ttc: 'TTC 268 000',
-    // COMPOSED. 70503's template is not in this codebase, so the transaction
-    // number is placed at the head the way 70507.4's quoted template places
-    // it and the rest is written by analogy to that one. The values are
-    // sourced: VESSEL OPT and LAWYER OPT are table reads off item 2's own
-    // wording, and the date shape is the PRIUM's 8-byte YYYYMMDD.
-    templateQuoted: false,
+    templateQuoted: true,
     text:
       `TTC 268 000 ${njpDate || '[NJP DATE]'} NJP AWD VESSEL OPT ${vesselOpt || '[?]'} ` +
-      `LAWYER OPT ${lawyerOpt || '[?]'} ED ${njpDate || '[NJP DATE]'} |`,
+      `LAWYER OPT ${lawyerOpt || '[?]'} ED ${njpDate || '[NJP DATE]'} | ` +
+      `HIST: ${historyStatement || '[VIOLATION ARTICLE AND ALL PUNISHMENT AWARDED]'}`,
     authority: 'MCTFSPRIUM 70503',
     notes: [
-      'The HIST statement on this entry should carry the statistical information and all ' +
-        'punishment awarded (PRIUM 70503). Use the transcription aid block for that text.',
+      'The HIST segment carries the statistical information and all punishment awarded ' +
+        '(PRIUM 70503), which is the article violated and item 6. It is built from this form, ' +
+        'so check it against items 1, 5 and 6 before entering.',
+      'This posts to the Marine\'s record and is retained permanently in the MCTFS 119 remark ' +
+        '(PRIUM 70503).',
       'Do NOT also report TTC 053. A three-month promotion restriction posts AUTOMATICALLY ' +
         'when TTC 268 is reported (PRIUM 70503 note 1, 70702).',
       ...(electionDate !== '' && electionDate !== njpDate
@@ -459,7 +550,7 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
           ]
         : []),
     ],
-  }));
+  });
 
   // --- TTC 212 000, the statistical record ------------------------------
   // Only the prompts that carry a value are printed. The prompts are
@@ -741,8 +832,12 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
 
   // --- Follow-on actions -------------------------------------------------
   reminders.push(
+    // 70503 note 3 as Stephen supplied it on 2026-08-26 points at Section
+    // 50100, not at the 50101.8.c this line used to cite. The narrower cite
+    // came from an earlier reading and is not in the paragraph's own words,
+    // so the paragraph's own words are what it says.
     'Report a new Good Conduct Medal commencement date with TTC 140 001. Any NJP breaks the ' +
-      'GCM period (PRIUM 70503 note 3, 50101.8.c).',
+      'GCM period (PRIUM 70503 note 3, which points at Section 50100).',
   );
   reminders.push(
     'Do NOT report TTC 053. The three-month promotion restriction posts automatically from ' +
