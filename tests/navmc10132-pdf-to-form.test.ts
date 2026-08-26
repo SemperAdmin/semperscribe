@@ -187,18 +187,36 @@ describe('the structures that do and do not come back', () => {
 
   // Written from structure, and a parser guessing the structure back would
   // be inventing a legal record.
+  //
+  // ITEM 6 LEFT THIS LIST ON 2026-08-26. It is now read back where the
+  // sentence names exactly one code, and carried as text where it does not,
+  // which is a narrower claim than "never parses" rather than a reversal of
+  // the reasoning: navmc10132-item6-parse.ts still refuses to guess between
+  // codes that share a template. See the item 6 block at the end of this
+  // file. Items 7 and 21 are unchanged and still never parsed.
   it.each([
-    ['6 PUNISHMENT IMPOSED', 'REDUCTION TO THE NEXT INFERIOR GRADE', 'Punishment imposed (item 6)'],
     ['7 SUSPENSION IF ANY', 'REDUCTION SUSPENDED FOR 6 MONTHS', 'Suspension (item 7)'],
     ['21 REMARKS', '2026-08-14 ITEM 14: Appeal denied.', 'Remarks (item 21)'],
   ])('carries %s as text and never parses it into structure', (field, value, label) => {
     const result = navmc10132PdfToForm(read({ values: { [field]: value } }), form());
 
     expect(result.carriedFromFile).toContainEqual({ label, value });
-    expect(result.patch.punishments).toBeUndefined();
     expect(result.patch.suspensions).toBeUndefined();
     expect(result.patch.remarks).toBeUndefined();
     expect(result.notes.join(' ')).toMatch(/cannot rebuild/);
+  });
+
+  // Item 6 is still CARRIED, which is the half of the old assertion that
+  // never stopped being true.
+  it('still carries item 6 into carriedFromFile', () => {
+    const result = navmc10132PdfToForm(
+      read({ values: { '6 PUNISHMENT IMPOSED': 'Forf of $100 pay.' } }),
+      form(),
+    );
+    expect(result.carriedFromFile).toContainEqual({
+      label: 'Punishment imposed (item 6)',
+      value: 'Forf of $100 pay.',
+    });
   });
 
   /**
@@ -378,5 +396,116 @@ describe('the composed grades come back, and the derived halves with them', () =
       form(),
     );
     expect(conflicts).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ITEM 6, WHICH THE LOADER USED TO THROW AWAY.
+//
+// STEPHEN, 2026-08-26, on his own signed pass-3 file: "the app did not
+// extract the item 6 data from the uploaded file". The form said "Forf of
+// $100 pay.", the builder said "Nothing to render yet", the export gate
+// blocked on an empty item 6, and the unit diary worksheet printed
+// PUNISHMENT [MISSING]. Item 6 was locked by the item 9 signature too, so
+// there was no way to type it back.
+//
+// The text is now always carried, and the structure is recovered where the
+// sentence names one code. See navmc10132-item6-parse.ts for why it
+// sometimes cannot.
+// ---------------------------------------------------------------------------
+describe('item 6 comes off the file', () => {
+  it('carries the sentence verbatim, whatever the parse does', () => {
+    const result = navmc10132PdfToForm(
+      read({ values: { '6 PUNISHMENT IMPOSED': 'Forf of $100 pay.' } }),
+      form(),
+    );
+    expect(result.patch.punishmentImposedFromFile).toBe('Forf of $100 pay.');
+  });
+
+  // STEPHEN'S OWN FILE. Item 8A read Capt, O3.
+  it('reads "Forf of $100 pay." back into an N07 with its amount', () => {
+    const result = navmc10132PdfToForm(
+      read({
+        values: {
+          '6 PUNISHMENT IMPOSED': 'Forf of $100 pay.',
+          '8A NJP AUTHORITY GRADE': 'O3',
+        },
+      }),
+      form(),
+    );
+    expect(result.patch.punishments).toEqual([{ code: 'N07', dollars: '100' }]);
+    expect(result.notes.some((n) => n.includes('N07'))).toBe(true);
+  });
+
+  it('recovers the concurrent flag along with the codes', () => {
+    const result = navmc10132PdfToForm(
+      read({
+        values: {
+          '6 PUNISHMENT IMPOSED': 'Forf of $100 pay, and extra du for 10 days, to run concurrently.',
+          '8A NJP AUTHORITY GRADE': 'O3',
+        },
+      }),
+      form(),
+    );
+    expect((result.patch.punishments as unknown[]).length).toBe(2);
+    expect(result.patch.punishmentsConcurrent).toBe(true);
+  });
+
+  // A clerk who typed the punishment and then uploads the signed file to
+  // carry the signatures forward keeps what they typed. Same narrow reading
+  // of file-wins the module applies to every other field.
+  it('does not overwrite punishments the document already carries', () => {
+    const result = navmc10132PdfToForm(
+      read({
+        values: {
+          '6 PUNISHMENT IMPOSED': 'Forf of $100 pay.',
+          '8A NJP AUTHORITY GRADE': 'O3',
+        },
+      }),
+      form({ punishments: [{ code: 'N09', days: '5' }] }),
+    );
+    expect(result.patch.punishments).toBeUndefined();
+    // The text still comes across, so nothing on the file is lost.
+    expect(result.patch.punishmentImposedFromFile).toBe('Forf of $100 pay.');
+  });
+
+  it('carries the text and says why when the sentence names no single code', () => {
+    const result = navmc10132PdfToForm(
+      read({
+        values: {
+          '6 PUNISHMENT IMPOSED': 'Extra du for 10 days.',
+          '8A NJP AUTHORITY GRADE': 'O5',
+        },
+      }),
+      form(),
+    );
+    expect(result.patch.punishments).toBeUndefined();
+    expect(result.patch.punishmentImposedFromFile).toBe('Extra du for 10 days.');
+    expect(result.notes.some((n) => n.includes('could not be read back'))).toBe(true);
+  });
+
+  // The blanket "this app cannot rebuild the codes" line was true of item 6
+  // when it was never parsed. It would now be wrong.
+  it('drops the old cannot-rebuild note for item 6, and keeps it for item 7', () => {
+    const result = navmc10132PdfToForm(
+      read({
+        values: {
+          '6 PUNISHMENT IMPOSED': 'Forf of $100 pay.',
+          '7 SUSPENSION IF ANY': 'NONE',
+          '8A NJP AUTHORITY GRADE': 'O3',
+        },
+      }),
+      form(),
+    );
+    expect(result.notes.some((n) => n.includes('cannot rebuild the individual punishment codes'))).toBe(
+      false,
+    );
+    expect(result.notes.some((n) => n.includes('which punishment is suspended'))).toBe(true);
+  });
+
+  it('does nothing at all when the file carries no item 6', () => {
+    const result = navmc10132PdfToForm(read({ values: {} }), form());
+    expect(result.patch.punishmentImposedFromFile).toBeUndefined();
+    expect(result.patch.punishments).toBeUndefined();
   });
 });

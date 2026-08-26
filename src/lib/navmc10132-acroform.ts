@@ -147,7 +147,17 @@ function computePunishmentImposed(formData: FormData): string | undefined {
 
 function rawPunishmentImposed(formData: FormData): string | undefined {
   const punishments = readPunishments(formData);
-  if (punishments.length === 0) return undefined;
+  if (punishments.length === 0) {
+    // THE FILE'S OWN SENTENCE, where a load could not read it back into
+    // codes. Four groups of punishment codes share a template byte for
+    // byte, so some signed item 6 text names no single code (see
+    // navmc10132-item6-parse.ts). Returning undefined here is what put
+    // Stephen's signed file in the state he reported on 2026-08-26: the
+    // form said "Forf of $100 pay.", the app said nothing, and the export
+    // wrote an empty item 6 over a punishment a commander had signed.
+    const fromFile = readString(formData, 'punishmentImposedFromFile');
+    return fromFile === '' ? undefined : fromFile;
+  }
   // Concurrency is a property of the SET of punishments, not of any one code,
   // because MCM Part V para 5.d governs how punishments combine. It lives on
   // the model as punishmentsConcurrent and is written by PunishmentSection.

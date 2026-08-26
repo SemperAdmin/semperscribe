@@ -353,8 +353,18 @@ export function unitDiaryBlock(formData: FormData): UnitDiaryBlock {
   lines.push('');
   lines.push('PUNISHMENT');
   if (punishmentLines.length === 0) {
-    lines.push('  [MISSING]');
-    missing.push('punishment (item 6)');
+    // THE FILE'S OWN SENTENCE, where a load could not read item 6 back into
+    // codes. Printing [MISSING] under a form that plainly states a
+    // punishment is what Stephen reported on 2026-08-26, and it sent a clerk
+    // to the diary terminal with nothing to enter.
+    const fromFile = readString(formData, 'punishmentImposedFromFile') ?? '';
+    if (fromFile.trim() === '') {
+      lines.push('  [MISSING]');
+      missing.push('punishment (item 6)');
+    } else {
+      lines.push(`  ${fromFile.trim()}`);
+      lines.push('  [as the signed form states it; not read back into MCTFS codes]');
+    }
   } else {
     lines.push(...punishmentLines);
   }

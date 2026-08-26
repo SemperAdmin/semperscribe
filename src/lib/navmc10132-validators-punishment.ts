@@ -245,6 +245,15 @@ function parseNumericField(value: unknown): number | null {
 export function punishmentPresenceIssues(formData: FormData): ValidationIssue[] {
   const entries = punishmentEntries(formData);
   if (entries.length > 0) return [];
+  // A SIGNED SENTENCE THIS APP COULD NOT CODE IS STILL A PUNISHMENT. Where a
+  // loaded file states item 6 in words the parser cannot resolve to a single
+  // code, the punishment list is empty and the form is not. Blocking there
+  // told Stephen on 2026-08-26 that no NJP had occurred, on a file carrying
+  // a commander's signature over "Forf of $100 pay." The other rules in this
+  // module still run: what is missing is the app's structure, not the
+  // punishment.
+  const fromFile = (formData as { punishmentImposedFromFile?: unknown }).punishmentImposedFromFile;
+  if (typeof fromFile === 'string' && fromFile.trim() !== '') return [];
   if (!navmc10132StageAtLeast(navmc10132ExportGateStage(formData), 3)) return [];
   return [
     issue(

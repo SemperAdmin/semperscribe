@@ -46,6 +46,7 @@
 import type { FormData } from '@/types';
 import type { Navmc10132PdfRead } from '@/lib/navmc10132-pdf-read';
 import type { Navmc10132Offense, Navmc10132Victim } from '@/types/navmc';
+import { parseItem6 } from '@/lib/navmc10132-item6-parse';
 import {
   splitRankGrade,
   resolveUsmcRank,
@@ -308,11 +309,69 @@ export function navmc10132PdfToForm(
   }
 
   // --- The derived strings, reported and not parsed ---------------------
+  // --- Item 6, read back where the sentence allows it -------------------
+  //
+  // STEPHEN, 2026-08-26: "the app did not extract the item 6 data from the
+  // uploaded file". It did not, by the DERIVED_FIELDS rule above, and the
+  // cost of that showed on his own signed file: the punishment builder was
+  // empty AND locked by the item 9 signature, the export gate blocked on an
+  // empty item 6, and the unit diary worksheet printed PUNISHMENT [MISSING]
+  // for a punishment the form plainly stated.
+  //
+  // TWO THINGS NOW HAPPEN, and they are separate on purpose.
+  //
+  //   THE TEXT IS ALWAYS CARRIED, into `punishmentImposedFromFile`. Whatever
+  //   the parse does, the signed sentence survives the load, so item 6
+  //   exports as the file states it and the diary reports it.
+  //
+  //   THE STRUCTURE IS RECOVERED WHERE IT CAN BE. Four groups of codes share
+  //   a template byte for byte, so the sentence alone cannot always name the
+  //   code. navmc10132-item6-parse.ts narrows on item 8A and each code's
+  //   ceiling and refuses where more than one survives, because a guessed
+  //   code becomes a permanent TTC 212 statistical record.
+  //
+  // ONLY INTO AN EMPTY PUNISHMENT LIST. A clerk who typed the punishment in
+  // the app and then uploads the signed file to carry the signatures forward
+  // keeps what they typed, which is the same narrow reading of the
+  // file-wins rule the resolve() note above sets out.
+  const item6 = (read.values['6 PUNISHMENT IMPOSED'] ?? '').trim();
+  if (item6 !== '') {
+    patch.punishmentImposedFromFile = item6;
+    const existing = Array.isArray(formData.punishments) ? formData.punishments : [];
+    const parsed = parseItem6(item6, {
+      authorityPayGrade: (read.values['8A NJP AUTHORITY GRADE'] ?? '').trim(),
+    });
+    if (parsed.complete && existing.length === 0) {
+      patch.punishments = parsed.entries;
+      patch.punishmentsConcurrent = parsed.concurrent;
+      notes.push(
+        `Punishment imposed (item 6) was read back into ${parsed.entries.length} punishment ` +
+          `${parsed.entries.length === 1 ? 'code' : 'codes'}: ` +
+          `${parsed.entries.map((entry) => entry.code).join(', ')}. Check them against item 6 ` +
+          'on the form before exporting.',
+      );
+    } else if (parsed.complete) {
+      notes.push(
+        'Punishment imposed (item 6) was not read back, because this document already carries ' +
+          'punishments. The file\'s own text is kept and will export as it stands.',
+      );
+    } else {
+      const unresolved = parsed.clauses.filter((clause) => clause.entry === null);
+      notes.push(
+        'Punishment imposed (item 6) is carried as the file states it, and could not be read ' +
+          'back into punishment codes. ' +
+          unresolved.map((clause) => `"${clause.text}" ${clause.reason}`).join(' '),
+      );
+    }
+  }
+
   for (const { field, label, lost } of DERIVED_FIELDS) {
     const value = (read.values[field] ?? '').trim();
     if (!value) continue;
     carriedFromFile.push({ label, value });
-    if (field !== '2 BOOKER') {
+    // Item 6 has its own note above, which says what was recovered and what
+    // was not. The blanket "cannot rebuild" line would now be wrong for it.
+    if (field !== '2 BOOKER' && field !== '6 PUNISHMENT IMPOSED') {
       notes.push(
         `${label} is carried in the file as one line of text. This app cannot rebuild ${lost} ` +
           'from it, so it stays in the file exactly as it is and is not re-validated.',

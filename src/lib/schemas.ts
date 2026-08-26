@@ -1433,6 +1433,16 @@ export const Navmc10132Schema = z.object({
   // corrective action and the assistance available in the counseling entry,
   // and no field on the NAVMC 10132 carries either: they are the
   // commander's and the unit's, not the charge sheet's.
+  /**
+   * Item 6 exactly as an uploaded signed file states it.
+   *
+   * Set by the loader, never by a section. It is the fallback for a
+   * punishment sentence this app could not read back into codes, so a signed
+   * item 6 survives a load whether or not it parses. See
+   * navmc10132-item6-parse.ts.
+   */
+  punishmentImposedFromFile: z.string().optional(),
+
   page11CorrectiveAction: z.string().optional(),
   page11AssistanceAvailable: z.string().optional(),
   /** '' | 'processing' | 'not-processing'. See SeparationIntent. */
