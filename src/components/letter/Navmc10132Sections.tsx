@@ -32,7 +32,7 @@
  *   Victims                   item 22          custom grid
  *   Remarks and final action  items 21 and 16  custom composer
  *
- * STAGE GATING. `formData.stage` (src/types/navmc.ts, set by StageSelector
+ * STAGE GATING. `formData.stage` (src/types/navmc.ts, set by the loaded
  * above) additionally hides sections that belong to a pass later than the
  * one the document is currently at, per docs/NAVMC_10132_SPEC.md section 13
  * and decision rows D-43/D-46/D-47. Sections are ADDITIVE, never exclusive:
@@ -62,7 +62,6 @@ import { VictimsSection } from '@/components/letter/navmc10132/VictimsSection';
 import { RemarksSection } from '@/components/letter/navmc10132/RemarksSection';
 import { UnitDiarySection } from '@/components/letter/navmc10132/UnitDiarySection';
 import { VacationSection } from '@/components/letter/navmc10132/VacationSection';
-import { StageSelector } from '@/components/letter/navmc10132/StageSelector';
 import { LoadReportPanel } from '@/components/letter/navmc10132/LoadReportPanel';
 import { LockedBadge } from '@/components/letter/navmc10132/OffensesSection';
 import { navmc10132LockedKeys } from '@/lib/navmc10132-locks';
@@ -237,11 +236,11 @@ export function Navmc10132FormSections({
   const lockedKeys = navmc10132LockedKeys(formData);
   return (
     <>
-      {/* ABOVE THE STAGE SELECTOR, because when a file has been loaded the
-          stage came FROM the file and the panel is what says so. Reading
-          them the other way round makes the selector look hand-set. */}
+      {/* THE ONLY PLACE THE STAGE IS SHOWN, now that nobody sets it by hand.
+          The panel reports the pass the uploaded file put the document at,
+          which is also the pass the sections below are gated on. With no
+          file loaded it renders nothing and the document sits at pass 1. */}
       <LoadReportPanel formData={formData} setFormData={setFormData} />
-      <StageSelector formData={formData} setFormData={setFormData} />
       <FormBlock>
         <DynamicForm
           key={`navmc10132-${formKey}-accused`}

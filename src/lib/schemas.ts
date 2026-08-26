@@ -1552,14 +1552,15 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
   // build twice.
   //
   // Deliberately absent, and owned by Phase 3 custom components:
-  //   stage                   - StageSelector (Navmc10132Sections.tsx). Not
-  //                             owned by a DynamicForm section for the same
-  //                             clobber reason as everything else on this
-  //                             list, even though nothing here writes it
-  //                             from a form widget: it is a custom
-  //                             component's plain setFormData call, and RHF
-  //                             would still stomp that on its next sync if
-  //                             this field ever appeared in `sections`.
+  //   stage                   - NOBODY SETS THIS BY HAND any more. It comes
+  //                             from the signatures on an uploaded file,
+  //                             through navmc10132-pdf-to-form.ts, and a
+  //                             document with no file behind it sits at the
+  //                             seeded pass 1. It stays off this list for
+  //                             the same clobber reason as everything else
+  //                             on it: RHF would stomp the load's write on
+  //                             its next sync if the field ever appeared in
+  //                             `sections`.
   //   unit                    - UNITS search dialog writes it
   //   offenses[]              - OffensesSection grid
   //   demand, counselOpportunity, accusedRefusedToSign, electionDate,

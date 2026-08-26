@@ -1053,7 +1053,7 @@ describe('V-12 stops the export: a present EDIPI-shaped field is not exactly 10 
 // Measured live: a brand new, pass-1 notification document was blocked on
 // "Item 6 punishment imposed is empty" and "Item 13 has neither an appeal
 // date nor the Not Appealed checkbox set," even though the stage selector
-// (StageSelector.tsx, per D-46) hides both sections from a pass-1 clerk.
+// (per D-46) hides both sections from a pass-1 clerk.
 // Item 6 belongs to pass 3 and item 13 to pass 6 (spec section 13.1); both
 // are correct, unremarkable states for a notification document.
 //
@@ -1070,7 +1070,7 @@ describe('V-12 stops the export: a present EDIPI-shaped field is not exactly 10 
 
 describe('Stage scoping: a fresh pass-1 document is not blocked on pass-3/pass-6 fields', () => {
   it('does not block on empty item 6, item 7, or item 13 at stage 1', () => {
-    // Matches what createEmptyNavmc10132Data and the StageSelector both
+    // Matches what createEmptyNavmc10132Data and a fresh document both
     // default a brand new document to. Navmc10132Sections.tsx gates the
     // punishment/suspension sections behind navmc10132StageAtLeast(3) and
     // the appeal block behind stage 4, so a pass-1 clerk cannot even see

@@ -289,3 +289,84 @@ describe('the dynamic reset paths seed the stage too', () => {
     ).toBe(true);
   });
 });
+
+/**
+ * WHO IS ALLOWED TO WRITE THE STAGE AT ALL.
+ *
+ * STEPHEN, 2026-08-26: "we can also remove the Stage of the process section
+ * as it does nothing", and, asked what should set the stage instead: "the
+ * avaiable feilds should be based on the form that is added. No form
+ * upoloaded then standard baseline that we have otherwise it will show what
+ * is next in the process based on what is completed."
+ *
+ * So the stage has exactly two sources now. A loaded file's signatures set
+ * it, through `navmc10132StageFromSignatures`, which already returns the
+ * NEXT pass rather than the one completed. Everything else seeds pass 1.
+ * StageSelector, the hand control, is deleted.
+ *
+ * THE HAND CONTROL COULD LIE, which is the real reason this guard exists
+ * rather than a style preference. A clerk could set "punishment imposed" on
+ * a document nobody had signed, and the export gate would then fire pass-3
+ * blockers against a document that was really at pass 1. Nothing derived
+ * from a signature can do that.
+ *
+ * The rule above (every documentType switch seeds a stage) still stands and
+ * is tested above. This adds the converse: nothing ELSE writes one.
+ */
+describe('the stage has exactly two sources: a loaded file, and the pass-1 seed', () => {
+  /**
+   * Files permitted to WRITE a stage into document state.
+   *
+   * The scan runs on setFormData spans, not on the whole file, because that
+   * is where the risk lives. A type annotation, a prop declaration, a debug
+   * log and a Zod schema all mention `stage` and none of them can put a
+   * document at a pass its signatures do not support. `extractCallSpans` is
+   * the same balanced-parenthesis scanner the seeding guard above uses, and
+   * it is proven against synthetic source there before being trusted here.
+   *
+   * The load path is deliberately absent from this list: it writes through a
+   * patch object that app/page.tsx spreads, so it is already covered by that
+   * entry and needs no exemption of its own.
+   */
+  const ALLOWED = new Set([
+    // The two documentType entry points, seeding pass 1, and the same file
+    // that spreads the load patch. See the seeding guard above.
+    'components/letter/DocumentTypeSection.tsx',
+    'app/page.tsx',
+  ]);
+
+  const relative = (path: string) => path.slice(SRC_DIR.length + 1).replace(/\\/g, '/');
+
+  it('no setFormData call outside those two files writes a stage', () => {
+    const offenders = listSourceFiles(SRC_DIR)
+      .map((path) => [relative(path), readFileSync(path, 'utf8')] as const)
+      .filter(([path]) => !ALLOWED.has(path))
+      .filter(([, src]) =>
+        extractCallSpans(src, 'setFormData').some((span) => /\bstage\s*:/.test(span)),
+      )
+      .map(([path]) => path);
+    expect(offenders).toEqual([]);
+  });
+
+  // Proving the scan can see the shape it is looking for, on the two files
+  // that legitimately have it. A guard that would pass on any input is not a
+  // guard, and the assertion above is an empty-list assertion.
+  it('the scan does find the writes the two allowed files really make', () => {
+    const writers = [...ALLOWED].filter((path) =>
+      extractCallSpans(readFileSync(join(SRC_DIR, path), 'utf8'), 'setFormData').some((span) =>
+        /\bstage\s*:/.test(span),
+      ),
+    );
+    expect(writers.sort()).toEqual([...ALLOWED].sort());
+  });
+
+  // The control is gone, not merely unmounted. An orphan component file is
+  // the failure mode tests/components/navmc10132-proceeding-script.test.tsx
+  // exists to catch, and leaving this one behind would invite a remount.
+  it('StageSelector no longer exists anywhere in the source tree', () => {
+    const referencing = listSourceFiles(SRC_DIR)
+      .filter((path) => /\bStageSelector\b/.test(readFileSync(path, 'utf8')))
+      .map(relative);
+    expect(referencing).toEqual([]);
+  });
+});

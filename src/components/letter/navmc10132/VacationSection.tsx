@@ -72,7 +72,7 @@ interface SectionProps {
 
 /**
  * The four statuses, worded as the EVENT each one records rather than as its
- * slug, matching how StageSelector names passes by what happened rather than
+ * slug, matching how NAVMC_10132_STAGE_INFO names passes by what happened
  * by a number. A clerk picking from this list reads what occurred.
  */
 const STATUS_LABELS: Record<Navmc10132VacationStatus, string> = {
