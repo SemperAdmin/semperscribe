@@ -107,7 +107,13 @@ function heading(number: number, title: string): string[] {
  */
 export function statementBlock(statement: MctfsStatement, index: number): WorksheetBlock {
   const lines: string[] = [];
-  const label = `[ ] ${index}. ${statement.ttc}`;
+  // THE TRANSACTION NUMBER IS NOT REPEATED HERE. It used to head this line
+  // as well, back when `statement.text` began at the date and the number had
+  // nowhere else to go. Since 2026-08-26 the text IS the whole line, TTC and
+  // sequence included, per the template in MCTFSPRIUM 70507.4, so printing
+  // it twice on a page whose purpose is the keyable string is noise. The
+  // number is still the first thing on the statement line below.
+  const label = `[ ] ${index}.`;
   const gap = WORKSHEET_WIDTH - label.length - statement.authority.length;
   lines.push(gap > 1 ? `${label}${' '.repeat(gap)}${statement.authority}` : label);
   if (gap <= 1) lines.push(`    ${statement.authority}`);

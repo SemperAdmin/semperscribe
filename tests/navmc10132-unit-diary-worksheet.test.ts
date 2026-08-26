@@ -203,8 +203,28 @@ describe('the sheet says what the panel says', () => {
 
   it('gives every transaction a check box and a number', () => {
     const sheet = unitDiaryWorksheet(complete(), perPage);
-    const boxes = sheet.lines.filter((l) => /^\[ \] \d+\. TTC /.test(l));
+    const boxes = sheet.lines.filter((l) => /^\[ \] \d+\./.test(l));
     expect(boxes.length).toBe(sheet.statementCount);
+  });
+
+  /**
+   * THE TRANSACTION NUMBER BELONGS TO THE STATEMENT LINE, NOT THE HEADER.
+   *
+   * Stephen, 2026-08-26: the app was showing a body that began at the date,
+   * with the transaction number carried beside it, which is not a line
+   * anybody can key. MCTFSPRIUM 70507.4 writes the template as one line
+   * starting "TTC 056 000". Now that the text carries it, the header must
+   * not repeat it, or the page prints it twice.
+   */
+  it('prints the transaction number once, on the line a clerk keys', () => {
+    const formData = complete();
+    const sheet = unitDiaryWorksheet(formData, perPage);
+    for (const statement of mctfsNjpStatements(formData).statements) {
+      const hits = sheet.lines.filter((l) => l.trim().startsWith(statement.ttc));
+      expect(hits.length, `${statement.ttc} appears ${hits.length} times as a line head`).toBe(1);
+    }
+    // And the header carries the check box and the number only.
+    expect(sheet.lines.some((l) => /^\[ \] 1\.\s+MCTFSPRIUM/.test(l))).toBe(true);
   });
 
   // Item 16 IS the unit diary entry, so the UD number this sheet produces
@@ -322,7 +342,7 @@ describe('paginateBlocks keeps a block whole', () => {
     const sheet = unitDiaryWorksheet(long(), SHORT_PAGE);
     let checked = 0;
     sheet.lines.forEach((line, i) => {
-      if (!/^\[ \] \d+\. TTC /.test(line)) return;
+      if (!/^\[ \] \d+\./.test(line)) return;
       checked += 1;
       // The label, a blank, and the statement itself. All three on one page.
       expect(Math.floor(i / SHORT_PAGE), `statement ${line} straddles a page`).toBe(
@@ -345,7 +365,7 @@ describe('paginateBlocks keeps a block whole', () => {
     const sheet = unitDiaryWorksheet(complete(), perPage);
     const at = sheet.lines.findIndex((l) => l.startsWith('3. TRANSACTIONS'));
     expect(at).toBeGreaterThan(-1);
-    const firstBox = sheet.lines.findIndex((l) => /^\[ \] 1\. TTC /.test(l));
+    const firstBox = sheet.lines.findIndex((l) => /^\[ \] 1\./.test(l));
     expect(firstBox).toBeGreaterThan(at);
     expect(Math.floor(at / perPage)).toBe(Math.floor(firstBox / perPage));
   });

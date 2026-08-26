@@ -9,6 +9,8 @@ import {
   mctfsNjpStatements,
   TTC_212_MAX_ARTICLES,
   TTC_212_MAX_PUNISHMENTS,
+  COMPOSED_FORMAT_CAUTION,
+  reducedGradeField,
 } from '@/lib/navmc10132-mctfs';
 import { NAVMC_10132_DEMAND } from '@/types/navmc';
 import type { FormData } from '@/types';
@@ -525,5 +527,185 @@ describe('TTC 283 003 months, never assumed for a per-month forfeiture', () => {
     expect(report.missing.some((m) => m.includes('number of months'))).toBe(false);
     const forfeiture = report.statements.find((s) => s.ttc === 'TTC 283 003');
     expect(forfeiture!.text).toContain('FORF $00250.00 FOR 02 MO NJP TOTAL $00500.00');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE LINE A CLERK ACTUALLY KEYS.
+//
+// STEPHEN, 2026-08-26, looking at the worksheet: why did the app show
+// "20260825 NJP AWD VESSEL OPT A LAWYER OPT A ED 20260825 |" rather than the
+// actual transaction? Because the transaction number lived in `ttc` beside
+// the string instead of at the head of it, so the string was not a line
+// anybody could key.
+//
+// He then supplied MCTFSPRIUM 70507, which settles the shape. Its paragraph 4
+// writes the punitive reduction as ONE line beginning with the TTC and its
+// sequence:
+//
+//   TTC 056 000 [A] REDUCED [B] DOR [C] ED [D] | HIST: [E] |
+//
+// That is the only statement in this module built against a template this
+// codebase holds the words of. The rest are composed, and now say so.
+// ---------------------------------------------------------------------------
+describe('every statement is a whole line, transaction number included', () => {
+  function everyStatement() {
+    const cases = [
+      baseFormData({
+        offenses: [{ articleLabel: ART_86_UA, summary: 'x', finding: 'Guilty' }],
+        punishments: [{ code: 'N08', gradeReducedTo: 'LCPL' }],
+        suspensions: [],
+        victims: [{ status: 'Military', sex: 'M', race: 'W', ethnicity: 'N' }],
+      }),
+      baseFormData({
+        offenses: [{ articleLabel: ART_86_UA, summary: 'x', finding: 'Guilty' }],
+        punishments: [{ code: 'N08', gradeReducedTo: 'LCPL' }],
+        suspensions: [{ punishmentIndex: 0, months: '6' }],
+      }),
+      baseFormData({
+        offenses: [{ articleLabel: ART_86_UA, summary: 'x', finding: 'Guilty' }],
+        punishments: [{ code: 'N04', dollarsPerMonth: '250', months: '2' }],
+        suspensions: [],
+      }),
+      baseFormData({
+        offenses: [{ articleLabel: ART_86_UA, summary: 'x', finding: 'Guilty' }],
+        punishments: [{ code: 'N04', dollarsPerMonth: '250', months: '2' }],
+        suspensions: [{ punishmentIndex: 0, months: '6' }],
+      }),
+      baseFormData({
+        offenses: [{ articleLabel: ART_86_UA, summary: 'x', finding: 'Guilty' }],
+        punishments: [{ code: 'N09', days: '10' }],
+        suspensions: [],
+      }),
+    ];
+    return cases.flatMap((fd) => mctfsNjpStatements(fd).statements);
+  }
+
+  it('starts every statement text with its own transaction and sequence', () => {
+    const statements = everyStatement();
+    // Guards the guard: an empty list would pass the loop below silently.
+    expect(statements.length).toBeGreaterThanOrEqual(12);
+    for (const statement of statements) {
+      expect(statement.text.startsWith(statement.ttc), `${statement.ttc}: ${statement.text}`).toBe(
+        true,
+      );
+    }
+  });
+
+  it('covers all six transactions this module can emit', () => {
+    const seen = new Set(everyStatement().map((s) => s.ttc));
+    expect([...seen].sort()).toEqual([
+      'TTC 056 000',
+      'TTC 212 000',
+      'TTC 212 001',
+      'TTC 268 000',
+      'TTC 283 003',
+      'TTC HIS 000',
+    ]);
+  });
+});
+
+describe('TTC 056 000, against the template Stephen supplied', () => {
+  const fd = baseFormData({
+    punishmentDate: '2026-08-16',
+    offenses: [{ articleLabel: ART_86_UA, summary: 'x', finding: 'Guilty' }],
+    punishments: [{ code: 'N08', gradeReducedTo: 'LCpl' }],
+    suspensions: [],
+  });
+
+  // The whole line, field for field, not a substring check. This is the one
+  // statement where an exact assertion is honest, because the words come
+  // from the PRIUM rather than from this app.
+  it('matches TTC 056 000 [A] REDUCED [B] DOR [C] ED [D] | HIST: [E] | exactly', () => {
+    const statement = mctfsNjpStatements(fd).statements.find((s) => s.ttc === 'TTC 056 000');
+    expect(statement).toBeDefined();
+    expect(statement!.text).toBe(
+      'TTC 056 000 20260816 REDUCED LCPL DOR 20260816 ED 20260816 | HIST: [CO’S LETTER INFO] |',
+    );
+  });
+
+  it('declares itself template-quoted, and carries no composed-format caution', () => {
+    const statement = mctfsNjpStatements(fd).statements.find((s) => s.ttc === 'TTC 056 000');
+    expect(statement!.templateQuoted).toBe(true);
+    expect(statement!.notes).not.toContain(COMPOSED_FORMAT_CAUTION);
+  });
+
+  // Field [B] is "6-byte abbreviation for pay grade to which reduced". Item 6
+  // records the rank abbreviation, which is that; uppercased for a
+  // transaction line.
+  it('uppercases the pay grade abbreviation for field [B]', () => {
+    const statement = mctfsNjpStatements(fd).statements.find((s) => s.ttc === 'TTC 056 000');
+    expect(statement!.text).toContain(' REDUCED LCPL DOR ');
+    expect(reducedGradeField('LCpl')).toEqual({ value: 'LCPL', overLength: false });
+  });
+
+  // NEVER TRUNCATED. Cutting a pay grade to six characters on a transaction
+  // that moves a Marine's pay is worse than one the clerk is told to check.
+  it('reports an over-length grade rather than cutting it to six bytes', () => {
+    const long = baseFormData({
+      offenses: [{ articleLabel: ART_86_UA, summary: 'x', finding: 'Guilty' }],
+      punishments: [{ code: 'N08', gradeReducedTo: 'SERGEANT' }],
+      suspensions: [],
+    });
+    const result = mctfsNjpStatements(long);
+    const statement = result.statements.find((s) => s.ttc === 'TTC 056 000');
+    expect(statement!.text).toContain('REDUCED SERGEANT DOR');
+    expect(result.missing.some((m) => m.includes('6 bytes') || m.includes('six bytes'))).toBe(true);
+    expect(statement!.notes.some((n) => n.includes('Nothing has been truncated'))).toBe(true);
+  });
+
+  // Every Marine Corps rank abbreviation the picker offers fits the field.
+  it('fits the longest abbreviations the app can produce', () => {
+    for (const abbreviation of ['Pvt', 'PFC', 'LCpl', 'Cpl', 'Sgt', 'SSgt', 'GySgt', 'MSgt', 'MGySgt', 'SgtMaj']) {
+      expect(reducedGradeField(abbreviation).overLength, abbreviation).toBe(false);
+    }
+  });
+
+  // The old note cited PRIUM 70504. 70507.1 is where the JEPES requirement
+  // is: "JEPES marks must be reported on the reductions of Corporals and
+  // below per Section 4 of this chapter."
+  it('cites 70507.1 for the JEPES requirement, not 70504', () => {
+    const statement = mctfsNjpStatements(fd).statements.find((s) => s.ttc === 'TTC 056 000');
+    const jepes = statement!.notes.find((n) => n.includes('JEPES'));
+    expect(jepes).toBeDefined();
+    expect(jepes).toContain('70507.1');
+    expect(jepes).not.toContain('70504');
+  });
+});
+
+describe('a composed statement says it is composed', () => {
+  const fd = baseFormData({
+    offenses: [{ articleLabel: ART_86_UA, summary: 'x', finding: 'Guilty' }],
+    punishments: [{ code: 'N09', days: '10' }],
+    suspensions: [],
+    victims: [{ status: 'Military', sex: 'M', race: 'W', ethnicity: 'N' }],
+  });
+
+  // A clerk entering a legal record is owed the difference between a line
+  // this app can point at a paragraph for and one it wrote by analogy.
+  it('carries the caution on every statement that is not template-quoted', () => {
+    const statements = mctfsNjpStatements(fd).statements;
+    const composed = statements.filter((s) => !s.templateQuoted);
+    expect(composed.length).toBeGreaterThan(0);
+    for (const statement of composed) {
+      expect(statement.notes, statement.ttc).toContain(COMPOSED_FORMAT_CAUTION);
+    }
+  });
+
+  it('does not put the caution on a template-quoted statement', () => {
+    const reduction = baseFormData({
+      offenses: [{ articleLabel: ART_86_UA, summary: 'x', finding: 'Guilty' }],
+      punishments: [{ code: 'N08', gradeReducedTo: 'LCPL' }],
+      suspensions: [],
+    });
+    const quoted = mctfsNjpStatements(reduction).statements.filter((s) => s.templateQuoted);
+    expect(quoted.length).toBe(1);
+    expect(quoted[0].notes).not.toContain(COMPOSED_FORMAT_CAUTION);
+  });
+
+  // The caution has to name what IS sourced, or it reads as "none of this is
+  // trustworthy" and a clerk stops reading the notes.
+  it('says the values are sourced even where the layout is not', () => {
+    expect(COMPOSED_FORMAT_CAUTION).toContain('values come from cited PRIUM rules');
   });
 });
