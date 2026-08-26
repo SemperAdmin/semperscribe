@@ -116,6 +116,36 @@ export function navmc10132StageFromSignatures(signed: readonly string[]): Navmc1
   return next as Navmc10132Stage;
 }
 
+/**
+ * A text field's value, including the ones pdf-lib will not hand over.
+ *
+ * ITEM 21 IS A RICHTEXT FIELD, which is spec defect 3.8, and pdf-lib's
+ * `getText()` THROWS on those rather than returning the plain value:
+ * "Reading rich text fields is not supported." Item 21 is where the item 6
+ * and item 7 overflow carriers live, and where every vacation remark is
+ * derived to, so a reader that treats it as empty silently drops the part
+ * of the form most likely to hold something the app put there.
+ *
+ * Found in the browser on the first end-to-end load, not in the unit tests,
+ * because the blank flags the field and the signed file measured earlier did
+ * not. Both shapes exist in the wild, so both are handled.
+ *
+ * THE FALLBACK READS `/V` DIRECTLY. A RichText field keeps its plain value
+ * in `/V` and its formatted twin in `/RV`; `/V` is what prints and what this
+ * app writes, so it is the right one. `/RV` is ignored: reconstructing text
+ * from its XHTML would invent whitespace the form does not have.
+ */
+function readTextField(doc: PDFDocument, field: PDFTextField): string {
+  try {
+    return field.getText() ?? '';
+  } catch {
+    const raw = field.acroField.dict.get(PDFName.of('V'));
+    const value = raw instanceof PDFRef ? doc.context.lookup(raw) : raw;
+    const text = (value as { decodeText?: () => string } | undefined)?.decodeText?.();
+    return text ?? '';
+  }
+}
+
 function dictOf(doc: PDFDocument, value: unknown): PDFDict | null {
   if (value instanceof PDFDict) return value;
   if (value instanceof PDFRef) {
@@ -239,7 +269,7 @@ export async function readNavmc10132Pdf(bytes: ArrayBuffer | Uint8Array): Promis
     // as empty rather than skipped, so the caller sees the field exists.
     try {
       if (field instanceof PDFTextField) {
-        values[name] = field.getText() ?? '';
+        values[name] = readTextField(doc, field);
       } else if (field instanceof PDFCheckBox) {
         values[name] = field.isChecked() ? 'true' : '';
       } else if (field instanceof PDFDropdown) {

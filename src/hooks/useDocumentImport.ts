@@ -11,6 +11,7 @@ import { parseCorrespondence } from '@/services/import/correspondenceParser';
 import { detectDocumentType, DocTypeDetection } from '@/services/import/docTypeDetector';
 import { extractDocumentText, DocumentExtractionError } from '@/services/import/documentTextExtractor';
 import { debugUserAction } from '@/lib/console-utils';
+import { isNavmc10132Pdf, loadNavmc10132FromPdf } from '@/lib/navmc10132-pdf-load';
 
 interface UseDocumentImportDeps {
   /** Applies the reviewed payload — reset current document, then import. */
@@ -29,6 +30,18 @@ interface UseDocumentImportDeps {
    * and cannot be got back from it.
    */
   currentDocumentType?: string;
+  /**
+   * The open document, read only, so a loaded NAVMC 10132 can be compared
+   * against it and disagreements flagged. See navmc10132-pdf-to-form.ts.
+   */
+  currentFormData?: Record<string, unknown>;
+  /**
+   * Applies a NAVMC 10132 read out of a PDF: merges the patch and records
+   * the report. Separate from `applyImport`, which RESETS the document
+   * first; this one must NOT, because the whole point is to carry the
+   * open case forward with what the file adds.
+   */
+  applyNavmc10132?: (patch: Record<string, unknown>, report: unknown) => void;
 }
 
 /**
@@ -64,8 +77,21 @@ function replacementWarning(currentDocumentType?: string): string | null {
  * Orchestrates the Word/PDF document import flow:
  * file → extract text (in-browser) → detect type → parse fields →
  * review modal → apply through the normal import path.
+ *
+ * ONE MENU ITEM, TWO DESTINATIONS. A NAVMC 10132 PDF is recognized by its
+ * AcroForm field names and routed to `loadNavmc10132FromPdf` BEFORE the text
+ * extractor runs, because that extractor reads the page content stream and
+ * can see none of a form's values. That path merges into the open document
+ * rather than replacing it, which is the opposite of what `applyImport`
+ * does and the reason it is a separate callback.
  */
-export function useDocumentImport({ applyImport, toast, currentDocumentType }: UseDocumentImportDeps) {
+export function useDocumentImport({
+  applyImport,
+  toast,
+  currentDocumentType,
+  currentFormData,
+  applyNavmc10132,
+}: UseDocumentImportDeps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileName, setFileName] = useState('');
@@ -89,6 +115,36 @@ export function useDocumentImport({ applyImport, toast, currentDocumentType }: U
     toast({ title: 'Reading document…', description: file.name });
     try {
       const data = await file.arrayBuffer();
+      // BEFORE THE TEXT EXTRACTOR RUNS, because a UPB has nothing the text
+      // extractor can use and everything the AcroForm reader needs. Field
+      // names are the form's identity: the text layer is the blank's
+      // boilerplate whether the file is empty or fully filled.
+      //
+      // This is what lets one menu item serve both. Stephen asked whether
+      // the existing import function could carry this, and it can: the app
+      // decides by opening the file rather than making a clerk choose.
+      if (applyNavmc10132 && (await isNavmc10132Pdf(data))) {
+        const { patch, report } = await loadNavmc10132FromPdf(
+          data,
+          (currentFormData ?? {}) as never,
+          file.name,
+        );
+        applyNavmc10132(patch, report);
+        const conflictCount = report.conflicts.length;
+        toast({
+          title: 'Unit Punishment Book loaded',
+          description:
+            `${report.signedSignatures.length} signature(s) found, ${report.lockedFieldCount} ` +
+            `fields closed. The form is now at ${String(report.stage)}. ` +
+            (conflictCount > 0
+              ? `${conflictCount} difference(s) flagged, see the panel above the form.`
+              : 'No differences to flag.'),
+        });
+        debugUserAction('NAVMC 10132 Loaded', { stage: report.stage, conflicts: conflictCount });
+        reset();
+        return;
+      }
+
       const text = await extractDocumentText(data, file.name);
       const detected = detectDocumentType(text);
 
@@ -133,7 +189,7 @@ export function useDocumentImport({ applyImport, toast, currentDocumentType }: U
     } finally {
       setIsProcessing(false);
     }
-  }, [toast, reset, currentDocumentType]);
+  }, [toast, reset, currentDocumentType, currentFormData, applyNavmc10132]);
 
   /** User overrode the detected type in the modal — re-run the parse. */
   const changeDocumentType = useCallback((documentType: string) => {

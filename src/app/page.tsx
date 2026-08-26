@@ -669,12 +669,33 @@ function NavalLetterGeneratorInner() {
     handleImport(payload);
   };
 
+  /**
+   * A NAVMC 10132 read out of a PDF MERGES, it does not replace.
+   *
+   * `applyDocumentImport` above calls `resetDocumentState` first, which is
+   * right for a text import: the document in front of you replaces the one
+   * behind you. It is wrong here. Loading a signed UPB is the return leg of
+   * a case the clerk is already working, so the file adds what has been
+   * signed and the app keeps what has not been entered on paper yet. That
+   * is Stephen's rule, 2026-08-25: the app updates what is not updated yet
+   * and does not preload anything.
+   */
+  const applyNavmc10132Load = useCallback(
+    (patch: Record<string, unknown>, report: unknown) => {
+      setFormData(prev => ({ ...prev, ...patch, navmc10132LoadReport: report }));
+      debugFormChange('NAVMC 10132 Loaded From PDF', patch);
+    },
+    [],
+  );
+
   const documentImport = useDocumentImport({
     applyImport: applyDocumentImport,
     toast,
     // So the review modal can name what confirming DESTROYS, not only what
     // it creates. See replacementWarning in the hook.
     currentDocumentType: formData.documentType,
+    currentFormData: formData as unknown as Record<string, unknown>,
+    applyNavmc10132: applyNavmc10132Load,
   });
 
   const handleClearSavedLetters = () => {

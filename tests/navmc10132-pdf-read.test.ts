@@ -133,6 +133,23 @@ describe('readNavmc10132Pdf, against the blank this repo ships', () => {
     expect(read.values['2 COUNSELOPP']).toBe('have');
   });
 
+  /**
+   * ITEM 21 IS A RICHTEXT FIELD, spec defect 3.8, and pdf-lib's getText()
+   * THROWS on those rather than returning the plain value. Item 21 carries
+   * the item 6 and item 7 overflow and every derived vacation remark, so a
+   * reader that swallows the throw and calls it empty drops the part of the
+   * form most likely to hold what the app put there.
+   *
+   * Found in the browser on the first end-to-end load, not here: the blank
+   * flags the field and the real signed file measured earlier did not.
+   */
+  it('reads item 21 despite it being a RichText field pdf-lib refuses', async () => {
+    const read = await readBlank();
+
+    expect(read.values).toHaveProperty('21 REMARKS');
+    expect(read.notes.join(' ')).not.toMatch(/21 REMARKS.*could not be read/);
+  });
+
   it('says nothing about ReadOnly when nothing is signed', async () => {
     const read = await readBlank();
 

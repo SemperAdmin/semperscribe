@@ -63,6 +63,7 @@ import { RemarksSection } from '@/components/letter/navmc10132/RemarksSection';
 import { UnitDiarySection } from '@/components/letter/navmc10132/UnitDiarySection';
 import { VacationSection } from '@/components/letter/navmc10132/VacationSection';
 import { StageSelector } from '@/components/letter/navmc10132/StageSelector';
+import { LoadReportPanel } from '@/components/letter/navmc10132/LoadReportPanel';
 import {
   navmc10132Stage,
   navmc10132StageAtLeast,
@@ -228,6 +229,10 @@ export function Navmc10132FormSections({
   const stage = navmc10132Stage(formData);
   return (
     <>
+      {/* ABOVE THE STAGE SELECTOR, because when a file has been loaded the
+          stage came FROM the file and the panel is what says so. Reading
+          them the other way round makes the selector look hand-set. */}
+      <LoadReportPanel formData={formData} setFormData={setFormData} />
       <StageSelector formData={formData} setFormData={setFormData} />
       <FormBlock>
         <DynamicForm
