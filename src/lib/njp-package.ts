@@ -21,6 +21,10 @@ import {
   selectRightsAppendix,
   type NjpRightsCase,
 } from '@/lib/njp-a1-rights';
+import { renderNjpScript, type NjpScriptCase } from '@/lib/njp-a1-script';
+import { APPENDIX_A_1_F } from '@/lib/jagman-appendix-a1';
+import { renderPunishment, Navmc10132PunishmentRenderError } from '@/lib/navmc10132-utils';
+import type { Navmc10132PunishmentEntry } from '@/types/navmc';
 import {
   NJP_AUTHORITY_LEVEL_LABEL,
   maximumPunishment,
@@ -241,4 +245,128 @@ function slug(value: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 40) || 'accused';
+}
+
+// ---------------------------------------------------------------------------
+// A-1-f, the commanding officer's NJP proceeding script
+// ---------------------------------------------------------------------------
+
+/**
+ * THE SCRIPT WAS BUILT AND WIRED TO NOTHING, which Stephen noticed on
+ * 2026-08-26: "We never added in the script." `njp-a1-script.ts` had been
+ * complete and tested since an earlier session and was imported by no
+ * component, only by tests. Exactly the state `njp-a1-rights.ts` was in
+ * before its button landed. This is the wiring.
+ *
+ * WHAT IT NEEDS AND WHAT IT DELIBERATELY LEAVES BLANK. A-1-f is read ALOUD
+ * at the hearing, so it is filled with what is known going in (the
+ * violations) and what is announced coming out (the findings and the
+ * punishment). Every ACC: and WIT: response line is left untouched, because
+ * those are the accused's and the witnesses' actual words, written by hand
+ * in real time. The appeal authority and advisor rules are left blank for
+ * the same reason: neither is a field on the NAVMC 10132, so the app has
+ * nothing truthful to put there and the printed appendix already carries a
+ * rule for hand completion.
+ */
+
+/**
+ * A-1-f needs less than the rights advisement does, and the difference is
+ * the point. The advisement identifies the Marine it is served ON, so it
+ * requires rank, name and unit. The script is read TO a Marine already
+ * standing there, so it needs only the offenses that will be read out.
+ *
+ * FINDINGS AND PUNISHMENT ARE NOT REQUIRED. The commanding officer reads
+ * the script in order to REACH them: requiring them first would mean the
+ * script could only be generated after the hearing it exists to conduct.
+ * Both print blank when unset, exactly as the paper appendix does.
+ */
+export function njpScriptReadiness(formData: FormData): PackageReadiness {
+  const missing: string[] = [];
+  if (chargedOffenses(formData).length === 0) {
+    missing.push('at least one offense with an article selected (item 1)');
+  }
+  return { ready: missing.length === 0, missing };
+}
+
+/**
+ * Item 5's findings, worded as the script reads them aloud.
+ *
+ * ONE PASS OVER THE RAW ROWS, NOT TWO. The first version of this function
+ * walked chargedOffenses() and indexed formData.offenses by the position in
+ * the FILTERED list. chargedOffenses drops any row with no article, so a
+ * blank or mid-entry row above a charged one shifted every finding down by
+ * one and the commander would have announced the wrong Marine's offense as
+ * guilty. Caught by this module's own test before it shipped. A finding
+ * belongs to its row, so the row is the only thing either value is read
+ * from.
+ */
+export function announcedFindings(formData: FormData): string[] {
+  const rows = Array.isArray(formData.offenses) ? (formData.offenses as Navmc10132Offense[]) : [];
+  return rows
+    .filter((row) => typeof row?.articleLabel === 'string' && row.articleLabel.trim() !== '')
+    // Only a GUILTY finding is read out here. The anchor line reads "I find
+    // that you have committed the following offenses", and listing an offense
+    // the accused was found NOT guilty of under that sentence would have the
+    // commander announce the opposite of the finding.
+    .filter((row) => (typeof row.finding === 'string' ? row.finding.trim() : '') === 'Guilty')
+    .map((row) => `${String(row.articleLabel).trim()}. ${typeof row.summary === 'string' ? row.summary.trim() : ''}`);
+}
+
+/** Item 6 as it will print, or empty when it cannot be rendered yet. */
+export function announcedPunishment(formData: FormData): string {
+  const entries = Array.isArray(formData.punishments)
+    ? (formData.punishments as Navmc10132PunishmentEntry[])
+    : [];
+  if (entries.length === 0) return '';
+  try {
+    return renderPunishment(entries).text;
+  } catch (err) {
+    // Mid-entry state, not a bug: an incomplete punishment row throws, and
+    // the script still has to generate with the rule blank.
+    if (err instanceof Navmc10132PunishmentRenderError) return '';
+    throw err;
+  }
+}
+
+export function buildScriptCase(formData: FormData): NjpScriptCase {
+  const readiness = njpScriptReadiness(formData);
+  if (!readiness.ready) {
+    throw new NjpPackageError(
+      `Cannot build the hearing script yet. Still needed: ${readiness.missing.join(', ')}.`,
+    );
+  }
+  return {
+    offenses: chargedOffenses(formData),
+    findings: announcedFindings(formData),
+    punishmentImposed: announcedPunishment(formData),
+    // NOT ON THE NAVMC 10132, either of them. Left blank so the printed rule
+    // is completed by hand, rather than inventing a superior authority.
+    appealAuthority: '',
+    appealAdvisor: '',
+  };
+}
+
+/** Renders A-1-f to PDF from the current form state. */
+export async function renderNjpProceedingScript(formData: FormData): Promise<PackageDocument> {
+  const input = buildScriptCase(formData);
+  const { lines, report } = renderNjpScript(input);
+
+  if (report.unmatched.length > 0) {
+    throw new NjpPackageError(
+      `The ${APPENDIX_A_1_F.designator} template did not fill cleanly: ` +
+        `${report.unmatched.map(([id]) => id).join(', ')}. The appendix text was ` +
+        'likely regenerated and an anchor went stale.',
+    );
+  }
+
+  const caption = `${captionName(accusedRankAbbreviation(formData), str(formData, 'accusedName'))}   ${str(formData, 'unit')}`;
+  const rendered = await renderAppendixPdf(APPENDIX_A_1_F, lines, { caption });
+
+  return {
+    ...rendered,
+    designator: APPENDIX_A_1_F.designator,
+    filename: `${APPENDIX_A_1_F.designator}-njp-proceeding-script-${slug(
+      captionName(accusedRankAbbreviation(formData), str(formData, 'accusedName')),
+    )}.pdf`,
+  };
 }

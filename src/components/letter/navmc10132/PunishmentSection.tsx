@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/select';
 import { IsoDatePicker } from '@/components/letter/navmc10132/IsoDatePicker';
 import { FormData } from '@/types';
+import { ProceedingScriptButton } from '@/components/letter/navmc10132/ProceedingScriptButton';
 import {
   Gavel, Plus, Trash2, AlertTriangle, HelpCircle, Info,
 } from 'lucide-react';
@@ -405,6 +406,7 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
           </div>
         </div>
       </div>
+      <ProceedingScriptButton formData={formData} />
     </SectionCard>
   );
 }
