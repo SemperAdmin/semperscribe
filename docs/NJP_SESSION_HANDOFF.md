@@ -1,20 +1,35 @@
 # NJP package: session handoff
 
-Rewritten 2026-08-25 at the end of a second long session. Read this before
+Revised 2026-08-26 at the end of a third long session. Read this before
 touching the NAVMC 10132 or the NJP package. It is not a summary of what
 happened; it is the set of facts that cost time to learn and would cost the same
 again.
 
-THE BIGGEST CHANGE SINCE THE LAST REVISION: the UPB is a MULTI-PASS document.
-It is created in the app, exported, CAC-signed, re-uploaded, filled further,
-exported again, and so on across seven passes. Everything written before
-2026-08-25 assumed a single export. Section 3 covers what that invalidated.
+THE BIGGEST CHANGE THIS SESSION: the RETURN LEG IS BUILT. A signed UPB can be
+uploaded, read, and merged into the open document, and the app now derives the
+pass from the file's own signatures instead of a clerk setting a dropdown. The
+WRITE half is not built. Section 3A is the whole story and is the first thing
+to read if you are picking up that work.
+
+THE CHANGE BEFORE IT, still true: the UPB is a MULTI-PASS document. Created in
+the app, exported, CAC-signed, re-uploaded, filled further, exported again,
+across seven passes. Everything written before 2026-08-25 assumed a single
+export. Section 3 covers what that invalidated.
+
+A WARNING ABOUT THIS FILE AND THE SPEC, learned the hard way on 2026-08-25.
+Six decision rows were written CLOSED on the day they were decided, describing
+an import architecture as though it shipped. It had not been built. If a
+document here or in the spec says the app DOES something, check that it does
+before relying on it. The spec now carries a status vocabulary at the head of
+its decision table for exactly this reason.
 
 Authoritative documents, in order of precedence:
 
-1. `docs/NAVMC_10132_SPEC.md` — the decision table (D-01 to D-57) and the
+1. `docs/NAVMC_10132_SPEC.md` — the decision table (D-01 to D-61) and the
    validator tables. **The decision table is the record.** If this handoff and
-   the spec disagree, the spec wins and this file is stale.
+   the spec disagree, the spec wins and this file is stale. READ THE STATUS
+   VOCABULARY at the head of that table first: `DECIDED, UNBUILT` means the
+   ruling stands and no code implements it, and five rows carry it.
 2. `docs/NAVMC_10132_DEFECT_REPORT.md` — defects in the FORM and the MCO,
    routed to their owners. Not app defects.
 3. `docs/TEST_AUDIT.md` and `docs/TEST_REMEDIATION_PLAN.md` — the state of the
@@ -132,27 +147,46 @@ will ask where to put it.
 
 ## 2. Where things stand
 
-Branch `feat/navmc-10132-unit-punishment-book`, HEAD `8c6dd1b1`.
+Branch `feat/navmc-10132-unit-punishment-book`, HEAD `20fc796`, **3 commits
+unpushed**. Check the refs yourself; do not assume.
 
-The ten files the previous revision listed as uncommitted are now committed in
-`bf707270` / `8c6dd1b1`. Check push state yourself by reading the refs; do not
-assume.
+Baseline: **2638 tests across 97 files**, both typechecks clean. Run them on the
+machine you are on before you touch anything, so a failure you inherit is not
+mistaken for one you caused.
 
-**Uncommitted as of this rewrite:**
+**Uncommitted, and none of it mine:** `docs/GENAI_MIL_CORS_DEFECT_REPORT.md`
+modified, plus untracked `docs/GENAI_MIL_TEAMS_REPLY.md`,
+`scripts/genaimil-base-url-probe.html`, `scripts/probe-genaimil-bases.ps1`.
+`package.json` and `package-lock.json` carry `@cantoo/pdf-lib ^2.9.1`, installed
+by Stephen on 2026-08-26 for the incremental writer that is not yet built.
+
+**Left on the device needing manual deletion.** The bridge cannot delete, only
+rename, so every git lock this session hit is parked in
+`_scratch/_to_delete/`, along with `__tmp-upb-test.pdf`, which is a COPY OF A
+REAL SIGNED UPB carrying a Marine's name and EDIPI. Delete that one first.
+
+### What this session built, newest first
 
 ```
-docs/NAVMC_10132_SPEC.md               D-37..D-57, V-23..V-30, W-17..W-19, section 13
-docs/TEST_AUDIT.md                     NEW
-docs/TEST_REMEDIATION_PLAN.md          NEW
-docs/NJP_SESSION_HANDOFF.md            this file
-tests/navmc10132-export-gate.test.ts   NEW, 19 tests
+20fc796  import menu items named after what they take
+7528a25  Clear Form seeds the stage, the hole the D-43 guard could not see
+5ce9b9e  signed fields render as closed, not as editable boxes
+a7f74d4  a signed UPB routes through the existing import menu
+4667fb0  map a read UPB onto the open document, file wins, differences flagged
+5c23091  read an existing NAVMC 10132 back out of a PDF
+11dd429  refuse form imports; stop the spec claiming a round trip it lacks
+d4da90d  the vacation panel, the last piece of D-60 with no UI
+c9e0db8  gate the appeal block per field, after measuring it is safe
+7123007  parity test skips locally without LibreOffice, still fails in CI
+45bd45f  sofficePath could never find LibreOffice on Windows
+47c6758  read para 011202, and reverse what D-55 assumed it said
+57ebd4a  D-55: the 011202 post-action chain
+b8c4417  record the stage sweep and the second leak it found
+c65aa4f  gate item 16 to pass 7
+495350e  seed the stage on a new UPB
+136545d  D-43: scope the export gate, fix the guard hiding a module
+407b013  pass-1 UI: show only the sections the current stage owns
 ```
-
-Commit message drafted at `_scratch/commit-msg-export-gate.txt`.
-
-Baseline: **2342 tests pass** across 84 files, both typechecks clean. Left on
-the device and needing manual deletion: `_scratch/ss.tgz` (62MB),
-`_scratch/gitprobe/`, `_scratch/_delete_probe.tmp`.
 
 ---
 
@@ -205,9 +239,140 @@ work.
 
 ---
 
+## 3A. The return leg: reading a signed UPB back in
+
+Built 2026-08-26. Read this whole section before touching any of it.
+
+### The four measurements that decide the design
+
+Taken on a real CAC-signed UPB, `NAVMC 10132 - THOMPSON JAMAL R.pdf`, at end of
+pass 2. Two of the four contradicted what the spec said, so take nothing here on
+authority; re-measure if you doubt it.
+
+1. **74 fields, 52 non-empty, all readable through `getForm()`.** The earlier
+   verdict that a signed UPB "cannot be read" was about the TEXT extractor,
+   which reads the page content stream and sees none of a form's values. An
+   AcroForm reader sees all of them.
+2. **Seven signature fields, exactly two carrying `/V`.** The file announces its
+   own position in the pass sequence. No carrier needed for the stage.
+3. **All seven `/Lock` dictionaries readable**, six `/Include` naming 43 to 70
+   fields, and `16 FINAL ADMIN INIT` `/All`.
+4. **ZERO fields carry the ReadOnly flag**, with two signatures applied. D-37
+   says "signing sets ReadOnly on every field the lock names". ON A REAL FILE IT
+   DOES NOT. Nothing reads `/Ff`; locks come from the `/Lock` dictionaries of
+   signatures carrying `/V`. There is a note on every read saying so, to stop
+   someone adding the flag check back.
+
+### The modules, in the order data moves
+
+| module | job |
+| --- | --- |
+| `navmc10132-pdf-read.ts` | parse: values, signed signatures, locked set, stage |
+| `navmc10132-pdf-to-form.ts` | map onto document state, flag differences |
+| `navmc10132-pdf-load.ts` | recognize a UPB, orchestrate, build the report |
+| `navmc10132-locks.ts` | turn locked field names into keys the UI can ask about |
+| `LoadReportPanel.tsx` | show the clerk what the load found |
+
+Entry point is `useDocumentImport.startImport`, which routes a recognized 10132
+to the loader BEFORE the text extractor runs.
+
+### Rules that are not obvious here
+
+- **The pass is the HIGHEST signature applied, never the count.** A case with no
+  appeal never gets items 11 through 14 signed, so a closed-out document carries
+  three signatures. Counting calls it pass 4 and reopens the whole appeal block
+  on a finished case.
+- **Recognition is by FIELD NAMES, never by text.** The text layer is the
+  blank's boilerplate whether the file is empty or full. A quorum of six of ten
+  markers, so a form revision renaming a field does not make files unreadable.
+- **The load MERGES; it must never call `resetDocumentState`.** That is what
+  `applyImport` does, and it is right for a text import and catastrophic here.
+  Stephen's rule: the app updates what is not updated yet and does not preload
+  anything.
+- **"The file is the truth" is read narrowly, and he confirmed it.** The file
+  wins WHERE THE FILE SAYS SOMETHING. An empty field is the file not having
+  reached it, not an instruction to erase app data, because a clerk at pass 3
+  has typed item 6 and the pass-2 file is blank there. Checkboxes are exempt:
+  unchecked is an answer. To make it absolute, return `fromFile` unconditionally
+  from `resolve()` in the mapper.
+- **A conflict is not any difference.** Loading into a fresh document differs on
+  every field the file carries: twelve flags for a load where nothing is in
+  dispute, which teaches a clerk to dismiss the flag. Only two are flagged, both
+  sides disagreeing, or the file empty where the app is not.
+- **Four fields do not come back as structure.** Items 6, 7, 21 and the Booker
+  statement are RENDERED from data the form cannot hold. Nothing parses them
+  back; guessing punishment codes out of a rendered sentence invents a legal
+  record. They are reported as carried-from-file and left in the file untouched.
+  This costs nothing at a pass-2 upload, where all three are empty, and only
+  bites on a late re-upload.
+- **Items 23-25 are a cross-check, never a source.** Page 2's identity copy is
+  filled by the form's own calculate scripts. Reading it as data lets a stale
+  calculation overwrite items 18-20.
+- **Item 19 is never split back into rank and pay grade.** "Cpl, E4" is comma
+  separated and so is "GySgt, E7", and nothing guarantees the next one is.
+- **Item 21 is a RichText field and `getText()` THROWS on it.** Falls back to
+  reading `/V`. `/RV` is ignored: rebuilding text from its XHTML invents
+  whitespace. The blank flags the field, the real signed file does not, so both
+  shapes exist in the wild.
+- **Locks are not the stage.** The stage says which pass you are at and hides
+  controls whose pass has not arrived. A lock says a signature has closed a
+  field, and shows it as closed with the value still readable. A document at
+  pass 3 that nobody signed has NO locks; that is the ordinary case.
+
+### The next piece: the incremental writer
+
+`@cantoo/pdf-lib` is installed and unused. The path is PROVEN against the real
+file but exists in no committed code:
+
+```
+load original -> takeSnapshot() -> set only unlocked, changed fields
+-> markRefForSave() on every mutated ref AND its widgets
+-> saveIncremental(snap, {useObjectStreams: true})
+-> APPEND the result to the original bytes
+```
+
+Measured result: 5,144,151 bytes preserved byte-for-byte as the prefix, a
+686-byte delta appended, `/ByteRange` count unchanged, the new value reading
+back, the locked accused name untouched.
+
+Three things that will cost time if not known:
+
+- **`saveIncremental` returns ONLY THE DELTA.** It is not a whole file. Writing
+  it out alone produces a 686-byte "PDF". Append it to the original.
+- **`useObjectStreams: true` here, which is the OPPOSITE of the Phase 0 rule for
+  the full-rewrite export.** Do not harmonize them. A classic xref table
+  appended to this form's xref stream is rejected by Acrobat with "Unexpected
+  byte range values defining scope of signed data", a structural rejection
+  thrown before any hash check.
+- **Mutating an existing object is not enough.** Without `markRefForSave` on the
+  ref and on its widgets, the delta carries a font and an appearance stream and
+  no `/V`, and the write silently does nothing.
+
+The writer must refuse every field in the loaded file's locked set. That is
+Stephen's ruling and it is also what keeps the signatures valid. The UI half is
+already built (`navmc10132-locks.ts`); the writer half is not.
+
+After the writer: point the live preview at the loaded file as its base, so what
+a clerk sees is their actual document rather than a fresh blank.
+
+---
+
 ## 4. Module map
 
 Everything below is pure and lib-level unless marked.
+
+### The return leg (new 2026-08-26, see section 3A)
+
+- `navmc10132-pdf-read.ts` — parse a UPB PDF: values, signed signatures, the
+  locked set from `/Lock` dictionaries, and the pass.
+- `navmc10132-pdf-to-form.ts` — map a read onto document state, file wins where
+  the file says something, differences flagged.
+- `navmc10132-pdf-load.ts` — recognize a UPB by field-name quorum, orchestrate
+  the two above, build the clerk-facing report.
+- `navmc10132-locks.ts` — locked field names to the document-state keys the UI
+  asks about. Carries a meta guard against drifting from the mapper.
+- `LoadReportPanel.tsx` — what the load found, kept on document state so it
+  survives a save.
 
 ### The form itself
 
@@ -327,57 +492,82 @@ Worth knowing, because the pattern repeated across both sessions.
   spans passes. Do not edit source while it runs, Fast Refresh kills the loop
   mid-sweep and the partial result reads like a real non-monotonic diff.
 
+- **Loading the user's own file rather than a fixture.** Every interesting fact
+  in section 3A came from one real signed UPB, and two of them contradicted the
+  spec. The blank does not have signatures, so it cannot tell you what a
+  signature does.
+- **Running all four shipped blanks through the real extractor** instead of
+  reasoning about one. Three of them turned out to be XFA, which the reasoning
+  had missed entirely, and that widened a fix from one form to any XFA form.
+- **Reading the source paragraph, again.** Para 011202 reversed D-55's central
+  claim. The row had been written from a summary made while the PDF was open,
+  which felt like a citation and was not one.
+
 Working instruction: **render it and look at it.** A passing suite is not
-evidence that the output is right.
+evidence that the output is right. And a document saying the app does something
+is not evidence either: six spec rows said the round trip shipped when no line
+of it existed.
 
 ---
 
 ## 7. Backlog
 
-**CLEARED, AND THE CHECK WAS WORTH RUNNING.** `njp-vacation-post-action.ts` (D-55)
-shipped first with the paragraph unread and a named debt in its header. Reading the
-paragraph reversed the central claim: "vacated punishment information" comes from
-the commander's letter, not from the unit diary, and the Unit Diary number arrives
-one sentence later. The chain is six sentences, not five. Two actors were wrong. The
-module now quotes 011202 verbatim, read from two editions that agree. The lesson is
-the same one section 6 keeps repeating: a summary of a source is not the source.
+### Start here
 
-**Specified and unbuilt.** D-37 through D-57, V-23 through V-30 and W-17 through
-W-19 have no code. D-55, D-60 and D-61 are now built, UI included. Twenty-one decision rows from one session. Start with D-51,
-alone: it corrupts `endsOn`, which both `njp-vacation-handoff.ts` and D-36
-consume.
+1. **The incremental writer.** Section 3A has the proven path, the three traps,
+   and the dependency is already installed. Without it the round trip is
+   half a feature: a clerk can load a signed file, fill the next pass, and then
+   has no way to export that does not break both signatures. Nothing else in
+   this list matters as much.
+2. **The live preview using the loaded file as its base.** Stephen asked for
+   this in the same breath as the upload: "This is what we will use in the
+   preview." Today it still renders from the blank, so a loaded document
+   previews as though nothing was signed.
+3. **V-23 through V-28**, the six re-upload validators. They were specified
+   before the read half existed and can now actually be written. V-23 (refuse
+   to write a locked field) is the writer's own guard and belongs with item 1.
+
+### Then
+
+**Specified and unbuilt.** D-37, D-40, D-41, D-45 and D-46 are `DECIDED,
+UNBUILT` in the spec; V-23 through V-30 and W-17 through W-19 have no code.
+D-51, D-55, D-60 and D-61 are built, UI included.
+
+**A state carrier in the exported PDF.** Not blocking, see below, but it is the
+only way `vesselException`, `punishments`, `suspensions`, `remarks` and
+`vacations` survive a round trip as STRUCTURE rather than as rendered strings.
 
 **Test remediation, P3 to P5.** P1 and P2 are done. Remaining: annotate the three
 reversed assertions in `navmc10132-acroform.test.ts` (they defend behaviour D-40,
 D-41 and D-42 overturned), unit tests for `navmc10132-booker` and
 `navmc10132-capacity`, and `verify_templates.mjs` into `test.yml`.
 
-**THE ROUND TRIP IS NOT BUILT, AND THE SPEC SAID IT WAS.** Audited 2026-08-25
-when Stephen asked whether he could re-upload a signed UPB and continue. He
-cannot, and nothing of it exists: no state carrier in the exported PDF (no
-embedded file, no `/Names`, no metadata, no XMP), no AcroForm reader on any
-import path, no incremental writer (`@cantoo/pdf-lib`, `saveIncremental`,
-`takeSnapshot`, `markRefForSave` are zero hits repo-wide), and V-23 through
-V-28 do not exist. Six spec rows claimed otherwise and were corrected; see
-the status vocabulary note at the head of the decision table.
+**The live preview debounce.** It regenerates on every change and stalls the
+renderer for 10 to 30 seconds. It cost about six minutes of every browser stage
+sweep this session and makes ordinary typing painful. Cheap to fix, and it slows
+every future UI phase until someone does.
 
-**The working carrier today is `.nldp` and the library, not the PDF.** Both
-serialize `formData` directly, so `stage`, `vesselException`, `punishments`,
-`suspensions`, `vacations`, `victims` and `remarks` all survive. The multi-pass
-flow that works right now: keep the app-side document, export a PDF each pass,
-treat the PDF as a terminal artifact. If the PDF round trip is ever built, most
-of the app state cannot come back from the form anyway. `punishments`,
-`suspensions`, `remarks` and `vacations` are all COLLAPSED into rendered strings
-on export, victims B-E go to item 21 prose, and `vesselException`, `stage`,
-`accusedYearsOfService` and `forfeitureBasisGrade` have no field at all. An
-embedded JSON carrier is not an optimisation there, it is the only mechanism.
+**Dead `rights` section** in `Navmc10132Definition.sections`.
 
-**A hole in the stage-seeding guard.** `navmc10132-stage-seeding-guard.test.ts`
-scans for `setFormData` calls producing a literal `'navmc10132'`. Both dynamic
-paths escape it: `resetDocumentState` uses a variable and `handleImport`
-spreads. So a `.nldp` saved before `stage` existed imports with `stage`
-undefined, and `navmc10132ExportGateStage` reads absent as `'complete'` and
-fires every later-pass blocker on a document at pass 1.
+**What a PDF round trip can and cannot carry, now that the read half exists.**
+Recoverable as STRUCTURE: items 1 and 5 as offense rows, victim row A, and every
+one-to-one scalar (items 17, 18, 20, 2, 3, 4, 6-date, 8, 10-15, 16). NOT
+recoverable: `punishments`, `suspensions`, `remarks` and `vacations`, which are
+COLLAPSED into rendered strings on export; victims B-E, which go to item 21
+prose; and `vesselException`, `accusedYearsOfService` and `forfeitureBasisGrade`,
+which have no field at all. `stage` needs no carrier: the file's signatures give
+it. An embedded JSON carrier is the only mechanism for the rest.
+
+**`.nldp` and the library still carry everything**, because both serialize
+`formData` directly. That is the lossless path between sessions and remains the
+right one for parking a case. The PDF path is for the pass boundary, where the
+signatures are.
+
+**A hole in the stage-seeding guard, PARTLY CLOSED 2026-08-26.**
+`resetDocumentState` now seeds the stage and the guard checks it (7528a25).
+`handleImport` still escapes the scan, because it spreads a payload, so a
+`.nldp` saved before `stage` existed imports with `stage` undefined and the
+export gate reads absent as `'complete'`.
 
 **The CMC (JA) defect report needs a revision.** `docs/NAVMC_10132_DEFECT_REPORT.md`
 was delivered 2026-08-24 with thirteen numbered findings. Since then: 011402.G was
@@ -440,3 +630,14 @@ ruled on the two-moments split, which is the same shape as D-50.
   them to report what they could not prove.
 - Verify a failure mode before asserting it. Three notes in this file were wrong
   until someone ran a controlled probe against them.
+- **Do not leave test state in his working document.** Browser tests write to
+  the autosaved document, and a fake load report with a made-up filename sat in
+  his app overnight and cost him a bug report. Clear Form at the end of a
+  browser session, or use a filename that cannot be mistaken for a real one.
+- **Do not put his data in the repo.** A real signed UPB was copied into
+  `public/` to test the dev server and had to be moved back out. It carries a
+  Marine's name and EDIPI. Serve it from somewhere else or test in node.
+- **When he says something does not work, reproduce it before theorising.** The
+  "file not showing" report was a picker filter, not a bug, and the load he was
+  looking at was a stale panel from a test of mine. Both were findable in one
+  pass against his actual file.
