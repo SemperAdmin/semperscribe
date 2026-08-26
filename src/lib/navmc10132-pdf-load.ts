@@ -85,6 +85,13 @@ export interface Navmc10132LoadReport {
   signedSignatures: string[];
   /** How many fields those signatures closed. */
   lockedFieldCount: number;
+  /**
+   * The closed field names themselves, which the UI needs and the count
+   * cannot give it. navmc10132-locks.ts turns these into the document-state
+   * keys a component can ask about, so an input over a closed field is
+   * shown closed rather than offering an edit the export will not keep.
+   */
+  lockedFields: string[];
   /** Disagreements between file and form. See navmc10132-pdf-to-form.ts. */
   conflicts: Navmc10132Conflict[];
   /** Values the file carries that this app cannot rebuild into structure. */
@@ -131,6 +138,7 @@ export async function loadNavmc10132FromPdf(
       stage: read.stage,
       signedSignatures: read.signedSignatures,
       lockedFieldCount: read.lockedFields.size,
+      lockedFields: [...read.lockedFields],
       conflicts: mapped.conflicts,
       carriedFromFile: mapped.carriedFromFile,
       notes: mapped.notes,

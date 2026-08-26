@@ -23,6 +23,20 @@
  *    fixed-width, non-shrinking field, and a proportional font overflows a
  *    field long before a naive character cap would warn anyone.
  *
+ * TWO DIFFERENT THINGS CLOSE A CONTROL HERE, and they are not the same
+ * question. The STAGE says which pass the document is at, and hides a
+ * control whose pass has not arrived. A LOCK says a signature on a loaded
+ * file has already closed that field, and shows the control as closed with
+ * the value still visible. A fresh document has stage gating and no locks;
+ * a loaded pass-2 file has both.
+ *
+ * THE OFFENSE ROW IS WHERE THAT DISTINCTION IS SHARPEST, measured on a real
+ * signed file: the item 2 signature closes `1A ARTICLE` and `1A SUMMARY`
+ * while `1A FINDING` stays OPEN, because the finding is the commander's
+ * determination at pass 3. One row, two answers. A row-level lock would
+ * either freeze a finding that still has to be made or offer an edit to an
+ * article that is signed.
+ *
  * THE FINDING CONTROL IS STAGE-GATED, hidden before "Punishment imposed"
  * (pass 3). Item 5 findings close at the item 9 NJP authority signature, and
  * a finding is the commander's determination made AFTER the election and
@@ -48,9 +62,32 @@ import {
 import {
   NAVMC_10132_EMPTY_OFFENSE, navmc10132StageAtLeast, type Navmc10132Offense, type Navmc10132Stage,
 } from '@/types/navmc';
-import { Gavel, Search, ShieldAlert, Plus } from 'lucide-react';
+import { Gavel, Search, ShieldAlert, Plus, Lock } from 'lucide-react';
+import { navmc10132OffenseRowLocks } from '@/lib/navmc10132-locks';
 
 type SectionCardProps = { icon: React.ReactNode; title: string; children: React.ReactNode };
+
+/**
+ * SIGNED, AND SO NOT EDITABLE HERE. Shown beside the label rather than as a
+ * disabled cursor, because a greyed box with no explanation reads as a bug.
+ */
+export function LockedBadge() {
+  return (
+    <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+      <Lock className="h-3 w-3" />
+      signed
+    </span>
+  );
+}
+
+/** A closed field's value, still readable, in the same place the input was. */
+export function ReadOnlyValue({ value }: { value: string }) {
+  return (
+    <div className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground min-h-[2.5rem]">
+      {value || <span className="italic">blank on the signed file</span>}
+    </div>
+  );
+}
 
 interface SectionProps {
   formData: FormData;
@@ -111,6 +148,7 @@ export function OffensesSection({ formData, setFormData, SectionCard, stage }: S
             offense={offenses[index]}
             onChange={(patch) => updateOffense(index, patch)}
             showFinding={showFinding}
+            {...navmc10132OffenseRowLocks(formData, index)}
           />
         ))}
 
@@ -142,11 +180,17 @@ function OffenseRow({
   offense,
   onChange,
   showFinding,
+  offenceLocked,
+  findingLocked,
 }: {
   letter: (typeof ROW_LETTERS)[number];
   offense: Navmc10132Offense;
   onChange: (patch: Partial<Navmc10132Offense>) => void;
   showFinding: boolean;
+  /** Item 1 on this row is closed by a signature on the loaded file. */
+  offenceLocked: boolean;
+  /** Item 5 on this row is closed. Separate: see the header note. */
+  findingLocked: boolean;
 }) {
   const summaryField = `1${letter} SUMMARY`;
   const selectedArticle = offense.articleLabel ? resolveArticle(offense.articleLabel) : undefined;
@@ -165,19 +209,31 @@ function OffenseRow({
         </div>
 
         <div className="min-w-[220px] space-y-1">
-          <Label className="text-[11px] text-muted-foreground">Article, item 1{letter}</Label>
-          <ArticlePicker
-            value={offense.articleLabel}
-            onSelect={(entry) => onChange({ articleLabel: entry.formLabel, mctfsCode: entry.mctfsCode })}
-          />
+          <Label className="text-[11px] text-muted-foreground">
+            Article, item 1{letter}
+            {offenceLocked && <LockedBadge />}
+          </Label>
+          {offenceLocked ? (
+            <ReadOnlyValue value={offense.articleLabel} />
+          ) : (
+            <ArticlePicker
+              value={offense.articleLabel}
+              onSelect={(entry) => onChange({ articleLabel: entry.formLabel, mctfsCode: entry.mctfsCode })}
+            />
+          )}
         </div>
 
         <div className="flex-1 min-w-[260px] space-y-1">
-          <Label className="text-[11px] text-muted-foreground">Summary, item 1{letter}</Label>
+          <Label className="text-[11px] text-muted-foreground">
+            Summary, item 1{letter}
+            {offenceLocked && <LockedBadge />}
+          </Label>
           <Input
             value={offense.summary}
             onChange={(e) => onChange({ summary: e.target.value })}
             placeholder="Article, specific offense, date, and place"
+            readOnly={offenceLocked}
+            className={offenceLocked ? 'bg-muted text-muted-foreground' : undefined}
           />
           <div className="flex items-center gap-2">
             <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
@@ -199,11 +255,14 @@ function OffenseRow({
 
         {showFinding ? (
           <div className="w-40 space-y-1">
-            <Label className="text-[11px] text-muted-foreground">Finding, item 5{letter}</Label>
+            <Label className="text-[11px] text-muted-foreground">
+              Finding, item 5{letter}
+              {findingLocked && <LockedBadge />}
+            </Label>
             <Select
               value={offense.finding || undefined}
               onValueChange={(value) => onChange({ finding: value as Navmc10132Offense['finding'] })}
-              disabled={!offense.articleLabel}
+              disabled={findingLocked || !offense.articleLabel}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Blank" />

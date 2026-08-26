@@ -64,6 +64,8 @@ import { UnitDiarySection } from '@/components/letter/navmc10132/UnitDiarySectio
 import { VacationSection } from '@/components/letter/navmc10132/VacationSection';
 import { StageSelector } from '@/components/letter/navmc10132/StageSelector';
 import { LoadReportPanel } from '@/components/letter/navmc10132/LoadReportPanel';
+import { LockedBadge } from '@/components/letter/navmc10132/OffensesSection';
+import { navmc10132LockedKeys } from '@/lib/navmc10132-locks';
 import {
   navmc10132Stage,
   navmc10132StageAtLeast,
@@ -227,6 +229,12 @@ export function Navmc10132FormSections({
 }: Navmc10132SectionsProps) {
   const showAbsence = hasAbsenceOffense(formData);
   const stage = navmc10132Stage(formData);
+  /**
+   * Fields a signature on the loaded file has closed. EMPTY unless a file
+   * was loaded, so a fresh document is never locked: locks come from a
+   * signed PDF, not from the stage. See navmc10132-locks.ts.
+   */
+  const lockedKeys = navmc10132LockedKeys(formData);
   return (
     <>
       {/* ABOVE THE STAGE SELECTOR, because when a file has been loaded the
@@ -237,6 +245,8 @@ export function Navmc10132FormSections({
       <FormBlock>
         <DynamicForm
           key={`navmc10132-${formKey}-accused`}
+          lockedFields={lockedKeys}
+          lockedBadge={<LockedBadge />}
           documentType={DEF_ACCUSED}
           onSubmit={onDynamicSync}
           defaultValues={formData}
@@ -263,6 +273,8 @@ export function Navmc10132FormSections({
         <FormBlock>
           <DynamicForm
             key={`navmc10132-${formKey}-absence`}
+            lockedFields={lockedKeys}
+            lockedBadge={<LockedBadge />}
             documentType={DEF_ABSENCE}
             onSubmit={onDynamicSync}
             defaultValues={formData}
@@ -286,6 +298,8 @@ export function Navmc10132FormSections({
       <FormBlock>
         <DynamicForm
           key={`navmc10132-${formKey}-punishment-tail`}
+          lockedFields={lockedKeys}
+          lockedBadge={<LockedBadge />}
           documentType={DEF_PUNISHMENT_TAIL}
           onSubmit={onDynamicSync}
           defaultValues={formData}
@@ -302,6 +316,8 @@ export function Navmc10132FormSections({
             // them. Safe to remount because the values live in formData,
             // not in the form instance.
             key={`navmc10132-${formKey}-appeal-${stage}`}
+            lockedFields={lockedKeys}
+            lockedBadge={<LockedBadge />}
             documentType={DEF_APPEAL_BY_STAGE[String(stage)]}
             onSubmit={onDynamicSync}
             defaultValues={formData}

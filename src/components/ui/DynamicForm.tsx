@@ -91,9 +91,33 @@ interface DynamicFormProps {
   onSubmit: (data: any) => void;
   defaultValues?: any;
   children?: React.ReactNode;
+  /**
+   * Field names this form must show but NOT let anyone edit.
+   *
+   * Built for the NAVMC 10132 return leg: a signed file closes fields, and
+   * an editable box over a closed field is a promise the export cannot
+   * keep. The clerk types a correction, sees it in the app, exports, and
+   * the correction is not in the file, because the writer refuses to touch
+   * a signed field. Not offering the box is the honest version.
+   *
+   * The value stays VISIBLE. This is not `condition`, which removes a field
+   * entirely: a closed field's value is the record, and the clerk needs to
+   * read it.
+   */
+  lockedFields?: ReadonlySet<string>;
+  /** Rendered beside a locked field's label. Kept as a prop so this generic
+   *  component owns no NAVMC vocabulary. */
+  lockedBadge?: React.ReactNode;
 }
 
-export function DynamicForm({ documentType, onSubmit, defaultValues, children }: DynamicFormProps) {
+export function DynamicForm({
+  documentType,
+  onSubmit,
+  defaultValues,
+  children,
+  lockedFields,
+  lockedBadge,
+}: DynamicFormProps) {
   // Calculate allowed top-level keys based on document definitions
   const allowedTopLevelKeys = React.useMemo(() => {
     const keys = new Set<string>(['documentType']);
@@ -197,6 +221,35 @@ export function DynamicForm({ documentType, onSubmit, defaultValues, children }:
     // Skip field types rendered externally (not by DynamicForm)
     if (field.type === 'decision-grid' || field.type === 'radio') {
       return null;
+    }
+
+    const isLocked = lockedFields?.has(field.name) ?? false;
+
+    // A LOCKED FIELD RENDERS AS ITS VALUE, not as a disabled control. A
+    // disabled input still looks like an input, and a clerk clicking one
+    // that will not take focus reads it as a bug rather than as a rule.
+    if (isLocked) {
+      return (
+        <FormField
+          key={field.name}
+          control={form.control}
+          name={field.name}
+          render={({ field: formField }) => (
+            <FormItem className={field.className}>
+              <FormLabel>
+                {field.label}
+                {lockedBadge}
+              </FormLabel>
+              <div className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground min-h-[2.5rem]">
+                {String(formField.value ?? '') || (
+                  <span className="italic">blank on the signed file</span>
+                )}
+              </div>
+              {field.description && <FormDescription>{field.description}</FormDescription>}
+            </FormItem>
+          )}
+        />
+      );
     }
 
     return (
