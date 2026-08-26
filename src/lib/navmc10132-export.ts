@@ -94,6 +94,10 @@ async function exportIntoUploadedFile(formData: FormData, base: Uint8Array): Pro
     base,
     navmc10132Values(formData),
     navmc10132LockedFieldNames(formData),
+    // The SAME field map the blank path fills from. The writer needs it for
+    // the two-step dropdown rule, so a findings widget draws "G" rather than
+    // a clipped "Guilty" while /V still carries the export value.
+    fieldMap.fields as AcroFormFieldMeta[],
   );
 
   if (result.refused.length > 0) {

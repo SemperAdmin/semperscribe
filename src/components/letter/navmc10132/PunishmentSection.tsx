@@ -337,7 +337,13 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
                       ceiling={ceiling}
                       ceilingDetail={ceilingDetail}
                     />
-                    <EntryWarnings code={code} entry={entry} authorityGrade={(formData.njpAuthorityPayGrade as string) ?? ''} />
+                    <EntryWarnings
+                      code={code}
+                      entry={entry}
+                      authorityGrade={(formData.njpAuthorityPayGrade as string) ?? ''}
+                      ceiling={ceiling}
+                      ceilingDetail={ceilingDetail}
+                    />
                   </CardContent>
                 )}
               </Card>
@@ -724,10 +730,16 @@ function EntryWarnings({
   code,
   entry,
   authorityGrade,
+  ceiling,
+  ceilingDetail,
 }: {
   code: NonNullable<ReturnType<typeof resolvePunishment>>;
   entry: Navmc10132PunishmentEntry;
   authorityGrade: string;
+  /** The computed forfeiture ceiling, or null when nothing could be priced. */
+  ceiling: ForfeitureCeiling | null;
+  /** Why, when it is null. The pay table's own line when it is not. */
+  ceilingDetail: string;
 }) {
   const warnings: string[] = [];
 
@@ -748,16 +760,33 @@ function EntryWarnings({
     }
   }
   if (code.maxDaysPay !== undefined) {
-    // The ceiling here is stated in days of pay, but the only value this
-    // form collects is a dollar figure, and converting dollars to days
-    // needs the member's daily rate of pay, which this app does not have.
-    // So this cannot be a live threshold check like the two above, it is
-    // shown every time the code declares maxDaysPay, as a standing
-    // reminder carrying the citation rather than a conditional warning.
-    warnings.push(
-      `Ceiling for ${code.code} is ${code.maxDaysPay} days pay (${code.statute}). Confirm the ` +
-        `dollar figure against the member's rate of pay, this app cannot convert dollars to days.`
-    );
+    // THIS MESSAGE USED TO END "this app cannot convert dollars to days",
+    // which stopped being true when the DFAS basic pay table went in. It
+    // does convert: forfeitureCeiling prices the ceiling from item 19's pay
+    // grade and the length of service, the amount box carries it as a max,
+    // and validator V-19 blocks an export above it. Telling a clerk the app
+    // cannot do a thing it does, two lines under the figure it just did it
+    // with, invites them to disregard the figure.
+    //
+    // WHAT IS STILL TRUE, and is what the message now says: the figure is
+    // computed from a published TABLE, not from the member's own leave and
+    // earnings statement, and sea or hardship duty pay raises the lawful
+    // base (JAGMAN 0111.i) while the four-month E-1 rate lowers it. The
+    // confirmation this asks for is against the member's rate of pay, which
+    // was always the point.
+    if (ceiling === null) {
+      warnings.push(
+        `Ceiling for ${code.code} is ${code.maxDaysPay} days pay (${code.statute}), and this ` +
+          `document does not price it: ${ceilingDetail} Work the dollar figure from the ` +
+          `member's rate of pay before imposing.`,
+      );
+    } else {
+      warnings.push(
+        `Ceiling for ${code.code} is ${code.maxDaysPay} days pay (${code.statute}), which at ` +
+          `${ceiling.payGrade} is $${ceiling.sevenDaysPay}. That comes from the published pay ` +
+          `table, not from the member's LES, so confirm it against their actual rate of pay.`,
+      );
+    }
   }
 
   const authorityResult = authoritySatisfies(code.requiredAuthority, authorityGrade);

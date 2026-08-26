@@ -6,6 +6,8 @@ import {
   Navmc10132WriteError,
 } from '@/lib/navmc10132-incremental-write';
 import { readNavmc10132Pdf } from '@/lib/navmc10132-pdf-read';
+import type { AcroFormFieldMeta } from '@/lib/acroform-fill';
+import fieldMap from '../tools/aa-forms/navmc10132-map.json';
 
 /**
  * Writing the next pass into an already-signed NAVMC 10132.
@@ -257,4 +259,186 @@ describe('bytes that are not a UPB', () => {
       writeNavmc10132Incremental(new TextEncoder().encode('not a pdf'), {}, NO_LOCKS),
     ).rejects.toThrow(Navmc10132WriteError);
   });
+});
+
+// ---------------------------------------------------------------------------
+// THE VALUE HAS TO BE VISIBLE, NOT ONLY PRESENT.
+//
+// Every test above reads values back through the PDF's object graph, which is
+// how the app reads them and how Acrobat draws them. It is NOT how Chrome
+// draws them. Chrome's engine renders a widget's appearance stream, and a
+// base file that was filled once already carries one on every widget. Setting
+// /V leaves that stream alone, so the delta ships a new value behind an old
+// picture, and on a freshly written field the old picture is empty.
+//
+// That is exactly the shape of the defect Stephen reported on 2026-08-26:
+// "item 6 is not generating in the preview but does in the download". The
+// download opened in Acrobat, the preview is an iframe on Chrome's viewer.
+//
+// The blank above has no appearance streams, so it cannot reproduce this. The
+// fixture here is the blank WITH appearances generated, which is what any
+// once-filled form is, and is the only base the incremental path ever sees in
+// production.
+// ---------------------------------------------------------------------------
+
+/** The blank, filled once, so every widget carries an appearance stream. */
+async function filledOnce(): Promise<Uint8Array> {
+  const { PDFDocument } = await import('pdf-lib');
+  const doc = await PDFDocument.load(blank(), { ignoreEncryption: true });
+  const form = doc.getForm();
+  // Item 21 is RichText and empty here, and getText() throws on that
+  // combination, which updateFieldAppearances() would hit. Same clearing the
+  // blank-fill path does, for the same reason.
+  const remarks = form.getTextField('21 REMARKS');
+  remarks.acroField.setFlags(remarks.acroField.getFlags() & ~(1 << 25));
+  form.updateFieldAppearances();
+  return doc.save({ useObjectStreams: true });
+}
+
+/**
+ * The decoded content stream of a field's normal appearance.
+ *
+ * `state` names the ON appearance of a checkbox or radio button, whose
+ * `/AP /N` is a DICTIONARY of states rather than a single stream. Reading
+ * the dictionary as a stream returns nothing, which made an earlier version
+ * of the checkbox test below pass whether the appearance was regenerated or
+ * not. Its differential caught that. Empty string means the appearance is
+ * genuinely absent, so a test asserting on drawn output must also assert it
+ * is not empty.
+ */
+async function appearanceStream(
+  bytes: Uint8Array,
+  fieldName: string,
+  state?: string,
+): Promise<string> {
+  const { PDFDocument, PDFRawStream, PDFDict, PDFName, decodePDFRawStream } = await import(
+    '@cantoo/pdf-lib'
+  );
+  const doc = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+  const widget = doc.getForm().getField(fieldName).acroField.getWidgets()[0];
+  let normal: unknown = widget.getAppearances()?.normal;
+  if (normal instanceof PDFDict && state !== undefined) {
+    normal = normal.lookup(PDFName.of(state));
+  }
+  if (!(normal instanceof PDFRawStream)) return '';
+  return new TextDecoder().decode(decodePDFRawStream(normal).decode());
+}
+
+/**
+ * The characters an appearance stream actually PAINTS.
+ *
+ * Asserting on the raw stream does not work: pdf-lib writes show-text
+ * operands as hex, so "G" is `<47> Tj` and a substring check for the letter
+ * finds nothing. This pulls the operands out and decodes them, so a test can
+ * say what the field displays rather than how the bytes happen to encode it.
+ */
+function paintedText(stream: string): string {
+  const out: string[] = [];
+  const showText = /(\((?:[^()\\]|\\.)*\)|<([0-9A-Fa-f\s]*)>)\s*Tj/g;
+  let match: RegExpExecArray | null;
+  while ((match = showText.exec(stream)) !== null) {
+    if (match[2] !== undefined) {
+      const hex = match[2].replace(/\s+/g, '');
+      for (let i = 0; i + 1 < hex.length; i += 2) {
+        out.push(String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)));
+      }
+    } else {
+      out.push(match[1].slice(1, -1).replace(/\\(.)/g, '$1'));
+    }
+  }
+  return out.join('');
+}
+
+/** The name of a checkbox's ON state, whatever the form happens to call it. */
+async function checkedStateName(bytes: Uint8Array, fieldName: string): Promise<string> {
+  const { PDFDocument, PDFDict } = await import('@cantoo/pdf-lib');
+  const doc = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+  const widget = doc.getForm().getField(fieldName).acroField.getWidgets()[0];
+  const normal = widget.getAppearances()?.normal;
+  if (!(normal instanceof PDFDict)) return '';
+  const names = normal.keys().map((k) => k.asString().replace(/^\//, ''));
+  return names.find((n) => n !== 'Off') ?? '';
+}
+
+/** What a field's normal appearance paints. */
+async function appearanceText(bytes: Uint8Array, fieldName: string): Promise<string> {
+  return paintedText(await appearanceStream(bytes, fieldName));
+}
+
+describe('the written value is DRAWN, not only stored', () => {
+  it('regenerates item 6 appearance so a viewer that draws /AP shows the text', async () => {
+    const base = await filledOnce();
+    // The base draws item 6 as empty. This is the "before" the defect left in
+    // place, and it is what the preview was showing.
+    expect(await appearanceText(base, '6 PUNISHMENT IMPOSED')).not.toContain('RESTRICTION');
+
+    const result = await writeNavmc10132Incremental(
+      base,
+      { '6 PUNISHMENT IMPOSED': 'RESTRICTION FOR 14 DAYS' },
+      NO_LOCKS,
+    );
+
+    expect(result.written).toContain('6 PUNISHMENT IMPOSED');
+    // The value is in the object graph, which was never the failing half.
+    const read = await readNavmc10132Pdf(result.bytes);
+    expect(read.values['6 PUNISHMENT IMPOSED']).toBe('RESTRICTION FOR 14 DAYS');
+    // And now in the picture, which was.
+    expect(await appearanceText(result.bytes, '6 PUNISHMENT IMPOSED')).toContain(
+      'RESTRICTION FOR 14 DAYS',
+    );
+  }, 120000);
+
+  it('still appends rather than rewrites once appearances are in the delta', async () => {
+    const base = await filledOnce();
+    const result = await writeNavmc10132Incremental(
+      base,
+      { '6 PUNISHMENT IMPOSED': 'RESTRICTION FOR 14 DAYS' },
+      NO_LOCKS,
+    );
+    // Generating an appearance creates objects. If any of them landed before
+    // the original bytes, every signature on a real file would break.
+    expect(
+      Buffer.compare(Buffer.from(base), Buffer.from(result.bytes.slice(0, base.length))),
+    ).toBe(0);
+  }, 120000);
+
+  it('draws a two-step dropdown as its DISPLAY text and stores its EXPORT value', async () => {
+    const base = await filledOnce();
+    const fields = (fieldMap as { fields: AcroFormFieldMeta[] }).fields;
+
+    const result = await writeNavmc10132Incremental(
+      base,
+      { '1A FINDING': 'Guilty' },
+      NO_LOCKS,
+      fields,
+    );
+
+    // /V carries the export value, which is what the loader and MCTFS read.
+    const read = await readNavmc10132Pdf(result.bytes);
+    expect(read.values['1A FINDING']).toBe('Guilty');
+
+    // The widget is 23.76pt wide. Drawing "Guilty" into it clips to a
+    // meaningless "G"-and-a-bit, so the appearance carries the form's own
+    // display string instead.
+    const drawn = await appearanceText(result.bytes, '1A FINDING');
+    expect(drawn).toBe('G');
+    expect(drawn).not.toContain('Guilty');
+  }, 120000);
+
+  it('leaves a checkbox appearance exactly as the form drew it', async () => {
+    const base = await filledOnce();
+    const onState = await checkedStateName(base, '13 NOT APPEALED');
+    const before = await appearanceStream(base, '13 NOT APPEALED', onState);
+    // Guards the guard: an empty string compares equal to an empty string, so
+    // without this the assertion below holds no matter what the writer does.
+    expect(before).not.toBe('');
+
+    const result = await writeNavmc10132Incremental(base, { '13 NOT APPEALED': true }, NO_LOCKS);
+
+    expect(result.written).toContain('13 NOT APPEALED');
+    // A checkbox picks among states the FORM drew, through /AS, so it needs
+    // no appearance pass and must not get one: regenerating would replace the
+    // official form's mark with a generic pdf-lib tick.
+    expect(await appearanceStream(result.bytes, '13 NOT APPEALED', onState)).toBe(before);
+  }, 120000);
 });

@@ -143,6 +143,32 @@ export const E1_UNDER_FOUR_MONTHS = 2225.70;
  */
 export const SENIOR_ENLISTED_SPECIAL_POSITION_PAY = 11166.90;
 
+/**
+ * The LOWEST rate the table publishes for a grade, for the grades whose
+ * early brackets are blank.
+ *
+ * WHY THIS IS NOT AN INVENTED NUMBER. DFAS leaves E-8 blank below eight
+ * years and E-9 blank below ten, because those are the lengths of service
+ * the promotion timelines make reachable. A prior-service or meritorious
+ * promotion puts a real Marine in a blank cell, and that Marine is paid
+ * something: the lowest rate published for the grade, which is what a blank
+ * cell above a printed column means on a pay table.
+ *
+ * CONFIRMED AGAINST A PRIMARY SOURCE, not reasoned to. The Marine Corps
+ * CY26 active duty maximum forfeiture table (Stephen, 2026-08-26) prints a
+ * figure in every one of those cells, and every one of them is this rate:
+ * E-8 at zero years reads $1,319 for seven days' pay, which is
+ * floor(5656.50 / 30 * 7), the over-eight rate. `navmc10132-forfeiture-
+ * oracle.test.ts` checks all 390 enlisted cells of that table against this
+ * module, at all three of its adjudication levels.
+ */
+function lowestPublishedRate(grade: string): number | null {
+  const row = MONTHLY_BASIC_PAY[grade];
+  if (!row) return null;
+  for (const cell of row) if (cell !== null) return cell;
+  return null;
+}
+
 /** Recomputes the digest from the table itself. Used by the test suite. */
 export function computePayTableCellDigest(): string {
   const payload = Object.keys(MONTHLY_BASIC_PAY)
@@ -378,8 +404,32 @@ export function forfeitureCeiling(input: ForfeitureCeilingInput): ForfeitureCeil
   }
 
   const basic = monthlyBasicPay(input.payGrade, input.yearsOfService);
+  const flooredNotes: string[] = [];
+  let monthly: number;
   if (basic.kind === 'unavailable') {
-    return { kind: 'unavailable', reason: basic.reason, detail: basic.detail };
+    // A BLANK CELL IS NOT A REASON TO COMPUTE NOTHING, and computing nothing
+    // here is worse than it looks: the over-ceiling gate reads this result,
+    // so an E-8 whose years of service land in a blank cell used to get NO
+    // ceiling and therefore NO gate, on a grade where the lawful maximum is
+    // the largest of any enlisted Marine. See lowestPublishedRate.
+    //
+    // ONLY for a blank cell. Every other unavailable reason is a data error
+    // or an unfilled form, where a computed figure would be a guess about
+    // the accused rather than about the table.
+    const floor = basic.reason === 'no-rate-published' ? lowestPublishedRate(normaliseGrade(input.payGrade)) : null;
+    if (floor === null) {
+      return { kind: 'unavailable', reason: basic.reason, detail: basic.detail };
+    }
+    monthly = floor;
+    flooredNotes.push(
+      `The pay table prints no rate for pay grade ${normaliseGrade(input.payGrade)} at this ` +
+        'length of service, so the ceiling is computed on the lowest rate it publishes for ' +
+        `that grade, $${floor.toFixed(2)} a month. That is what the Marine Corps maximum ` +
+        'forfeiture table does for the same cells. Confirm the length of service before ' +
+        'imposing, because a mistyped one lands here.',
+    );
+  } else {
+    monthly = basic.monthly;
   }
 
   const rawExtra = input.seaHardshipDutyPay ?? 0;
@@ -393,9 +443,9 @@ export function forfeitureCeiling(input: ForfeitureCeilingInput): ForfeitureCeil
     };
   }
 
-  const subject = basic.monthly + extra;
+  const subject = monthly + extra;
   const grade = normaliseGrade(input.payGrade);
-  const notes: string[] = [];
+  const notes: string[] = [...flooredNotes];
 
   if (grade === 'E1') {
     notes.push(
@@ -428,7 +478,7 @@ export function forfeitureCeiling(input: ForfeitureCeilingInput): ForfeitureCeil
   return {
     kind: 'ceiling',
     ceiling: {
-      monthlyBasicPay: basic.monthly,
+      monthlyBasicPay: monthly,
       monthlySubjectToForfeiture: subject,
       // The daily rate is 1/30 of the monthly rate (DoD FMR Vol 7A Ch 1).
       // Floored, because MCO 010901 requires whole dollars and this is a

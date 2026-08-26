@@ -12,6 +12,11 @@
  * clobber-rule concern here, unitDiaryBlock() is a pure read over the same
  * FormData every other section already owns.
  *
+ * VISIBLE FROM THE ITEM 12 SIGNATURE, not from item 16 (Navmc10132Sections,
+ * Stephen's 2026-08-26 ruling). That is early enough that the punishment can
+ * still change on appeal, which is what the appealPending branch below warns
+ * about. Nothing else about the panel moved.
+ *
  * The alreadyReported branch renders first and is the most prominent thing
  * in the section, per unitDiaryBlock's own doc comment, item 16 IS the unit
  * diary entry, and a non-null alreadyReported means this NJP has already
@@ -72,6 +77,18 @@ export function UnitDiarySection({ formData, SectionCard }: SectionProps) {
               This NJP has already been reported to the unit diary as UD {block.alreadyReported.ud}
               {block.alreadyReported.dtd === '' ? '' : `, dated ${block.alreadyReported.dtd}`}.
               Entering it again creates a duplicate unit diary entry.
+            </p>
+          </div>
+        )}
+
+        {block.appealPending && (
+          <div className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <p className="text-sm font-medium text-amber-800">
+              Item 12 records an intent to appeal and item 14 carries no decision yet. The
+              reviewing authority can still set aside, mitigate, remit or suspend this
+              punishment, so anything entered from the block below may have to be corrected
+              once item 14 is signed.
             </p>
           </div>
         )}

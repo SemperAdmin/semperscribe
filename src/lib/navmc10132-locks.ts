@@ -74,6 +74,19 @@ export const NAVMC_10132_SECTION_LOCKS: Readonly<Record<string, readonly string[
   suspensions: ['7 SUSPENSION IF ANY'],
   remarks: ['21 REMARKS'],
   victims: ['22A VICTIM STATUS', '22A VICTIM SEX', '22A VICTIM RACE', '22A VICTIM ETHNICITY'],
+  // ITEMS 17-20, the accused block. Every one of these DOES invert to a
+  // single input, so each already locks itself through NAVMC_10132_FIELD_TO_KEY
+  // and the section entry adds nothing to the inputs. It exists so the UI can
+  // ask ONE question of the whole block, which is what Stephen asked for on
+  // 2026-08-26: "when item 2 is signed we do not need the Unit and Accused
+  // (Items 17-20) or Item 22, Victims sections".
+  //
+  // ALL FOUR, not any. `isNavmc10132SectionLocked` requires every field, and
+  // that is load-bearing here rather than incidental: the app-lock rule only
+  // closes a field the file carries a VALUE for, so a file signed with item
+  // 20 left blank leaves the EDIPI open, and collapsing the block would hide
+  // the one box still needing a clerk.
+  accused: ['17 UNIT', '18 ACCUSED FULL NAME', '19 ACCUSED RANK/GRADE', '20 ACCUSED EDIPI'],
 };
 
 /**

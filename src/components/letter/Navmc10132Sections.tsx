@@ -51,7 +51,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Lock, User, Users } from 'lucide-react';
 import { FormData } from '@/types';
 import { DynamicForm } from '@/components/ui/DynamicForm';
 import { DOCUMENT_TYPES, DocumentTypeDefinition } from '@/lib/schemas';
@@ -68,7 +68,7 @@ import { UnitDiarySection } from '@/components/letter/navmc10132/UnitDiarySectio
 import { VacationSection } from '@/components/letter/navmc10132/VacationSection';
 import { LoadReportPanel } from '@/components/letter/navmc10132/LoadReportPanel';
 import { LockedBadge } from '@/components/letter/navmc10132/OffensesSection';
-import { navmc10132LockedKeys } from '@/lib/navmc10132-locks';
+import { navmc10132LockedKeys, isNavmc10132SectionLocked } from '@/lib/navmc10132-locks';
 import {
   navmc10132Stage,
   navmc10132StageAtLeast,
@@ -210,6 +210,97 @@ function FormBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * A section every one of whose fields a signature has closed, shown as a
+ * collapsed read-only summary instead of a form.
+ *
+ * STEPHEN, 2026-08-26: "We can also hide sections that are locked on the
+ * form from the UI. Example when item 2 is signed we do not need the Unit
+ * and Accused (Items 17-20) or Item 22, Victims sections".
+ *
+ * COLLAPSED RATHER THAN REMOVED, and the difference is deliberate. What is
+ * gone is the editing surface, which is what "we do not need" is about: a
+ * row of boxes nobody may type in is noise on every later pass. What stays
+ * is the RECORD. The accused's name, unit and EDIPI appear nowhere else in
+ * this app, so deleting the card would leave a clerk working a pass-4 form
+ * unable to see whose form it is, and this file's own stage-gating rule
+ * already says an invisible field on a legal record is found by its absence
+ * at an audit years later. One click reopens it, and the values are the
+ * signed ones by construction: they are the only ones the export will write.
+ */
+function SignedSectionSummary({
+  icon,
+  title,
+  rows,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  rows: ReadonlyArray<readonly [string, string]>;
+}) {
+  return (
+    <SectionCard icon={icon} title={title}>
+      <details className="group">
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-muted-foreground">
+          <Lock className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            Signed on the loaded form and closed to editing. Click to show what it carries.
+          </span>
+        </summary>
+        <dl className="mt-3 space-y-1">
+          {rows.map(([label, value]) => (
+            <div key={label} className="flex gap-2 text-sm">
+              <dt className="w-56 shrink-0 text-muted-foreground">{label}</dt>
+              {/* An EMPTY signed field is shown as empty, never skipped. A row
+                  the file left blank is itself a fact about the record. */}
+              <dd className="font-medium">{value === '' ? '(blank)' : value}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
+    </SectionCard>
+  );
+}
+
+/**
+ * The item 22 summary rows.
+ *
+ * ROW A ONLY on the grid, plus a COUNT of the rest, because that is what the
+ * form itself holds: spec defect 3.1 puts victims B through E into item 21
+ * in the instruction's "Additional Victims" format rather than into the item
+ * 22 grid. A summary that listed five rows would describe a form that does
+ * not exist. The count is there so a collapsed card never hides the fact
+ * that more victims were recorded.
+ */
+function victimSummaryRows(formData: FormData): ReadonlyArray<readonly [string, string]> {
+  const value: unknown = formData.victims;
+  const rows = Array.isArray(value) ? (value as Array<Record<string, unknown>>) : [];
+  const first = rows[0] ?? {};
+  const str = (key: string): string => {
+    const raw = first[key];
+    return typeof raw === 'string' ? raw.trim() : '';
+  };
+  const additional = rows
+    .slice(1)
+    .filter((row) =>
+      ['status', 'sex', 'race', 'ethnicity'].some(
+        (key) => typeof row?.[key] === 'string' && (row[key] as string).trim() !== '',
+      ),
+    ).length;
+  return [
+    ['Status (item 22A)', str('status')],
+    ['Sex (item 22A)', str('sex')],
+    ['Race (item 22A)', str('race')],
+    ['Ethnicity (item 22A)', str('ethnicity')],
+    ['Additional victims, carried in item 21', String(additional)],
+  ];
+}
+
+/** A FormData value as a trimmed string, whatever the loose bag holds. */
+function text(formData: FormData, key: string): string {
+  const value: unknown = (formData as Record<string, unknown>)[key];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 /** True when item 7 carries at least one suspension, which is the thing a
  *  vacation targets. Reads through unknown rather than casting off the `any`
  *  index signature, matching every other reader of this array. */
@@ -244,6 +335,14 @@ export function Navmc10132FormSections({
    * signed PDF, not from the stage. See navmc10132-locks.ts.
    */
   const lockedKeys = navmc10132LockedKeys(formData);
+  /**
+   * Sections a signature has closed OUTRIGHT, every field of them, which is
+   * a stricter test than any one input being locked. See
+   * NAVMC_10132_SECTION_LOCKS: a block with one field still open stays a
+   * form, because that open field is work somebody still has to do.
+   */
+  const accusedClosed = isNavmc10132SectionLocked(formData, 'accused');
+  const victimsClosed = isNavmc10132SectionLocked(formData, 'victims');
   return (
     <>
       {onClearForm && <StartNewCaseButton onClearForm={onClearForm} formData={formData} />}
@@ -252,21 +351,40 @@ export function Navmc10132FormSections({
           which is also the pass the sections below are gated on. With no
           file loaded it renders nothing and the document sits at pass 1. */}
       <LoadReportPanel formData={formData} setFormData={setFormData} />
-      <FormBlock>
-        <DynamicForm
-          key={`navmc10132-${formKey}-accused`}
-          lockedFields={lockedKeys}
-          lockedBadge={<LockedBadge />}
-          documentType={DEF_ACCUSED}
-          onSubmit={onDynamicSync}
-          defaultValues={formData}
+      {accusedClosed ? (
+        <SignedSectionSummary
+          icon={<User className="mr-2 h-5 w-5" />}
+          title="Unit and Accused (Items 17-20)"
+          rows={[
+            ['Unit (item 17)', text(formData, 'unit')],
+            ['Name (item 18)', text(formData, 'accusedName')],
+            ['Rank and pay grade (item 19)', text(formData, 'accusedRankGrade')],
+            ['EDIPI (item 20)', text(formData, 'accusedEdipi')],
+          ]}
         />
-      </FormBlock>
-      <AccusedRankSection
-        formData={formData}
-        setFormData={setFormData}
-        SectionCard={SectionCard}
-      />
+      ) : (
+        <>
+          <FormBlock>
+            <DynamicForm
+              key={`navmc10132-${formKey}-accused`}
+              lockedFields={lockedKeys}
+              lockedBadge={<LockedBadge />}
+              documentType={DEF_ACCUSED}
+              onSubmit={onDynamicSync}
+              defaultValues={formData}
+            />
+          </FormBlock>
+          {/* PAIRED WITH THE BLOCK ABOVE, not gated separately. This card is
+              the item 19 rank and pay grade picker, so it has nothing left to
+              offer once item 19 is closed, and leaving it behind would show
+              an empty editor under a summary that already states the rank. */}
+          <AccusedRankSection
+            formData={formData}
+            setFormData={setFormData}
+            SectionCard={SectionCard}
+          />
+        </>
+      )}
       <OffensesSection
         formData={formData}
         setFormData={setFormData}
@@ -328,11 +446,19 @@ export function Navmc10132FormSections({
           />
         </FormBlock>
       )}
-      <VictimsSection
-        formData={formData}
-        setFormData={setFormData}
-        SectionCard={SectionCard}
-      />
+      {victimsClosed ? (
+        <SignedSectionSummary
+          icon={<Users className="mr-2 h-5 w-5" />}
+          title="Item 22, Victims"
+          rows={victimSummaryRows(formData)}
+        />
+      ) : (
+        <VictimsSection
+          formData={formData}
+          setFormData={setFormData}
+          SectionCard={SectionCard}
+        />
+      )}
       {/* ITEM 2 SITS AFTER ITEM 22, NOT IN FORM ORDER. Stephen's placement,
           2026-08-26. On paper item 2 is near the top of page 1 and item 22 is
           on page 2, so this deliberately breaks form order, and the reason is
@@ -355,7 +481,19 @@ export function Navmc10132FormSections({
         SectionCard={SectionCard}
         stage={stage}
       />
-      {stage === 'complete' && (
+      {/* ITEM 12, NOT ITEM 16. Stephen, 2026-08-26: "Once item 12 is signed we
+          need to have the ability to see the Unit Diary action section". The
+          item 12 signature closes pass 5, so the document is at pass 6 the
+          moment it is applied, and 'complete' still sorts after every pass,
+          so a closed-out case keeps the section it had before.
+
+          WHAT THIS TRADES. Waiting for item 16 meant the figures could not
+          move any more. At item 12 they still can: an accused who states an
+          intent to appeal may have the punishment reduced or set aside at
+          item 14, and a diary entry posted from the pre-appeal figures would
+          then be wrong. The section says so itself rather than the app
+          holding the whole panel back for a case that may never appeal. */}
+      {navmc10132StageAtLeast(stage, 6) && (
         <UnitDiarySection
           formData={formData}
           setFormData={setFormData}

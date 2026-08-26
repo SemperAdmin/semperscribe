@@ -146,8 +146,13 @@ function setFieldFlag(field: PDFField, bit: number, on: boolean): void {
  * Build export-value -> display-value lookups for every choice field the
  * metadata marks `exportDiffersFromDisplay`. Map-driven, so a form revision
  * that adds or removes such a field changes the map, not this code.
+ *
+ * EXPORTED because the incremental writer needs the same table. That module
+ * writes into an already-signed file rather than a blank, but it faces the
+ * identical two-step problem, and a second copy of this lookup would be a
+ * second place for a form revision to be missed.
  */
-function buildTwoStepLookup(fields: AcroFormFieldMeta[]): Map<string, Map<string, string>> {
+export function buildTwoStepLookup(fields: AcroFormFieldMeta[]): Map<string, Map<string, string>> {
   const table = new Map<string, Map<string, string>>();
   for (const field of fields) {
     if (field.type !== '/Ch' || !field.exportDiffersFromDisplay) continue;

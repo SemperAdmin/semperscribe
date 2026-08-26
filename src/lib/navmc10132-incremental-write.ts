@@ -34,6 +34,37 @@
  *    at all, so this cannot be done with the copy the rest of the app uses.
  *    Both are in the dependency tree on purpose. Everything that does a full
  *    rewrite keeps using stock pdf-lib; only this file uses the fork.
+ * 5. SETTING `/V` LEAVES THE OLD APPEARANCE STREAM IN PLACE, AND HALF THE
+ *    WORLD DRAWS THE APPEARANCE RATHER THAN THE VALUE. A base file that has
+ *    been filled once already carries an `/AP` on every widget. `setText`
+ *    marks the field dirty but does not touch that stream, so the delta
+ *    re-emits the widget with the NEW `/V` and the OLD `/AP`. Acrobat
+ *    regenerates from `/V` and shows the new text. Chrome's engine trusts
+ *    `/AP` and shows the old, which on a freshly written field means it
+ *    shows nothing at all.
+ *
+ *    MEASURED, 2026-08-26, rendering through pdfium (the engine behind the
+ *    in-app preview) and counting ink inside item 6's own rectangle:
+ *
+ *      base file, item 6 empty                 947 dark px
+ *      after the write, no appearance pass     947 dark px  <- invisible
+ *      after the write, appearance regenerated 2519 dark px <- the text
+ *
+ *    That is the whole of the "item 6 shows in the download but not in the
+ *    preview" defect. The fix is to regenerate the appearance for the
+ *    fields this pass writes, which is what the blank-fill path has always
+ *    done through `updateFieldAppearances()`. Only value-drawn fields need
+ *    it: a checkbox picks among states the FORM drew, through `/AS`, so
+ *    regenerating one would replace the form's own mark with a generic
+ *    pdf-lib tick. Checkboxes were measured too, and they render correctly
+ *    with no appearance pass at all.
+ *
+ *    NOT `NeedAppearances`, though that flag also works here (measured: the
+ *    same 947 -> 2521). It tells every viewer to redraw EVERY field,
+ *    including the ones inside the signed byte range, with whatever font it
+ *    substitutes. On a legal record the signature should keep covering what
+ *    it displayed, so this writes appearances for the fields it touched and
+ *    leaves the rest exactly as signed.
  *
  * WHAT IT REFUSES TO WRITE, and why refusing is the feature:
  *
@@ -59,7 +90,12 @@ import {
   PDFCheckBox,
   PDFDropdown,
   PDFRadioGroup,
+  PDFName,
+  PDFString,
+  type PDFFont,
+  type PDFForm,
 } from '@cantoo/pdf-lib';
+import { buildTwoStepLookup, type AcroFormFieldMeta } from '@/lib/acroform-fill';
 
 /** Thrown when the base file cannot be written into at all. */
 export class Navmc10132WriteError extends Error {
@@ -116,6 +152,14 @@ export async function writeNavmc10132Incremental(
   originalBytes: Uint8Array,
   values: Record<string, string | boolean | undefined>,
   lockedFields: ReadonlySet<string>,
+  /**
+   * Field metadata, normally the generated form map's `fields` array. Used
+   * for ONE thing: the two-step dropdown rule (see `acroform-fill.ts` point
+   * 2). Optional because the mechanics tests fill text fields only, and a
+   * missing map costs a dropdown its display text rather than the whole
+   * write. Every production caller passes it.
+   */
+  fields: readonly AcroFormFieldMeta[] = [],
 ): Promise<Navmc10132IncrementalResult> {
   const original = new Uint8Array(originalBytes);
 
@@ -130,6 +174,19 @@ export async function writeNavmc10132Incremental(
 
   const snapshot = doc.takeSnapshot();
   const form = doc.getForm();
+
+  // Export value -> display value, for the choice fields whose two differ.
+  // Shared with the blank-fill path so a form revision is learned once.
+  const twoStep = buildTwoStepLookup([...fields]);
+
+  // Embedding a font creates an object, and a pass that writes only
+  // checkboxes needs none, so this is built on first use rather than up
+  // front. An export with nothing to draw should not grow the file.
+  let cachedFont: PDFFont | undefined;
+  const appearanceFont = (formRef: PDFForm): PDFFont => {
+    if (!cachedFont) cachedFont = formRef.getDefaultFont();
+    return cachedFont;
+  };
 
   const written: string[] = [];
   const refused: string[] = [];
@@ -172,13 +229,30 @@ export async function writeNavmc10132Incremental(
     try {
       if (field instanceof PDFTextField) {
         field.setText(desired);
+        // POINT 5 FROM THE HEADER. Without this the value is in the file
+        // and invisible in every viewer that draws the appearance.
+        field.defaultUpdateAppearances(appearanceFont(form));
       } else if (field instanceof PDFCheckBox) {
         if (desired === 'true') field.check();
         else field.uncheck();
+        // No appearance pass, deliberately. A checkbox selects among states
+        // the FORM already drew, through /AS, so it renders correctly as it
+        // stands and regenerating would replace the form's own mark.
       } else if (field instanceof PDFDropdown) {
-        field.select(desired);
+        // The two-step rule, same order and same reason as the blank path:
+        // draw the DISPLAY text, then put the EXPORT value in /V. Drawing
+        // the export value instead clips a narrow widget ("Guilty" into a
+        // 23.76pt findings box), and patching /V first would draw exactly
+        // that. Order is load-bearing.
+        const display = twoStep.get(name)?.get(desired);
+        field.select(display ?? desired);
+        field.defaultUpdateAppearances(appearanceFont(form));
+        if (display !== undefined) {
+          field.acroField.dict.set(PDFName.of('V'), PDFString.of(desired));
+        }
       } else if (field instanceof PDFRadioGroup) {
         field.select(desired);
+        // Same as the checkbox: /AS picks a state the form drew.
       } else {
         refused.push(name);
         continue;

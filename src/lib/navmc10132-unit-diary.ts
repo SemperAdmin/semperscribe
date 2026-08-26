@@ -58,6 +58,26 @@ export interface UnitDiaryBlock {
   excluded: UnitDiaryExclusion[];
   /** Non-null when item 16 already carries a UD number, meaning this NJP has been reported. */
   alreadyReported: UnitDiaryAlreadyReported | null;
+  /**
+   * TRUE when item 12 records an intent to appeal and item 14 carries no
+   * decision yet, so the figures below can still move.
+   *
+   * WHY THIS EXISTS AT ALL. The panel used to appear only once item 16 had
+   * closed the form, at which point nothing could change and no such caveat
+   * was possible. Stephen opened it at the item 12 signature on 2026-08-26,
+   * which is BEFORE the appeal is decided. Article 15(e), UCMJ and MCM Part
+   * V para 7.f let the reviewing authority set aside, mitigate, remit or
+   * suspend the punishment on appeal, so a diary entry typed from this block
+   * while an appeal is pending can be posting a punishment that no longer
+   * exists in that form.
+   *
+   * NOT A BLOCK. A pending appeal does not suspend the punishment by itself
+   * (MCM Part V para 7.d(2): punishment is effective when imposed and an
+   * appeal does not stay it unless the authority orders it), so there are
+   * real cases where the entry is made while the appeal is out. This reports
+   * the risk and leaves the judgement with the clerk.
+   */
+  appealPending: boolean;
 }
 
 /** The row letters the form actually prints for item 1 and item 5, same order navmc10132-acroform.ts uses. */
@@ -172,6 +192,15 @@ export function unitDiaryBlock(formData: FormData): UnitDiaryBlock {
   // so presence of the number alone is what flips this, not the pair.
   const alreadyReported: UnitDiaryAlreadyReported | null =
     finalAdminUd === '' ? null : { ud: finalAdminUd, dtd: finalAdminDtd };
+
+  // An appeal is PENDING when the accused said they intend one and item 14
+  // has not ruled. The item 12 wording is the form's own, matched here on
+  // the affirmative option only: "the accused refuses to sign" is a refusal
+  // to sign the election, not a statement of intent, and reading it as an
+  // appeal would caveat every refusal case for no reason. See
+  // `UnitDiaryBlock.appealPending`.
+  const appealDecision = readString(formData, 'appealDecision') ?? '';
+  const appealPending = intendAppeal.trim() === 'I do intend to appeal.' && appealDecision.trim() === '';
 
   // --- Offenses: resolve every row, sort each into reportable or excluded ---
   const offenseRows = readRows(formData, 'offenses');
@@ -292,7 +321,7 @@ export function unitDiaryBlock(formData: FormData): UnitDiaryBlock {
         lines.push(`  ${ex.row}   ${ex.label} - ${ex.reason}`);
       }
     }
-    return { text: lines.join('\n'), reportable: false, missing, excluded, alreadyReported };
+    return { text: lines.join('\n'), reportable: false, missing, excluded, alreadyReported, appealPending };
   }
 
   lines.push('');
@@ -355,5 +384,5 @@ export function unitDiaryBlock(formData: FormData): UnitDiaryBlock {
     }
   }
 
-  return { text: lines.join('\n'), reportable: true, missing, excluded, alreadyReported };
+  return { text: lines.join('\n'), reportable: true, missing, excluded, alreadyReported, appealPending };
 }

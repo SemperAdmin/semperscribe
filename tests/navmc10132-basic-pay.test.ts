@@ -351,11 +351,29 @@ describe('forfeitureCeiling', () => {
     expect(e5.ceiling.notes.some((n) => n.includes(specialRateText))).toBe(false);
   });
 
-  it('is unavailable/no-rate-published when basic pay is a blank table cell', () => {
+  // THIS ASSERTION WAS REVERSED ON 2026-08-26, and the reversal is the point.
+  // It used to require NO ceiling for a blank table cell, which read as
+  // caution and was the opposite: forfeitureCeiling feeds the over-ceiling
+  // gate, so an E-8 whose length of service lands in a blank cell got no
+  // ceiling and therefore no gate, on the grade with the largest lawful
+  // maximum of any enlisted Marine. The Marine Corps CY26 maximum forfeiture
+  // table prints a figure in every one of those cells, and it is the grade's
+  // lowest published rate. See tests/navmc10132-forfeiture-oracle.test.ts,
+  // which checks all 39 of them.
+  //
+  // The LOOKUP still reports the blank cell truthfully. Only the CEILING
+  // floors, and it says in a note that it did.
+  it('reports a blank table cell truthfully at the lookup, and floors at the ceiling', () => {
     expect(monthlyBasicPay('E8', 2).kind).toBe('unavailable'); // fixture sanity check
+    const lookup = monthlyBasicPay('E8', 2);
+    if (lookup.kind === 'unavailable') expect(lookup.reason).toBe('no-rate-published');
+
     const result = forfeitureCeiling({ status: currentStatus, payGrade: 'E8', yearsOfService: 2 });
-    expect(result.kind).toBe('unavailable');
-    if (result.kind === 'unavailable') expect(result.reason).toBe('no-rate-published');
+    expect(result.kind).toBe('ceiling');
+    if (result.kind !== 'ceiling') return;
+    // The lowest rate the table publishes for E-8, which is the over-eight one.
+    expect(result.ceiling.monthlyBasicPay).toBe(5656.50);
+    expect(result.ceiling.notes.some((n) => n.includes('prints no rate'))).toBe(true);
   });
 
   it('is unavailable/unreadable-extra-pay when sea/hardship duty pay is negative or unparseable', () => {

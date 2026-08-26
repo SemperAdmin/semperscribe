@@ -389,3 +389,86 @@ describe('unitDiaryBlock resolves the code fresh through resolveArticle', () => 
     expect(offenses).not.toContain('WRONG-STALE-CODE');
   });
 });
+
+// ---------------------------------------------------------------------------
+// A PENDING APPEAL, which only became reachable when the panel moved earlier.
+//
+// The panel used to open at item 16, after which nothing could change. It now
+// opens at the item 12 signature (Stephen, 2026-08-26), which is before the
+// reviewing authority has ruled. Article 15(e), UCMJ and MCM Part V para 7.f
+// let that authority set aside, mitigate, remit or suspend the punishment, so
+// a block copied while an appeal is out can describe a punishment that will
+// not survive item 14.
+//
+// The flag reports the risk. It does not gate the block, because MCM Part V
+// para 7.d(2) makes punishment effective when imposed and an appeal does not
+// stay it by itself, so entering it while the appeal is out is a real and
+// lawful case.
+// ---------------------------------------------------------------------------
+describe('appealPending', () => {
+  const guilty = {
+    ...IDENTITY_FIELDS,
+    offenses: offensesWith({
+      articleLabel: resolveArticle('Art. 86  Absence without leave')?.formLabel ?? 'Art. 86  Absence without leave',
+      summary: 'UA 3 days',
+      finding: 'Guilty',
+    }),
+  };
+
+  it('is TRUE once item 12 states an intent to appeal and item 14 has not ruled', () => {
+    const block = unitDiaryBlock(baseForm({ ...guilty, intendAppeal: 'I do intend to appeal.' }));
+    expect(block.appealPending).toBe(true);
+  });
+
+  it('is FALSE once item 14 carries a decision', () => {
+    const block = unitDiaryBlock(
+      baseForm({
+        ...guilty,
+        intendAppeal: 'I do intend to appeal.',
+        appealDecision: 'Appeal denied.',
+      }),
+    );
+    expect(block.appealPending).toBe(false);
+  });
+
+  it('is FALSE when the accused declined to appeal', () => {
+    const block = unitDiaryBlock(
+      baseForm({ ...guilty, intendAppeal: 'I do not intend to appeal.' }),
+    );
+    expect(block.appealPending).toBe(false);
+  });
+
+  // A refusal to SIGN the item 12 election is not a statement of intent. The
+  // form offers it as a third option on the same control, so a naive
+  // "anything but 'do not'" test would caveat every refusal case.
+  it('is FALSE when the accused refused to sign the election', () => {
+    const block = unitDiaryBlock(
+      baseForm({ ...guilty, intendAppeal: 'the accused refuses to sign.' }),
+    );
+    expect(block.appealPending).toBe(false);
+  });
+
+  it('is FALSE on a form where item 12 has not been reached', () => {
+    expect(unitDiaryBlock(baseForm(guilty)).appealPending).toBe(false);
+  });
+
+  // The caveat is a UI banner, never a line in the copyable block. A clerk
+  // pastes that block into MCTFS, and a warning sentence pasted with it would
+  // be typed into the record.
+  //
+  // The block DOES carry an APPEAL line, and must: item 12's answer is part
+  // of what the entry reports. What it must not gain is the caution about
+  // that answer. The two are told apart by the caution's own words, since
+  // asserting on the word "appeal" alone would fail on the data line and
+  // tempt someone to delete it.
+  it('keeps the caveat out of the copyable text', () => {
+    const block = unitDiaryBlock(baseForm({ ...guilty, intendAppeal: 'I do intend to appeal.' }));
+    expect(block.appealPending).toBe(true);
+    // The data line stays.
+    expect(block.text).toContain('I do intend to appeal.');
+    // The caution does not.
+    for (const word of ['set aside', 'mitigate', 'remit', 'may have to be corrected']) {
+      expect(block.text.toLowerCase()).not.toContain(word);
+    }
+  });
+});

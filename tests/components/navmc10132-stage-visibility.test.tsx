@@ -186,6 +186,25 @@ describe('Later stages are additive', () => {
     expect(screen.getByText(TITLES.appeal)).toBeInTheDocument();
     expect(screen.getByText(TITLES.unitDiary)).toBeInTheDocument();
   });
+
+  // STEPHEN, 2026-08-26: "Once item 12 is signed we need to have the ability
+  // to see the Unit Diary action section". The item 12 signature CLOSES pass
+  // 5, so the pass to gate on is 6, not 5. Passes 5 and 6 are asserted as a
+  // pair below for exactly that reason: an off-by-one here shows the panel a
+  // signature too early, on a form where nobody has yet said whether they
+  // are appealing.
+  it('pass 5 (appeal election being recorded) still hides the unit diary aid', () => {
+    renderSections(baseFormData({ stage: 5 }));
+
+    expect(screen.getByText(TITLES.punishment)).toBeInTheDocument();
+    expect(screen.queryByText(TITLES.unitDiary)).not.toBeInTheDocument();
+  });
+
+  it('pass 6 (item 12 signed) opens the unit diary aid before the form closes out', () => {
+    renderSections(baseFormData({ stage: 6 }));
+
+    expect(screen.getByText(TITLES.unitDiary)).toBeInTheDocument();
+  });
 });
 
 describe('OffensesSection: the finding control is gated to pass 3', () => {
@@ -560,5 +579,117 @@ describe('Start a new case, at the top of the form', () => {
   it('renders nothing when no action is supplied', () => {
     renderSections(baseFormData());
     expect(screen.queryByRole('button', { name: /Start a new case/ })).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SECTIONS A SIGNATURE HAS CLOSED OUTRIGHT.
+//
+// STEPHEN, 2026-08-26: "We can also hide sections that are locked on the form
+// from the UI. Example when item 2 is signed we do not need the Unit and
+// Accused (Items 17-20) or Item 22, Victims sections".
+//
+// The lock set below is the REAL one his pass-2 file produces, measured the
+// same day and already used as the fixture in navmc10132-signed-locks. Using
+// the measured set rather than a plausible one is what makes these assertions
+// about his document rather than about an invented shape.
+//
+// WHAT IS BEING ASSERTED IS A SWAP, NOT A DELETION. The editing surface goes;
+// the record stays, in a collapsed summary under the same heading. A test
+// that only checked the inputs were gone would pass on a version that dropped
+// the accused's name off the screen entirely, so every case below asserts the
+// value is still readable.
+// ---------------------------------------------------------------------------
+describe('a fully signed section collapses to its record', () => {
+  /** Verbatim from Stephen's signed file: what item 2 closes at end of pass 2. */
+  const PASS_2_LOCKS = [
+    '17 UNIT',
+    '18 ACCUSED FULL NAME',
+    '19 ACCUSED RANK/GRADE',
+    '20 ACCUSED EDIPI',
+    '1A ARTICLE',
+    '1A SUMMARY',
+    '2 DEMAND',
+    '2 COUNSELOPP',
+    '2 ACC REFUSE TO SIGN',
+    '2 ACC ELECTION AND RIGHTS DATE_af_date',
+    '22A VICTIM STATUS',
+    '22A VICTIM SEX',
+    '22A VICTIM RACE',
+    '22A VICTIM ETHNICITY',
+  ];
+
+  function signed(overrides: Partial<FormData> = {}): FormData {
+    return baseFormData({
+      stage: 3,
+      unit: 'HQSVCCo, 1st Bn, 3d Mar',
+      accusedName: 'Doe, John A',
+      accusedRankGrade: 'Cpl/E-4',
+      accusedEdipi: '1234567890',
+      navmc10132LoadReport: { fileName: 'signed.pdf', lockedFields: PASS_2_LOCKS },
+      ...overrides,
+    } as Partial<FormData>);
+  }
+
+  it('drops the accused editors and the item 19 picker once items 17-20 are closed', () => {
+    renderSections(signed());
+
+    // The heading stays, so the card is still findable where it always was.
+    expect(screen.getByText(TITLES.accused)).toBeInTheDocument();
+    // The item 19 picker went with it: its only job is choosing a value the
+    // signature has closed.
+    expect(screen.queryByText(TITLES.rank)).not.toBeInTheDocument();
+    // And no editor is offered for a field the export would refuse to write.
+    expect(screen.queryByRole('textbox', { name: /accused/i })).not.toBeInTheDocument();
+  });
+
+  it('still shows what those four items carry', () => {
+    renderSections(signed());
+
+    expect(screen.getByText('HQSVCCo, 1st Bn, 3d Mar')).toBeInTheDocument();
+    expect(screen.getByText('Doe, John A')).toBeInTheDocument();
+    expect(screen.getByText('Cpl/E-4')).toBeInTheDocument();
+    expect(screen.getByText('1234567890')).toBeInTheDocument();
+  });
+
+  it('collapses item 22 and keeps row A readable', () => {
+    renderSections(
+      signed({
+        victims: [
+          { status: 'Military', sex: 'Male', race: 'White', ethnicity: 'Not Hispanic or Latino' },
+          { status: 'Civilian', sex: 'Female', race: '', ethnicity: '' },
+        ],
+      } as Partial<FormData>),
+    );
+
+    expect(screen.getByText(TITLES.victims)).toBeInTheDocument();
+    expect(screen.getByText('Military')).toBeInTheDocument();
+    // Rows B through E are carried in item 21, not the item 22 grid, so the
+    // summary reports their COUNT rather than pretending the grid holds them.
+    expect(screen.getByText('Additional victims, carried in item 21')).toBeInTheDocument();
+  });
+
+  it('leaves both sections as editors on a document with no file behind it', () => {
+    renderSections(baseFormData({ stage: 3 }));
+
+    expect(screen.getByText(TITLES.rank)).toBeInTheDocument();
+    expect(screen.getByText(TITLES.victims)).toBeInTheDocument();
+  });
+
+  // THE LOAD-BEARING CASE. The app-lock rule closes only a field the file
+  // carries a VALUE for, so a signed file with item 20 left blank leaves the
+  // EDIPI open. Collapsing the block then would hide the one box a clerk
+  // still has to fill, and the export would carry a UPB with no EDIPI.
+  it('keeps the accused block editable when one of the four is still open', () => {
+    renderSections(
+      signed({
+        navmc10132LoadReport: {
+          fileName: 'signed.pdf',
+          lockedFields: PASS_2_LOCKS.filter((name) => name !== '20 ACCUSED EDIPI'),
+        },
+      } as Partial<FormData>),
+    );
+
+    expect(screen.getByText(TITLES.rank)).toBeInTheDocument();
   });
 });
