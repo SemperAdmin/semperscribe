@@ -42,6 +42,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { IsoDatePicker } from '@/components/letter/navmc10132/IsoDatePicker';
+import { isNavmc10132KeyLocked } from '@/lib/navmc10132-locks';
+import { LockedBadge, ReadOnlyValue } from '@/components/letter/navmc10132/OffensesSection';
 import { FormData } from '@/types';
 import { Gavel, FileDown, Ship, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -85,6 +87,25 @@ function bookerBranchName(
 
 export function AccusedElectionSection({ formData, setFormData, SectionCard, stage }: SectionProps) {
   const showFullElection = stage !== 1;
+
+  /**
+   * ITEM 2 IS THE ACCUSED'S OWN SIGNATURE BLOCK, so on a loaded file it is
+   * closed before anything else is. Measured on a real pass-2 file: all five
+   * of `2 DEMAND`, `2 COUNSELOPP`, `2 ACC REFUSE TO SIGN`,
+   * `2 ACC ELECTION AND RIGHTS DATE` and `2 BOOKER` are closed by the item 2
+   * signature itself.
+   *
+   * Reported by Stephen 2026-08-26 as still editable, which it was: this
+   * section knew about the STAGE and not about the LOCKS. An editable
+   * election over a signed one is a promise the export cannot keep, and on
+   * this field it is worse than most, because what it would appear to let a
+   * clerk change is what the accused personally elected and signed for.
+   *
+   * ONE CONTROL IS DELIBERATELY NOT LOCKED. `vesselException` is APP STATE,
+   * not a form field, and it selects which rights advisement gets served. It
+   * has no lock because it has nothing on the form to be locked by.
+   */
+  const electionLocked = isNavmc10132KeyLocked(formData, 'demand');
   const demand = ((formData.demand as string) ?? '') as Navmc10132Demand;
   const counselOpportunity = ((formData.counselOpportunity as string) ?? '') as CounselOpportunity;
   const refused = Boolean(formData.accusedRefusedToSign);
@@ -172,7 +193,47 @@ export function AccusedElectionSection({ formData, setFormData, SectionCard, sta
         </div>
       </div>
 
-      {showFullElection && (
+      {showFullElection && electionLocked && (
+        <div className="mt-3 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">
+                Item 2, election
+                <LockedBadge />
+              </Label>
+              <ReadOnlyValue value={coercedDemand} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">
+                Item 2, date of election
+                <LockedBadge />
+              </Label>
+              <ReadOnlyValue value={electionDate} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">
+                Opportunity to consult a military lawyer
+                <LockedBadge />
+              </Label>
+              <ReadOnlyValue value={counselOpportunity} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">
+                Accused refused to sign
+                <LockedBadge />
+              </Label>
+              <ReadOnlyValue value={refused ? 'Yes' : 'No'} />
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            The accused signed item 2, and that signature closed this block. What is shown is
+            what they elected. Nothing here can be changed in the app, and the export will not
+            write any of it.
+          </p>
+        </div>
+      )}
+
+      {showFullElection && !electionLocked && (
         <>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>

@@ -27,6 +27,8 @@
 
 import React from 'react';
 import { Label } from '@/components/ui/label';
+import { isNavmc10132KeyLocked } from '@/lib/navmc10132-locks';
+import { LockedBadge, ReadOnlyValue } from '@/components/letter/navmc10132/OffensesSection';
 import { Input } from '@/components/ui/input';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -115,6 +117,23 @@ export function AccusedRankSection({ formData, setFormData, SectionCard }: Secti
   const diverges = service === 'USMC' && rankGradeDiverges(rankAbbrev, payGrade);
   const isPettyOfficer = NAVMC_10132_ENLISTED_PAY_GRADES.indexOf(payGrade as never) >= 3;
 
+  /**
+   * ITEM 19 IS ON THE FORM AND CAN BE CLOSED BY A SIGNATURE; THE TWO FIELDS
+   * BELOW IT ARE NOT AND CANNOT.
+   *
+   * Stephen, 2026-08-26: item 19's data "should have been blocked as it is on
+   * the form", but completed years of service and sea or hardship duty pay
+   * should not, because they are not on it. Measured on his signed file:
+   * `19 ACCUSED RANK/GRADE` is one of the 45 closed fields, and there is no
+   * AcroForm field for either of the other two anywhere on the form.
+   *
+   * So the lock covers service, rank and pay grade, which together COMPOSE
+   * item 19, and stops there. Years of service and sea pay feed the
+   * forfeiture ceiling, which is app-side arithmetic a clerk may still need
+   * to correct on a signed document.
+   */
+  const item19Locked = isNavmc10132KeyLocked(formData, 'accusedRankGrade');
+
   return (
     <SectionCard icon={<BadgeCheck className="mr-2 h-5 w-5" />} title="Rank and Pay Grade (Item 19)">
       <div className="space-y-4">
@@ -125,6 +144,19 @@ export function AccusedRankSection({ formData, setFormData, SectionCard }: Secti
           corpsman is HM2.
         </p>
 
+        {item19Locked ? (
+          <div className="space-y-1">
+            <Label className="text-xs">
+              Item 19, as it prints on the signed form
+              <LockedBadge />
+            </Label>
+            <ReadOnlyValue value={rankGrade} />
+            <p className="text-[11px] text-muted-foreground">
+              Service, rank and pay grade compose this one field, and a signature has closed
+              it. Correcting it means a corrected copy and a new signature, not an edit here.
+            </p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="space-y-1">
             <Label className="text-xs">Service</Label>
@@ -199,6 +231,7 @@ export function AccusedRankSection({ formData, setFormData, SectionCard }: Secti
             </Select>
           </div>
         </div>
+        )}
 
         {service === 'USN' && !isPettyOfficer && (
           <p className="text-[11px] text-muted-foreground">

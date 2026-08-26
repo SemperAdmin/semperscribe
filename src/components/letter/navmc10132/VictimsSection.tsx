@@ -26,6 +26,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Users } from 'lucide-react';
+import { isNavmc10132SectionLocked } from '@/lib/navmc10132-locks';
+import { LockedBadge } from '@/components/letter/navmc10132/OffensesSection';
 import { FormData } from '@/types';
 import {
   NAVMC_10132_VICTIM_STATUS, NAVMC_10132_VICTIM_SEX,
@@ -58,6 +60,18 @@ function isVictimPopulated(victim: Navmc10132Victim): boolean {
 }
 
 export function VictimsSection({ formData, setFormData, SectionCard }: SectionProps) {
+  /**
+   * THE VICTIM BLOCK CLOSES AT THE ACCUSED'S OWN SIGNATURE, which is the
+   * first one on the form. Measured on a real pass-2 file: all TWENTY fields,
+   * rows A through E, are in the item 2 lock list. That is why spec section
+   * 13.2 puts victims in the PASS 1 UI, and why a clerk who leaves victim
+   * data for later has nowhere to put it.
+   *
+   * Locked as a whole rather than per input. Every field the section owns
+   * closes at the same signature, so a per-field answer would be the same
+   * answer five times.
+   */
+  const locked = isNavmc10132SectionLocked(formData, 'victims');
   const victims = fiveVictims(formData);
 
   const lastActive = React.useMemo(() => {
@@ -83,6 +97,15 @@ export function VictimsSection({ formData, setFormData, SectionCard }: SectionPr
 
   return (
     <SectionCard icon={<Users className="mr-2 h-5 w-5" />} title="Item 22, Victims">
+      {locked && (
+        <div className="mb-3 rounded-md border bg-muted p-2">
+          <p className="text-[11px] text-muted-foreground">
+            <LockedBadge /> The accused signed item 2, and that signature closed all twenty
+            victim fields. They are shown as recorded and the export will not write them.
+          </p>
+        </div>
+      )}
+      <fieldset disabled={locked} className={locked ? 'opacity-70' : undefined}>
       <p className="text-[11px] text-muted-foreground mb-3">
         Item 22 records victim demographics only. Do not enter victim personally
         identifying information here or in item 21, per the form's own item 21
@@ -192,6 +215,7 @@ export function VictimsSection({ formData, setFormData, SectionCard }: SectionPr
           Add another victim
         </Button>
       )}
+    </fieldset>
     </SectionCard>
   );
 }
