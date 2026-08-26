@@ -40,6 +40,11 @@
 //     navmc10132-suspension-render.ts: the item 21 remark composer and the
 //     item 6 / item 7 renderers, which compose the free text that prints
 //     on the NAVMC 10132 itself.
+//   - navmc10132-unit-diary-worksheet.ts, navmc10132-unit-diary.ts,
+//     navmc10132-mctfs.ts: the printed unit diary worksheet, the
+//     transcription aid block it carries, and the MCTFS transaction
+//     statements. All three compose text a clerk reads off a page or types
+//     into the diary. Added 2026-08-26 with the worksheet export.
 //
 // DELIBERATELY LEFT OUT, AND WHY:
 //   - classification.ts: this IS the marking authority. It is SUPPOSED to
@@ -111,6 +116,13 @@ describe('Meta: no document-generating module hardcodes a CUI marking', () => {
       'navmc10132-remarks.ts',
       'navmc10132-punishment-render.ts',
       'navmc10132-suspension-render.ts',
+      // Added 2026-08-26 with the unit diary worksheet. It composes a whole
+      // printed page of its own prose, which is exactly the shape of module
+      // this list exists for, and the header's limitation 1 warns that a new
+      // generator nobody adds here is out of scope.
+      'navmc10132-unit-diary-worksheet.ts',
+      'navmc10132-unit-diary.ts',
+      'navmc10132-mctfs.ts',
     ];
 
     type Offense = { file: string; line: number; text: string };

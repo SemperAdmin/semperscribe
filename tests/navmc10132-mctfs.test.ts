@@ -356,7 +356,18 @@ describe('mctfsNjpStatements', () => {
     expect(result.statements.some((s) => s.ttc === 'TTC 283 003')).toBe(false);
   });
 
-  it('routes N09 extra duties to HIST, because it affects no pay or personnel data item', () => {
+  // THIS ASSERTION WAS STRENGTHENED ON 2026-08-26, and the old one is the
+  // reason the defect survived. It asked only that the statement contain
+  // "EXTRA DUTIES", which the BUGGY output satisfied: the statement printed
+  // `code.description`, "EXTRA DUTIES, INCLUDING FATIGUE OR OTHER DUTIES,
+  // FOR NOT MORE THAN 14 CONSECUTIVE DAYS", which is the ceiling out of 10
+  // U.S.C. 815(b)(2)(E) rather than the ten days the commander awarded. A
+  // clerk typing that recorded a punishment nobody imposed, permanently, in
+  // the only place this punishment is reported.
+  //
+  // The wording is item 6's own template output, so the statement and the
+  // form say the same words and a clerk can check one against the other.
+  it('routes N09 extra duties to HIST and states what was AWARDED, not the statutory ceiling', () => {
     const fd = baseFormData({
       offenses: [{ articleLabel: ART_86_UA, summary: 'x', finding: 'Guilty' }],
       punishments: [{ code: 'N09', days: '10' }],
@@ -365,7 +376,44 @@ describe('mctfsNjpStatements', () => {
     const result = mctfsNjpStatements(fd);
     const hist = result.statements.find((s) => s.ttc === 'TTC HIS 000');
     expect(hist).toBeDefined();
-    expect(hist!.text).toContain('EXTRA DUTIES');
+    expect(hist!.text).toContain('10 DAYS');
+    // The ceiling must not appear. This is the half the old assertion missed.
+    expect(hist!.text).not.toContain('NOT MORE THAN');
+    expect(hist!.text).not.toContain('14 CONSECUTIVE DAYS');
+  });
+
+  // A restriction and extra duties both carry a days parameter, so the same
+  // defect printed both ceilings. Asserted on a second code so a fix
+  // special-cased to N09 does not pass. N11's template also takes the
+  // LIMITS, which is free text a commander sets, so this proves the
+  // statement carries the whole imposed punishment and not just its number.
+  it('states the awarded restriction, its limits and its days, not its ceiling', () => {
+    const fd = baseFormData({
+      offenses: [{ articleLabel: ART_86_UA, summary: 'x', finding: 'Guilty' }],
+      punishments: [{ code: 'N11', limits: 'the barracks', days: '14' }],
+      suspensions: [],
+    });
+    const hist = mctfsNjpStatements(fd).statements.find((s) => s.ttc === 'TTC HIS 000');
+    expect(hist).toBeDefined();
+    expect(hist!.text).toContain('14 DAYS');
+    expect(hist!.text).toContain('THE BARRACKS');
+    expect(hist!.text).not.toContain('NOT MORE THAN');
+  });
+
+  // Ordinary mid-entry state, not a bug: item 6 has the code and not yet the
+  // number. The statement must NOT invent one, and must say so.
+  it('names the punishment without an amount when item 6 has not collected one', () => {
+    const fd = baseFormData({
+      offenses: [{ articleLabel: ART_86_UA, summary: 'x', finding: 'Guilty' }],
+      punishments: [{ code: 'N09' }],
+      suspensions: [],
+    });
+    const result = mctfsNjpStatements(fd);
+    const hist = result.statements.find((s) => s.ttc === 'TTC HIS 000');
+    expect(hist).toBeDefined();
+    expect(hist!.text).toContain('[AMOUNT]');
+    expect(result.missing.some((m) => m.includes('N09'))).toBe(true);
+    expect(hist!.notes.some((n) => n.includes('Do not enter it as it stands'))).toBe(true);
   });
 
   it('multiplies dollarsPerMonth by months for N04: $250/mo for 2 months totals $00500.00', () => {

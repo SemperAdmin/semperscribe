@@ -49,6 +49,10 @@ import type { FormData } from '@/types';
 import type { Navmc10132PunishmentEntry, Navmc10132Suspension } from '@/types/navmc';
 import { NAVMC_10132_DEMAND } from '@/types/navmc';
 import { resolveArticle, resolvePunishment } from '@/lib/navmc10132-utils';
+import {
+  renderTemplate,
+  Navmc10132PunishmentRenderError,
+} from '@/lib/navmc10132-punishment-render';
 
 /** One transaction, ready to be read and typed. */
 export interface MctfsStatement {
@@ -272,6 +276,30 @@ function slots(values: string[], count: number): string[] {
  * (70502.g note 1), not the date of the NJP. Where the two can diverge the
  * statement carries a note saying so rather than quietly assuming.
  */
+/**
+ * What a history statement says a Marine was awarded.
+ *
+ * Renders the punishment's own item 6 template against the entry, uppercased
+ * for a transaction line and stripped of the sentence period item 6 needs
+ * and a diary statement does not. Returns null when item 6 has not collected
+ * the parameters the template needs, which is ordinary mid-entry state
+ * rather than a bug: the caller says so on the statement instead of printing
+ * a number nobody entered.
+ */
+export function historyPunishmentText(
+  punishment: Parameters<typeof renderTemplate>[0],
+  entry: Navmc10132PunishmentEntry,
+): string | null {
+  let rendered: string;
+  try {
+    rendered = renderTemplate(punishment, entry);
+  } catch (err) {
+    if (err instanceof Navmc10132PunishmentRenderError) return null;
+    throw err;
+  }
+  return rendered.replace(/\.\s*$/, '').toUpperCase();
+}
+
 export function mctfsNjpStatements(formData: FormData): MctfsReport {
   const statements: MctfsStatement[] = [];
   const blockers: string[] = [];
@@ -541,15 +569,44 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
     // PRIUM 70503 note 2. Restriction, extra duties, correctional custody,
     // admonition, and reprimand touch no pay or personnel data item, so they
     // ride the history statement rather than an action transaction.
+    //
+    // THE IMPOSED PUNISHMENT, NOT THE CODE'S DESCRIPTION. Until 2026-08-26
+    // this line printed `code.description`, which for N09 reads "EXTRA
+    // DUTIES, INCLUDING FATIGUE OR OTHER DUTIES, FOR NOT MORE THAN 14
+    // CONSECUTIVE DAYS". That is the STATUTORY CEILING out of 10 U.S.C.
+    // 815(b)(2)(E), not what the commander awarded, so a clerk typing it
+    // recorded a punishment nobody imposed, permanently, in the one place
+    // this punishment is reported at all. The reduction and forfeiture
+    // branches above always used the entry's own values; this one did not.
+    //
+    // It renders through the SAME template item 6 prints from, so the
+    // history statement and the form say the same words. A clerk holding
+    // the sheet beside the NAVMC 10132 is comparing like with like.
+    const imposed = historyPunishmentText(code, entry);
+    if (imposed === null) {
+      missing.push(
+        `the parameters for ${code.code}, needed for its history statement. The statement ` +
+          "below names the punishment but not the amount awarded.",
+      );
+    }
     statements.push({
       ttc: 'TTC HIS 000',
       text:
-        `HIST: NJP AWD ${njpDate || '[NJP DATE]'} ${code.description}` +
+        `HIST: NJP AWD ${njpDate || '[NJP DATE]'} ${imposed ?? `${code.description} [AMOUNT]`}` +
         `${isSuspended ? ` SUSPENDED FOR ${period || '[MONTHS] MO'}` : ''} |`,
       authority: 'MCTFSPRIUM 70503 note 2',
       notes: [
         'Reported as history because this punishment affects no pay, pay grade, or other ' +
           'personnel data item.',
+        ...(imposed === null
+          ? [
+              'Item 6 does not carry the amount awarded for this punishment yet, so the ' +
+                'statement above names the punishment only. Do not enter it as it stands.',
+            ]
+          : [
+              'The wording is item 6\'s own, so this statement and the form agree. It states ' +
+                'what was AWARDED, which is not the statutory ceiling in the code description.',
+            ]),
       ],
     });
   });

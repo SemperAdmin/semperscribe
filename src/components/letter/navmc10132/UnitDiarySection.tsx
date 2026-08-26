@@ -28,10 +28,11 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ClipboardList, Copy, AlertTriangle } from 'lucide-react';
+import { ClipboardList, Copy, AlertTriangle, FileDown } from 'lucide-react';
 import { FormData } from '@/types';
 import { unitDiaryBlock } from '@/lib/navmc10132-unit-diary';
 import { mctfsNjpStatements } from '@/lib/navmc10132-mctfs';
+import { renderUnitDiaryWorksheetPdf } from '@/lib/navmc10132-unit-diary-worksheet';
 import { copyToClipboard } from '@/lib/url-state';
 import { useToast } from '@/hooks/use-toast';
 
@@ -45,6 +46,8 @@ interface SectionProps {
 
 export function UnitDiarySection({ formData, SectionCard }: SectionProps) {
   const { toast } = useToast();
+  const [downloading, setDownloading] = React.useState(false);
+  const [downloadError, setDownloadError] = React.useState<string | null>(null);
   const block = React.useMemo(() => unitDiaryBlock(formData), [formData]);
   // The TTC statements are a separate read over the same data. The prose
   // block above remains the HIST: text PRIUM 70503 asks for, so the two are
@@ -64,6 +67,43 @@ export function UnitDiarySection({ formData, SectionCard }: SectionProps) {
         description: 'Could not copy to clipboard. Please try again.',
         variant: 'destructive',
       });
+    }
+  };
+
+  /**
+   * The worksheet download.
+   *
+   * STEPHEN, 2026-08-26: the panel stays a preview and there is an export
+   * "that will have the transactions completed with the proper data based on
+   * the PRIUM". The sheet is built by navmc10132-unit-diary-worksheet.ts from
+   * the same two derivations this panel renders, so the print and the screen
+   * cannot disagree.
+   *
+   * NOT GATED ON BLOCKERS. A blocker means "do not enter what is below", and
+   * the clerk has to be holding the sheet to read it. The panel already shows
+   * them above; the sheet repeats them at the top of page one.
+   */
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const sheet = await renderUnitDiaryWorksheetPdf(formData);
+      const url = window.URL.createObjectURL(
+        new Blob([new Uint8Array(sheet.bytes)], { type: 'application/pdf' }),
+      );
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = sheet.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(
+        err instanceof Error ? err.message : 'Could not build the unit diary worksheet.',
+      );
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -127,10 +167,35 @@ export function UnitDiarySection({ formData, SectionCard }: SectionProps) {
           {block.text}
         </pre>
 
-        <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
-          <Copy className="mr-1 h-4 w-4" />
-          Copy unit diary text
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
+            <Copy className="mr-1 h-4 w-4" />
+            Copy unit diary text
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={handleDownload}
+            disabled={downloading}
+          >
+            <FileDown className="mr-1 h-4 w-4" />
+            {downloading ? 'Building...' : 'Download worksheet'}
+          </Button>
+        </div>
+
+        <p className="text-[11px] text-muted-foreground">
+          The worksheet is this whole panel as a printable page: the HIST text, every
+          transaction with its PRIUM citation and notes, a check box against each one, and a
+          line at the foot for the UD number that goes back into item 16.
+        </p>
+
+        {downloadError && (
+          <p className="flex items-start gap-1 text-[11px] text-destructive">
+            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+            {downloadError}
+          </p>
+        )}
 
         {/*
           The MCTFS statements themselves. Kept BELOW the prose block on
