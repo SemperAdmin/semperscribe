@@ -76,6 +76,64 @@ export const NAVMC_10132_SECTION_LOCKS: Readonly<Record<string, readonly string[
   victims: ['22A VICTIM STATUS', '22A VICTIM SEX', '22A VICTIM RACE', '22A VICTIM ETHNICITY'],
 };
 
+/**
+ * D-45: the six fields the item 9 signature was MEANT to close.
+ *
+ * DEFECT 3.9. The NAVMC 10132's own `/Lock` dictionary for
+ * `9 NJP AUTHORITY SIGNATURE` names these under field names the form no
+ * longer uses, so Acrobat closes nothing and the app reads no lock. Measured
+ * on Stephen's own signed file on 2026-08-26: 45 fields come back locked and
+ * not one of them is an item 8 field, while all 20 victim fields are.
+ *
+ * STEPHEN'S RULING, 2026-08-26, choosing between four options: close them
+ * AT THE ITEM 9 SIGNATURE, not earlier. Item 8 names the officer imposing
+ * the punishment. Until that officer has signed, nobody has attested to the
+ * name, and a clerk's typo in a commanding officer's name or EDIPI has to
+ * stay correctable. After the signature it is part of what was signed.
+ *
+ * Item 5's findings are NOT here. They are closed by the form's own lock
+ * list under names that DO resolve, so they need no mitigation.
+ */
+export const NAVMC_10132_ITEM_9_LOCK_FIELDS: readonly string[] = [
+  '6 PUNISHMENT IMPOSED',
+  '6 PUNISHMENT IMPOSITION DATE',
+  '8 NJP AUTHORITY NAME TITLE SERVICE',
+  '8A NJP AUTHORITY GRADE',
+  '8B NJP AUTHORITY EDIPI',
+  '10 DATE OF DISPOSITION NOTICE',
+];
+
+/** The signature that closes them. */
+export const NAVMC_10132_ITEM_9_SIGNATURE = '9 NJP AUTHORITY SIGNATURE';
+
+/**
+ * Which of the six the app should close, given what the loaded file carries.
+ *
+ * ONLY FIELDS THE FILE ACTUALLY CARRIES A VALUE FOR, and the exception is
+ * the whole reason this takes `values` rather than just the signature list.
+ * An app lock over a field the file left EMPTY is a trap, not a
+ * safeguard: the signature attested to nothing there, the clerk still has
+ * to fill it, and the incremental writer refuses every locked field, so
+ * locking a blank item 10 would mean the app shows the date, refuses to
+ * write it, and the export silently drops it. That is the data-loss path
+ * Stephen already made me close once. A signature can only close what it
+ * signed over.
+ *
+ * Computed AT LOAD, where the file's own values are in hand, and recorded
+ * on the report. Re-deriving it later from `formData` would read values the
+ * clerk has since edited and could close a field the file left open.
+ */
+export function navmc10132ItemNineAppLocks(
+  signedSignatures: readonly string[],
+  values: Readonly<Record<string, string | boolean>>,
+): string[] {
+  if (!signedSignatures.includes(NAVMC_10132_ITEM_9_SIGNATURE)) return [];
+  return NAVMC_10132_ITEM_9_LOCK_FIELDS.filter((field) => {
+    const value = values[field];
+    return typeof value === 'string' ? value.trim() !== '' : value === true;
+  });
+}
+
 /** Offense row letters, matching the form and navmc10132-acroform.ts. */
 const ROW_LETTERS = ['A', 'B', 'C', 'D', 'E'] as const;
 
@@ -91,12 +149,38 @@ export function navmc10132LockedFieldNames(formData: FormData): Set<string> {
   return lockedFieldNames(formData);
 }
 
-/** Reads the locked form-field names recorded by the last load, if any. */
-function lockedFieldNames(formData: FormData): Set<string> {
+/** String entries of one recorded field-name list on the load report. */
+function reportList(formData: FormData, key: 'lockedFields' | 'appLockedFields'): string[] {
   const report: unknown = formData.navmc10132LoadReport;
-  if (!report || typeof report !== 'object') return new Set();
-  const names = (report as { lockedFields?: unknown }).lockedFields;
-  return Array.isArray(names) ? new Set(names.filter((n): n is string => typeof n === 'string')) : new Set();
+  if (!report || typeof report !== 'object') return [];
+  const names = (report as Record<string, unknown>)[key];
+  return Array.isArray(names) ? names.filter((n): n is string => typeof n === 'string') : [];
+}
+
+/**
+ * Closed by the FILE ITSELF: the field names its `/Lock` dictionaries
+ * resolved to. Separate from the app locks below because the two answer to
+ * different authorities, and an export refusal has to be able to say which.
+ */
+export function navmc10132FormLockedFieldNames(formData: FormData): Set<string> {
+  return new Set(reportList(formData, 'lockedFields'));
+}
+
+/**
+ * Closed by the APP, mitigating defect 3.9 where the form's own lock list
+ * resolves to nothing. See navmc10132ItemNineAppLocks. Empty on any file
+ * whose item 9 is unsigned, which is the ordinary pass-2 case.
+ */
+export function navmc10132AppLockedFieldNames(formData: FormData): Set<string> {
+  return new Set(reportList(formData, 'appLockedFields'));
+}
+
+/** Reads every closed form-field name recorded by the last load, if any. */
+function lockedFieldNames(formData: FormData): Set<string> {
+  return new Set([
+    ...reportList(formData, 'lockedFields'),
+    ...reportList(formData, 'appLockedFields'),
+  ]);
 }
 
 /**

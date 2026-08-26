@@ -29,6 +29,11 @@ import {
 import { IsoDatePicker } from '@/components/letter/navmc10132/IsoDatePicker';
 import { FormData } from '@/types';
 import { ProceedingScriptButton } from '@/components/letter/navmc10132/ProceedingScriptButton';
+import { LockedBadge, ReadOnlyValue } from '@/components/letter/navmc10132/OffensesSection';
+import {
+  isNavmc10132KeyLocked,
+  isNavmc10132SectionLocked,
+} from '@/lib/navmc10132-locks';
 import {
   Gavel, Plus, Trash2, AlertTriangle, HelpCircle, Info,
 } from 'lucide-react';
@@ -72,6 +77,23 @@ function currentPunishments(formData: FormData): Navmc10132PunishmentEntry[] {
 export function PunishmentSection({ formData, setFormData, SectionCard }: SectionProps) {
   const punishments = currentPunishments(formData);
   const [codeToAdd, setCodeToAdd] = React.useState('');
+
+  /**
+   * D-45, defect 3.9. The form's own lock list for `9 NJP AUTHORITY
+   * SIGNATURE` names fields under names the form no longer uses, so once the
+   * imposing officer signs, Acrobat closes nothing and every field of this
+   * section stays writable over a signature. The app closes them instead,
+   * per Stephen's ruling of 2026-08-26: at the item 9 signature, not before.
+   *
+   * ONE QUESTION PER CONTROL, because the three do not move together. Item 6
+   * is rendered from structure, so its lock closes the whole builder; the two
+   * dates are ordinary fields with their own locks; and a blank field on the
+   * signed file is never locked at all, so a clerk who has still to record
+   * the item 10 notice date can.
+   */
+  const buildLocked = isNavmc10132SectionLocked(formData, 'punishments');
+  const item6DateLocked = isNavmc10132KeyLocked(formData, 'punishmentDate');
+  const item10Locked = isNavmc10132KeyLocked(formData, 'dispositionNoticeDate');
 
   // The picker's contents follow item 8A. MCM Part V para 5.b(2) splits the
   // enlisted ceiling on the GRADE of the imposing officer, so a company-grade
@@ -225,6 +247,19 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
   return (
     <SectionCard icon={<Gavel className="mr-2 h-5 w-5" />} title="Punishment (Items 6 and 10)">
       <div className="space-y-4">
+        {buildLocked && (
+          <p className="text-[11px] text-muted-foreground">
+            Item 6 was signed by the imposing officer (item 9). The punishment below is shown as
+            it stands on the signed file and is no longer editable
+            <LockedBadge />
+          </p>
+        )}
+        {/* The whole builder, closed as one. Item 6 prints from structure, so
+            there is no single input a lock could sit on: the codes, their
+            parameters, the add control and the remove buttons all feed the
+            one signed string, and closing any less would offer an edit the
+            export refuses to write. */}
+        <fieldset disabled={buildLocked} className="space-y-4">
         <div className="space-y-3">
           {punishments.length === 0 && (
             <p className="text-[11px] text-muted-foreground">
@@ -377,6 +412,8 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
           )}
         </div>
 
+        </fieldset>
+
         <ForfeitureBasisGrade
           formData={formData}
           setFormData={setFormData}
@@ -385,20 +422,34 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label className="text-xs">Item 6 punishment date</Label>
-            <IsoDatePicker
-              value={(formData.punishmentDate as string) ?? ''}
-              onChange={(value: string) => setFormData((prev) => ({ ...prev, punishmentDate: value }))}
-            />
+            <Label className="text-xs">
+              Item 6 punishment date
+              {item6DateLocked && <LockedBadge />}
+            </Label>
+            {item6DateLocked ? (
+              <ReadOnlyValue value={(formData.punishmentDate as string) ?? ''} />
+            ) : (
+              <IsoDatePicker
+                value={(formData.punishmentDate as string) ?? ''}
+                onChange={(value: string) => setFormData((prev) => ({ ...prev, punishmentDate: value }))}
+              />
+            )}
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Item 10 disposition notice date</Label>
-            <IsoDatePicker
-              value={(formData.dispositionNoticeDate as string) ?? ''}
-              onChange={(value: string) =>
-                setFormData((prev) => ({ ...prev, dispositionNoticeDate: value }))
-              }
-            />
+            <Label className="text-xs">
+              Item 10 disposition notice date
+              {item10Locked && <LockedBadge />}
+            </Label>
+            {item10Locked ? (
+              <ReadOnlyValue value={(formData.dispositionNoticeDate as string) ?? ''} />
+            ) : (
+              <IsoDatePicker
+                value={(formData.dispositionNoticeDate as string) ?? ''}
+                onChange={(value: string) =>
+                  setFormData((prev) => ({ ...prev, dispositionNoticeDate: value }))
+                }
+              />
+            )}
             <p className="flex items-start gap-1 text-[11px] text-muted-foreground">
               <HelpCircle className="mt-0.5 h-3 w-3 shrink-0" />
               Normally the same date as item 6, except where notice is given by mail.

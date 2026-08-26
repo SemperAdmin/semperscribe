@@ -31,6 +31,7 @@
  */
 
 import type { FormData } from '@/types';
+import { navmc10132ItemNineAppLocks } from '@/lib/navmc10132-locks';
 import {
   readNavmc10132Pdf,
   Navmc10132ReadError,
@@ -92,6 +93,16 @@ export interface Navmc10132LoadReport {
    * shown closed rather than offering an edit the export will not keep.
    */
   lockedFields: string[];
+  /**
+   * Fields the APP closes that the file left open, D-45 and defect 3.9.
+   *
+   * The form's `/Lock` dictionary for `9 NJP AUTHORITY SIGNATURE` names
+   * fields under names the form no longer uses, so it closes nothing.
+   * Recorded here rather than derived later, because it depends on the
+   * values the FILE carried, not on values the clerk may since have edited.
+   * See navmc10132ItemNineAppLocks.
+   */
+  appLockedFields: string[];
   /** Disagreements between file and form. See navmc10132-pdf-to-form.ts. */
   conflicts: Navmc10132Conflict[];
   /** Values the file carries that this app cannot rebuild into structure. */
@@ -139,6 +150,7 @@ export async function loadNavmc10132FromPdf(
       signedSignatures: read.signedSignatures,
       lockedFieldCount: read.lockedFields.size,
       lockedFields: [...read.lockedFields],
+      appLockedFields: navmc10132ItemNineAppLocks(read.signedSignatures, read.values),
       conflicts: mapped.conflicts,
       carriedFromFile: mapped.carriedFromFile,
       notes: mapped.notes,
