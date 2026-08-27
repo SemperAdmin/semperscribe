@@ -18,6 +18,9 @@ import {
   PAGE11_DATE_GAP,
   SIGNATURE_BLOCK,
   DISCHARGE_CONSEQUENCES_SENTENCE,
+  DRUG_RESTRICTION_OFFENSE_LABELS,
+  DRUG_RESTRICTION_MONTHS,
+  DRUG_RESTRICTION_DATE_GAP,
   type CounselingInput,
 } from '@/lib/navmc10132-page11';
 
@@ -884,6 +887,247 @@ describe('both entries run the body on from the date', () => {
       for (const paragraph of body.split(PARAGRAPH_BREAK)) {
         expect(paragraph).not.toContain('\n');
       }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MCO P1400.32D par 1204.4q, THE DRUG RESTRICTION.
+//
+// The order attaches a NOTE to q in its own words: "This promotion
+// restriction does take precedence over the restrictions contained in
+// paragraphs 1204.4g, 1204.4h, and 1204.4j." j is the NJP paragraph, so a
+// drug offence displaces it.
+//
+// Stephen ruled the trigger list on 2026-08-27 after seeing six candidates:
+// the four certain ones only. He also named the consequence the order
+// confirms: "q is before the NJP and would cover the period of the NJP so it
+// would supersede the NJP but would be effective possibly before the NJP took
+// place."
+// ---------------------------------------------------------------------------
+describe('a drug offence puts the entry under 1204.4q, not 1204.4j', () => {
+  function withOffense(label: string, overrides: Record<string, unknown> = {}): FormData {
+    return guiltyCorporal({
+      offenses: offenses({
+        articleLabel: resolveArticle(label)?.formLabel ?? label,
+        summary: 'x',
+        finding: 'Guilty',
+      }),
+      ...overrides,
+    });
+  }
+
+  const DRUG_START = { drugRestrictionStartDate: '2013-02-14' };
+
+  // EVERY LABEL STEPHEN RULED IN, one case each, so a list edited down to
+  // three still fails rather than silently dropping a trigger.
+  it.each([...DRUG_RESTRICTION_OFFENSE_LABELS])('triggers on %s', (label) => {
+    const result = promotionRestrictionEntry(withOffense(label, DRUG_START));
+    expect(result.kind).toBe('entry');
+    if (result.kind !== 'entry') return;
+    expect(result.entry.paragraph).toBe('1204.4q');
+    expect(result.entry.months).toBe(DRUG_RESTRICTION_MONTHS);
+  });
+
+  // THE EXCLUSIONS, and they matter more than the inclusions. Article 92
+  // carries twenty-two labels in this app and nineteen have nothing to do
+  // with a substance, so a rule keyed to "art 92" would put an 18-month drug
+  // restriction on a hazing NJP.
+  it.each([
+    'Art. 92  Viol. MCO 5354.1 (series) (Hazing)',
+    'Art. 92  Viol. SECNAVINST 5300.28 (series) (Paraphernalia)',
+    'Art. 92  Viol. ALNAV 074/20 (Hemp Use)',
+    'Art. 112  Drunk on duty',
+    'Art. 134  Drunkenness',
+    'Art. 113  Drunken or reckless operation of vehicle, aircraft, or vessel',
+  ])('does not trigger on %s', (label) => {
+    const result = promotionRestrictionEntry(withOffense(label));
+    expect(result.kind).toBe('entry');
+    if (result.kind !== 'entry') return;
+    expect(result.entry.paragraph).toBe('1204.4j');
+    expect(result.entry.months).toBe(3);
+  });
+
+  // A row found Not Guilty restricts nothing, same rule the deficiencies and
+  // the article phrase already follow.
+  it('ignores a drug offence found not guilty', () => {
+    const result = promotionRestrictionEntry(
+      guiltyCorporal({
+        offenses: offenses(
+          { articleLabel: ART_92, summary: 'Order', finding: 'Guilty' },
+          {
+            articleLabel: DRUG_RESTRICTION_OFFENSE_LABELS[0],
+            summary: 'Urinalysis',
+            finding: 'Not Guilty',
+          },
+        ),
+      }),
+    );
+    if (result.kind !== 'entry') throw new Error('expected an entry');
+    expect(result.entry.paragraph).toBe('1204.4j');
+  });
+
+  /**
+   * THE CLOCK STARTS BEFORE THE NJP, which is the whole reason this needs a
+   * field of its own. The order runs the 18 months from laboratory
+   * confirmation or from the incident. An entry stating only a length would
+   * be read as running from the NJP and would put the end date months late.
+   */
+  it('states the date the period runs from, which is not the NJP date', () => {
+    const result = promotionRestrictionEntry(withOffense(
+      DRUG_RESTRICTION_OFFENSE_LABELS[0], DRUG_START,
+    ));
+    if (result.kind !== 'entry') throw new Error('expected an entry');
+    expect(result.entry.text).toContain('for a period of 18 months from 20130214');
+    // The entry date is item 10's and the period start is neither it nor
+    // item 6's, so all three are distinct on this fixture.
+    expect(result.entry.text).toContain('20130501.');
+    expect(result.entry.text).not.toContain('20130430');
+  });
+
+  it('names the missing start date rather than printing a period with no origin', () => {
+    const result = promotionRestrictionEntry(
+      withOffense(DRUG_RESTRICTION_OFFENSE_LABELS[0]),
+    );
+    if (result.kind !== 'entry') throw new Error('expected an entry');
+    expect(result.entry.text).toContain('18 months from [DATE OF CONFIRMATION OR INCIDENT]');
+    expect(result.entry.missing).toContain(DRUG_RESTRICTION_DATE_GAP);
+  });
+
+  /**
+   * PARAGRAPH 1204.6: "No waivers of the promotion restrictions resulting
+   * from illegal drug use/possession will be granted." The waiver clause
+   * states a remedy the order forbids, so it comes off a q entry. This is
+   * the order's own sentence rather than an inference, and it is asserted
+   * against the non-drug entry so the clause is proved present elsewhere.
+   */
+  it('drops the waiver clause, which 1204.6 forbids on a drug restriction', () => {
+    const drug = promotionRestrictionEntry(withOffense(
+      DRUG_RESTRICTION_OFFENSE_LABELS[0], DRUG_START,
+    ));
+    const ordinary = promotionRestrictionEntry(guiltyCorporal());
+    if (drug.kind !== 'entry' || ordinary.kind !== 'entry') throw new Error('expected entries');
+
+    expect(drug.entry.text).not.toContain('unless waived');
+    expect(ordinary.entry.text).toContain('unless waived by appropriate authority');
+  });
+
+  /**
+   * THE NOTE NAMES g, h AND j, AND STOPS. k is the probationary status a
+   * suspended punishment creates, and the order left it standing where it
+   * removed the other three. So a drug NJP with a suspended portion states
+   * BOTH, per 1204.5's requirement that the entry include "the specific
+   * promotion restriction that applies and the period of time".
+   *
+   * THIS IS THE ONE INFERENCE IN THE MODULE. Stephen ruled the article list
+   * and did not rule this, and stating a restriction that applies is the
+   * safer error than omitting one.
+   */
+  it('states 1204.4k alongside q when a portion is suspended', () => {
+    const result = promotionRestrictionEntry(
+      withOffense(DRUG_RESTRICTION_OFFENSE_LABELS[0], {
+        ...DRUG_START,
+        suspensions: [{ punishmentIndex: 0, months: '6' }],
+      }),
+    );
+    if (result.kind !== 'entry') throw new Error('expected an entry');
+    expect(result.entry.paragraph).toBe('1204.4q');
+    expect(result.entry.text).toContain('for a period of 18 months from 20130214');
+    expect(result.entry.text).toContain(
+      'probationary status for 6 months IAW MCO P1400.32, par 1204.4k',
+    );
+  });
+
+  it('says nothing about 1204.4k on a drug NJP with nothing suspended', () => {
+    const result = promotionRestrictionEntry(withOffense(
+      DRUG_RESTRICTION_OFFENSE_LABELS[0], DRUG_START,
+    ));
+    if (result.kind !== 'entry') throw new Error('expected an entry');
+    expect(result.entry.text).not.toContain('1204.4k');
+    expect(result.entry.text).not.toContain('probationary');
+  });
+
+  /**
+   * A SUSPENSION IN DAYS STOPS BEING FATAL ON A DRUG NJP. Under j and k the
+   * suspension IS the period, so days leave the app unable to say how long,
+   * and it refuses. Under q the order fixes eighteen months regardless, so
+   * the entry is fully computable and only the k sentence is lost.
+   */
+  it('still writes the q entry when the suspension is stated in days', () => {
+    const result = promotionRestrictionEntry(
+      withOffense(DRUG_RESTRICTION_OFFENSE_LABELS[0], {
+        ...DRUG_START,
+        suspensions: [{ punishmentIndex: 0, days: '90' }],
+      }),
+    );
+    expect(result.kind).toBe('entry');
+    if (result.kind !== 'entry') return;
+    expect(result.entry.text).toContain('for a period of 18 months from 20130214');
+    expect(result.entry.missing.some((gap) => gap.includes('1204.4k'))).toBe(true);
+  });
+
+  it('still refuses on a suspension in days when no drug offence is present', () => {
+    const result = promotionRestrictionEntry(
+      guiltyCorporal({ suspensions: [{ punishmentIndex: 0, days: '90' }] }),
+    );
+    expect(result.kind).toBe('unavailable');
+    if (result.kind === 'unavailable') expect(result.reason).toBe('suspension-not-in-months');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE ENTRY CITES A UCMJ ARTICLE, NOT AN MCTFS TRANSACTION CODE.
+//
+// Found on 2026-08-27 while wiring 1204.4q. guiltyArticleNumbers read
+// `mctfsCode`, and twenty of this app's labels carry a code that is not the
+// article: every Art. 134 label has a sub-code, and the sexual-harassment
+// labels use 92.1.
+//
+// The Marine signs this entry. A citation to "art 134.96" points at a unit
+// diary transaction code, not at anything in the Uniform Code, so no reader
+// could look it up.
+// ---------------------------------------------------------------------------
+describe('the article phrase names the article', () => {
+  it.each([
+    ['Art. 134  Disorderly conduct', 'art 134'],
+    ['Art. 134  Drunkenness', 'art 134'],
+    ['Art. 92  Viol. MCO 5354.1 (series) (Sexual Harassment)', 'art 92'],
+    ['Art. 112a  Wrongful use, possession, etc. of controlled substances', 'art 112a'],
+  ])('renders %s as %s', (label, expected) => {
+    const result = promotionRestrictionEntry(
+      guiltyCorporal({
+        offenses: offenses({
+          articleLabel: resolveArticle(label)?.formLabel ?? label,
+          summary: 'x',
+          finding: 'Guilty',
+        }),
+        drugRestrictionStartDate: '2013-02-14',
+      }),
+    );
+    if (result.kind !== 'entry') throw new Error('expected an entry');
+    expect(result.entry.text).toContain(`violation of ${expected} `);
+  });
+
+  // The sub-code and the upper-case form are the two shapes that leaked.
+  it('lets no transaction sub-code or upper-case article into the entry', () => {
+    for (const label of [
+      'Art. 134  Disorderly conduct',
+      'Art. 92  Viol. MCO 5354.1 (series) (Sexual Harassment)',
+      'Art. 112a  Wrongful use, possession, etc. of controlled substances',
+    ]) {
+      const result = promotionRestrictionEntry(
+        guiltyCorporal({
+          offenses: offenses({
+            articleLabel: resolveArticle(label)?.formLabel ?? label,
+            summary: 'x',
+            finding: 'Guilty',
+          }),
+          drugRestrictionStartDate: '2013-02-14',
+        }),
+      );
+      if (result.kind !== 'entry') throw new Error('expected an entry');
+      expect(result.entry.text, label).not.toMatch(/art \d+\.\d/);
+      expect(result.entry.text, label).not.toMatch(/art \d+[A-Z]/);
     }
   });
 });

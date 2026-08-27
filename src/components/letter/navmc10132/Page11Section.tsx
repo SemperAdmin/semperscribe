@@ -37,9 +37,11 @@ import { FormData } from '@/types';
 import {
   njpPage11,
   renderNjpPage11,
+  drugRestrictionApplies,
   type CounselingInput,
   type SeparationIntent,
 } from '@/lib/navmc10132-page11';
+import { IsoDatePicker } from '@/components/letter/navmc10132/IsoDatePicker';
 
 type SectionCardProps = { icon: React.ReactNode; title: string; children: React.ReactNode };
 
@@ -166,6 +168,33 @@ export function Page11Section({ formData, setFormData, SectionCard }: SectionPro
               value={input.processingDetail}
               onChange={(e) => set('page11ProcessingDetail')(e.target.value)}
             />
+          </div>
+        )}
+
+        {/* SHOWN ONLY ON A DRUG NJP, because the date it collects starts a
+            clock no other entry uses. MCO P1400.32D par 1204.4q runs 18
+            months from the laboratory confirmation or the incident, and both
+            fall BEFORE the NJP, so nothing on the NAVMC 10132 supplies it.
+            Stephen, 2026-08-27: "q is before the NJP and would cover the
+            period of the NJP so it would supersede the NJP but would be
+            effective possibly before the NJP took place." */}
+        {drugRestrictionApplies(formData) && (
+          <div className="space-y-1 rounded-md border border-dashed p-3">
+            <Label className="text-xs" htmlFor="drug-restriction-start">
+              Date of positive laboratory confirmation, or of the drug incident
+            </Label>
+            <IsoDatePicker
+              value={text(formData, 'drugRestrictionStartDate')}
+              onChange={set('drugRestrictionStartDate')}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Does not print on the NAVMC 10132. A guilty finding on a drug offense puts this
+              Marine under MCO P1400.32D par 1204.4q, an 18-month restriction that takes
+              precedence over the 3-month NJP restriction at par 1204.4j. The order starts the
+              18 months at laboratory confirmation or at the incident, not at the NJP, so the
+              period is already running when the punishment is imposed. Par 1204.6 permits no
+              waiver of it.
+            </p>
           </div>
         )}
 

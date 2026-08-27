@@ -77,7 +77,18 @@ export function guiltyArticleNumbers(formData: FormData): string[] {
     const label = typeof row.articleLabel === 'string' ? row.articleLabel.trim() : '';
     if (finding !== 'Guilty' || label === '') continue;
     const article = resolveArticle(label);
-    const number = article?.mctfsCode ?? '';
+    // THE UCMJ ARTICLE, NOT THE MCTFS CODE, and the two diverge on twenty of
+    // this app's labels. Found on 2026-08-27 while wiring the 1204.4q drug
+    // restriction: an Art. 112a NJP printed "art 112A" because mctfsCode
+    // carries the upper-case form. Pulling that thread showed worse, because
+    // every Art. 134 label carries a sub-code, so a disorderly conduct NJP
+    // was writing "violation of art 134.96" onto a service record entry.
+    // 134.96 is a transaction code for the unit diary. It is not an article
+    // of the Uniform Code, and a Marine acknowledging that entry would be
+    // signing a citation to something no reader could look up.
+    //
+    // LOWERCASED, because the entry is sentence case: "art 112a".
+    const number = (article?.articleNumber ?? '').toLowerCase();
     if (number !== '' && !out.includes(number)) out.push(number);
   }
   return out;
@@ -233,6 +244,90 @@ export function page11Date(formData: FormData): string {
 export const PAGE11_DATE_GAP =
   'the item 10 disposition notice date, which both entries open with';
 
+/**
+ * The offence labels that put a Marine under MCO P1400.32D par 1204.4q.
+ *
+ * WHY LABELS AND NOT ARTICLE NUMBERS. Article 92 carries twenty-two labels
+ * in this app and nineteen of them have nothing to do with a substance:
+ * hazing, fraternization, extremism, intimate images. Keying 1204.4q to
+ * "art 92" would put an eighteen-month drug restriction on a Marine who
+ * violated the harassment order. The label is where the subject matter
+ * lives, so the label is what this reads.
+ *
+ * THE FOUR CERTAIN ONES, Stephen's ruling 2026-08-27 after I put six in
+ * front of him. 1204.4q reaches "distribution, use, or possession of
+ * illegal drugs", which is the first two, and "the abuse of a legal
+ * substance with the intent to obtain a 'high', i.e., huffing, spice, etc.",
+ * which is the OTC and Natural labels.
+ *
+ * DELIBERATELY EXCLUDED, and each for a stated reason:
+ *
+ *  - SECNAVINST 5300.28 (Paraphernalia). A pipe is not distribution, use or
+ *    possession of a drug. Left out pending his ruling.
+ *  - ALNAV 074/20 (Hemp Use). Hemp is federally legal and CBD use is
+ *    frequently not for a high at all, so it does not plainly sit inside
+ *    q's second clause. Left out pending his ruling.
+ *  - Every alcohol label: Art. 95 drunk on post, Art. 112 drunk on duty and
+ *    drunkenness, Art. 134 drunkenness and drunk and disorderly. Alcohol is
+ *    not an illegal drug, and 1204.4 handles alcohol conduct at r rather
+ *    than folding it into q.
+ *  - Art. 113 drunken or reckless operation. That is 1204.4r, which Stephen
+ *    ruled out on 2026-08-27: "not everyone who is NJPed was convicted".
+ *
+ * KNOWN HOLE. The four Art. 134 General Article labels carry no subject
+ * matter, so a general-article drug offence is invisible to any rule reading
+ * labels. Nothing here fixes that.
+ */
+export const DRUG_RESTRICTION_OFFENSE_LABELS: readonly string[] = [
+  'Art. 112a  Wrongful use, possession, etc. of controlled substances',
+  'Art. 92  Viol. SECNAVINST 5300.28 (series) (Controlled Substance)',
+  'Art. 92  Viol. SECNAVINST 5300.28 (series) (OTC Substance)',
+  'Art. 92  Viol. SECNAVINST 5300.28 (series) (Natural Substance)',
+];
+
+/** The 1204.4q period, in months. The order fixes it; nothing derives it. */
+export const DRUG_RESTRICTION_MONTHS = 18;
+
+/**
+ * True where an offence found GUILTY puts this NJP under 1204.4q.
+ *
+ * GUILTY ONLY, same rule the deficiencies and the article phrase use. A row
+ * found Not Guilty restricts nothing.
+ */
+export function drugRestrictionApplies(formData: FormData): boolean {
+  const rows: unknown = formData.offenses;
+  if (!Array.isArray(rows)) return false;
+  return rows.some((raw) => {
+    const row = (raw ?? {}) as Record<string, unknown>;
+    const finding = typeof row.finding === 'string' ? row.finding.trim() : '';
+    const label = typeof row.articleLabel === 'string' ? row.articleLabel.trim() : '';
+    return finding === 'Guilty' && DRUG_RESTRICTION_OFFENSE_LABELS.includes(label);
+  });
+}
+
+/**
+ * The date the 1204.4q clock starts, which is NOT the date of the NJP.
+ *
+ * Stephen, 2026-08-27: "q is before the NJP and would cover the period of
+ * the NJP so it would supersede the NJP but would be effective possibly
+ * before the NJP took place."
+ *
+ * The order agrees. The eighteen months "will begin on the date positive
+ * confirmation is received from the DoD-certified drug testing laboratory in
+ * the case of urinalysis detection, or from the date of the illegal drug
+ * incident". Neither is on the NAVMC 10132 and neither is derivable from it,
+ * so the app collects it the way it collects years of service, and prints a
+ * named blank until it has it.
+ */
+export function drugRestrictionStart(formData: FormData): string {
+  return mctfsDate(str(formData, 'drugRestrictionStartDate'));
+}
+
+/** Named once. The Page 11 section collects it and the entry opens on it. */
+export const DRUG_RESTRICTION_DATE_GAP =
+  'the date of positive laboratory confirmation or of the drug incident, which starts the ' +
+  '18-month restriction under MCO P1400.32D par 1204.4q';
+
 /** Pay grades a promotion restriction entry is required for. IRAM 4006.3e. */
 const CORPORAL_AND_BELOW = ['E1', 'E2', 'E3', 'E4'];
 
@@ -305,9 +400,17 @@ export function promotionRestrictionEntry(formData: FormData): PromotionRestrict
   // merges the two lists and a clerk should be told once, not twice.
   if (date === '') missing.push(PAGE11_DATE_GAP);
 
+  const drugOffense = drugRestrictionApplies(formData);
   const hasSuspension = suspensions(formData).length > 0;
   const suspendedMonths = longestSuspensionMonths(formData);
-  if (hasSuspension && suspendedMonths === null) {
+
+  // A SUSPENSION IN DAYS ONLY BLOCKS THE ENTRY WHERE THE PERIOD DEPENDS ON
+  // IT. Under 1204.4j and 1204.4k the suspension IS the period, so days
+  // leave the app unable to say which paragraph applies or for how long, and
+  // it refuses. Under 1204.4q the order fixes the period at eighteen months
+  // regardless, so the entry is fully computable and the days affect only
+  // the additional k sentence, which becomes a named gap instead.
+  if (!drugOffense && hasSuspension && suspendedMonths === null) {
     return {
       kind: 'unavailable',
       reason: 'suspension-not-in-months',
@@ -317,13 +420,49 @@ export function promotionRestrictionEntry(formData: FormData): PromotionRestrict
         'period has to be written by hand.',
     };
   }
+  if (drugOffense && hasSuspension && suspendedMonths === null) {
+    missing.push(
+      'the probationary period under MCO P1400.32D par 1204.4k. Item 7 states the suspension ' +
+        'in days and the paragraph states periods in months, so that sentence has to be ' +
+        'written by hand. The 18-month drug restriction below is unaffected.',
+    );
+  }
 
-  const months = suspendedMonths ?? 3;
+  /**
+   * WHICH PARAGRAPH OF 1204.4 GOVERNS, and it is not always the NJP one.
+   *
+   * 1204.4q carries a NOTE in the order's own words: "This promotion
+   * restriction does take precedence over the restrictions contained in
+   * paragraphs 1204.4g, 1204.4h, and 1204.4j." j is the NJP paragraph, so a
+   * drug offence displaces it outright.
+   *
+   * THE NOTE DOES NOT NAME k, and the omission is doing work. k is the
+   * probationary status a suspended punishment creates, and the order left
+   * it standing where it removed g, h and j. So on a drug NJP with a
+   * suspended portion this entry states BOTH restrictions rather than
+   * choosing. 1204.5 requires the entry to include "the specific promotion
+   * restriction that applies and the period of time the restriction remains
+   * in effect", and on that document two apply.
+   *
+   * THIS IS THE ONE INFERENCE IN THIS FUNCTION, flagged rather than buried.
+   * Stephen ruled the article list on 2026-08-27 and did not rule the q and
+   * k interaction. Stating a restriction that applies is the safer error
+   * than omitting one, and the omission from the NOTE is the textual basis.
+   */
+  const drug = drugOffense;
+  const months = drug ? DRUG_RESTRICTION_MONTHS : (suspendedMonths ?? 3);
   // LOWERCASE IN THE ENTRY, which is sentence case: "par 1204.4j". The
   // PromotionRestriction.paragraph field keeps the same string, so a caller
   // reporting which paragraph governs reads exactly what prints.
-  const paragraph = suspendedMonths === null ? '1204.4j' : '1204.4k';
+  const paragraph = drug ? '1204.4q' : suspendedMonths === null ? '1204.4j' : '1204.4k';
   const nextGrade = nextGradeTitle(grade);
+
+  // The q clock runs from the laboratory confirmation or the incident, not
+  // from the NJP, so the period sentence needs a date the form does not
+  // carry. Blank prints as a named blank, the same discipline the rest of
+  // this module uses.
+  const drugStart = drug ? drugRestrictionStart(formData) : '';
+  if (drug && drugStart === '') missing.push(DRUG_RESTRICTION_DATE_GAP);
 
   // SENTENCE CASE, from Stephen's 2026-08-27 layout, which replaces the ALL
   // CAPS he gave on 2026-08-26. He confirmed the case change when asked
@@ -339,14 +478,43 @@ export function promotionRestrictionEntry(formData: FormData): PromotionRestrict
   // message with different wording, and they rest on different paragraphs:
   // 4006.3e here, 4006.2r there. This one keeps "acknowledgment of", "can be
   // submitted" and "my OMPF"; the 6105 does not.
+  /**
+   * THE PERIOD SENTENCE, which differs on a drug NJP in three ways.
+   *
+   *  1. Eighteen months rather than three or the suspension's own length.
+   *  2. It states WHEN the period runs from, because 1204.4q's clock starts
+   *     at the laboratory confirmation or the incident and Stephen's point
+   *     stands: that date falls before the NJP, so an entry stating only a
+   *     length leaves the reader to assume it runs from the NJP and to
+   *     compute an end date months too late.
+   *  3. NO WAIVER CLAUSE. Paragraph 1204.6: "No waivers of the promotion
+   *     restrictions resulting from illegal drug use/possession will be
+   *     granted." Printing "unless waived by appropriate authority" on a
+   *     drug entry states a remedy the order forbids, so it comes off. This
+   *     is the order's own sentence rather than an inference.
+   */
+  const period = drug
+    ? `for a period of ${months} months from ${drugStart || '[DATE OF CONFIRMATION OR INCIDENT]'} ` +
+      `IAW MCO P1400.32, par ${paragraph}`
+    : `for a period of ${months} months IAW MCO P1400.32, par ${paragraph}, unless waived by ` +
+      'appropriate authority';
+
+  // The suspended-probation restriction, stated ALONGSIDE q rather than
+  // instead of it. See the paragraph-selection note above for why the
+  // order's NOTE leaves k standing where it removes j.
+  const alsoProbationary =
+    drug && suspendedMonths !== null
+      ? ` I further understand that I am in a probationary status for ${suspendedMonths} months ` +
+        'IAW MCO P1400.32, par 1204.4k, because a portion of this punishment is suspended.'
+      : '';
+
   const text =
     `${date || '[DATE]'}. ` +
     `I understand that I am eligible but not recommended for promotion to ` +
     `${nextGrade || '[grade]'} due to my recent NJP for violation of ${articlePhrase(articles)} ` +
-    `for a period of ${months} months IAW MCO P1400.32, par ${paragraph}, unless waived by ` +
-    'appropriate authority. I was advised that within 5 working days after acknowledgment of ' +
-    'this entry, a written rebuttal can be submitted, and this rebuttal will be filed in my ' +
-    'OMPF. I choose (to) (not to) make a rebuttal.' +
+    `${period}.${alsoProbationary} I was advised that within 5 working days after ` +
+    'acknowledgment of this entry, a written rebuttal can be submitted, and this rebuttal ' +
+    'will be filed in my OMPF. I choose (to) (not to) make a rebuttal.' +
     `${PARAGRAPH_BREAK}\n${SIGNATURE_BLOCK}`;
 
   return {

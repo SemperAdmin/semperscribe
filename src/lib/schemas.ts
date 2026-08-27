@@ -1448,6 +1448,13 @@ export const Navmc10132Schema = z.object({
   /** '' | 'processing' | 'not-processing'. See SeparationIntent. */
   page11SeparationIntent: z.string().optional(),
   page11ProcessingDetail: z.string().optional(),
+  /**
+   * The date the MCO P1400.32D par 1204.4q clock starts: laboratory
+   * confirmation, or the drug incident. NOT on the NAVMC 10132 and not
+   * derivable from it, and NOT the NJP date, which falls later. See
+   * drugRestrictionStart in navmc10132-page11.ts.
+   */
+  drugRestrictionStartDate: z.string().optional(),
   accusedRankGrade: z.string().optional(),
   accusedEdipi: edipiField().optional(),
   accusedPayGrade: z.string().optional(),
