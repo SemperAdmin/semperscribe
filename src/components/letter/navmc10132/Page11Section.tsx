@@ -9,7 +9,10 @@
  * where this card sits: after item 7, before the appeal block.
  *
  * WHY THERE AND NOT IN FORM ORDER. Both entries are made BECAUSE of the
- * punishment, so neither can be written before item 6 is. The promotion
+ * punishment, so neither can be written before item 6 is. Both OPEN with the
+ * item 10 disposition notice date, Stephen's ruling 2026-08-27 ("item 10 is
+ * the date of NJP"), which is the day the Marine is stood in front of the
+ * entry. Item 6 still drives the unit diary and every MCTFS DOA. The promotion
  * restriction states the period a suspension runs, which is item 7. And both
  * are acknowledged by the Marine before the appeal window matters, so a
  * clerk working top to bottom reaches them in the order the case happens.
@@ -101,8 +104,9 @@ export function Page11Section({ formData, setFormData, SectionCard }: SectionPro
         <p className="text-[11px] text-muted-foreground">
           One NAVMC 118(11) carrying both entries this NJP produces: the 6105 administrative
           separation counseling on the left (IRAM 4006.2r) and the promotion restriction on the
-          right (IRAM 4006.3e as amended by PAA 09/11, 10/11 and 12/11). The date, deficiencies,
-          article, grade and restriction period come off this form.
+          right (IRAM 4006.3e as amended by PAA 09/11, 10/11 and 12/11). The deficiencies,
+          article, grade and restriction period come off this form. Both entries open with the
+          item 10 disposition notice date, which is the day the Marine is counseled on them.
         </p>
 
         <div className="space-y-1">
@@ -205,6 +209,19 @@ export function Page11Section({ formData, setFormData, SectionCard }: SectionPro
             </pre>
           )}
         </div>
+
+        {/* WHAT THE BUTTON IS ABOUT TO PRODUCE, said next to the button.
+            Stephen, 2026-08-26, looking at a generated form: "where is the
+            right hand side Pg. 11 entry for promotion restriction". It was
+            correctly absent, his accused being an E8, and the reason was on
+            screen. It was two preview blocks further up, and the PRINTED
+            form carries no explanation at all: a blank right column reads as
+            a bug rather than as the paragraph not reaching that Marine. */}
+        <p className="text-[11px] text-muted-foreground">
+          {page.restrictionOmitted
+            ? 'This will produce a form carrying the 6105 counseling entry only. The right column is empty on purpose, see above.'
+            : 'This will produce a form carrying both entries, the 6105 on the left and the promotion restriction on the right.'}
+        </p>
 
         <Button type="button" variant="outline" size="sm" onClick={generate} disabled={busy}>
           <FileText className="mr-1 h-4 w-4" />

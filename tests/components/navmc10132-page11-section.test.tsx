@@ -32,7 +32,15 @@ function StubSectionCard({
   );
 }
 
-/** His document. Cpl/E-4, Art. 123 Guilty, N07 imposed, item 6 undated. */
+/**
+ * His document. Cpl/E-4, Art. 123 Guilty, N07 imposed, and NO date on either
+ * item 6 or item 10.
+ *
+ * BOTH DATES ARE BLANK on purpose. He reported this against item 6, and on
+ * 2026-08-27 ruled that the Page 11 opens with item 10 instead. Leaving both
+ * unset keeps this file asserting what he saw, a form generating only half
+ * its columns, without pinning which field the entry happens to read.
+ */
 function hisDocument(overrides: Partial<FormData> = {}): FormData {
   return {
     ...(createEmptyNavmc10132Data() as unknown as FormData),
@@ -53,6 +61,7 @@ function hisDocument(overrides: Partial<FormData> = {}): FormData {
     punishments: [{ code: 'N07', dollars: '853' }],
     suspensions: [],
     punishmentDate: '',
+    dispositionNoticeDate: '',
     page11CorrectiveAction: 'What are you to do',
     page11AssistanceAvailable: 'This is who can help you with it',
     page11SeparationIntent: 'not-processing',
@@ -70,15 +79,16 @@ function renderCard(formData: FormData) {
   );
 }
 
-describe('the right column on an undated item 6', () => {
+describe('the right column on an entry with no date yet', () => {
   it('shows the promotion restriction entry rather than an explanation of its absence', () => {
     renderCard(hisDocument());
 
-    expect(screen.getByText(/NOT RECOMMENDED FOR PROMOTION TO SERGEANT/)).toBeInTheDocument();
+    expect(screen.getByText(/not recommended for promotion to sergeant/)).toBeInTheDocument();
     // The sentence he actually saw in that box.
     expect(
       screen.queryByText(/The item 6 punishment date is not set, and the entry opens with it/),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText(/is not set, and the entry opens with it/)).not.toBeInTheDocument();
   });
 
   it('promises a form carrying both entries', () => {
@@ -97,7 +107,7 @@ describe('the right column on an undated item 6', () => {
     expect(screen.getByText('The entry below carries a named blank for each of these.'))
       .toBeInTheDocument();
     expect(
-      screen.getAllByText('the item 6 punishment date, which opens the entry'),
+      screen.getAllByText('the item 10 disposition notice date, which both entries open with'),
     ).toHaveLength(1);
   });
 });
@@ -109,7 +119,7 @@ describe('the right column stays absent where the paragraph does not reach', () 
   it('explains itself for a sergeant instead of printing an entry', () => {
     renderCard(hisDocument({ accusedPayGrade: 'E5', accusedRankGrade: 'Sgt, E5' } as Partial<FormData>));
 
-    expect(screen.queryByText(/NOT RECOMMENDED FOR PROMOTION/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/not recommended for promotion/)).not.toBeInTheDocument();
     expect(screen.getByText(/4006.3e is written for privates through corporals/)).toBeInTheDocument();
     expect(
       screen.getByText(/This will produce a form carrying the 6105 counseling entry only/),

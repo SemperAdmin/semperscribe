@@ -85,10 +85,13 @@ export function guiltyArticleNumbers(formData: FormData): string[] {
 
 /** "ART 92", or "ART 86 AND ART 92" for more than one. */
 function articlePhrase(numbers: readonly string[]): string {
-  const parts = numbers.map((n) => `ART ${n}`);
+  // LOWERCASE 'art', because the entry is sentence case. Stephen supplied
+  // the promotion restriction in ALL CAPS on 2026-08-26 and in sentence case
+  // on 2026-08-27, and ruled for the latter: "art 123", "par 1204.4j".
+  const parts = numbers.map((n) => `art ${n}`);
   if (parts.length === 0) return '';
   if (parts.length === 1) return parts[0];
-  return `${parts.slice(0, -1).join(', ')} AND ${parts[parts.length - 1]}`;
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
 /**
@@ -128,7 +131,8 @@ export function nextGradeTitle(payGrade: string): string {
   if (!match) return '';
   const next = `E${Number(match[1]) + 1}`;
   const rank = NAVMC_10132_USMC_ENLISTED_RANKS.find((r) => r.payGrade === next);
-  return rank ? rank.title.toUpperCase() : '';
+  // Lowercase, matching the sentence-case entry: 'promotion to sergeant'.
+  return rank ? rank.title.toLowerCase() : '';
 }
 
 /**
@@ -205,6 +209,30 @@ export type PromotionRestrictionResult =
   | { kind: 'entry'; entry: PromotionRestriction }
   | { kind: 'unavailable'; reason: RestrictionUnavailable; detail: string };
 
+/**
+ * The date both Page 11 entries open with.
+ *
+ * ITEM 10, NOT ITEM 6. Stephen, 2026-08-27: "item 10 is the date of NJP",
+ * and both columns of his layout open with "[Item 10 date in YYYYMMDD]".
+ * Item 10 is the date of notice to the accused of final disposition taken,
+ * which is the day the Marine is stood in front of the entry, so it is the
+ * date the entry is counseled on.
+ *
+ * SCOPED TO THE PAGE 11, on his ruling the same day. Item 6 still drives the
+ * unit diary NJP DATE and every MCTFS DOA and ED, because PRIUM 70508 fixes
+ * the TTC 212 Date of Action as "the date the Courts-martial or Nonjudicial
+ * Punishment is adjudged". Adjudged is item 6. Item 10 can fall later, and a
+ * diary entry priced on the notice date would report the wrong DOA.
+ */
+export function page11Date(formData: FormData): string {
+  return mctfsDate(str(formData, 'dispositionNoticeDate'));
+}
+
+/** Worded once, because both columns open with this date and njpPage11
+ *  merges their gap lists. A clerk is told about it one time. */
+export const PAGE11_DATE_GAP =
+  'the item 10 disposition notice date, which both entries open with';
+
 /** Pay grades a promotion restriction entry is required for. IRAM 4006.3e. */
 const CORPORAL_AND_BELOW = ['E1', 'E2', 'E3', 'E4'];
 
@@ -272,10 +300,10 @@ export function promotionRestrictionEntry(formData: FormData): PromotionRestrict
   // both entries go on ONE form, so refusing on this side produced a page
   // with one column filled and one empty for the same missing input.
   const missing: string[] = [];
-  const date = mctfsDate(str(formData, 'punishmentDate'));
+  const date = page11Date(formData);
   // WORDED IDENTICALLY to separationCounselingEntry's, on purpose: njpPage11
   // merges the two lists and a clerk should be told once, not twice.
-  if (date === '') missing.push('the item 6 punishment date, which opens the entry');
+  if (date === '') missing.push(PAGE11_DATE_GAP);
 
   const hasSuspension = suspensions(formData).length > 0;
   const suspendedMonths = longestSuspensionMonths(formData);
@@ -291,16 +319,30 @@ export function promotionRestrictionEntry(formData: FormData): PromotionRestrict
   }
 
   const months = suspendedMonths ?? 3;
-  const paragraph = suspendedMonths === null ? '1204.4J' : '1204.4K';
+  // LOWERCASE IN THE ENTRY, which is sentence case: "par 1204.4j". The
+  // PromotionRestriction.paragraph field keeps the same string, so a caller
+  // reporting which paragraph governs reads exactly what prints.
+  const paragraph = suspendedMonths === null ? '1204.4j' : '1204.4k';
   const nextGrade = nextGradeTitle(grade);
 
+  // SENTENCE CASE AND THE DATE ON ITS OWN LINE, verbatim from Stephen's
+  // 2026-08-27 layout, which replaces the ALL CAPS he gave on 2026-08-26.
+  // He confirmed the case change when asked rather than leaving it to be
+  // read as chat typing.
+  //
+  // THE REBUTTAL SENTENCE HERE IS NOT THE LEFT COLUMN'S. He sent both in one
+  // message with different wording, and they rest on different paragraphs:
+  // 4006.3e here, 4006.2r there. This one keeps "acknowledgment of", "can be
+  // submitted" and "my OMPF"; the 6105 does not.
   const text =
-    `${date || '[DATE]'}. I UNDERSTAND THAT I AM ELIGIBLE BUT NOT RECOMMENDED FOR PROMOTION TO ` +
-    `${nextGrade || '[GRADE]'} DUE TO MY RECENT NJP FOR VIOLATION OF ${articlePhrase(articles)} ` +
-    `FOR A PERIOD OF ${months} MONTHS IAW MCO P1400.32, PAR ${paragraph}, UNLESS WAIVED BY ` +
-    'APPROPRIATE AUTHORITY. I WAS ADVISED THAT WITHIN 5 WORKING DAYS AFTER ACKNOWLEDGMENT OF ' +
-    'THIS ENTRY, A WRITTEN REBUTTAL CAN BE SUBMITTED AND THIS REBUTTAL WILL BE FILED IN MY ' +
-    'OMPF. I CHOOSE (TO) (NOT TO) MAKE A REBUTTAL.';
+    `${date || '[DATE]'}.\n` +
+    `I understand that I am eligible but not recommended for promotion to ` +
+    `${nextGrade || '[grade]'} due to my recent NJP for violation of ${articlePhrase(articles)} ` +
+    `for a period of ${months} months IAW MCO P1400.32, par ${paragraph}, unless waived by ` +
+    'appropriate authority. I was advised that within 5 working days after acknowledgment of ' +
+    'this entry, a written rebuttal can be submitted, and this rebuttal will be filed in my ' +
+    'OMPF. I choose (to) (not to) make a rebuttal.' +
+    `${PARAGRAPH_BREAK}\n${SIGNATURE_BLOCK}`;
 
   return {
     kind: 'entry',
@@ -372,6 +414,38 @@ export const NO_SEPARATION_SENTENCE =
   'or limitation on further service.';
 
 /**
+ * The consequences-of-discharge sentence, stated in EVERY 6105 counseling
+ * entry regardless of whether the commander is processing for separation.
+ *
+ * Stephen supplied it 2026-08-27 as the tail of paragraph 2. It is
+ * unconditional in his layout, which is right: it warns the Marine what a
+ * less-than-honorable characterization costs them, and that warning does not
+ * depend on whether anybody is processing them today.
+ */
+export const DISCHARGE_CONSEQUENCES_SENTENCE =
+  'I understand that failure to complete my enlistment contract with an honorable ' +
+  'characterization of service may preclude my eligibility for benefits from the Department ' +
+  'of Veterans Affairs or other organizations and have an adverse effect on future civilian ' +
+  'employment.';
+
+/**
+ * The acknowledgment block that closes every Page 11 entry.
+ *
+ * TYPED INTO THE REMARKS, not left to the form. Stephen, 2026-08-27, gave it
+ * at the foot of both columns. A NAVMC 118(11) column holds more than one
+ * entry over a Marine's career, so each entry carries its own signature
+ * lines; a single pair of boxes at the foot of the page would not say which
+ * entry was being acknowledged.
+ *
+ * The column alignment is spaces rather than a tab. The form renders these
+ * columns in a fixed-width face and a tab stop would land differently in
+ * every viewer.
+ */
+export const SIGNATURE_BLOCK =
+  '_____________________          _____________________\n' +
+  'Signature of Marine                Signature of CO';
+
+/**
  * The rebuttal advisory, in the wording PAA 12/11 substituted.
  *
  * See this module's header for why the OMPF wording is used on the 6105 as
@@ -379,8 +453,8 @@ export const NO_SEPARATION_SENTENCE =
  * the document side of the SRB.
  */
 export const REBUTTAL_ADVISORY =
-  'I was advised that within 5 working days after acknowledgment of this entry a written ' +
-  'rebuttal can be submitted and this rebuttal will be filed in my OMPF.';
+  'I was advised that within 5 working days after acknowledging this entry I may submit a ' +
+  'written rebuttal which will be filed in the electronic service record.';
 
 /**
  * The Marine's election, on its own line.
@@ -422,8 +496,8 @@ export function separationCounselingEntry(
 ): CounselingEntry {
   const missing: string[] = [];
 
-  const date = mctfsDate(str(formData, 'punishmentDate'));
-  if (date === '') missing.push('the item 6 punishment date, which opens the entry');
+  const date = page11Date(formData);
+  if (date === '') missing.push(PAGE11_DATE_GAP);
 
   const deficiencies = counseledDeficiencies(formData);
   if (deficiencies.length === 0) {
@@ -440,17 +514,35 @@ export function separationCounselingEntry(
     missing.push('the assistance available, required by IRAM 4006.2r');
   }
 
-  // ONE PARAGRAPH PER ELEMENT OF THE ENTRY, in the breaks Stephen laid out
-  // on 2026-08-26. The date, the deficiencies and the corrective action are
-  // one thought and stay together; everything after it is a separate
-  // statement the Marine is being told, and the last is the one they answer.
+  // FOUR PARAGRAPHS, VERBATIM FROM STEPHEN'S 2026-08-27 LAYOUT. It replaces
+  // the 2026-08-26 one, and the changes are his rather than editorial:
+  //
+  //  1. The date and the deficiencies alone. The corrective action moved out.
+  //  2. Corrective action and assistance in ONE sentence, followed by the
+  //     discharge-consequences warning, which is unconditional.
+  //  3. The separation statement, which branches. See below.
+  //  4. The advisory and the election in ONE paragraph, no longer two, and
+  //     reworded: "acknowledging" for "acknowledgment of", "I may submit"
+  //     for "can be submitted", and "the electronic service record" for
+  //     "my OMPF".
+  //
+  // THE RIGHT COLUMN KEEPS THE OLDER WORDING on purpose. Stephen sent both
+  // columns in the same message with different rebuttal sentences, and they
+  // cite different paragraphs, 4006.2r here and 4006.3e there. Do not
+  // "harmonise" them.
   const parts: string[] = [
-    `${date || '[DATE]'}. Counseled this date concerning deficiencies; ` +
-      `${deficiencies.join('; ') || '[DEFICIENCIES]'}. ` +
-      `Recommended corrective action: ${corrective || '[CORRECTIVE ACTION]'}.`,
-    `Assistance available: ${assistance || '[ASSISTANCE AVAILABLE]'}.`,
+    `${date || '[DATE]'}. Counseled this date concerning the following deficiencies: ` +
+      `${deficiencies.join('; ') || '[DEFICIENCIES]'}.`,
+    `Specific recommendations for corrective action are ` +
+      `${corrective || '[CORRECTIVE ACTION]'} and to seek assistance, which is available ` +
+      `through the chain of command and ${assistance || '[ASSISTANCE AVAILABLE]'}. ` +
+      DISCHARGE_CONSEQUENCES_SENTENCE,
   ];
 
+  // BOTH BRANCHES SURVIVE. Stephen's layout shows only the processing
+  // sentence, and he ruled on 2026-08-27 that the not-processing case keeps
+  // IRAM 4006.2r's own sentence. The paragraph is one or the other and never
+  // neither: 4006.2r requires one of the two statements in every entry.
   if (input.intent === 'processing') {
     const detail = input.processingDetail.trim();
     if (detail === '') {
@@ -460,8 +552,8 @@ export function separationCounselingEntry(
       );
     }
     parts.push(
-      `As a result of these deficiencies you are being processed for ` +
-        `${detail || '[JUDICIAL OR SEPARATION PROCEEDINGS]'}.`,
+      `I understand that I am being processed for the following judicial or adverse ` +
+        `administrative action: ${detail || '[JUDICIAL OR ADVERSE ADMINISTRATIVE ACTION]'}.`,
     );
   } else if (input.intent === 'not-processing') {
     parts.push(NO_SEPARATION_SENTENCE);
@@ -474,10 +566,13 @@ export function separationCounselingEntry(
     parts.push('[SEPARATION PROCESSING STATEMENT, IRAM 4006.2R]');
   }
 
-  parts.push(REBUTTAL_ADVISORY);
-  parts.push(REBUTTAL_CHOICE);
+  parts.push(`${REBUTTAL_ADVISORY} ${REBUTTAL_CHOICE}`);
 
-  return { text: parts.join(PARAGRAPH_BREAK), paragraphs: parts, missing };
+  return {
+    text: `${parts.join(PARAGRAPH_BREAK)}${PARAGRAPH_BREAK}\n${SIGNATURE_BLOCK}`,
+    paragraphs: parts,
+    missing,
+  };
 }
 
 export interface NjpPage11 {
