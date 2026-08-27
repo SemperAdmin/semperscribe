@@ -91,15 +91,13 @@ describe('the promotion restriction, against Stephen\'s worked examples', () => 
     // a substring assertion passes on a sentence with extra words in it.
     // The date is item 10's, 20130501, not item 6's 20130430.
     expect(result.entry.text).toBe(
-      '20130501.\n' +
+      '20130501. ' +
         'I understand that I am eligible but not recommended for promotion to sergeant due ' +
         'to my recent NJP for violation of art 92 for a period of 3 months IAW MCO P1400.32, ' +
         'par 1204.4j, unless waived by appropriate authority. I was advised that within 5 ' +
         'working days after acknowledgment of this entry, a written rebuttal can be ' +
         'submitted, and this rebuttal will be filed in my OMPF. I choose (to) (not to) make ' +
-        'a rebuttal.\n\n\n' +
-        '_____________________          _____________________\n' +
-        'Signature of Marine                Signature of CO',
+        `a rebuttal.\n\n\n${SIGNATURE_BLOCK}`,
     );
   });
 
@@ -305,7 +303,7 @@ describe('what the promotion restriction refuses to invent', () => {
     const result = promotionRestrictionEntry(guiltyCorporal({ dispositionNoticeDate: '' }));
     expect(result.kind).toBe('entry');
     if (result.kind !== 'entry') return;
-    expect(result.entry.text).toContain('[DATE].\nI understand that I am eligible');
+    expect(result.entry.text).toContain('[DATE]. I understand that I am eligible');
     expect(result.entry.missing).toEqual([PAGE11_DATE_GAP]);
     // Everything the app DOES know is still stated, so the blank is one blank
     // and not a template.
@@ -519,7 +517,7 @@ describe('the two entries on one form', () => {
     const page = njpPage11(guiltyCorporal({ dispositionNoticeDate: '' }), COUNSELING);
 
     expect(page.remarksLeft).toContain('[DATE]. Counseled this date');
-    expect(page.remarksRight).toContain('[DATE].\nI understand that I am eligible');
+    expect(page.remarksRight).toContain('[DATE]. I understand that I am eligible');
     expect(page.restrictionOmitted).toBeNull();
   });
 
@@ -702,11 +700,9 @@ describe('the 6105 prints as paragraphs', () => {
    */
   it('leaves the promotion restriction body unbroken, as its own source prints it', () => {
     const page = njpPage11(guiltyCorporal(), blank);
-    const body = page.remarksRight
-      .slice(page.remarksRight.indexOf('\n') + 1)
-      .replace(`${PARAGRAPH_BREAK}\n${SIGNATURE_BLOCK}`, '');
+    const body = page.remarksRight.replace(`${PARAGRAPH_BREAK}\n${SIGNATURE_BLOCK}`, '');
 
-    expect(body.startsWith('I understand that I am eligible')).toBe(true);
+    expect(body.startsWith('20130501. I understand that I am eligible')).toBe(true);
     expect(body.endsWith('make a rebuttal.')).toBe(true);
     expect(body).not.toContain('\n');
   });
@@ -782,5 +778,112 @@ describe('both Page 11 entries open with item 10, and nothing else moved', () =>
     const lines = result.statements.map((statement) => statement.text).join('\n');
     expect(lines).toContain('20130430');
     expect(lines).not.toContain('20130501');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE SIGNATURE BLOCK'S COLUMN ALIGNMENT.
+//
+// Stephen, 2026-08-27, on the printed NAVMC 118(11): "we need the Signature
+// of Co start at the same position as the line above it". It did not, because
+// the block was padded as if the remarks field were monospaced. It is not.
+//
+// THIS TEST MEASURES RATHER THAN RESTATES. Asserting "twenty spaces" would
+// pass on any future change to either string while the columns drifted apart
+// on paper, which is exactly the failure being fixed. It lays out both lines
+// in Times New Roman advance widths and checks that the second rule and the
+// second label begin at the same x.
+//
+// THE FACE WAS CONFIRMED BEFORE THE METRICS WERE TRUSTED. On Stephen's
+// screenshot "Signature of Marine" measures 0.766 of the width of 21
+// underscores; the table below predicts 0.767.
+// ---------------------------------------------------------------------------
+describe('the signature block lines up in the form\'s own font', () => {
+  /** Times New Roman advance widths, units per 1000 em. */
+  const ADVANCE: Record<string, number> = {
+    ' ': 250, '_': 500,
+    S: 556, i: 278, g: 500, n: 500, a: 444, t: 278, u: 500, r: 333, e: 444,
+    o: 500, f: 333, M: 889, C: 667, O: 722,
+  };
+
+  function width(text: string): number {
+    let total = 0;
+    for (const character of text) {
+      const advance = ADVANCE[character];
+      // A character with no width here would silently measure as zero and
+      // make every assertion below meaningless.
+      expect(advance, `no advance width for ${JSON.stringify(character)}`).toBeDefined();
+      total += advance ?? 0;
+    }
+    return total;
+  }
+
+  const [ruleLine, labelLine] = SIGNATURE_BLOCK.split('\n');
+
+  it('is exactly two lines, a rule line and a label line', () => {
+    expect(SIGNATURE_BLOCK.split('\n')).toHaveLength(2);
+    expect(ruleLine.replace(/[_ ]/g, '')).toBe('');
+    expect(labelLine).toContain('Signature of Marine');
+    expect(labelLine).toContain('Signature of CO');
+  });
+
+  it('starts both labels within a tenth of a space of their own rule', () => {
+    // The index the SECOND rule begins at, which is after the run of spaces
+    // between them. lastIndexOf on a run of underscores would land inside
+    // the second rule rather than at its start.
+    const split = /^(_+)( +)(_+)$/.exec(ruleLine);
+    expect(split, 'the rule line is two underscore runs separated by spaces').not.toBeNull();
+    if (split === null) return;
+    const secondRuleStart = width(split[1] + split[2]);
+    const secondLabelStart = width(labelLine.slice(0, labelLine.lastIndexOf('Signature of CO')));
+
+    // The first pair is trivially aligned, both at zero, and is asserted so a
+    // block that indented one line and not the other is caught too.
+    expect(ruleLine.startsWith('_')).toBe(true);
+    expect(labelLine.startsWith('Signature of Marine')).toBe(true);
+
+    // A quarter of a space. Whole spaces are the only adjustment available,
+    // so anything under half a space is as close as the block can get.
+    expect(Math.abs(secondRuleStart - secondLabelStart)).toBeLessThan(ADVANCE[' '] / 4);
+  });
+
+  // The rules have to be long enough to sign on, and equal to each other, or
+  // the second column reads as an afterthought.
+  it('gives both signers the same length of rule', () => {
+    const rules = ruleLine.split(/ +/);
+    expect(rules).toHaveLength(2);
+    expect(rules[0]).toBe(rules[1]);
+    expect(rules[0].length).toBeGreaterThanOrEqual(20);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE DATE OPENS THE SENTENCE, on both sides.
+//
+// Stephen, 2026-08-27, correcting his own layout against the printed form:
+// "the right hand needs to start after the date not the line under."
+// ---------------------------------------------------------------------------
+describe('both entries run the body on from the date', () => {
+  it('puts no line break between the date and the promotion restriction', () => {
+    const page = njpPage11(guiltyCorporal(), COUNSELING);
+    expect(page.remarksRight.startsWith('20130501. I understand that I am eligible')).toBe(true);
+  });
+
+  it('does the same with the blank, so the shapes cannot diverge', () => {
+    const page = njpPage11(guiltyCorporal({ dispositionNoticeDate: '' }), COUNSELING);
+    expect(page.remarksRight.startsWith('[DATE]. I understand that I am eligible')).toBe(true);
+  });
+
+  // The only newlines in either column are the paragraph breaks and the
+  // signature block. A stray one would break a sentence across lines on a
+  // field that wraps by itself.
+  it('leaves the signature block as the only line break inside a paragraph', () => {
+    const page = njpPage11(guiltyCorporal(), COUNSELING);
+    for (const column of [page.remarksLeft, page.remarksRight]) {
+      const body = column.replace(`${PARAGRAPH_BREAK}\n${SIGNATURE_BLOCK}`, '');
+      for (const paragraph of body.split(PARAGRAPH_BREAK)) {
+        expect(paragraph).not.toContain('\n');
+      }
+    }
   });
 });

@@ -325,17 +325,22 @@ export function promotionRestrictionEntry(formData: FormData): PromotionRestrict
   const paragraph = suspendedMonths === null ? '1204.4j' : '1204.4k';
   const nextGrade = nextGradeTitle(grade);
 
-  // SENTENCE CASE AND THE DATE ON ITS OWN LINE, verbatim from Stephen's
-  // 2026-08-27 layout, which replaces the ALL CAPS he gave on 2026-08-26.
-  // He confirmed the case change when asked rather than leaving it to be
-  // read as chat typing.
+  // SENTENCE CASE, from Stephen's 2026-08-27 layout, which replaces the ALL
+  // CAPS he gave on 2026-08-26. He confirmed the case change when asked
+  // rather than leaving it to be read as chat typing.
+  //
+  // THE BODY RUNS ON FROM THE DATE. His layout put a line break after it and
+  // he corrected that on the printed form the same day: "the right hand
+  // needs to start after the date not the line under." Which also matches
+  // the 6105 in the left column, where the date has always opened the first
+  // sentence rather than standing on a line of its own.
   //
   // THE REBUTTAL SENTENCE HERE IS NOT THE LEFT COLUMN'S. He sent both in one
   // message with different wording, and they rest on different paragraphs:
   // 4006.3e here, 4006.2r there. This one keeps "acknowledgment of", "can be
   // submitted" and "my OMPF"; the 6105 does not.
   const text =
-    `${date || '[DATE]'}.\n` +
+    `${date || '[DATE]'}. ` +
     `I understand that I am eligible but not recommended for promotion to ` +
     `${nextGrade || '[grade]'} due to my recent NJP for violation of ${articlePhrase(articles)} ` +
     `for a period of ${months} months IAW MCO P1400.32, par ${paragraph}, unless waived by ` +
@@ -437,13 +442,36 @@ export const DISCHARGE_CONSEQUENCES_SENTENCE =
  * lines; a single pair of boxes at the foot of the page would not say which
  * entry was being acknowledged.
  *
- * The column alignment is spaces rather than a tab. The form renders these
- * columns in a fixed-width face and a tab stop would land differently in
- * every viewer.
+ * THE SPACE COUNT IS COMPUTED, NOT EYEBALLED, and the first attempt was
+ * eyeballed and wrong. Stephen, 2026-08-27, looking at the printed form:
+ * "we need the Signature of Co start at the same position as the line above
+ * it." It did not, because this block was padded as if the field were
+ * monospaced. The NAVMC 118(11) remarks columns render in Times New Roman,
+ * where a space is 250 units per em and an underscore is 500, so equal
+ * character counts give unequal widths.
+ *
+ * Measured off his screenshot to confirm the face before trusting the
+ * numbers: "Signature of Marine" renders 0.766 of the width of 21
+ * underscores, and Times metrics predict 0.767.
+ *
+ * The arithmetic, in units per 1000 em:
+ *
+ *   rule 2 starts at   21 underscores + 10 spaces  = 10500 + 2500 = 13000
+ *   label 2 must start at the same place
+ *   "Signature of Marine"                          =  8054
+ *   so the label needs (13000 - 8054) / 250        = 19.8 spaces
+ *
+ * Twenty is the closest whole number, leaving the label 54 units (0.054 em)
+ * right of the rule, which is under a tenth of a space. See
+ * tests/navmc10132-page11.test.ts, which recomputes this rather than
+ * hard-coding the space count, so a change to either string is caught.
+ *
+ * SPACES RATHER THAN A TAB, because an XFA multiline field has no tab stops
+ * and a literal tab renders differently in every viewer.
  */
 export const SIGNATURE_BLOCK =
   '_____________________          _____________________\n' +
-  'Signature of Marine                Signature of CO';
+  'Signature of Marine                    Signature of CO';
 
 /**
  * The rebuttal advisory, in the wording PAA 12/11 substituted.
