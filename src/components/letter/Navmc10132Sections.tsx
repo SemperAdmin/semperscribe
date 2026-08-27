@@ -58,6 +58,7 @@ import { DOCUMENT_TYPES, DocumentTypeDefinition } from '@/lib/schemas';
 import { OffensesSection } from '@/components/letter/navmc10132/OffensesSection';
 import { AccusedElectionSection } from '@/components/letter/navmc10132/AccusedElectionSection';
 import { AccusedRankSection } from '@/components/letter/navmc10132/AccusedRankSection';
+import { AccusedPayFactsSection } from '@/components/letter/navmc10132/AccusedPayFactsSection';
 import { PunishmentSection } from '@/components/letter/navmc10132/PunishmentSection';
 import { ProceedingScriptButton } from '@/components/letter/navmc10132/ProceedingScriptButton';
 import { SuspensionSection } from '@/components/letter/navmc10132/SuspensionSection';
@@ -390,6 +391,19 @@ export function Navmc10132FormSections({
         setFormData={setFormData}
         SectionCard={SectionCard}
         item19ShownByCaller={accusedClosed}
+      />
+      {/* DIRECTLY UNDER THE RANK CARD, and gated on nothing. Stephen,
+          2026-08-27, moving years of service and sea pay out of the item 19
+          card: "Lets make these their own section vice part of Rank and Pay
+          Grade (Item 19)." Neither field is on the form, so no signature
+          closes either and no pass gate applies. It sits here rather than
+          beside the punishment because item 19's grade and this card's
+          length of service are read TOGETHER to price a rate of pay, and a
+          clerk who has just chosen a grade is the one who knows the years. */}
+      <AccusedPayFactsSection
+        formData={formData}
+        setFormData={setFormData}
+        SectionCard={SectionCard}
       />
       <OffensesSection
         formData={formData}

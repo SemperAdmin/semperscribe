@@ -126,6 +126,7 @@ import {
 } from '@/lib/navmc10132-ranks';
 import {
   BASIC_PAY_SOURCE_URL,
+  SECTION_HOLDING_EXTRA_PAY,
   CEILING_REASONS_WORTH_SURFACING,
   forfeitureCeiling,
   payTableStatus,
@@ -1231,7 +1232,7 @@ export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
             `Seven days' pay at ${ceiling.payGrade} is $${ceiling.sevenDaysPay}, from monthly pay ` +
               `subject to forfeiture of $${ceiling.monthlySubjectToForfeiture.toFixed(2)} at one ` +
               `thirtieth per day. Rate source: ${BASIC_PAY_SOURCE_URL}. If the accused draws sea ` +
-              'or hardship duty pay, enter it beside item 19 and this ceiling rises.',
+              `or hardship duty pay, enter it in ${SECTION_HOLDING_EXTRA_PAY} and this ceiling rises.`,
           ),
         );
       }
@@ -1249,7 +1250,7 @@ export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
             `One-half of one month's pay at ${ceiling.payGrade} is $${ceiling.halfMonthPay}, from ` +
               `monthly pay subject to forfeiture of $${ceiling.monthlySubjectToForfeiture.toFixed(2)}. ` +
               `Rate source: ${BASIC_PAY_SOURCE_URL}. If the accused draws sea or hardship duty ` +
-              'pay, enter it beside item 19 and this ceiling rises.',
+              `pay, enter it in ${SECTION_HOLDING_EXTRA_PAY} and this ceiling rises.`,
           ),
         );
       }

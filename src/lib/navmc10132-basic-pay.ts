@@ -129,6 +129,15 @@ const MONTHLY_BASIC_PAY: Readonly<Record<string, ReadonlyArray<number | null>>> 
  * was already automated. Every E-1 ceiling now carries a note naming this
  * rate and telling the clerk to use it when the Marine is inside four months.
  */
+/**
+ * Where a clerk enters sea or hardship duty pay, named once.
+ *
+ * This string is PRINTED, on screen and on the A-1-f hearing script. It used
+ * to read "beside item 19", which was true until 2026-08-27 and then was not.
+ * Named here so a future move updates one line rather than four.
+ */
+export const SECTION_HOLDING_EXTRA_PAY = 'the Pay and Service Data card';
+
 export const E1_UNDER_FOUR_MONTHS = 2225.70;
 
 /**
@@ -469,9 +478,15 @@ export function forfeitureCeiling(input: ForfeitureCeilingInput): ForfeitureCeil
 
   if (extra === 0) {
     notes.push(
+      // NAMES THE CARD, not "beside item 19". These two fields moved out of
+      // the item 19 card on 2026-08-27, and this sentence is printed on the
+      // A-1-f hearing script, where a stale pointer sends a clerk hunting a
+      // box that is no longer there. It also said "the ceiling below" while
+      // sitting UNDERNEATH the figures it referred to, on both the screen
+      // panel and the printed block.
       'Basic pay only. Pay subject to forfeiture is basic pay PLUS sea duty or hardship duty ' +
-        'pay (JAGMAN 0111.i), so enter that pay beside item 19 if the accused draws it, or the ' +
-        'ceiling below is lower than the lawful one.',
+        `pay (JAGMAN 0111.i). If the accused draws it, enter it in ${SECTION_HOLDING_EXTRA_PAY} ` +
+        'and these figures rise. Left blank, they are lower than the lawful ceiling.',
     );
   }
 

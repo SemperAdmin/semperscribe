@@ -1594,7 +1594,7 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
   //   bookerStatement         - AccusedElectionSection, which also coerces
   //                             demand when the refusal box is checked
   //   accusedYearsOfService, accusedSeaHardshipDutyPay
-  //                           - AccusedRankSection, beside item 19
+  //                           - AccusedPayFactsSection, its own card
   //   punishments[], punishmentDate, punishmentImposed,
   //   dispositionNoticeDate, forfeitureBasisGrade
   //                           - PunishmentSection builder

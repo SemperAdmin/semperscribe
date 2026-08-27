@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { OffensesSection } from '@/components/letter/navmc10132/OffensesSection';
 import { AccusedElectionSection } from '@/components/letter/navmc10132/AccusedElectionSection';
 import { AccusedRankSection } from '@/components/letter/navmc10132/AccusedRankSection';
+import { AccusedPayFactsSection } from '@/components/letter/navmc10132/AccusedPayFactsSection';
 import { VictimsSection } from '@/components/letter/navmc10132/VictimsSection';
 import { createEmptyNavmc10132Data, NAVMC_10132_EMPTY_OFFENSE } from '@/types/navmc';
 import { FormData } from '@/types';
@@ -89,27 +90,45 @@ describe('item 19 closes; the two fields beside it do not', () => {
       />,
     );
 
-    // Twice on purpose: the locked value, and the existing "as it will print"
-    // preview lower in the same card.
-    expect(screen.getAllByText('Cpl, E4').length).toBeGreaterThan(0);
+    // ONCE. The locked block states it; the "as it will print" preview is
+    // suppressed on a closed field, because there is nothing pending about a
+    // value the signed file already carries.
+    expect(screen.getAllByText('Cpl, E4')).toHaveLength(1);
     expect(screen.queryByText('Service')).not.toBeInTheDocument();
     expect(screen.queryByText('Pay grade')).not.toBeInTheDocument();
   });
 
-  // Neither has an AcroForm field anywhere on the form, so neither can be
-  // closed by a signature. Both feed the forfeiture ceiling, which is app-side
+  // THE RULE HELD, THE CARD MOVED. Stephen split years of service and sea
+  // pay into AccusedPayFactsSection on 2026-08-27. The rule this case exists
+  // for is unchanged and is now structural rather than conditional: neither
+  // field has an AcroForm field anywhere on the NAVMC 10132, so neither can
+  // be closed by a signature, and they no longer share a card with anything
+  // that can be. Both feed the forfeiture ceiling, which is app-side
   // arithmetic a clerk may still need to correct on a signed document.
-  it('leaves years of service and sea pay editable on a fully signed document', () => {
+  it('does not leave years of service or sea pay in the item 19 card', () => {
     render(
       <AccusedRankSection
+        formData={unloaded()}
+        setFormData={vi.fn()}
+        SectionCard={StubSectionCard}
+      />,
+    );
+
+    expect(screen.queryByText('Completed years of service, round down')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sea or hardship duty pay, per month')).not.toBeInTheDocument();
+  });
+
+  it('leaves years of service and sea pay editable on a fully signed document', () => {
+    render(
+      <AccusedPayFactsSection
         formData={loaded({ accusedRankGrade: 'Cpl, E4' })}
         setFormData={vi.fn()}
         SectionCard={StubSectionCard}
       />,
     );
 
-    expect(screen.getByText('Completed years of service, round down')).toBeInTheDocument();
-    expect(screen.getByText('Sea or hardship duty pay, per month')).toBeInTheDocument();
+    expect(screen.getByLabelText('Completed years of service, round down')).toBeEnabled();
+    expect(screen.getByLabelText('Sea or hardship duty pay, per month')).toBeEnabled();
   });
 
   it('shows the pickers on a document with no signed file behind it', () => {

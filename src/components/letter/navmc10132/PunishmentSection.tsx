@@ -33,10 +33,8 @@ import {
   isNavmc10132KeyLocked,
   isNavmc10132SectionLocked,
 } from '@/lib/navmc10132-locks';
-import {
-  forfeitureLadder,
-  type ForfeitureLadder,
-} from '@/lib/navmc10132-forfeiture-ladder';
+import { formForfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
+import { ForfeitureLadderPanel } from '@/components/letter/navmc10132/ForfeitureLadderPanel';
 import {
   Gavel, Plus, Trash2, AlertTriangle, HelpCircle, Info,
 } from 'lucide-react';
@@ -152,21 +150,15 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
    * READ FROM ITEM 19, not from the basis grade the inputs above use. The
    * point of the panel is the comparison, and pricing the top rung on the
    * basis grade would collapse both rows onto the same number.
+   *
+   * BUILT BY formForfeitureLadder, not here. This component used to assemble
+   * the five inputs itself, and so did the A-1-f script, and so would the
+   * pay-and-service card added on 2026-08-27. Three assemblies of the same
+   * bag is three chances for one of them to pick a different date or miss
+   * the reduction target, which would put two ceilings for one Marine on one
+   * screen.
    */
-  const ladder = forfeitureLadder({
-    payGrade: typeof formData.accusedPayGrade === 'string' ? formData.accusedPayGrade : '',
-    yearsOfService:
-      typeof formData.accusedYearsOfService === 'string' ? formData.accusedYearsOfService : '',
-    seaHardshipDutyPay:
-      typeof formData.accusedSeaHardshipDutyPay === 'string'
-        ? formData.accusedSeaHardshipDutyPay
-        : '',
-    punishmentDate: typeof formData.punishmentDate === 'string' ? formData.punishmentDate : '',
-    gradeReducedTo:
-      punishments.find(
-        (entry) => typeof entry.gradeReducedTo === 'string' && entry.gradeReducedTo.trim() !== '',
-      )?.gradeReducedTo ?? '',
-  });
+  const ladder = formForfeitureLadder(formData as unknown as { [key: string]: unknown });
 
   // A code selected before item 8A was set can become unavailable once it is.
   // DERIVED, not cleared by an effect: the pending selection is read through
@@ -1033,82 +1025,6 @@ function CeilingNote({
       </p>
       {ceiling.notes.map((note) => (
         <p key={note} className="text-[11px] text-amber-800">
-          {note}
-        </p>
-      ))}
-    </div>
-  );
-}
-
-/**
- * The forfeiture ceiling at the accused's grade and at each reduction target.
- *
- * WHY BOTH ROWS AND NOT ONE. A commanding officer choosing a reduction and a
- * forfeiture together is choosing them against different ceilings, because
- * MCM Part V para 5.c(8) prices the forfeiture on the grade REDUCED TO. One
- * figure on screen answers only half the question, and it answers it with
- * the larger number.
- *
- * THE OPERATIVE ROW IS MARKED, never merely listed first. Before a reduction
- * is recorded the top row governs, and the rows below are what would happen.
- * Once one is recorded the marking moves, and the top row stays visible as
- * the comparison the clerk needs.
- *
- * NOTHING HERE IS A BLOCKER. V-20 blocks an over-ceiling forfeiture at
- * export with the same arithmetic; this panel exists so the clerk sees the
- * limit while typing rather than after being refused.
- */
-function ForfeitureLadderPanel({ ladder }: { ladder: ForfeitureLadder }) {
-  const money = (value: number) => `$${value.toLocaleString('en-US')}`;
-
-  if (ladder.rungs.length === 0) {
-    return (
-      <div className="rounded-md border border-dashed p-3 text-[11px] text-muted-foreground">
-        <p className="font-medium">Maximum forfeiture: not computed.</p>
-        <p>{ladder.unavailable?.detail ?? 'The app holds no figure for this accused.'}</p>
-        {/* Never render an absent ceiling as an absent LIMIT. */}
-        <p>A limit still applies. It has to be read from the pay table by hand.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-md border p-3">
-      <p className="text-xs font-medium">Maximum forfeiture by grade</p>
-      <div className="mt-2 overflow-x-auto">
-        <table className="w-full text-[11px]">
-          <thead className="text-muted-foreground">
-            <tr>
-              <th className="py-1 pr-3 text-left font-normal">Grade</th>
-              <th className="py-1 pr-3 text-right font-normal">One-half month, per month</th>
-              <th className="py-1 pr-3 text-right font-normal">Seven days</th>
-              <th className="py-1 text-left font-normal">Basis</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ladder.rungs.map((rung) => (
-              <tr key={rung.ceiling.payGrade} className={rung.operative ? 'font-medium' : ''}>
-                <td className="py-1 pr-3">
-                  {rung.reduced ? `if reduced to ${rung.ceiling.payGrade}` : rung.ceiling.payGrade}
-                </td>
-                <td className="py-1 pr-3 text-right tabular-nums">{money(rung.ceiling.halfMonthPay)}</td>
-                <td className="py-1 pr-3 text-right tabular-nums">{money(rung.ceiling.sevenDaysPay)}</td>
-                <td className="py-1 text-left text-muted-foreground">
-                  {rung.operative ? 'this forfeiture' : ''}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="mt-2 text-[11px] text-muted-foreground">
-        {ladder.reductionBarred
-          ? 'A reduction is barred at this grade, so the row above is the only lawful basis (MCO 5800.16 Vol 14).'
-          : 'A forfeiture imposed with a reduction must be computed on the grade reduced to (MCM Part V para 5.c(8)).'}
-      </p>
-      <p className="text-[11px] text-muted-foreground">{ladder.payTable.detail}</p>
-      {ladder.notes.map((note) => (
-        <p key={note} className="mt-1 text-[11px] text-muted-foreground">
           {note}
         </p>
       ))}

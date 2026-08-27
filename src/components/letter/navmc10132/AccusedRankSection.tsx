@@ -266,89 +266,20 @@ export function AccusedRankSection({
           </div>
         )}
 
-        {/*
-          Years of service sits BESIDE item 19 because it belongs to the same
-          fact as the pay grade: MCM Part V para 5.c(8) defines basic pay as
-          "the basic pay fixed by statute for the grade and length of service
-          of the person concerned." Grade alone names no rate, so a forfeiture
-          cannot be computed without both, and separating them across two cards
-          invites the clerk to fill one and forget the other.
-
-          IT DOES NOT PRINT, and the layout says so rather than implying
-          otherwise by sitting next to a field that does. The blank form
-          carries 74 AcroForm fields and none of them is years of service:
-          items 17 through 20 are UNIT, ACCUSED FULL NAME, ACCUSED RANK/GRADE,
-          and ACCUSED EDIPI. Composing it into the item 19 string instead would
-          break the page 3 note, which fixes exactly what that box may contain.
-          If a future revision of the form adds a box, map it in the acroform
-          writer, do not smuggle it into item 19.
-        */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {/* NOT SHOWN ONCE A SIGNATURE HAS CLOSED ITEM 19. "As it will
-              print" is a preview of a pending export, and there is nothing
-              pending about a field the signed file already carries: the
-              locked block above states the value, or the caller's collapsed
-              summary does. Printing it a second time under a future-tense
-              label read as an editable draft of a closed field. */}
-          {!item19Locked && (
-            <div className="space-y-1 rounded-md border p-3">
-              <Label className="text-xs">Item 19, as it will print</Label>
-              <div className="rounded border bg-muted/40 px-2 py-2 text-sm">
-                {rankGrade || <span className="text-muted-foreground">Nothing selected yet.</span>}
-              </div>
+        {/* ITEM 19'S PREVIEW, and nothing else. Years of service and sea
+            or hardship duty pay used to sit here as a second column, on the
+            reasoning that length of service belongs with the grade it prices.
+            Stephen moved them into a card of their own on 2026-08-27, after
+            the 2026-08-25 demo showed the cost of tying two off-form inputs
+            to the lifecycle of an on-form one. See AccusedPayFactsSection. */}
+        {!item19Locked && (
+          <div className="space-y-1 rounded-md border p-3 sm:max-w-sm">
+            <Label className="text-xs">Item 19, as it will print</Label>
+            <div className="rounded border bg-muted/40 px-2 py-2 text-sm">
+              {rankGrade || <span className="text-muted-foreground">Nothing selected yet.</span>}
             </div>
-          )}
-
-          <div className="space-y-1 rounded-md border border-dashed p-3">
-            {/*
-              "Completed years, round down" is not decoration. bracketIndex
-              treats the entry as completed years, and a Marine at 1 year 10
-              months entered as "2" jumps a bracket. One bracket is worth $42
-              on a seven days' pay forfeiture at the E-3 "Over 2" boundary and
-              $468 across two months at the E-7 "Over 26" boundary.
-            */}
-            <Label className="text-xs" htmlFor="accused-years-of-service">
-              Completed years of service, round down
-            </Label>
-            <Input
-              id="accused-years-of-service"
-              inputMode="numeric"
-              placeholder="4"
-              value={str(formData, 'accusedYearsOfService')}
-              onChange={(e) =>
-                write({ accusedYearsOfService: e.target.value.replace(/[^0-9]/g, '').slice(0, 2) })
-              }
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Does not print. The form has no box for it. Held because basic pay is fixed by
-              grade <em>and length of service</em> (MCM Part V para 5.c(8)), which is what the
-              forfeiture ceilings in item 6 are computed from.
-            </p>
-
-            <Label className="mt-2 block text-xs" htmlFor="accused-sea-hardship-pay">
-              Sea or hardship duty pay, per month
-            </Label>
-            <div className="flex items-center gap-1">
-              <span className="text-sm text-muted-foreground">$</span>
-              <Input
-                id="accused-sea-hardship-pay"
-                inputMode="numeric"
-                placeholder="0"
-                value={str(formData, 'accusedSeaHardshipDutyPay')}
-                onChange={(e) =>
-                  write({
-                    accusedSeaHardshipDutyPay: e.target.value.replace(/[^0-9]/g, '').slice(0, 6),
-                  })
-                }
-              />
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              Does not print. Blank for most Marines. JAGMAN 0111.i: pay subject to forfeiture
-              is basic pay <em>plus sea duty or hardship duty pay</em>. Leaving it blank
-              computes a ceiling LOWER than the lawful one for a Marine who draws it.
-            </p>
           </div>
-        </div>
+        )}
       </div>
     </SectionCard>
   );

@@ -189,3 +189,46 @@ export function forfeitureLadder(input: ForfeitureLadderInput): ForfeitureLadder
 export function operativeRung(ladder: ForfeitureLadder): ForfeitureRung | null {
   return ladder.rungs.find((rung) => rung.operative) ?? null;
 }
+
+/**
+ * The ladder for a NAVMC 10132 in progress, built from the form itself.
+ *
+ * ONE BUILDER, BECAUSE TWO CALLERS PRINTING DIFFERENT NUMBERS IS THE BUG
+ * THIS PREVENTS. Three places show these figures: the pay-and-service card
+ * where the clerk types the length of service, the punishment builder where
+ * the dollar amount is entered, and the A-1-f hearing script. Each used to
+ * assemble its own input bag from the same five keys. Any one of them
+ * drifting, a different date fallback, a different reduction target, would
+ * put two ceilings for one Marine on one screen with nothing to say which
+ * governs. They now read the same function.
+ *
+ * THE DATE IS ITEM 6'S. `payTableStatus` declines rather than guessing when
+ * it is unset, and that decline is what the panels print. A fallback to the
+ * election date would price the ceiling on a table chosen by a different
+ * event than the one the law names (MCM Part V para 5.c(8) prices the
+ * forfeiture as imposed), so the honest empty state is the right one.
+ * `advisementForfeitureLadder` in njp-package.ts falls back on purpose and
+ * documents why: an advisement is served before any punishment date exists.
+ */
+export function formForfeitureLadder(formData: {
+  [key: string]: unknown;
+}): ForfeitureLadder {
+  const read = (key: string): string => {
+    const value = formData[key];
+    return typeof value === 'string' ? value : '';
+  };
+  const entries = Array.isArray(formData.punishments) ? formData.punishments : [];
+  const reduction = entries.find(
+    (entry): entry is { gradeReducedTo: string } =>
+      typeof (entry as { gradeReducedTo?: unknown })?.gradeReducedTo === 'string' &&
+      (entry as { gradeReducedTo: string }).gradeReducedTo.trim() !== '',
+  );
+
+  return forfeitureLadder({
+    payGrade: read('accusedPayGrade'),
+    yearsOfService: read('accusedYearsOfService'),
+    seaHardshipDutyPay: read('accusedSeaHardshipDutyPay'),
+    punishmentDate: read('punishmentDate'),
+    gradeReducedTo: reduction?.gradeReducedTo ?? '',
+  });
+}

@@ -34,7 +34,11 @@ import {
 import type { Navmc10132Service } from '@/lib/navmc10132-ranks';
 import { renderAppendixPdf, type AppendixPdfResult } from '@/lib/jagman-a1-pdf';
 import { punishmentMenu, forfeitureCeilingBlock } from '@/lib/njp-hearing-worksheet';
-import { forfeitureLadder, type ForfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
+import {
+  forfeitureLadder,
+  formForfeitureLadder,
+  type ForfeitureLadder,
+} from '@/lib/navmc10132-forfeiture-ladder';
 
 export interface PackageReadiness {
   ready: boolean;
@@ -378,18 +382,11 @@ export function advisementForfeitureLadder(formData: FormData): ForfeitureLadder
 }
 
 export function scriptForfeitureLadder(formData: FormData): ForfeitureLadder {
-  const reduction = (Array.isArray(formData.punishments)
-    ? (formData.punishments as Navmc10132PunishmentEntry[])
-    : []
-  ).find((entry) => typeof entry?.gradeReducedTo === 'string' && entry.gradeReducedTo.trim() !== '');
-
-  return forfeitureLadder({
-    payGrade: str(formData, 'accusedPayGrade'),
-    yearsOfService: str(formData, 'accusedYearsOfService'),
-    seaHardshipDutyPay: str(formData, 'accusedSeaHardshipDutyPay'),
-    punishmentDate: str(formData, 'punishmentDate'),
-    gradeReducedTo: reduction?.gradeReducedTo ?? '',
-  });
+  // DELEGATES rather than assembling its own input bag. See
+  // formForfeitureLadder: the script, the punishment builder and the
+  // pay-and-service card must print one set of figures, and they only do
+  // that if they read one function.
+  return formForfeitureLadder(formData as unknown as { [key: string]: unknown });
 }
 
 /**

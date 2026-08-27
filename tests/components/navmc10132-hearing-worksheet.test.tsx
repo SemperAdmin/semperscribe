@@ -16,8 +16,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { punishmentMenu, menuLine, forfeitureCeilingBlock } from '@/lib/njp-hearing-worksheet';
+import { SECTION_HOLDING_EXTRA_PAY } from '@/lib/navmc10132-basic-pay';
 import { forfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
-import { buildScriptCase, scriptWorksheetGaps } from '@/lib/njp-package';
+import { buildScriptCase, scriptWorksheetGaps, scriptForfeitureLadder } from '@/lib/njp-package';
 import { renderNjpScript, punishmentRuleBudget } from '@/lib/njp-a1-script';
 import { APPENDIX_A_1_F } from '@/lib/jagman-appendix-a1';
 import { appendixWidth } from '@/lib/jagman-a1-wrap';
@@ -270,6 +271,53 @@ describe('the rendered A-1-f page', () => {
     expect(after).toContain('[ ] N11');
     expect(after).toContain('MAXIMUM FORFEITURE');
     expect(after).toContain('At E4 now');
+  });
+
+  /**
+   * STEPHEN, 2026-08-27, closing the pay-and-service split: "ensure this is
+   * shown on the NJP proceeding script (JAGMAN Appendix A-1-f)."
+   *
+   * The block printed here already. What was NOT asserted is that the page
+   * carries BOTH rungs and the actual figures, rather than a heading and a
+   * single row. A commanding officer choosing a reduction and a forfeiture
+   * together needs the reduced grade's number on the paper in front of him,
+   * because MCM Part V para 5.c(8) makes it the lawful basis and it is
+   * always the smaller one.
+   *
+   * ASSERTED AGAINST THE LADDER, not against literals. Hard-coding $853 here
+   * would make this test a second, staler copy of the pay table: a DFAS
+   * republication would red it for the wrong reason, and the number it
+   * defends would be the old one.
+   */
+  it('prints both rungs and the real figures on the page', () => {
+    const { lines } = renderNjpScript(buildScriptCase(ready()));
+    const page = lines.join('\n');
+    const rungs = scriptForfeitureLadder(ready()).rungs;
+    expect(rungs).toHaveLength(2);
+
+    const money = (value: number) => `$${value.toLocaleString('en-US')}`;
+    for (const rung of rungs) {
+      expect(page).toContain(money(rung.ceiling.sevenDaysPay));
+      expect(page).toContain(money(rung.ceiling.halfMonthPay));
+    }
+    expect(page).toContain(`If red to ${rungs[1].ceiling.payGrade}`);
+    // The reduced rung is the smaller figure. Two rows printing the same
+    // number would satisfy every assertion above.
+    expect(rungs[1].ceiling.sevenDaysPay).toBeLessThan(rungs[0].ceiling.sevenDaysPay);
+  });
+
+  /**
+   * THE PRINTED SENTENCE POINTS AT A CARD THAT EXISTS. This note used to
+   * read "enter that pay beside item 19", which was true until the two
+   * off-form inputs moved into their own card on 2026-08-27. A clerk at a
+   * hearing, holding paper, cannot be sent to a box that is no longer there.
+   * Pinned to the constant rather than to a literal so the two cannot drift.
+   */
+  it('names the card that holds sea and hardship duty pay', () => {
+    const page = renderNjpScript(buildScriptCase(ready())).lines.join('\n');
+    // Wrapped to the appendix measure, so match on the words, not the line.
+    expect(page.replace(/\s+/g, ' ')).toContain(SECTION_HOLDING_EXTRA_PAY);
+    expect(page).not.toContain('beside item 19');
   });
 
   /**
