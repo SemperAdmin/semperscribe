@@ -179,6 +179,34 @@ describe('who the promotion restriction is for', () => {
     expect(result.detail).toContain('4006.3e');
   });
 
+  /**
+   * STEPHEN, 2026-08-26, on a form generated for a Master Sergeant: "where
+   * is the right hand side Pg. 11 entry for promotion restriction". It was
+   * correctly absent. What the message did not say is the thing that makes
+   * the absence make sense: the Marine IS promotion restricted, because
+   * MCTFSPRIUM 70503 note 1 posts three months automatically at every grade
+   * when the TTC 268 is reported. 4006.3e requires the Page 11 RECORDING
+   * that restriction only for corporals and below. Two different things, and
+   * a message naming only the first invites the question again.
+   */
+  it('says the restriction still applies, only the Page 11 entry does not', () => {
+    const result = promotionRestrictionEntry(guiltyCorporal({ accusedPayGrade: 'E8' }));
+    expect(result.kind).toBe('unavailable');
+    if (result.kind !== 'unavailable') return;
+    expect(result.detail).toContain('70503 note 1');
+    expect(result.detail).toContain('three-month promotion restriction');
+    expect(result.detail).toContain('every grade');
+  });
+
+  // Every grade above corporal, so the message is not a special case for one.
+  it('is not made for any grade above corporal', () => {
+    for (const grade of ['E5', 'E6', 'E7', 'E8', 'E9']) {
+      const result = promotionRestrictionEntry(guiltyCorporal({ accusedPayGrade: grade }));
+      expect(result.kind, grade).toBe('unavailable');
+      if (result.kind === 'unavailable') expect(result.reason, grade).toBe('not-corporal-or-below');
+    }
+  });
+
   // A REDUCTION MOVES THE GRADE THE RESTRICTION RUNS FROM. A corporal
   // reduced to lance corporal is next eligible for corporal, not sergeant.
   it('reads the grade AFTER an unsuspended reduction', () => {
@@ -228,13 +256,51 @@ describe('what the promotion restriction refuses to invent', () => {
     expect(result.reason).toBe('suspension-not-in-months');
   });
 
-  it('makes no entry with no guilty finding, and none with no date', () => {
+  it('makes no entry with no guilty finding', () => {
     expect(
       promotionRestrictionEntry(guiltyCorporal({ offenses: offenses() })).kind,
     ).toBe('unavailable');
-    expect(
-      promotionRestrictionEntry(guiltyCorporal({ punishmentDate: '' })).kind,
-    ).toBe('unavailable');
+  });
+
+  /**
+   * THE DATE STOPPED BEING A REFUSAL ON 2026-08-27, and this pair is the
+   * record of why.
+   *
+   * Stephen, looking at a NAVMC 118(11) where the 6105 had generated and the
+   * restriction had not: "pg. 11 right side is not generating as the app does
+   * not recognize the item 6 completion." Item 6 WAS complete on that
+   * document, N07 for $853; what was missing was the item 6 DATE.
+   *
+   * Both entries print on ONE form, and the 6105 has always opened with
+   * '[DATE]' and listed the gap. Refusing on this side produced a page with
+   * one column filled and one empty over the same missing input, which is the
+   * app contradicting itself about whether it can proceed.
+   *
+   * WHAT DID NOT CHANGE is the suspension case above. A missing date is a
+   * blank a clerk fills in with a pen. A suspension stated in days leaves the
+   * app unable to say whether the entry cites MCO P1400.32 par 1204.4J or
+   * 1204.4K, and a service record entry naming the wrong paragraph of the
+   * order is worse than no entry at all.
+   */
+  it('still writes the entry with no date, carrying a named blank', () => {
+    const result = promotionRestrictionEntry(guiltyCorporal({ punishmentDate: '' }));
+    expect(result.kind).toBe('entry');
+    if (result.kind !== 'entry') return;
+    expect(result.entry.text).toContain('[DATE]. I UNDERSTAND THAT I AM ELIGIBLE');
+    expect(result.entry.missing).toEqual(['the item 6 punishment date, which opens the entry']);
+    // Everything the app DOES know is still stated, so the blank is one blank
+    // and not a template.
+    expect(result.entry.text).toContain('IAW MCO P1400.32, PAR 1204.4J');
+    expect(result.entry.months).toBe(3);
+  });
+
+  it('reports no gap and no placeholder once the date is set', () => {
+    const result = promotionRestrictionEntry(guiltyCorporal({ punishmentDate: '2026-08-26' }));
+    expect(result.kind).toBe('entry');
+    if (result.kind !== 'entry') return;
+    expect(result.entry.missing).toEqual([]);
+    expect(result.entry.text).not.toContain('[DATE]');
+    expect(result.entry.text).toContain('20260826.');
   });
 
   it('makes no entry when item 19 carries no pay grade', () => {
@@ -342,6 +408,41 @@ describe('the two entries on one form', () => {
     expect(page.name).toBe('GUILTY, I M');
     expect(page.edipi).toBe('1234567890');
     expect(page.restrictionOmitted).toBeNull();
+  });
+
+  /**
+   * THE DEFECT STEPHEN REPORTED ON 2026-08-27, at form level.
+   *
+   * His document: Cpl/E-4, Art. 123 found Guilty, N07 for $853 imposed, item
+   * 6 carrying no date. The 6105 generated with '[DATE]'. The restriction
+   * generated nothing at all. One NAVMC 118(11), one column filled.
+   *
+   * ASSERTED AS A PAIR, because either half alone passes on a broken build.
+   * A test that only checked the right column is non-empty would pass on an
+   * app that silently invented a date, and one that only checked the gap is
+   * reported would pass on the old refusing behaviour.
+   */
+  it('fills BOTH columns when item 6 carries a punishment but no date', () => {
+    const page = njpPage11(guiltyCorporal({ punishmentDate: '' }), COUNSELING);
+
+    expect(page.remarksLeft).toContain('[DATE]. Counseled this date');
+    expect(page.remarksRight).toContain('[DATE]. I UNDERSTAND THAT I AM ELIGIBLE');
+    expect(page.restrictionOmitted).toBeNull();
+  });
+
+  // ONE GAP, NOT TWO. Both entries open with the same date and word the gap
+  // identically, so a clerk who left it unset is told once.
+  it('reports the shared date gap a single time across both columns', () => {
+    const page = njpPage11(guiltyCorporal({ punishmentDate: '' }), COUNSELING);
+    const dateGaps = page.missing.filter((gap) => gap.includes('item 6 punishment date'));
+    expect(dateGaps).toHaveLength(1);
+  });
+
+  it('reports no date gap and no placeholder once the date is set', () => {
+    const page = njpPage11(guiltyCorporal({ punishmentDate: '2026-08-26' }), COUNSELING);
+    expect(page.missing.filter((gap) => gap.includes('item 6 punishment date'))).toEqual([]);
+    expect(page.remarksLeft).not.toContain('[DATE]');
+    expect(page.remarksRight).not.toContain('[DATE]');
   });
 
   // AN EMPTY RIGHT COLUMN IS USUALLY CORRECT rather than a failure, so the

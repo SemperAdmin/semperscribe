@@ -156,15 +156,43 @@ export function longestSuspensionMonths(formData: FormData): number | null {
 }
 
 /** Why no promotion restriction entry is produced. */
+/**
+ * Why NO promotion restriction entry is made.
+ *
+ * EVERY REASON HERE MEANS THE ENTRY DOES NOT EXIST, not that it is
+ * incomplete. That distinction was blurred until 2026-08-27, when
+ * 'no-njp-date' sat in this list and suppressed the whole entry over one
+ * unfilled blank. Stephen, looking at a form where the 6105 had generated
+ * and the restriction had not: "pg. 11 right side is not generating as the
+ * app does not recognize the item 6 completion." Both entries print on one
+ * NAVMC 118(11), so half a form appearing over a blank the other half
+ * happily carries as [DATE] was the app contradicting itself.
+ *
+ * The date is now a named blank on this side too. What stays here is the
+ * cases where the app cannot produce a CORRECT entry at all:
+ *
+ *  - no-grade: cannot tell whether 4006.3e even reaches this Marine.
+ *  - not-corporal-or-below: 4006.3e does not reach them. No entry is made.
+ *  - no-guilty-finding: there is no NJP to restrict promotion for.
+ *  - suspension-not-in-months: NOT a blank, a citation. The period decides
+ *    whether the entry cites MCO P1400.32 par 1204.4J or 1204.4K, and an
+ *    entry naming the wrong paragraph of the order is worse than no entry.
+ */
 export type RestrictionUnavailable =
   | 'not-corporal-or-below'
   | 'no-grade'
   | 'no-guilty-finding'
-  | 'no-njp-date'
   | 'suspension-not-in-months';
 
 export interface PromotionRestriction {
   text: string;
+  /**
+   * Named parts the entry carries as a blank, in the same shape and the same
+   * words CounselingEntry.missing uses, so the section can list both columns'
+   * gaps as one set. See RestrictionUnavailable for why a blank is not a
+   * reason to withhold the entry.
+   */
+  missing: string[];
   /** Months the restriction runs. */
   months: number;
   /** The MCO P1400.32 paragraph this cites. */
@@ -222,7 +250,10 @@ export function promotionRestrictionEntry(formData: FormData): PromotionRestrict
       reason: 'not-corporal-or-below',
       detail:
         `IRAM 4006.3e is written for privates through corporals, and this Marine is ${grade} ` +
-        'after the NJP. No promotion restriction entry is made.',
+        'after the NJP, so no promotion restriction entry is made. The RESTRICTION itself ' +
+        'still applies: MCTFSPRIUM 70503 note 1 posts a three-month promotion restriction ' +
+        'automatically when the TTC 268 is reported, at every grade. What 4006.3e requires ' +
+        'for corporals and below is the Page 11 entry recording it, not the restriction.',
     };
   }
 
@@ -236,14 +267,15 @@ export function promotionRestrictionEntry(formData: FormData): PromotionRestrict
     };
   }
 
+  // A NAMED BLANK, NOT A REFUSAL. See RestrictionUnavailable. The 6105 in
+  // the left column has always printed '[DATE]' here and listed the gap, and
+  // both entries go on ONE form, so refusing on this side produced a page
+  // with one column filled and one empty for the same missing input.
+  const missing: string[] = [];
   const date = mctfsDate(str(formData, 'punishmentDate'));
-  if (date === '') {
-    return {
-      kind: 'unavailable',
-      reason: 'no-njp-date',
-      detail: 'The item 6 punishment date is not set, and the entry opens with it.',
-    };
-  }
+  // WORDED IDENTICALLY to separationCounselingEntry's, on purpose: njpPage11
+  // merges the two lists and a clerk should be told once, not twice.
+  if (date === '') missing.push('the item 6 punishment date, which opens the entry');
 
   const hasSuspension = suspensions(formData).length > 0;
   const suspendedMonths = longestSuspensionMonths(formData);
@@ -263,7 +295,7 @@ export function promotionRestrictionEntry(formData: FormData): PromotionRestrict
   const nextGrade = nextGradeTitle(grade);
 
   const text =
-    `${date}. I UNDERSTAND THAT I AM ELIGIBLE BUT NOT RECOMMENDED FOR PROMOTION TO ` +
+    `${date || '[DATE]'}. I UNDERSTAND THAT I AM ELIGIBLE BUT NOT RECOMMENDED FOR PROMOTION TO ` +
     `${nextGrade || '[GRADE]'} DUE TO MY RECENT NJP FOR VIOLATION OF ${articlePhrase(articles)} ` +
     `FOR A PERIOD OF ${months} MONTHS IAW MCO P1400.32, PAR ${paragraph}, UNLESS WAIVED BY ` +
     'APPROPRIATE AUTHORITY. I WAS ADVISED THAT WITHIN 5 WORKING DAYS AFTER ACKNOWLEDGMENT OF ' +
@@ -272,7 +304,7 @@ export function promotionRestrictionEntry(formData: FormData): PromotionRestrict
 
   return {
     kind: 'entry',
-    entry: { text, months, paragraph, fromSuspension: suspendedMonths !== null },
+    entry: { text, months, paragraph, fromSuspension: suspendedMonths !== null, missing },
   };
 }
 
@@ -480,12 +512,22 @@ export function njpPage11(formData: FormData, input: CounselingInput): NjpPage11
   const counseling = separationCounselingEntry(formData, input);
   const restriction = promotionRestrictionEntry(formData);
 
+  // BOTH COLUMNS' GAPS, DEDUPED. The two entries open with the same date and
+  // word the gap identically, so a clerk who left it unset must be told once
+  // rather than twice. Set preserves first-seen order.
+  const missing = [
+    ...new Set([
+      ...counseling.missing,
+      ...(restriction.kind === 'entry' ? restriction.entry.missing : []),
+    ]),
+  ];
+
   return {
     remarksLeft: counseling.text,
     remarksRight: restriction.kind === 'entry' ? restriction.entry.text : '',
     name: str(formData, 'accusedName'),
     edipi: str(formData, 'accusedEdipi'),
-    missing: counseling.missing,
+    missing,
     restrictionOmitted: restriction.kind === 'entry' ? null : restriction.detail,
   };
 }
