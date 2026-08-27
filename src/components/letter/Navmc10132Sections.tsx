@@ -364,28 +364,33 @@ export function Navmc10132FormSections({
           ]}
         />
       ) : (
-        <>
-          <FormBlock>
-            <DynamicForm
-              key={`navmc10132-${formKey}-accused`}
-              lockedFields={lockedKeys}
-              lockedBadge={<LockedBadge />}
-              documentType={DEF_ACCUSED}
-              onSubmit={onDynamicSync}
-              defaultValues={formData}
-            />
-          </FormBlock>
-          {/* PAIRED WITH THE BLOCK ABOVE, not gated separately. This card is
-              the item 19 rank and pay grade picker, so it has nothing left to
-              offer once item 19 is closed, and leaving it behind would show
-              an empty editor under a summary that already states the rank. */}
-          <AccusedRankSection
-            formData={formData}
-            setFormData={setFormData}
-            SectionCard={SectionCard}
+        <FormBlock>
+          <DynamicForm
+            key={`navmc10132-${formKey}-accused`}
+            lockedFields={lockedKeys}
+            lockedBadge={<LockedBadge />}
+            documentType={DEF_ACCUSED}
+            onSubmit={onDynamicSync}
+            defaultValues={formData}
           />
-        </>
+        </FormBlock>
       )}
+      {/* NOT PAIRED WITH THE BLOCK ABOVE, and not gated on the accused lock.
+          An earlier revision hid this card whenever items 17-20 closed, on the
+          reasoning that it is only the item 19 picker. That was wrong and the
+          2026-08-25 demo showed the cost: the card ALSO carries years of
+          service and sea and hardship duty pay, neither of which is on the
+          NAVMC 10132, so no signature closes them, and both feed the
+          forfeiture ceiling. Hiding the card on a signed upload left the
+          ceiling uncomputable with no way to supply the two numbers. The card
+          closes its own item 19 half on `isNavmc10132KeyLocked`, so the
+          signed field stays read-only without hiding the open ones. */}
+      <AccusedRankSection
+        formData={formData}
+        setFormData={setFormData}
+        SectionCard={SectionCard}
+        item19ShownByCaller={accusedClosed}
+      />
       <OffensesSection
         formData={formData}
         setFormData={setFormData}
@@ -432,11 +437,17 @@ export function Navmc10132FormSections({
           2026-08-26: "towards the end after the NJP proceedings and before an
           appeal". Both entries are made BECAUSE of the punishment, so neither
           can be written before item 6 is, and the promotion restriction
-          states the period a suspension runs, which is item 7. Same pass-3
-          gate the punishment carries, for that reason: an entry counseling a
-          Marine over deficiencies nobody has found guilty yet would be
-          written before the hearing that finds them. */}
-      {navmc10132StageAtLeast(stage, 3) && (
+          states the period a suspension runs, which is item 7. PASS 4, not
+          pass 3: pass 3 opens the moment the item 3 election signature closes
+          pass 2, which is BEFORE the hearing, so a pass-3 gate showed an
+          empty 6105 alongside the punishment builder. SSgt Jara asked about
+          exactly that on the 2026-08-25 demo and Stephen ruled it: "that
+          first page 11 we saw should not have been seen at all at that time."
+          The item 9 NJP authority signature closes pass 3
+          (NAVMC_10132_PASS_SIGNATURES), so pass 4 is the first stage at which
+          a punishment has actually been imposed and an entry has facts to
+          state. */}
+      {navmc10132StageAtLeast(stage, 4) && (
         <Page11Section
           formData={formData}
           setFormData={setFormData}

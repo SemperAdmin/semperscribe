@@ -50,6 +50,15 @@ import {
 interface SectionProps {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
+  /**
+   * Suppress the read-only echo of item 19 when the caller already shows it.
+   * The parent collapses items 17-20 to a summary when a signature closes
+   * every one of them, and that summary states the rank and pay grade. This
+   * card still renders in that case, because years of service and sea pay
+   * are not on the form and no signature closes them, so without this flag
+   * item 19 would be printed twice on the same screen.
+   */
+  item19ShownByCaller?: boolean;
   SectionCard: React.ComponentType<{
     icon: React.ReactNode;
     title: string;
@@ -63,7 +72,12 @@ function str(formData: FormData, key: string): string {
   return typeof value === 'string' ? value : '';
 }
 
-export function AccusedRankSection({ formData, setFormData, SectionCard }: SectionProps) {
+export function AccusedRankSection({
+  formData,
+  setFormData,
+  SectionCard,
+  item19ShownByCaller = false,
+}: SectionProps) {
   const service = str(formData, 'accusedService') || 'USMC';
   const payGrade = str(formData, 'accusedPayGrade');
   const rankGrade = str(formData, 'accusedRankGrade');
@@ -150,7 +164,7 @@ export function AccusedRankSection({ formData, setFormData, SectionCard }: Secti
               Item 19, as it prints on the signed form
               <LockedBadge />
             </Label>
-            <ReadOnlyValue value={rankGrade} />
+            {!item19ShownByCaller && <ReadOnlyValue value={rankGrade} />}
             <p className="text-[11px] text-muted-foreground">
               Service, rank and pay grade compose this one field, and a signature has closed
               it. Correcting it means a corrected copy and a new signature, not an edit here.
@@ -270,12 +284,20 @@ export function AccusedRankSection({ formData, setFormData, SectionCard }: Secti
           writer, do not smuggle it into item 19.
         */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="space-y-1 rounded-md border p-3">
-            <Label className="text-xs">Item 19, as it will print</Label>
-            <div className="rounded border bg-muted/40 px-2 py-2 text-sm">
-              {rankGrade || <span className="text-muted-foreground">Nothing selected yet.</span>}
+          {/* NOT SHOWN ONCE A SIGNATURE HAS CLOSED ITEM 19. "As it will
+              print" is a preview of a pending export, and there is nothing
+              pending about a field the signed file already carries: the
+              locked block above states the value, or the caller's collapsed
+              summary does. Printing it a second time under a future-tense
+              label read as an editable draft of a closed field. */}
+          {!item19Locked && (
+            <div className="space-y-1 rounded-md border p-3">
+              <Label className="text-xs">Item 19, as it will print</Label>
+              <div className="rounded border bg-muted/40 px-2 py-2 text-sm">
+                {rankGrade || <span className="text-muted-foreground">Nothing selected yet.</span>}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="space-y-1 rounded-md border border-dashed p-3">
             {/*

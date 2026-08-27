@@ -68,6 +68,7 @@ const TITLES = {
   victims: 'Item 22, Victims',
   remarks: 'Items 21 and 16, Remarks',
   unitDiary: 'Unit Diary Handoff',
+  page11: 'Page 11 entries (NAVMC 118(11))',
 };
 
 function renderSections(formData: FormData) {
@@ -204,6 +205,30 @@ describe('Later stages are additive', () => {
     renderSections(baseFormData({ stage: 6 }));
 
     expect(screen.getByText(TITLES.unitDiary)).toBeInTheDocument();
+  });
+
+  // THE OTHER DEMO REGRESSION, 2026-08-25. The page 11 card was gated at
+  // pass 3, and pass 3 opens the instant the item 3 election signature
+  // closes pass 2, which is before the hearing. SSgt Jara saw an empty 6105
+  // on the recording and Stephen ruled it: "that first page 11 we saw should
+  // not have been seen at all at that time." The item 9 NJP authority
+  // signature closes pass 3 (NAVMC_10132_PASS_SIGNATURES), so pass 4 is the
+  // first stage at which a punishment exists for an entry to state. The pair
+  // is asserted together because a one-sided test passes on a card that
+  // never renders at all.
+  it('pass 3 (hearing not yet signed off) hides the page 11 card', () => {
+    renderSections(baseFormData({ stage: 3 }));
+
+    // The punishment builder IS open at pass 3, so this is the gate under
+    // test and not a section that failed to render.
+    expect(screen.getByText(TITLES.punishment)).toBeInTheDocument();
+    expect(screen.queryByText(TITLES.page11)).not.toBeInTheDocument();
+  });
+
+  it('pass 4 (item 9 signed) opens the page 11 card', () => {
+    renderSections(baseFormData({ stage: 4 }));
+
+    expect(screen.getByText(TITLES.page11)).toBeInTheDocument();
   });
 });
 
@@ -631,16 +656,53 @@ describe('a fully signed section collapses to its record', () => {
     } as Partial<FormData>);
   }
 
-  it('drops the accused editors and the item 19 picker once items 17-20 are closed', () => {
+  it('drops the accused editors once items 17-20 are closed', () => {
     renderSections(signed());
 
     // The heading stays, so the card is still findable where it always was.
     expect(screen.getByText(TITLES.accused)).toBeInTheDocument();
-    // The item 19 picker went with it: its only job is choosing a value the
-    // signature has closed.
-    expect(screen.queryByText(TITLES.rank)).not.toBeInTheDocument();
     // And no editor is offered for a field the export would refuse to write.
     expect(screen.queryByRole('textbox', { name: /accused/i })).not.toBeInTheDocument();
+  });
+
+  // THE DEMO REGRESSION, 2026-08-25. An earlier revision hid the whole rank
+  // card with the accused block, on the reasoning that its only job is
+  // choosing a value the signature closed. It is not: the card also carries
+  // years of service and sea and hardship duty pay, which are NOT on the
+  // NAVMC 10132, so no signature closes them, and both feed the item 6
+  // forfeiture ceiling. On the recording Stephen hit exactly that wall on a
+  // signed upload, "max forfeiture, not computed because I did not add the
+  // ability to put the years". These two cases pin the split: item 19 shut,
+  // the two off-form numbers open, on the same signed document.
+  it('keeps the rank card on a signed upload for the two fields no signature closes', () => {
+    renderSections(signed());
+
+    expect(screen.getByText(TITLES.rank)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Completed years of service, round down'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Sea or hardship duty pay, per month')).toBeInTheDocument();
+  });
+
+  it('still closes the item 19 picker itself on that same document', () => {
+    renderSections(signed());
+
+    // Item 19 collapses inside the card that stayed. The picker's own
+    // controls are gone: 'Service' and 'Rank' are NOT usable as the probe
+    // here, because NjpAuthoritySection renders labels by those same names
+    // for item 8A and would satisfy the assertion from a different card.
+    // 'Item 19, as it will print' belongs to this card alone.
+    expect(screen.getByText('Item 19, as it prints on the signed form')).toBeInTheDocument();
+    expect(screen.queryByText('Item 19, as it will print')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: /rank/i })).not.toBeInTheDocument();
+  });
+
+  // Item 19 is stated ONCE on this screen. The collapsed summary above owns
+  // it, so the card that stayed for years of service must not echo it.
+  it('does not print item 19 twice when the summary above already states it', () => {
+    renderSections(signed());
+
+    expect(screen.getAllByText('Cpl/E-4')).toHaveLength(1);
   });
 
   it('still shows what those four items carry', () => {
