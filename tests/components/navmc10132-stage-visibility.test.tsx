@@ -69,6 +69,8 @@ const TITLES = {
   remarks: 'Items 21 and 16, Remarks',
   unitDiary: 'Unit Diary Handoff',
   page11: 'Page 11 entries (NAVMC 118(11))',
+  script: 'NJP proceeding script (JAGMAN Appendix A-1-f)',
+  payFacts: 'Pay and Service Data (does not print)',
 };
 
 function renderSections(formData: FormData) {
@@ -96,6 +98,57 @@ describe('createEmptyNavmc10132Data defaults to pass 1', () => {
     const formData = baseFormData();
     delete (formData as Record<string, unknown>).stage;
     expect(navmc10132Stage(formData)).toBe(1);
+  });
+});
+
+/**
+ * Screen order, as Stephen set it on 2026-08-27: "Swap the locations of the
+ * Offenses and findings (items 1 and 5) section and the NJP proceeding script
+ * (JAGMAN Appendix A-1-f) section."
+ *
+ * ORDER IS NOT COVERED BY ANY VISIBILITY TEST. Every case in this file asks
+ * whether a card is on the screen, and all of them pass on any arrangement of
+ * the same cards. A layout ruling with no assertion behind it is one careless
+ * refactor from silently reverting, so this reads the rendered headings in
+ * document order and compares the sequence.
+ *
+ * THE GATES ARE ASSERTED SEPARATELY AND DELIBERATELY. The swap moved cards,
+ * not gates: a literal exchange of the two JSX blocks would have carried
+ * OffensesSection into the pass-3 fragment and hidden item 1 at passes 1 and
+ * 2, the only passes at which the charge sheet is filled in. The pass-1 case
+ * below already asserts the offenses card is present at pass 1, which is what
+ * would red on that mistake.
+ */
+describe('screen order follows the 2026-08-27 ruling', () => {
+  /** Headings of interest, in the order the DOM carries them. */
+  function orderOf(formData: FormData, titles: string[]): string[] {
+    renderSections(formData);
+    return titles
+      .map((title) => ({ title, node: screen.queryByText(title) }))
+      .filter((entry): entry is { title: string; node: HTMLElement } => entry.node !== null)
+      .sort((a, b) =>
+        // eslint-disable-next-line no-bitwise
+        a.node.compareDocumentPosition(b.node) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
+      )
+      .map((entry) => entry.title);
+  }
+
+  it('puts the script above the offenses at pass 3, and both above the punishment', () => {
+    expect(
+      orderOf(baseFormData({ stage: 3 }), [
+        TITLES.rank,
+        TITLES.payFacts,
+        TITLES.script,
+        TITLES.offenses,
+        TITLES.punishment,
+      ]),
+    ).toEqual([TITLES.rank, TITLES.payFacts, TITLES.script, TITLES.offenses, TITLES.punishment]);
+  });
+
+  it('keeps the offenses card reachable at pass 1, where the script has not appeared', () => {
+    expect(
+      orderOf(baseFormData({ stage: 1 }), [TITLES.payFacts, TITLES.script, TITLES.offenses]),
+    ).toEqual([TITLES.payFacts, TITLES.offenses]);
   });
 });
 

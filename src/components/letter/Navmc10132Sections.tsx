@@ -22,15 +22,24 @@
  *
  *   Accused and unit          items 17-20      DynamicForm
  *   Rank and pay grade        item 19          custom picker, closed list
- *   Offenses and findings     items 1 and 5    custom grid
- *   Accused election          item 2 and 3     custom, Booker preview
+ *   Pay and service data      not on the form  custom, prices the ceilings
+ *   NJP proceeding script     JAGMAN A-1-f     generator, pass 3
  *   Unauthorised absence      item 4           DynamicForm, Art 85 or 86 only
+ *   Offenses and findings     items 1 and 5    custom grid
  *   Punishment                items 6 and 10   custom builder
  *   Suspension                item 7           custom picker over item 6
  *   Authority                 item 8           DynamicForm
+ *   Page 11 entries           NAVMC 118(11)    generator, pass 4
  *   Appeal                    items 11-15      DynamicForm
  *   Victims                   item 22          custom grid
+ *   Accused election          items 2 and 3    custom, Booker preview
  *   Remarks and final action  items 21 and 16  custom composer
+ *   Unit diary handoff        not on the form  generator, pass 6
+ *
+ * THE SCRIPT ABOVE THE OFFENSES is Stephen's placement, 2026-08-27, and it
+ * reverses what this list said until then. The two swapped as CARDS and not
+ * as gates: see the note at the call site for why a literal swap of the JSX
+ * would have hidden item 1 at the only two passes anybody fills it in.
  *
  * STAGE GATING. `formData.stage` (src/types/navmc.ts, set by the loaded
  * above) additionally hides sections that belong to a pass later than the
@@ -405,12 +414,26 @@ export function Navmc10132FormSections({
         setFormData={setFormData}
         SectionCard={SectionCard}
       />
-      <OffensesSection
-        formData={formData}
-        setFormData={setFormData}
-        SectionCard={SectionCard}
-        stage={stage}
-      />
+      {/* THE SCRIPT SITS WHERE THE OFFENSES USED TO, and the offenses where
+          the script used to. Stephen, 2026-08-27: "Swap the locations of the
+          Offenses and findings (items 1 and 5) section and the NJP proceeding
+          script (JAGMAN Appendix A-1-f) section."
+
+          THE CARDS MOVED, THE GATES DID NOT, and that distinction is the
+          whole of this edit. A literal swap of the two JSX blocks would have
+          carried OffensesSection into the pass-3 fragment below, which hides
+          item 1 at passes 1 and 2: the charge sheet would vanish from the
+          only two passes at which anybody fills it in. So the script is
+          lifted out of that fragment and gated on its own, and the offenses
+          card stays ungated where the script used to sit. Each card appears
+          at exactly the pass it appeared at before.
+
+          The script keeps its pass-3 gate because there is nothing to read
+          aloud until a hearing is being held, and it still renders above the
+          punishment builder, which is what it is read FROM. */}
+      {navmc10132StageAtLeast(stage, 3) && (
+        <ProceedingScriptButton formData={formData} SectionCard={SectionCard} />
+      )}
       {showAbsence && navmc10132StageAtLeast(stage, 3) && (
         <FormBlock>
           <DynamicForm
@@ -423,13 +446,17 @@ export function Navmc10132FormSections({
           />
         </FormBlock>
       )}
+      {/* UNGATED, as it has always been. OffensesSection filters its OWN
+          controls per pass, item 1 at pass 1 and item 5 at pass 3, because it
+          carries fields from two passes. See the header note above. */}
+      <OffensesSection
+        formData={formData}
+        setFormData={setFormData}
+        SectionCard={SectionCard}
+        stage={stage}
+      />
       {navmc10132StageAtLeast(stage, 3) && (
         <>
-          {/* BEFORE THE PUNISHMENT, because the script is what the hearing is
-              conducted FROM and item 6 is what it produces. Same pass-3 gate
-              it had inside that card, so nothing about when it appears
-              changes; only where. */}
-          <ProceedingScriptButton formData={formData} SectionCard={SectionCard} />
           <PunishmentSection
             formData={formData}
             setFormData={setFormData}

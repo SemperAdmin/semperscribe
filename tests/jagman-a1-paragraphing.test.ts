@@ -73,6 +73,40 @@ describe('every enumerated and lettered head opens a paragraph', () => {
   });
 });
 
+/**
+ * Enumerator spacing inside a numbered list.
+ *
+ * Stephen, 2026-08-27, reading A-1-c page 1: "fix the space between the
+ * '(1)' and 'To be informed of your rights under Article 31, UCMJ;'".
+ *
+ * Same extraction class as the paragraph breaks above. A-1-c printed
+ * '(1)' followed by four spaces where (2) through (7) in the identical list
+ * use one, and A-1-d printed the same line with three. The rest of the
+ * corpus's enumerators are uniform, so the two outliers are the artifact
+ * rather than the style.
+ *
+ * LETTERED HEADS ARE LEFT ALONE and this rule does not touch them. Every
+ * 'a.', 'b.', 'c.', 'd.' and 'e.' across all six appendices carries three or
+ * four spaces, in A-1-c, A-1-d, A-1-g and A-1-h alike. A gap that appears
+ * everywhere is the document's own layout for lettered subparagraphs, and
+ * closing it would be this app rewriting the JAGMAN rather than repairing an
+ * extraction.
+ */
+describe('a numbered enumerator is followed by exactly one space', () => {
+  const ENUMERATOR_GAP = /^(\s*)\((\d+)\)(\s+)\S/;
+
+  it.each(APPENDICES)('%s', (_designator, appendix) => {
+    const wide: string[] = [];
+    appendix.text.forEach((line, i) => {
+      const match = ENUMERATOR_GAP.exec(line);
+      if (match && match[3].length > 1) {
+        wide.push(`line ${i}: "(${match[2]})" followed by ${match[3].length} spaces`);
+      }
+    });
+    expect(wide).toEqual([]);
+  });
+});
+
 // THE SEVEN SITES, named so a reviewer sees what changed rather than
 // trusting the sweep. Each asserts the repaired shape at a spot the
 // detectors above flagged before 2026-08-27.
