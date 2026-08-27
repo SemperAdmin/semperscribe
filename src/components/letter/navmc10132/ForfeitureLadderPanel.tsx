@@ -46,9 +46,18 @@ export function ForfeitureLadderPanel({ ladder }: { ladder: ForfeitureLadder }) 
     );
   }
 
+  // SAME SPLIT THE PRINTED BLOCK MAKES. The figures are identical either way;
+  // what differs is whether the app is vouching for the table they came from.
+  // See forfeitureCeiling.tableGovernsDate and Stephen's 2026-08-27 ruling.
+  const governed = ladder.rungs.every((rung) => rung.ceiling.tableGovernsDate);
+
   return (
     <div className="rounded-md border p-3">
-      <p className="text-xs font-medium">Maximum forfeiture by grade</p>
+      <p className="text-xs font-medium">
+        {governed
+          ? 'Maximum forfeiture by grade'
+          : 'Maximum forfeiture by grade (planning figure)'}
+      </p>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full text-[11px]">
           <thead className="text-muted-foreground">

@@ -1161,12 +1161,18 @@ export function correctionalCustodyGradeIssues(formData: FormData): ValidationIs
  * V-20 (BLOCKING). A forfeiture exceeds the statutory ceiling for the grade it
  * is based on.
  *
- * TWO CONDITIONS BEFORE THIS EVER FIRES, both deliberate. The app must hold the
- * pay table in force on the punishment date (payTableStatus), and it must be
- * able to compute a ceiling from the recorded grade, length of service, and sea
- * or hardship duty pay. Miss either and this rule stays silent rather than
- * blocking on a number it cannot stand behind. A stale table blocking a lawful
- * forfeiture would be worse than no check.
+ * TWO CONDITIONS BEFORE THIS EVER FIRES, both deliberate and both still true
+ * after the 2026-08-27 change. The app must hold the pay table in force on the
+ * punishment date (payTableStatus, now read off `ceiling.tableGovernsDate`),
+ * and it must be able to compute a ceiling from the recorded grade, length of
+ * service, and sea or hardship duty pay. Miss either and this rule stays
+ * silent rather than blocking on a number it cannot stand behind. A stale
+ * table blocking a lawful forfeiture would be worse than no check.
+ *
+ * WHAT CHANGED IS WHERE THE FIRST CONDITION LIVES, not whether it holds.
+ * forfeitureCeiling used to enforce it by computing nothing, which also
+ * denied the figures to every caller that only wanted to SHOW them. It now
+ * computes and flags, and this rule checks the flag.
  *
  * The grade used is `forfeitureBasisGrade` where one is recorded, which V-18
  * has already forced to equal the reduction target. Only where no reduction is
@@ -1214,6 +1220,23 @@ export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
   }
 
   const ceiling = result.ceiling;
+
+  // THE DATE GATE THAT USED TO BE FREE, NOW EXPLICIT. Until 2026-08-27
+  // forfeitureCeiling refused to compute at all unless the held table
+  // governed the punishment date, and this rule inherited that silence
+  // without asking for it. The refusal is gone, on Stephen's ruling that
+  // reading a cell needs only the grade and the length of service, so the
+  // silence has to be stated here instead. Nothing about when V-20 blocks
+  // changes: a table that does not govern the punishment date still never
+  // blocks an export, because blocking a lawful forfeiture on a stale figure
+  // is worse than running no check.
+  //
+  // SHOWING AND BLOCKING ARE DIFFERENT ACTS, which is the whole point of the
+  // split. The panel and the hearing script now print the figures with a
+  // caveat, because a clerk planning a hearing needs a planning maximum. This
+  // gate refuses to act on them, because an export is a Federal record.
+  if (!ceiling.tableGovernsDate) return [];
+
   const issues: ValidationIssue[] = [];
 
   entries.forEach((entry, index) => {

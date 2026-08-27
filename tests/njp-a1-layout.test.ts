@@ -396,10 +396,19 @@ describe('advisementForfeitureLadder prices on the advisement date', () => {
     expect(advisementForfeitureLadder(doc({ punishmentDate: DATE })).rungs.length).toBeGreaterThan(0);
   });
 
-  it('declines with no date at all rather than pricing on an assumed table', () => {
+  // THE FALLBACK CHAIN STILL MATTERS, and this is what it is for now. With
+  // no date anywhere the figures still print, per Stephen's 2026-08-27
+  // ruling, but nothing vouches for the table. With a date the app can name,
+  // the chain above finds it and the same figures come back vouched for.
+  it('prices with no date at all, but vouches for nothing', () => {
     const l = advisementForfeitureLadder(doc({}));
-    expect(l.rungs).toEqual([]);
-    expect(l.unavailable?.reason).toBe('table-not-current');
+    expect(l.rungs.length).toBeGreaterThan(0);
+    expect(l.rungs.every((rung) => rung.ceiling.tableGovernsDate)).toBe(false);
+  });
+
+  it('vouches for the figures once the election date supplies a table', () => {
+    const l = advisementForfeitureLadder(doc({ electionDate: DATE }));
+    expect(l.rungs.every((rung) => rung.ceiling.tableGovernsDate)).toBe(true);
   });
 
   // Nothing is imposed when an advisement is served, so the accused's own

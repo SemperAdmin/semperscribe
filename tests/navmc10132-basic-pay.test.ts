@@ -165,7 +165,6 @@ describe('monthlyBasicPay', () => {
       expect(CEILING_REASONS_WORTH_SURFACING).not.toContain('no-rate-published');
       expect(CEILING_REASONS_WORTH_SURFACING).not.toContain('grade-not-set');
       expect(CEILING_REASONS_WORTH_SURFACING).not.toContain('years-not-set');
-      expect(CEILING_REASONS_WORTH_SURFACING).not.toContain('table-not-current');
     });
   });
 
@@ -443,17 +442,100 @@ describe('forfeitureCeiling', () => {
     });
   });
 
-  describe('requires the caller\'s status (defect 5)', () => {
-    it('the module enforces its own headline claim rather than trusting one caller\'s discipline: a not-current status returns table-not-current and computes nothing, even with a perfectly valid grade and years', () => {
+  /**
+   * THE RULE REVERSED ON 2026-08-27, and this block is the record of both
+   * halves of it.
+   *
+   * Until then a status that did not govern the punishment date made this
+   * function return nothing at all, on the reasoning that a figure the app
+   * cannot stand behind is worse than none. Stephen: "calculating the
+   * possibly max forf from the table based on the YOS and the grade should
+   * not require anything but the two elements."
+   *
+   * He is right about the arithmetic, and the old rule confused two
+   * questions. Reading a cell needs a grade and a length of service. Whether
+   * that cell is the LAWFUL one for a given punishment date is a property of
+   * the answer, not a precondition of computing it. So the figures come back
+   * and carry the flag, and the callers that must not ACT on an ungoverned
+   * figure check it. V-20 does, which is asserted in its own suite.
+   *
+   * WHAT THIS COST HIM. Every A-1-f hearing script is generated before the
+   * hearing, so item 6 carries no punishment date, so no script this app has
+   * ever produced showed a ceiling.
+   */
+  describe('a table that does not govern the date still yields figures', () => {
+    it('computes from the grade and the years alone, and marks the table as not governing', () => {
       const staleStatus = payTableStatus('2025-06-01');
       expect(staleStatus.current).toBe(false); // fixture sanity check
-      expect(monthlyBasicPay('E2', 3).kind).toBe('rate'); // fixture sanity check: grade/years are fine on their own
+      expect(monthlyBasicPay('E2', 3).kind).toBe('rate'); // grade/years are fine on their own
 
       const result = forfeitureCeiling({ status: staleStatus, payGrade: 'E2', yearsOfService: 3 });
-      expect(result.kind).toBe('unavailable');
-      if (result.kind !== 'unavailable') return;
-      expect(result.reason).toBe('table-not-current');
-      expect(result.detail).toBe(staleStatus.detail);
+      expect(result.kind).toBe('ceiling');
+      if (result.kind !== 'ceiling') return;
+      expect(result.ceiling.tableGovernsDate).toBe(false);
+      expect(result.ceiling.payTableDetail).toBe(staleStatus.detail);
+      expect(result.ceiling.sevenDaysPay).toBeGreaterThan(0);
+    });
+
+    // THE FIGURES ARE THE SAME FIGURES. The date does not change which cell
+    // is read, only whether the app vouches for it, so a test that merely
+    // checked "a number came back" would pass on a fallback that priced the
+    // wrong grade.
+    it('reads the identical cell whether or not the table governs', () => {
+      const stale = forfeitureCeiling({
+        status: payTableStatus('2025-06-01'),
+        payGrade: 'E2',
+        yearsOfService: 3,
+      });
+      const current = forfeitureCeiling({
+        status: currentStatus,
+        payGrade: 'E2',
+        yearsOfService: 3,
+      });
+      expect(stale.kind).toBe('ceiling');
+      expect(current.kind).toBe('ceiling');
+      if (stale.kind !== 'ceiling' || current.kind !== 'ceiling') return;
+      expect(stale.ceiling.sevenDaysPay).toBe(current.ceiling.sevenDaysPay);
+      expect(stale.ceiling.halfMonthPay).toBe(current.ceiling.halfMonthPay);
+    });
+
+    // NEVER SILENT ABOUT IT. A planning maximum presented as a lawful ceiling
+    // is the failure the old gate was trying to prevent, and the caveat is
+    // what replaces the gate. It is unshifted to the FRONT of the notes
+    // because it qualifies every figure under it.
+    it('leads the notes with the caveat rather than burying it', () => {
+      const result = forfeitureCeiling({
+        status: payTableStatus(''),
+        payGrade: 'E4',
+        yearsOfService: 4,
+      });
+      expect(result.kind).toBe('ceiling');
+      if (result.kind !== 'ceiling') return;
+      expect(result.ceiling.notes[0]).toContain('not confirmed as the one governing');
+      expect(result.ceiling.notes[0]).toContain('planning maximum');
+    });
+
+    it('says nothing of the kind when the table does govern', () => {
+      const result = forfeitureCeiling({
+        status: currentStatus,
+        payGrade: 'E4',
+        yearsOfService: 4,
+      });
+      expect(result.kind).toBe('ceiling');
+      if (result.kind !== 'ceiling') return;
+      expect(result.ceiling.tableGovernsDate).toBe(true);
+      expect(result.ceiling.notes.join(' ')).not.toContain('planning maximum');
+    });
+
+    // A DATE IS STILL NOT A SUBSTITUTE FOR THE TWO ELEMENTS. Dropping the
+    // date gate must not have dropped the real preconditions with it.
+    it('still declines when the grade or the length of service is missing', () => {
+      expect(
+        forfeitureCeiling({ status: currentStatus, payGrade: '', yearsOfService: 4 }).kind,
+      ).toBe('unavailable');
+      expect(
+        forfeitureCeiling({ status: currentStatus, payGrade: 'E4', yearsOfService: '' }).kind,
+      ).toBe('unavailable');
     });
   });
 });
@@ -573,6 +655,61 @@ describe('forfeitureCeilingIssues (V-20)', () => {
       accusedYearsOfService: '3',
       punishments: [{ code: 'N07', dollars: '99999' }],
     });
+    expect(forfeitureCeilingIssues(form)).toEqual([]);
+  });
+
+  /**
+   * THE SILENCE IS NOW A DECISION, NOT AN ABSENCE, and that is exactly why it
+   * needs its own case.
+   *
+   * Before 2026-08-27 forfeitureCeiling returned nothing on a table that did
+   * not govern the punishment date, so V-20 was silent because it had no
+   * figure. It now gets a figure, and stays silent because it reads
+   * `tableGovernsDate` and stops. The two are indistinguishable from the
+   * outside, which is how a refactor deletes a safety property without
+   * reddening a test. This asserts BOTH halves on one form: a ceiling exists,
+   * the amount blows through it, and V-20 says nothing.
+   *
+   * Blocking here would be worse than running no check, because an export
+   * refused on a stale figure refuses a forfeiture that may be perfectly
+   * lawful under the table that does govern.
+   */
+  it('is silent on an UNDATED item 6 even though a ceiling is now computed for it', () => {
+    const form = baseForm({
+      punishmentDate: '',
+      accusedPayGrade: 'E2',
+      accusedYearsOfService: '3',
+      punishments: [{ code: 'N07', dollars: '99999' }],
+    });
+
+    // The figure exists. This is the half the old rule made impossible.
+    const result = forfeitureCeiling({
+      status: payTableStatus(''),
+      payGrade: 'E2',
+      yearsOfService: '3',
+    });
+    expect(result.kind).toBe('ceiling');
+    if (result.kind !== 'ceiling') return;
+    expect(result.ceiling.tableGovernsDate).toBe(false);
+    expect(99999).toBeGreaterThan(result.ceiling.sevenDaysPay);
+
+    // And V-20 declines to act on it anyway.
+    expect(forfeitureCeilingIssues(form)).toEqual([]);
+  });
+
+  it('is silent on a STALE table even though a ceiling is now computed for it', () => {
+    const form = baseForm({
+      punishmentDate: '2025-06-01',
+      accusedPayGrade: 'E2',
+      accusedYearsOfService: '3',
+      punishments: [{ code: 'N07', dollars: '99999' }],
+    });
+    const result = forfeitureCeiling({
+      status: payTableStatus('2025-06-01'),
+      payGrade: 'E2',
+      yearsOfService: '3',
+    });
+    expect(result.kind).toBe('ceiling');
     expect(forfeitureCeilingIssues(form)).toEqual([]);
   });
 

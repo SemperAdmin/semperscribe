@@ -230,12 +230,54 @@ describe('the printed ceiling block', () => {
 
   // A worksheet with no ceiling and no reason reads as a worksheet with no
   // LIMIT, which is the most dangerous thing this page could say.
+  //
+  // THE FIXTURE CHANGED, THE RULE DID NOT. This used to withhold the date,
+  // which no longer stops the figures computing after Stephen's 2026-08-27
+  // ruling. An unset length of service is a real "cannot compute", because
+  // basic pay is fixed by grade AND length of service and one of them is
+  // genuinely missing.
   it('prints the reason rather than nothing when it cannot compute', () => {
     const none = forfeitureCeilingBlock(
-      forfeitureLadder({ payGrade: 'E4', yearsOfService: '4', punishmentDate: '' }),
+      forfeitureLadder({ payGrade: 'E4', yearsOfService: '', punishmentDate: DATE }),
     ).join('\n');
     expect(none).toContain('not computed');
-    expect(none).toContain('item 6 punishment date');
+    expect(none).not.toContain('At E4 now');
+  });
+
+  /**
+   * THE WHOLE REASON THIS COMMIT EXISTS. Every A-1-f script is generated
+   * BEFORE the hearing, so item 6 carries no punishment date when one is
+   * printed. Under the old rule that meant no script this app ever produced
+   * showed a ceiling, which is what Stephen was looking at when he ruled:
+   * "calculating the possibly max forf from the table based on the YOS and
+   * the grade should not require anything but the two elements."
+   */
+  it('prints the figures on an undated worksheet, labelled as a planning figure', () => {
+    const undated = forfeitureCeilingBlock(
+      forfeitureLadder({ payGrade: 'E4', yearsOfService: '4', punishmentDate: '' }),
+    ).join('\n');
+
+    expect(undated).toContain('At E4 now');
+    expect(undated).toContain('If red to E3');
+    expect(undated).not.toContain('not computed');
+    // Labelled, so nobody reads a planning maximum as a vouched ceiling.
+    expect(undated).toContain('MAXIMUM FORFEITURE (PLANNING FIGURE)');
+    expect(undated).toContain('planning maximum');
+
+    // AND NOT CONTRADICTING ITSELF. payTableStatus's detail is spliced into
+    // this caveat, and it used to read "it cannot be computed without it",
+    // which then printed directly under the figures it said did not exist.
+    // The line-wrapping makes this a whitespace-insensitive match.
+    const flat = undated.replace(/\s+/g, ' ');
+    expect(flat).not.toContain('cannot be computed without it');
+    expect(flat).not.toContain('No ceiling is computed');
+  });
+
+  it('drops the planning label once the punishment date is set', () => {
+    const dated = forfeitureCeilingBlock(ladder()).join('\n');
+    expect(dated).toContain('MAXIMUM FORFEITURE');
+    expect(dated).not.toContain('PLANNING FIGURE');
+    expect(dated).not.toContain('planning maximum');
   });
 
   it('says a reduction is barred instead of citing 5.c(8) at a barred grade', () => {

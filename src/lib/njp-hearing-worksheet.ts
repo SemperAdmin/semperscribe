@@ -188,7 +188,19 @@ export function forfeitureCeilingBlock(ladder: ForfeitureLadder): string[] {
     ];
   }
 
-  const lines = ['MAXIMUM FORFEITURE', attribution, ''];
+  // THE HEADING SAYS WHICH KIND OF MAXIMUM IT IS. A commanding officer
+  // reading a dollar figure aloud at a hearing must not have to work out from
+  // an attribution line whether the app is vouching for it. Stephen's
+  // 2026-08-27 ruling made these figures printable without a punishment date,
+  // and this is the other half of that: they print, labelled for what they
+  // are. The full explanation rides in ladder.notes, which this block already
+  // prints below.
+  const governed = ladder.rungs.every((rung) => rung.ceiling.tableGovernsDate);
+  const lines = [
+    governed ? 'MAXIMUM FORFEITURE' : 'MAXIMUM FORFEITURE (PLANNING FIGURE)',
+    attribution,
+    '',
+  ];
 
   for (const rung of ladder.rungs) {
     const label = rung.reduced ? `If red to ${rung.ceiling.payGrade}` : `At ${rung.ceiling.payGrade} now`;

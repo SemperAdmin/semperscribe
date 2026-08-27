@@ -116,13 +116,39 @@ describe('which rung is operative', () => {
 });
 
 describe('when the app declines', () => {
-  // An undated item 6 cannot select a pay table, and the ladder says so
-  // instead of pricing on whichever table happens to be compiled in.
-  it('returns no rungs and the reason when the punishment date is unset', () => {
+  /**
+   * REVERSED ON 2026-08-27. This case used to assert that an undated item 6
+   * returned no rungs at all. Stephen: "calculating the possibly max forf
+   * from the table based on the YOS and the grade should not require anything
+   * but the two elements."
+   *
+   * The date never selected a different CELL, only whether the app vouched
+   * for the one it read, so the ladder now prices and flags. The cost of the
+   * old rule was total: every A-1-f script is generated before the hearing,
+   * so item 6 never carries a date when one is printed, so no script this app
+   * produced had ever shown a ceiling.
+   */
+  it('still prices both rungs when the punishment date is unset', () => {
     const ladder = forfeitureLadder({ payGrade: 'E4', yearsOfService: '4', punishmentDate: '' });
-    expect(ladder.rungs).toEqual([]);
-    expect(ladder.unavailable?.reason).toBe('table-not-current');
-    expect(ladder.unavailable?.detail).toContain('item 6 punishment date');
+    expect(ladder.rungs.map((r) => r.ceiling.payGrade)).toEqual(['E4', 'E3']);
+    expect(ladder.unavailable).toBeUndefined();
+  });
+
+  it('marks every rung as priced on a table that does not govern the date', () => {
+    const ladder = forfeitureLadder({ payGrade: 'E4', yearsOfService: '4', punishmentDate: '' });
+    expect(ladder.rungs.every((r) => r.ceiling.tableGovernsDate)).toBe(false);
+    expect(ladder.rungs[0].ceiling.payTableDetail).toContain('item 6 punishment date');
+  });
+
+  // The dated ladder is the same ladder plus the vouching. Asserted against
+  // the undated one so a fallback that priced a different grade would fail.
+  it('prices the identical figures once a date is set, and then vouches for them', () => {
+    const undated = forfeitureLadder({ payGrade: 'E4', yearsOfService: '4', punishmentDate: '' });
+    const dated = forfeitureLadder({ payGrade: 'E4', yearsOfService: '4', punishmentDate: DATE });
+    expect(dated.rungs.map((r) => r.ceiling.sevenDaysPay)).toEqual(
+      undated.rungs.map((r) => r.ceiling.sevenDaysPay),
+    );
+    expect(dated.rungs.every((r) => r.ceiling.tableGovernsDate)).toBe(true);
   });
 
   it('returns no rungs when item 19 carries no pay grade', () => {

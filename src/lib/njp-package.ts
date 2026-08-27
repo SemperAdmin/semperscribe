@@ -411,11 +411,25 @@ export function scriptWorksheetGaps(formData: FormData): string[] {
     );
   }
   const ladder = scriptForfeitureLadder(formData);
+  // ONE GAP NOW, NOT TWO. The date branch is gone because the date no longer
+  // stops the figures printing: forfeitureCeiling reads the cell from the
+  // grade and the length of service alone and flags whether the table governs
+  // the punishment date. Stephen, 2026-08-27: "calculating the possibly max
+  // forf from the table based on the YOS and the grade should not require
+  // anything but the two elements." Telling a clerk to set item 6's date
+  // before printing a script generated BEFORE the hearing was advice he could
+  // not take.
   if (ladder.rungs.length === 0) {
+    gaps.push("set item 19's pay grade and years of service to print the forfeiture ceilings");
+  }
+  // NOT A GAP, A CAVEAT. The ceilings print either way, so this does not
+  // belong with the things that stop them printing. It is listed because a
+  // clerk who can set the date should, and the printed block says the same.
+  const undated = ladder.rungs.some((rung) => !rung.ceiling.tableGovernsDate);
+  if (undated) {
     gaps.push(
-      ladder.unavailable?.reason === 'table-not-current'
-        ? 'set the item 6 punishment date to the hearing date to print the forfeiture ceilings'
-        : "set item 19's pay grade and years of service to print the forfeiture ceilings",
+      'set the item 6 punishment date to confirm the ceilings are priced on the governing ' +
+        'pay table; they print as a planning maximum until then',
     );
   }
   return gaps;

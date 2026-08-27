@@ -300,6 +300,13 @@ function isRealDate(iso: string): boolean {
  * year, so a mid-year republication is representable. An undated item 6 is
  * NOT current: the check cannot run without a date, and treating unknown as
  * fine is how a stale table gets used.
+ *
+ * `detail` SAYS THE TABLE DOES NOT GOVERN. It used to say no ceiling was
+ * computed, which stopped being true on 2026-08-27 when forfeitureCeiling
+ * started reading the cell from the grade and the length of service alone.
+ * The sentence is printed on the A-1-f hearing script directly beneath the
+ * figures, so a claim that nothing was computed sat under the numbers
+ * contradicting them. Not current means UNVOUCHED, never uncomputed.
  */
 export function payTableStatus(punishmentDate: string): PayTableStatus {
   const iso = punishmentDate.trim();
@@ -311,8 +318,9 @@ export function payTableStatus(punishmentDate: string): PayTableStatus {
       effectiveFrom,
       detail:
         iso === ''
-          ? 'Set the item 6 punishment date. The ceiling is priced on the pay table in force ' +
-            'when the punishment was imposed, so it cannot be computed without it.'
+          ? 'Item 6 carries no punishment date. The governing table is the one in force when ' +
+            'the punishment was imposed, so the app cannot confirm which table applies until ' +
+            'the item 6 punishment date is set.'
           : `"${iso}" is not a real calendar date. Enter the item 6 punishment date as YYYY-MM-DD.`,
     };
   }
@@ -323,8 +331,8 @@ export function payTableStatus(punishmentDate: string): PayTableStatus {
       effectiveFrom,
       detail:
         `This app holds the table effective ${effectiveFrom}, and a punishment dated ${iso} ` +
-        `predates it. No ceiling is computed. Read the rate in force on ${iso} from ` +
-        `${BASIC_PAY_SOURCE_URL} and compute the forfeiture by hand.`,
+        `predates it, so the held table does not govern. Read the rate in force on ${iso} ` +
+        `from ${BASIC_PAY_SOURCE_URL} and compute the forfeiture by hand.`,
     };
   }
 
@@ -334,7 +342,7 @@ export function payTableStatus(punishmentDate: string): PayTableStatus {
       effectiveFrom,
       detail:
         `The table this app holds was superseded on ${supersededOn}, and a punishment dated ` +
-        `${iso} is priced on the later one. No ceiling is computed. Read it from ` +
+        `${iso} is priced on the later one, so the held table does not govern. Read it from ` +
         `${BASIC_PAY_SOURCE_URL}.`,
     };
   }
@@ -357,13 +365,33 @@ export interface ForfeitureCeiling {
   halfMonthPay: number;
   /** The grade the figures were computed on. */
   payGrade: string;
+  /**
+   * Whether the table these figures came from is the one in force on the
+   * punishment date.
+   *
+   * FALSE IS NOT A REASON TO WITHHOLD THE FIGURES, which is what this module
+   * used to do. Stephen, 2026-08-27: "calculating the possibly max forf from
+   * the table based on the YOS and the grade should not require anything but
+   * the two elements." He is right about the arithmetic. Basic pay is fixed
+   * by grade and length of service (MCM Part V para 5.c(8)), and this app
+   * holds one table; given both elements it can always read a cell. Whether
+   * that cell is the LAWFUL one for a given punishment date is a separate
+   * question, and it is this flag rather than a refusal to compute.
+   *
+   * Callers that must not act on a figure the app cannot stand behind read
+   * this and stop. V-20 does exactly that, so a stale table still never
+   * blocks an export. Callers that merely SHOW the figure print it with the
+   * caveat, which is what a clerk planning a hearing needs.
+   */
+  tableGovernsDate: boolean;
+  /** The pay table attribution, or why it does not govern the date. */
+  payTableDetail: string;
   /** Things the caller must show the clerk. Never empty for an E-1 or an E-9. */
   notes: string[];
 }
 
 export type ForfeitureCeilingUnavailable =
   | BasicPayUnavailable
-  | 'table-not-current'
   | 'unreadable-extra-pay';
 
 export type ForfeitureCeilingResult =
@@ -408,10 +436,15 @@ export interface ForfeitureCeilingInput {
  * V-18.
  */
 export function forfeitureCeiling(input: ForfeitureCeilingInput): ForfeitureCeilingResult {
-  if (!input.status.current) {
-    return { kind: 'unavailable', reason: 'table-not-current', detail: input.status.detail };
-  }
-
+  // NO DATE GATE. Until 2026-08-27 this function returned nothing at all
+  // unless the held table governed the punishment date, on the reasoning that
+  // a figure the app cannot stand behind is worse than none. That confused
+  // two questions. Reading a cell needs a grade and a length of service and
+  // nothing else. Whether the cell is the lawful one for a particular date is
+  // a property of the ANSWER, carried on `tableGovernsDate`, and the callers
+  // that must not act on an ungoverned figure check it. The old gate cost
+  // Stephen the ceiling on every hearing script generated before a punishment
+  // date existed, which is every script generated before a hearing.
   const basic = monthlyBasicPay(input.payGrade, input.yearsOfService);
   const flooredNotes: string[] = [];
   let monthly: number;
@@ -490,11 +523,27 @@ export function forfeitureCeiling(input: ForfeitureCeilingInput): ForfeitureCeil
     );
   }
 
+  // THE CAVEAT RIDES WITH THE FIGURE, and it is stated FIRST because it
+  // qualifies everything under it. A reader who sees a dollar amount priced
+  // on a table that does not govern the punishment date has to be told so on
+  // the same block, not left to infer it from an attribution line.
+  if (!input.status.current) {
+    notes.unshift(
+      `These figures are read from the table this app holds, effective ` +
+        `${PAY_TABLE_WINDOW.effectiveFrom}, which is not confirmed as the one governing this ` +
+        `punishment. ${input.status.detail} Grade and length of service are all the ` +
+        'arithmetic needs, so the figures stand as a planning maximum. Confirm the table ' +
+        'before imposing.',
+    );
+  }
+
   return {
     kind: 'ceiling',
     ceiling: {
       monthlyBasicPay: monthly,
       monthlySubjectToForfeiture: subject,
+      tableGovernsDate: input.status.current,
+      payTableDetail: input.status.detail,
       // The daily rate is 1/30 of the monthly rate (DoD FMR Vol 7A Ch 1).
       // Floored, because MCO 010901 requires whole dollars and this is a
       // ceiling. Verified 2026-08-25 across 20.7 million cent-granular cases
