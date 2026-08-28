@@ -799,7 +799,45 @@ export interface NjpPage11 {
  * returned so the section can say it rather than leaving a blank column
  * looking like a bug.
  */
-export function njpPage11(formData: FormData, input: CounselingInput): NjpPage11 {
+export interface NjpPage11Options {
+  /**
+   * Whether the entries carry their typed signature lines.
+   *
+   * TRUE FOR THE OFFICIAL FORM, FALSE FOR THE APP'S. The official NAVMC
+   * 118(11) has one native signature field and it belongs to the Article 137
+   * header block, so an entry there has to carry its own typed lines and a
+   * signer places a CAC signature on them in Acrobat. The app's own Page 11
+   * takes REAL placed signature fields, so typed lines there are a second
+   * set of lines nobody signs.
+   *
+   * Stephen found it on the rendered page, 2026-08-27, after routing the
+   * entries into the app's Page 11: "the PG.11 part of the semper scribe app
+   * is not formatted correctly as the NJP Pg. 11 export is do you see the
+   * difference and the problem with the digital signed option."
+   *
+   * The formatting half is measurable. navmc11811Generator wraps at an
+   * 11pt column 261pt wide and its wrapText splits on ' ', so a run of
+   * padding spaces is destroyed and rejoined with single ones. The rule line
+   * measures 287.5pt there and wraps, which is why one rule appears instead
+   * of two and the labels stack. A space-padded two-column block cannot
+   * survive that renderer, and it does not need to: that path places fields.
+   */
+  signatureLines?: boolean;
+}
+
+/** Strips the block this module appended, by exact match rather than by
+ *  pattern, so a change to the block cannot leave a half-stripped entry. */
+function withoutSignatureLines(text: string): string {
+  const suffix = `${PARAGRAPH_BREAK}\n${SIGNATURE_BLOCK}`;
+  return text.endsWith(suffix) ? text.slice(0, -suffix.length) : text;
+}
+
+export function njpPage11(
+  formData: FormData,
+  input: CounselingInput,
+  options: NjpPage11Options = {},
+): NjpPage11 {
+  const signatureLines = options.signatureLines ?? true;
   const counseling = separationCounselingEntry(formData, input);
   const restriction = promotionRestrictionEntry(formData);
 
@@ -814,8 +852,13 @@ export function njpPage11(formData: FormData, input: CounselingInput): NjpPage11
   ];
 
   return {
-    remarksLeft: counseling.text,
-    remarksRight: restriction.kind === 'entry' ? restriction.entry.text : '',
+    remarksLeft: signatureLines ? counseling.text : withoutSignatureLines(counseling.text),
+    remarksRight:
+      restriction.kind === 'entry'
+        ? signatureLines
+          ? restriction.entry.text
+          : withoutSignatureLines(restriction.entry.text)
+        : '',
     name: str(formData, 'accusedName'),
     edipi: str(formData, 'accusedEdipi'),
     missing,

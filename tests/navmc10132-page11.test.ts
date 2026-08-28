@@ -1131,3 +1131,96 @@ describe('the article phrase names the article', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// THE TYPED SIGNATURE LINES BELONG TO ONE PATH, NOT BOTH.
+//
+// Stephen, 2026-08-27, looking at the entries rendered in the app's own Page
+// 11 beside the official export: "the PG.11 part of the semper scribe app is
+// not formatted correctly as the NJP Pg. 11 export is do you see the
+// difference and the problem with the digital signed option."
+//
+// TWO FAILURES, AND THE SECOND IS THE REAL ONE.
+//
+// The formatting half is measurable. navmc11811Generator wraps at an 11pt
+// column 261pt wide, and its wrapText splits the string on ' ', so a run of
+// padding spaces is destroyed and rejoined with single ones. The rule line
+// measures 287.5pt at 11pt Helvetica and wraps, which is why one rule
+// appeared instead of two and the labels stacked. A space-padded two-column
+// block cannot survive that renderer.
+//
+// The half that matters is that it should not be there at all. That path
+// exists to place REAL CAC signature fields. Typed lines under placed fields
+// are a second set of lines nobody signs, on a service record entry.
+//
+// The official form keeps them, because its one native signature field
+// belongs to the Article 137 header block and an entry there has nowhere
+// else to put a signature.
+// ---------------------------------------------------------------------------
+describe('signature lines follow the path, not the entry', () => {
+  it('keeps them by default, which is the official form', () => {
+    const page = njpPage11(guiltyCorporal(), COUNSELING);
+    expect(page.remarksLeft.endsWith(SIGNATURE_BLOCK)).toBe(true);
+    expect(page.remarksRight.endsWith(SIGNATURE_BLOCK)).toBe(true);
+  });
+
+  it('drops them for the app Page 11, which places real fields', () => {
+    const page = njpPage11(guiltyCorporal(), COUNSELING, { signatureLines: false });
+    expect(page.remarksLeft).not.toContain('Signature of Marine');
+    expect(page.remarksRight).not.toContain('Signature of Marine');
+    expect(page.remarksLeft).not.toContain('_____');
+    expect(page.remarksRight).not.toContain('_____');
+  });
+
+  // STRIPPING TAKES THE BLOCK AND NOTHING ELSE. A regex over underscores or a
+  // slice at the last blank line would eat the rebuttal sentence or leave a
+  // trailing blank, and either would show on a printed service record entry.
+  it('leaves every entry ending on the rebuttal election', () => {
+    const page = njpPage11(guiltyCorporal(), COUNSELING, { signatureLines: false });
+    expect(page.remarksLeft.endsWith('I choose (to) (not to) make a rebuttal.')).toBe(true);
+    expect(page.remarksRight.endsWith('I choose (to) (not to) make a rebuttal.')).toBe(true);
+  });
+
+  // The two versions differ by exactly the block and by nothing else.
+  it('changes nothing else about either entry', () => {
+    const withLines = njpPage11(guiltyCorporal(), COUNSELING);
+    const without = njpPage11(guiltyCorporal(), COUNSELING, { signatureLines: false });
+    const suffix = `${PARAGRAPH_BREAK}\n${SIGNATURE_BLOCK}`;
+
+    expect(withLines.remarksLeft).toBe(without.remarksLeft + suffix);
+    expect(withLines.remarksRight).toBe(without.remarksRight + suffix);
+  });
+
+  /**
+   * STRIPPING IS AN EXACT MATCH ON THE BLOCK, NOT A PATTERN OVER ITS WORDS.
+   *
+   * A differential caught this being untested: replacing the exact-suffix
+   * check with /[\s_]*Signature of Marine[\s\S]*$/ passed every case above,
+   * because no entry happened to contain that phrase in its body. One that
+   * does is not far-fetched. A clerk directing a Marine to "obtain the
+   * Signature of Marine Corps counsel" writes it into the corrective action,
+   * and a pattern would eat that sentence and everything after it, including
+   * the rebuttal election the Marine answers.
+   */
+  it('strips only the block, never a body sentence that echoes its words', () => {
+    const counseling: CounselingInput = {
+      ...COUNSELING,
+      correctiveAction: 'obtain the Signature of Marine Corps counsel before the hearing',
+    };
+    const page = njpPage11(guiltyCorporal(), counseling, { signatureLines: false });
+
+    expect(page.remarksLeft).toContain('Signature of Marine Corps counsel');
+    expect(page.remarksLeft.endsWith('I choose (to) (not to) make a rebuttal.')).toBe(true);
+    // The block's own rule line is gone even though its words survive above.
+    expect(page.remarksLeft).not.toContain('_____');
+  });
+
+  // AN EMPTY RIGHT COLUMN STAYS EMPTY. A sergeant gets no restriction entry,
+  // and stripping must not turn '' into something.
+  it('leaves an absent right column absent', () => {
+    const page = njpPage11(guiltyCorporal({ accusedPayGrade: 'E5' }), COUNSELING, {
+      signatureLines: false,
+    });
+    expect(page.remarksRight).toBe('');
+  });
+});

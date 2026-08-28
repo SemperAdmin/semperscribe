@@ -173,6 +173,30 @@ describe('handing the entries to the app Page 11', () => {
     expect(next.remarksRight).toContain('not recommended for promotion');
   });
 
+  /**
+   * NO TYPED SIGNATURE LINES ON THIS PATH, which is the half Stephen caught
+   * on the rendered page: "the problem with the digital signed option".
+   *
+   * This document gets REAL placed CAC fields, so typed lines under them are
+   * a second set nobody signs. navmc11811Generator would mangle them anyway:
+   * it wraps at an 11pt 261pt column and its wrapText splits on ' ', which
+   * destroys the padding the two-column block is built from, so the rule
+   * line wrapped and the labels stacked.
+   *
+   * ASSERTED AS A PAIR WITH THE OFFICIAL EXPORT, because the block is
+   * correct there and removing it from both would break the form that has
+   * nowhere else to put a signature.
+   */
+  it('strips the typed signature lines, which this path replaces with fields', () => {
+    const next = switchAndCapture(hisDocument({ dispositionNoticeDate: '2026-08-27' }));
+
+    expect(next.remarksLeft).not.toContain('Signature of Marine');
+    expect(next.remarksRight).not.toContain('Signature of Marine');
+    expect(next.remarksLeft).not.toContain('_____');
+    expect(next.remarksRight).not.toContain('_____');
+    expect(String(next.remarksLeft).endsWith('make a rebuttal.')).toBe(true);
+  });
+
   // THE HALF THAT LOSES A FEDERAL RECORD IF IT BREAKS. The type switch is a
   // merge, so every NAVMC 10132 field has to still be there afterwards and
   // the clerk gets the UPB back by reselecting it.
