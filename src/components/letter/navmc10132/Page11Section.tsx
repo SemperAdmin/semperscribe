@@ -93,13 +93,14 @@ export function Page11Section({ formData, setFormData, SectionCard }: SectionPro
    * discarded.
    */
   const openAsPage11 = () => {
-    // NO TYPED SIGNATURE LINES ON THIS PATH. The app's Page 11 takes real
-    // placed CAC fields, so typed lines would be a second set nobody signs,
-    // and navmc11811Generator would mangle them anyway: it wraps at an 11pt
-    // 261pt column and its wrapText splits on ' ', which destroys the
-    // padding the two-column block is built from. Measured 2026-08-27, the
-    // rule line renders 287.5pt there and wraps.
-    const built = njpPage11(formData, input, { signatureLines: false });
+    // THE LINES COME ACROSS, LAID OUT FOR THIS RENDERER. Stephen,
+    // 2026-08-27: "we still need the line and the signature of member and
+    // signature of CO." navmc11811Generator draws 11pt Helvetica into a
+    // 261pt column and its wrapText splits on ' ', so the side-by-side
+    // block measures 287.5pt and wraps and its padding is destroyed. The
+    // app target stacks the two blocks instead. See
+    // APP_PAGE11_SIGNATURE_BLOCK.
+    const built = njpPage11(formData, input, { signatureBlock: 'app-page11' });
     setFormData((prev) => ({
       ...prev,
       documentType: 'page11' as FormData['documentType'],

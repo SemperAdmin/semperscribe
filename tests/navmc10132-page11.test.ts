@@ -17,6 +17,7 @@ import {
   REBUTTAL_CHOICE,
   PAGE11_DATE_GAP,
   SIGNATURE_BLOCK,
+  APP_PAGE11_SIGNATURE_BLOCK,
   DISCHARGE_CONSEQUENCES_SENTENCE,
   DRUG_RESTRICTION_OFFENSE_LABELS,
   DRUG_RESTRICTION_MONTHS,
@@ -1133,94 +1134,139 @@ describe('the article phrase names the article', () => {
 });
 
 // ---------------------------------------------------------------------------
-// THE TYPED SIGNATURE LINES BELONG TO ONE PATH, NOT BOTH.
+// THE SIGNATURE LINES, LAID OUT PER RENDERER.
 //
-// Stephen, 2026-08-27, looking at the entries rendered in the app's own Page
-// 11 beside the official export: "the PG.11 part of the semper scribe app is
-// not formatted correctly as the NJP Pg. 11 export is do you see the
-// difference and the problem with the digital signed option."
+// Stephen, 2026-08-27: "we still need the line and the signature of member
+// and signature of CO." An earlier revision stripped them from the app's
+// Page 11 on the reasoning that the path places real CAC fields. Wrong: the
+// acknowledgment lines are part of the entry a Marine signs, and a placed
+// field sits ON one rather than replacing it.
 //
-// TWO FAILURES, AND THE SECOND IS THE REAL ONE.
+// WHAT DIFFERS IS THE ARRANGEMENT, because the renderers are not alike. The
+// official XFA form draws 9pt Times into a 266.5pt column and takes the
+// side-by-side block at 211.5pt. navmc11811Generator draws 11pt Helvetica
+// into a 261pt column, where that same block measures 287.5pt and wraps, and
+// its wrapText splits on ' ' so the padding aligning the labels is destroyed
+// before it is ever measured. That is exactly what he saw: one rule instead
+// of two, and "Signature of CO" broken across lines.
 //
-// The formatting half is measurable. navmc11811Generator wraps at an 11pt
-// column 261pt wide, and its wrapText splits the string on ' ', so a run of
-// padding spaces is destroyed and rejoined with single ones. The rule line
-// measures 287.5pt at 11pt Helvetica and wraps, which is why one rule
-// appeared instead of two and the labels stacked. A space-padded two-column
-// block cannot survive that renderer.
-//
-// The half that matters is that it should not be there at all. That path
-// exists to place REAL CAC signature fields. Typed lines under placed fields
-// are a second set of lines nobody signs, on a service record entry.
-//
-// The official form keeps them, because its one native signature field
-// belongs to the Article 137 header block and an entry there has nowhere
-// else to put a signature.
+// THE MEASUREMENTS BELOW ARE THE ASSERTION THE FIRST ATTEMPT LACKED. A block
+// was shipped into a column it does not fit because nothing measured it.
 // ---------------------------------------------------------------------------
-describe('signature lines follow the path, not the entry', () => {
-  it('keeps them by default, which is the official form', () => {
+describe('both targets carry the lines, laid out for their own renderer', () => {
+  /** Advance widths, units per 1000 em, for the two faces that draw these. */
+  const TIMES: Record<string, number> = {
+    ' ': 250, _: 500, S: 556, i: 278, g: 500, n: 500, a: 444, t: 278, u: 500,
+    r: 333, e: 444, o: 500, f: 333, M: 889, C: 667, O: 722,
+  };
+  const HELVETICA: Record<string, number> = {
+    ' ': 278, _: 556, S: 667, i: 222, g: 556, n: 556, a: 556, t: 278, u: 556,
+    r: 333, e: 556, o: 556, f: 278, M: 833, C: 722, O: 778,
+  };
+
+  /** The widest rendered line of a block, in points. */
+  function widest(block: string, table: Record<string, number>, size: number): number {
+    return Math.max(
+      ...block.split('\n').map((line) => {
+        let total = 0;
+        for (const character of line) {
+          const advance = table[character];
+          // A character with no width would measure as zero and make every
+          // assertion below meaningless.
+          expect(advance, `no width for ${JSON.stringify(character)}`).toBeDefined();
+          total += advance ?? 0;
+        }
+        return (total * size) / 1000;
+      }),
+    );
+  }
+
+  it('defaults to the official form, side by side', () => {
     const page = njpPage11(guiltyCorporal(), COUNSELING);
     expect(page.remarksLeft.endsWith(SIGNATURE_BLOCK)).toBe(true);
     expect(page.remarksRight.endsWith(SIGNATURE_BLOCK)).toBe(true);
   });
 
-  it('drops them for the app Page 11, which places real fields', () => {
-    const page = njpPage11(guiltyCorporal(), COUNSELING, { signatureLines: false });
-    expect(page.remarksLeft).not.toContain('Signature of Marine');
-    expect(page.remarksRight).not.toContain('Signature of Marine');
-    expect(page.remarksLeft).not.toContain('_____');
-    expect(page.remarksRight).not.toContain('_____');
+  it('gives the app Page 11 the stacked block instead', () => {
+    const page = njpPage11(guiltyCorporal(), COUNSELING, { signatureBlock: 'app-page11' });
+    expect(page.remarksLeft.endsWith(APP_PAGE11_SIGNATURE_BLOCK)).toBe(true);
+    expect(page.remarksRight.endsWith(APP_PAGE11_SIGNATURE_BLOCK)).toBe(true);
+    expect(page.remarksLeft).not.toContain(SIGNATURE_BLOCK);
   });
 
-  // STRIPPING TAKES THE BLOCK AND NOTHING ELSE. A regex over underscores or a
-  // slice at the last blank line would eat the rebuttal sentence or leave a
-  // trailing blank, and either would show on a printed service record entry.
-  it('leaves every entry ending on the rebuttal election', () => {
-    const page = njpPage11(guiltyCorporal(), COUNSELING, { signatureLines: false });
-    expect(page.remarksLeft.endsWith('I choose (to) (not to) make a rebuttal.')).toBe(true);
-    expect(page.remarksRight.endsWith('I choose (to) (not to) make a rebuttal.')).toBe(true);
+  // BOTH BLOCKS SAY THE SAME THING. Only the arrangement differs, and a
+  // block that lost a signer would be worse than one that wrapped.
+  it.each([
+    ['official', SIGNATURE_BLOCK],
+    ['app', APP_PAGE11_SIGNATURE_BLOCK],
+  ])('the %s block names both signers over two rules', (_label, block) => {
+    expect(block).toContain('Signature of Marine');
+    expect(block).toContain('Signature of CO');
+    expect((block.match(/_{10,}/g) ?? []).length).toBe(2);
   });
 
-  // The two versions differ by exactly the block and by nothing else.
-  it('changes nothing else about either entry', () => {
-    const withLines = njpPage11(guiltyCorporal(), COUNSELING);
-    const without = njpPage11(guiltyCorporal(), COUNSELING, { signatureLines: false });
-    const suffix = `${PARAGRAPH_BREAK}\n${SIGNATURE_BLOCK}`;
+  it("the official block fits 9pt Times in the form's 266.5pt column", () => {
+    expect(widest(SIGNATURE_BLOCK, TIMES, 9)).toBeLessThan(266.5);
+  });
 
-    expect(withLines.remarksLeft).toBe(without.remarksLeft + suffix);
-    expect(withLines.remarksRight).toBe(without.remarksRight + suffix);
+  it("the app block fits 11pt Helvetica in the generator's 261pt column", () => {
+    expect(widest(APP_PAGE11_SIGNATURE_BLOCK, HELVETICA, 11)).toBeLessThan(261);
+  });
+
+  // THE FAILURE THAT SHIPPED, pinned so it cannot ship again. The official
+  // block is still correct on its own form; it is wrong in this column.
+  it('records that the official block does NOT fit the app renderer', () => {
+    expect(widest(SIGNATURE_BLOCK, HELVETICA, 11)).toBeGreaterThan(261);
   });
 
   /**
-   * STRIPPING IS AN EXACT MATCH ON THE BLOCK, NOT A PATTERN OVER ITS WORDS.
-   *
-   * A differential caught this being untested: replacing the exact-suffix
-   * check with /[\s_]*Signature of Marine[\s\S]*$/ passed every case above,
-   * because no entry happened to contain that phrase in its body. One that
-   * does is not far-fetched. A clerk directing a Marine to "obtain the
-   * Signature of Marine Corps counsel" writes it into the corrective action,
-   * and a pattern would eat that sentence and everything after it, including
-   * the rebuttal election the Marine answers.
+   * WIDTH ALONE DOES NOT PROVE IT SURVIVES. navmc11811Generator's wrapText
+   * splits each line on ' ' and rejoins with single spaces, so any block
+   * relying on padding for alignment is destroyed before it is drawn.
+   * Simulated on both, because the contrast is the mechanism behind what
+   * Stephen saw on the page.
    */
-  it('strips only the block, never a body sentence that echoes its words', () => {
+  it('the app block is unchanged by a split-and-rejoin on spaces', () => {
+    const collapse = (block: string) =>
+      block
+        .split('\n')
+        .map((line) => line.split(' ').filter((word) => word !== '').join(' '))
+        .join('\n');
+
+    expect(collapse(APP_PAGE11_SIGNATURE_BLOCK)).toBe(APP_PAGE11_SIGNATURE_BLOCK);
+    expect(collapse(SIGNATURE_BLOCK)).not.toBe(SIGNATURE_BLOCK);
+  });
+
+  /**
+   * SWAPPING IS AN EXACT SUFFIX MATCH, NOT A PATTERN OVER ITS WORDS.
+   *
+   * A differential caught this being untested: a regex over "Signature of
+   * Marine" passed every case, because no entry happened to contain that
+   * phrase in its body. One that does is not far-fetched. A clerk directing
+   * a Marine to "obtain the Signature of Marine Corps counsel" writes it
+   * into the corrective action, and a pattern would eat that sentence and
+   * everything after it, including the rebuttal election.
+   */
+  it('swaps only the block, never a body sentence that echoes its words', () => {
     const counseling: CounselingInput = {
       ...COUNSELING,
       correctiveAction: 'obtain the Signature of Marine Corps counsel before the hearing',
     };
-    const page = njpPage11(guiltyCorporal(), counseling, { signatureLines: false });
+    const page = njpPage11(guiltyCorporal(), counseling, { signatureBlock: 'app-page11' });
 
     expect(page.remarksLeft).toContain('Signature of Marine Corps counsel');
-    expect(page.remarksLeft.endsWith('I choose (to) (not to) make a rebuttal.')).toBe(true);
-    // The block's own rule line is gone even though its words survive above.
-    expect(page.remarksLeft).not.toContain('_____');
+    expect(page.remarksLeft.endsWith(APP_PAGE11_SIGNATURE_BLOCK)).toBe(true);
+    expect((page.remarksLeft.match(/Signature of CO/g) ?? []).length).toBe(1);
   });
 
   // AN EMPTY RIGHT COLUMN STAYS EMPTY. A sergeant gets no restriction entry,
-  // and stripping must not turn '' into something.
-  it('leaves an absent right column absent', () => {
-    const page = njpPage11(guiltyCorporal({ accusedPayGrade: 'E5' }), COUNSELING, {
-      signatureLines: false,
-    });
-    expect(page.remarksRight).toBe('');
+  // and retargeting must not turn '' into a signature block.
+  it('leaves an absent right column absent on both targets', () => {
+    for (const target of ['official-form', 'app-page11'] as const) {
+      const page = njpPage11(guiltyCorporal({ accusedPayGrade: 'E5' }), COUNSELING, {
+        signatureBlock: target,
+      });
+      expect(page.remarksRight, target).toBe('');
+    }
   });
 });

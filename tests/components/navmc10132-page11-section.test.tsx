@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Page11Section } from '@/components/letter/navmc10132/Page11Section';
 import { createEmptyNavmc10132Data, NAVMC_10132_EMPTY_OFFENSE } from '@/types/navmc';
+import { APP_PAGE11_SIGNATURE_BLOCK, SIGNATURE_BLOCK } from '@/lib/navmc10132-page11';
 import { FormData } from '@/types';
 
 /**
@@ -174,27 +175,40 @@ describe('handing the entries to the app Page 11', () => {
   });
 
   /**
-   * NO TYPED SIGNATURE LINES ON THIS PATH, which is the half Stephen caught
-   * on the rendered page: "the problem with the digital signed option".
+   * THE LINES STAY, LAID OUT FOR THIS RENDERER.
    *
-   * This document gets REAL placed CAC fields, so typed lines under them are
-   * a second set nobody signs. navmc11811Generator would mangle them anyway:
-   * it wraps at an 11pt 261pt column and its wrapText splits on ' ', which
-   * destroys the padding the two-column block is built from, so the rule
-   * line wrapped and the labels stacked.
+   * Stephen caught half of this on the rendered page ("the problem with the
+   * digital signed option") and corrected the other half himself on
+   * 2026-08-28: "we still need teh line and the signature of member and
+   * signature of CO." The defect was never the block. It was the block built
+   * for the official form arriving at a renderer that cannot draw it.
    *
-   * ASSERTED AS A PAIR WITH THE OFFICIAL EXPORT, because the block is
-   * correct there and removing it from both would break the form that has
-   * nowhere else to put a signature.
+   * navmc11811Generator wraps at an 11pt 261pt column and its wrapText splits
+   * on ' ', which destroys the run of padding the side-by-side block is built
+   * from, so the rule line wrapped and the labels stacked. The app target
+   * stacks the two pairs instead, and every line of it survives a split and
+   * rejoin on spaces.
+   *
+   * ASSERTED AGAINST THE OFFICIAL BLOCK, not merely for the words, because a
+   * handoff that carried the official block across would still contain
+   * "Signature of Marine" and still be the bug he reported.
    */
-  it('strips the typed signature lines, which this path replaces with fields', () => {
+  it('carries the lines across in the app renderer layout, not the form one', () => {
     const next = switchAndCapture(hisDocument({ dispositionNoticeDate: '2026-08-27' }));
 
-    expect(next.remarksLeft).not.toContain('Signature of Marine');
-    expect(next.remarksRight).not.toContain('Signature of Marine');
-    expect(next.remarksLeft).not.toContain('_____');
-    expect(next.remarksRight).not.toContain('_____');
-    expect(String(next.remarksLeft).endsWith('make a rebuttal.')).toBe(true);
+    for (const column of [String(next.remarksLeft), String(next.remarksRight)]) {
+      expect(column).toContain(APP_PAGE11_SIGNATURE_BLOCK);
+      expect(column.endsWith(APP_PAGE11_SIGNATURE_BLOCK)).toBe(true);
+      expect(column).not.toContain(SIGNATURE_BLOCK);
+      // The failure that shipped: two labels sharing one line, which this
+      // renderer's wrap turns into a stacked mess.
+      expect(column).not.toMatch(/Signature of Marine +Signature of CO/);
+      // Nothing in the block that arrived depends on a run of spaces
+      // surviving the wrap. Scoped to the block: the body legitimately holds
+      // double spaces, an article label among them.
+      const block = column.slice(-APP_PAGE11_SIGNATURE_BLOCK.length);
+      expect(block.split('\n').some((line) => / {2}/.test(line))).toBe(false);
+    }
   });
 
   // THE HALF THAT LOSES A FEDERAL RECORD IF IT BREAKS. The type switch is a

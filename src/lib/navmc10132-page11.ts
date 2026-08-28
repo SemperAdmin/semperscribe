@@ -637,6 +637,39 @@ export const DISCHARGE_CONSEQUENCES_SENTENCE =
  * SPACES RATHER THAN A TAB, because an XFA multiline field has no tab stops
  * and a literal tab renders differently in every viewer.
  */
+/**
+ * The same acknowledgment, laid out for the app's own NAVMC 118(11).
+ *
+ * STACKED, NOT SIDE BY SIDE, and the reason is measurement rather than
+ * taste. navmc11811Generator draws at 11pt Helvetica into a 261pt column,
+ * and two 21-underscore rules with a gap measure 287.5pt there, so they
+ * wrap. Its wrapText also splits on ' ' and rejoins with single spaces, so
+ * the padding that aligns the labels under the rules is destroyed before it
+ * is ever measured. Stephen saw both effects on the rendered page,
+ * 2026-08-27: one rule instead of two, and "Signature of CO" broken across
+ * lines.
+ *
+ * A stacked block needs no padding and no line runs near the measure, so it
+ * survives any re-wrap. Thirty underscores is 183.5pt at 11pt Helvetica
+ * against a 261pt column.
+ *
+ * TWO BLOCKS RATHER THAN ONE COMPROMISE. The official form renders 9pt
+ * Times into a 266.5pt column, where the side-by-side block measures 211.5pt
+ * and fits, and Stephen tuned its alignment by hand on 2026-08-27. Forcing
+ * one layout on both would either wrap on the app or undo work he approved
+ * on the form. Each block is measured against the renderer that draws it,
+ * and the tests assert both.
+ */
+export const APP_PAGE11_SIGNATURE_BLOCK =
+  '______________________________\n' +
+  'Signature of Marine\n' +
+  '\n' +
+  '______________________________\n' +
+  'Signature of CO';
+
+/** Which renderer the entry is being laid out for. */
+export type SignatureBlockTarget = 'official-form' | 'app-page11';
+
 export const SIGNATURE_BLOCK =
   '_____________________          _____________________\n' +
   'Signature of Marine                    Signature of CO';
@@ -801,35 +834,41 @@ export interface NjpPage11 {
  */
 export interface NjpPage11Options {
   /**
-   * Whether the entries carry their typed signature lines.
+   * Which renderer the entries are laid out for.
    *
-   * TRUE FOR THE OFFICIAL FORM, FALSE FOR THE APP'S. The official NAVMC
-   * 118(11) has one native signature field and it belongs to the Article 137
-   * header block, so an entry there has to carry its own typed lines and a
-   * signer places a CAC signature on them in Acrobat. The app's own Page 11
-   * takes REAL placed signature fields, so typed lines there are a second
-   * set of lines nobody signs.
+   * BOTH TARGETS CARRY THE LINES. Stephen, 2026-08-27: "we still need the
+   * line and the signature of member and signature of CO." An earlier
+   * revision stripped them from the app's Page 11 on the reasoning that the
+   * path places real CAC fields, which was wrong: the acknowledgment lines
+   * are part of the entry a Marine signs, and a placed field sits ON one
+   * rather than replacing it.
    *
-   * Stephen found it on the rendered page, 2026-08-27, after routing the
-   * entries into the app's Page 11: "the PG.11 part of the semper scribe app
-   * is not formatted correctly as the NJP Pg. 11 export is do you see the
-   * difference and the problem with the digital signed option."
-   *
-   * The formatting half is measurable. navmc11811Generator wraps at an
-   * 11pt column 261pt wide and its wrapText splits on ' ', so a run of
-   * padding spaces is destroyed and rejoined with single ones. The rule line
-   * measures 287.5pt there and wraps, which is why one rule appears instead
-   * of two and the labels stack. A space-padded two-column block cannot
-   * survive that renderer, and it does not need to: that path places fields.
+   * WHAT DIFFERS IS THE LAYOUT, because the two renderers are not alike.
+   * The official form draws 9pt Times into a 266.5pt column and takes the
+   * side-by-side block at 211.5pt. The app draws 11pt Helvetica into a 261pt
+   * column, where the same block measures 287.5pt and wraps, and its
+   * wrapText splits on ' ' so the padding is destroyed before it is
+   * measured. See APP_PAGE11_SIGNATURE_BLOCK.
    */
-  signatureLines?: boolean;
+  signatureBlock?: SignatureBlockTarget;
 }
 
-/** Strips the block this module appended, by exact match rather than by
- *  pattern, so a change to the block cannot leave a half-stripped entry. */
-function withoutSignatureLines(text: string): string {
+/**
+ * Swaps the block the entry builders appended for the target's own.
+ *
+ * AN EXACT SUFFIX MATCH, NOT A PATTERN OVER ITS WORDS. A differential
+ * proved this needed saying: a regex over "Signature of Marine" passed every
+ * test, because no entry happened to contain that phrase in its body. One
+ * realistically can. A clerk directing a Marine to "obtain the Signature of
+ * Marine Corps counsel" writes it into the corrective action, and a pattern
+ * would eat that sentence and everything after it, including the rebuttal
+ * election the Marine answers.
+ */
+function retargetSignatureBlock(text: string, target: SignatureBlockTarget): string {
+  if (target === 'official-form') return text;
   const suffix = `${PARAGRAPH_BREAK}\n${SIGNATURE_BLOCK}`;
-  return text.endsWith(suffix) ? text.slice(0, -suffix.length) : text;
+  if (!text.endsWith(suffix)) return text;
+  return `${text.slice(0, -suffix.length)}${PARAGRAPH_BREAK}${APP_PAGE11_SIGNATURE_BLOCK}`;
 }
 
 export function njpPage11(
@@ -837,7 +876,7 @@ export function njpPage11(
   input: CounselingInput,
   options: NjpPage11Options = {},
 ): NjpPage11 {
-  const signatureLines = options.signatureLines ?? true;
+  const target = options.signatureBlock ?? 'official-form';
   const counseling = separationCounselingEntry(formData, input);
   const restriction = promotionRestrictionEntry(formData);
 
@@ -852,12 +891,10 @@ export function njpPage11(
   ];
 
   return {
-    remarksLeft: signatureLines ? counseling.text : withoutSignatureLines(counseling.text),
+    remarksLeft: retargetSignatureBlock(counseling.text, target),
     remarksRight:
       restriction.kind === 'entry'
-        ? signatureLines
-          ? restriction.entry.text
-          : withoutSignatureLines(restriction.entry.text)
+        ? retargetSignatureBlock(restriction.entry.text, target)
         : '',
     name: str(formData, 'accusedName'),
     edipi: str(formData, 'accusedEdipi'),
