@@ -16,7 +16,16 @@
  *   route to the flattened export path.
  */
 
-import { PDFDocument, PDFName, PDFDict, PDFArray, PDFString, PDFHexString } from 'pdf-lib';
+import {
+  PDFDocument,
+  PDFName,
+  PDFDict,
+  PDFArray,
+  PDFString,
+  PDFHexString,
+  PDFRawStream,
+  decodePDFRawStream,
+} from 'pdf-lib';
 import { FormData, ParagraphData } from '@/types';
 import { generateCitation } from '@/lib/citation';
 import { indexToRefLetter } from '@/lib/letter-validators';
@@ -141,9 +150,63 @@ function toLocalBytes(source: ArrayBuffer | Uint8Array): Uint8Array {
 }
 
 /**
- * Replaces the `datasets` stream inside a dynamic XFA PDF. Everything
- * else - template, page shell, NeedsRendering - stays byte-identical,
- * which is what keeps the form official and editable.
+ * The one field on NAVMC 118(11) that refuses to bind to data.
+ *
+ * STEPHEN, 2026-08-28: "the generate pg. 11 option is still missing the
+ * EDIPI value." The app was writing it correctly the whole time. Reading an
+ * export back, the /XFA array points at the datasets object and that object
+ * carries <EDIPI>1234567890</EDIPI> beside <NameLFM>Dog, Devil D.</NameLFM>.
+ * One rendered, one did not.
+ *
+ * The blank's own template is why. Its EDIPI field declares
+ *
+ *   <value><text maxChars="10"/></value>
+ *   <bind match="none"/>
+ *
+ * and match="none" tells Adobe not to bind that field to the data DOM at
+ * all. Of the thirteen fields on the form exactly six carry it: the three
+ * signature fields, the two buttons, and EDIPI. Every field that does fill -
+ * Date1, Date2, Date3, NameLFM, Remarks1, Remarks2, _11 - declares no bind
+ * and binds by name. EDIPI was grouped with the signatures and the buttons
+ * in LiveCycle, so no datasets value could ever reach it.
+ *
+ * I TOLD HIM THIS WAS NOT A DEFECT ON 2026-08-27, having read four of his
+ * exports and confirmed the field was present in all four. It was present.
+ * It was also never going to fill. Presence was the wrong thing to check.
+ *
+ * WHY PATCH RATHER THAN SHIP AN ALTERED BLANK. Stephen ruled on 2026-08-28
+ * that the fix lives at export. The bundled blank stays the government file
+ * byte for byte, and the one alteration is visible in this diff instead of
+ * buried in a binary that no reviewer opens. Re-downloading the blank from
+ * the forms library cannot silently reintroduce the bug.
+ *
+ * ANCHORED ON A STRING UNIQUE TO THE EDIPI FIELD, never on match="none"
+ * itself, which appears six times. maxChars="10" is EDIPI's alone. The other
+ * five stay untouched: the signature fields must not bind to data, and a
+ * button that bound to data would be a defect of its own.
+ */
+const EDIPI_BIND_ANCHOR =
+  '<value\n><text maxChars="10"\n/></value\n><bind match="none"\n/>';
+
+/** Frees the EDIPI field to take its datasets value. */
+export function bindEdipiField(templateXml: string): string {
+  if (!templateXml.includes(EDIPI_BIND_ANCHOR)) return templateXml;
+  return templateXml.replace(
+    EDIPI_BIND_ANCHOR,
+    EDIPI_BIND_ANCHOR.replace('<bind match="none"', '<bind match="once"'),
+    // String.replace with a string pattern replaces the FIRST match only,
+    // which is what is wanted: the anchor is unique, and a second occurrence
+    // would mean the form changed under us.
+  );
+}
+
+/**
+ * Replaces the `datasets` stream inside a dynamic XFA PDF, and frees the
+ * EDIPI field in the `template` stream so its datasets value renders.
+ *
+ * Everything else - the page shell, NeedsRendering, every other field's
+ * binding - is left alone, which is what keeps the form official and
+ * editable.
  */
 export async function fillXfaDatasets(baseBytes: ArrayBuffer | Uint8Array, datasetsXml: string): Promise<Uint8Array> {
   // The bundled blanks are pre-decrypted/normalized (pikepdf rewrite -
@@ -167,6 +230,21 @@ export async function fillXfaDatasets(baseBytes: ArrayBuffer | Uint8Array, datas
     }
   }
   if (!replaced) throw new Error('XFA datasets stream not found in the base form.');
+
+  // THE TEMPLATE PATCH. Only NAVMC 118(11) carries an EDIPI field, so on the
+  // other blanks the anchor is absent and the stream is left as it was.
+  for (let i = 0; i < xfa.size() - 1; i += 2) {
+    if (xfaEntryName(xfa.get(i)) !== 'template') continue;
+    const stream = doc.context.lookup(xfa.get(i + 1));
+    if (!(stream instanceof PDFRawStream)) break;
+    const templateXml = new TextDecoder().decode(decodePDFRawStream(stream).decode());
+    const patched = bindEdipiField(templateXml);
+    if (patched === templateXml) break;
+    const next = doc.context.flateStream(toLocalBytes(new TextEncoder().encode(patched)));
+    xfa.set(i + 1, doc.context.register(next));
+    break;
+  }
+
   return doc.save({ useObjectStreams: false });
 }
 

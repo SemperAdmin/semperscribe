@@ -95,11 +95,11 @@ export function Page11Section({ formData, setFormData, SectionCard }: SectionPro
   const openAsPage11 = () => {
     // THE LINES COME ACROSS, LAID OUT FOR THIS RENDERER. Stephen,
     // 2026-08-27: "we still need the line and the signature of member and
-    // signature of CO." navmc11811Generator draws 11pt Helvetica into a
-    // 261pt column and its wrapText splits on ' ', so the side-by-side
-    // block measures 287.5pt and wraps and its padding is destroyed. The
-    // app target stacks the two blocks instead. See
-    // APP_PAGE11_SIGNATURE_BLOCK.
+    // signature of CO." navmc11811Generator draws these columns in Courier
+    // at 9pt and wraps them by CHARACTER COUNT at 48, so the 52-character
+    // side-by-side block breaks into fragments with a dangling signer. The
+    // app target stacks the two pairs instead. See
+    // APP_PAGE11_SIGNATURE_BLOCK, which carries the measurement.
     const built = njpPage11(formData, input, { signatureBlock: 'app-page11' });
     setFormData((prev) => ({
       ...prev,
