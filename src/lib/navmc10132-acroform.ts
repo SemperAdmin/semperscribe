@@ -18,6 +18,7 @@
  */
 
 import type { FormData } from '@/types';
+import { paginateItem21 } from '@/lib/navmc10132-item21-continuation';
 import {
   bookerStatement,
   coerceDemand,
@@ -572,12 +573,21 @@ export function navmc10132Values(formData: FormData): Record<string, FieldValue>
   // clerk's own remarks so composeRemarks sorts the whole set
   // chronologically, as the page 3 instruction requires. See
   // vacationRemarks above for what it derives and why (decision row D-60).
+  // PAGINATED, NOT WRITTEN WHOLE. Item 21 renders 55 lines and clips the
+  // rest with nothing on screen to say so, which is silent data loss on the
+  // form the page 3 instruction sends every other overflow to. paginateItem21
+  // keeps what the widget holds, ends it with a pointer to the supplement,
+  // and hands the remainder to the caller. See
+  // navmc10132-item21-continuation.ts, and item21Overflow below for the
+  // lines the export renders as a separate sheet.
   set(
     '21 REMARKS',
-    composeRemarks(
-      [...remarks, ...overflowRemarks(formData), ...vacationRemarks(formData)],
-      remarksFreeText,
-    ),
+    paginateItem21(
+      composeRemarks(
+        [...remarks, ...overflowRemarks(formData), ...vacationRemarks(formData)],
+        remarksFreeText,
+      ),
+    ).onForm,
   );
 
   // --- Item 22, row A only: victim demographics ---------------------------
@@ -624,3 +634,22 @@ export const NAVMC_10132_UNLOCK_READ_ONLY: readonly string[] = [
   '24 ACCUSED RANK/GRADE',
   '25 ACCUSED EDIPI',
 ];
+
+/**
+ * The item 21 lines that do not fit the widget, for the supplemental sheet.
+ *
+ * COMPOSED THE SAME WAY THE FIELD IS, through the same three sources and the
+ * same composeRemarks call. A second composition here would be a second
+ * chance to sort the entries differently, and the page 3 instruction requires
+ * one chronological order across the whole set.
+ */
+export function navmc10132Item21Overflow(formData: FormData): string[] {
+  const remarks = readRemarks(formData);
+  const remarksFreeText = readString(formData, 'remarksFreeText') ?? '';
+  return paginateItem21(
+    composeRemarks(
+      [...remarks, ...overflowRemarks(formData), ...vacationRemarks(formData)],
+      remarksFreeText,
+    ),
+  ).overflow;
+}

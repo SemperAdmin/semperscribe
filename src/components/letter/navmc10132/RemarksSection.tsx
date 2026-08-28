@@ -43,6 +43,11 @@ import {
   type Navmc10132Stage,
 } from '@/types/navmc';
 import { composeRemarks, fitsInField } from '@/lib/navmc10132-utils';
+import { navmc10132Item21Overflow } from '@/lib/navmc10132-acroform';
+import {
+  renderItem21Continuation,
+  item21LineCapacity,
+} from '@/lib/navmc10132-item21-continuation';
 
 type SectionCardProps = { icon: React.ReactNode; title: string; children: React.ReactNode };
 
@@ -335,6 +340,70 @@ export function RemarksSection({ formData, setFormData, SectionCard, stage }: Se
           </p>
         </div>
       )}
+      <Item21ContinuationPanel formData={formData} />
     </SectionCard>
+  );
+}
+
+/**
+ * The supplemental sheet, offered only when item 21 actually overflows.
+ *
+ * WITHOUT THIS THE FIX WOULD BE WORSE THAN THE DEFECT. paginateItem21 ends
+ * the widget on "Continued on the attached item 21 supplemental page", so a
+ * form that promises a sheet nobody can produce is a form that points at
+ * nothing. The button and the field value ship together or neither ships.
+ *
+ * A SEPARATE FILE, not an appended page. See renderItem21Continuation for
+ * why: the signed export path writes an incremental update into the clerk's
+ * own file and touches no earlier byte, which is what keeps their CAC
+ * signatures valid, and appending a page means rewriting the page tree.
+ */
+function Item21ContinuationPanel({ formData }: { formData: FormData }) {
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const overflow = navmc10132Item21Overflow(formData);
+  if (overflow.length === 0) return null;
+
+  const capacity = item21LineCapacity();
+
+  const generate = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const { blob } = await renderItem21Continuation(overflow, {
+        name: (formData.accusedName as string) ?? '',
+        edipi: (formData.accusedEdipi as string) ?? '',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'navmc10132-item21-continuation.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not build the continuation sheet.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-6 space-y-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3">
+      <p className="text-[11px] font-medium text-amber-800">
+        Item 21 runs past the box. {overflow.length}{' '}
+        {overflow.length === 1 ? 'line does' : 'lines do'} not fit.
+      </p>
+      <p className="text-[11px] text-amber-800">
+        The field renders {capacity} lines and clips the rest with nothing on the page to say
+        so. The export now fills it to {capacity} lines, ends on a pointer to a supplement, and
+        carries the remainder here. Generate the sheet and file it with the UPB.
+      </p>
+      <Button type="button" variant="outline" size="sm" onClick={generate} disabled={busy}>
+        <FileText className="mr-1 h-4 w-4" />
+        {busy ? 'Building...' : 'Download the item 21 continuation'}
+      </Button>
+      {error && <p className="text-[11px] text-destructive">{error}</p>}
+    </div>
   );
 }
