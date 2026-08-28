@@ -641,28 +641,51 @@ export const DISCHARGE_CONSEQUENCES_SENTENCE =
  * The same acknowledgment, laid out for the app's own NAVMC 118(11).
  *
  * STACKED, NOT SIDE BY SIDE, and the reason is measurement rather than
- * taste. navmc11811Generator draws at 11pt Helvetica into a 261pt column,
- * and two 21-underscore rules with a gap measure 287.5pt there, so they
- * wrap. Its wrapText also splits on ' ' and rejoins with single spaces, so
- * the padding that aligns the labels under the rules is destroyed before it
- * is ever measured. Stephen saw both effects on the rendered page,
- * 2026-08-27: one rule instead of two, and "Signature of CO" broken across
- * lines.
+ * taste. drawSimpleColumn in services/pdf/navmc11811Generator draws these
+ * columns in Courier at 9pt and wraps them by CHARACTER COUNT at 48, not by
+ * measured width:
  *
- * A stacked block needs no padding and no line runs near the measure, so it
- * survives any re-wrap. Thirty underscores is 183.5pt at 11pt Helvetica
- * against a 261pt column.
+ *   drawSimpleColumn(page, data.remarksLeft, PAGE11_BOXES.remarksLeft,
+ *                    monoFont, 9, 10, 48)
+ *
+ * The side-by-side block breaks on that count alone. Its rule line is 52
+ * characters and splits into a 30-character fragment and a 21-character one;
+ * its label line is 54 and splits with "of CO" orphaned onto a fourth line.
+ * Two rules render as three fragments with a dangling signer, which is the
+ * page Stephen reported on 2026-08-27.
+ *
+ * The padding is NOT the problem, contrary to two earlier revisions of this
+ * comment. n consecutive spaces split into n - 1 empty strings and rejoin as
+ * n spaces, so alignment survives the wrapper intact. Only the count breaks
+ * it. The test writes out all four rendered lines rather than describing
+ * them, because both wrong explanations passed a green suite.
+ *
+ * The stacked block has no line over 30 characters, so every line clears the
+ * 48-character measure and the wrapper returns it unchanged.
+ *
+ * VERTICAL BUDGET. The column box is 400pt tall at a 10pt line height, so 40
+ * lines, and drawSimpleColumn breaks out of the loop when it runs past the
+ * bottom rather than reporting it. The counseling entry renders 32 of those
+ * 40 lines on a short corrective action, this block included. A long enough
+ * item 3 or item 4 will clip silently, the same defect item 21 had.
  *
  * TWO BLOCKS RATHER THAN ONE COMPROMISE. The official form renders 9pt
  * Times into a 266.5pt column, where the side-by-side block measures 211.5pt
  * and fits, and Stephen tuned its alignment by hand on 2026-08-27. Forcing
- * one layout on both would either wrap on the app or undo work he approved
+ * one layout on both would either break on the app or undo work he approved
  * on the form. Each block is measured against the renderer that draws it,
  * and the tests assert both.
+ *
+ * TWO BLANK LINES IN EACH GAP, Stephen 2026-08-28: "lets add two hard spaces
+ * between the I choose (to) (not to) make a rebuttal. and the MArine
+ * signature and the Marine signature and the co signature line." Blank lines
+ * survive this renderer: split('\n') yields '', wrapTextByCharCount returns
+ * [''] for it, and the draw loop still spends a line height on it.
  */
 export const APP_PAGE11_SIGNATURE_BLOCK =
   '______________________________\n' +
   'Signature of Marine\n' +
+  '\n' +
   '\n' +
   '______________________________\n' +
   'Signature of CO';
@@ -868,7 +891,9 @@ function retargetSignatureBlock(text: string, target: SignatureBlockTarget): str
   if (target === 'official-form') return text;
   const suffix = `${PARAGRAPH_BREAK}\n${SIGNATURE_BLOCK}`;
   if (!text.endsWith(suffix)) return text;
-  return `${text.slice(0, -suffix.length)}${PARAGRAPH_BREAK}${APP_PAGE11_SIGNATURE_BLOCK}`;
+  // TWO blank lines before the first rule, matching the gap the official
+  // form already opens above its own block.
+  return `${text.slice(0, -suffix.length)}${PARAGRAPH_BREAK}\n${APP_PAGE11_SIGNATURE_BLOCK}`;
 }
 
 export function njpPage11(

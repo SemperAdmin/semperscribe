@@ -203,11 +203,13 @@ describe('handing the entries to the app Page 11', () => {
       // The failure that shipped: two labels sharing one line, which this
       // renderer's wrap turns into a stacked mess.
       expect(column).not.toMatch(/Signature of Marine +Signature of CO/);
-      // Nothing in the block that arrived depends on a run of spaces
-      // surviving the wrap. Scoped to the block: the body legitimately holds
-      // double spaces, an article label among them.
+      // Every line of the block that arrived clears the generator's
+      // 48-character wrap. Scoped to the block: the body is wrapped by the
+      // same rule but is prose, and reflowing prose is not a defect.
       const block = column.slice(-APP_PAGE11_SIGNATURE_BLOCK.length);
-      expect(block.split('\n').some((line) => / {2}/.test(line))).toBe(false);
+      for (const line of block.split('\n')) expect(line.length).toBeLessThanOrEqual(48);
+      // The gaps Stephen asked for on 2026-08-28, two blank lines each.
+      expect(column.endsWith(`\n\n\n${APP_PAGE11_SIGNATURE_BLOCK}`)).toBe(true);
     }
   });
 

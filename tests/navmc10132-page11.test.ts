@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { PAGE11_BOXES } from '@/services/pdf/navmc11811Generator';
 import type { FormData } from '@/types';
 import { createEmptyNavmc10132Data, type Navmc10132Offense } from '@/types/navmc';
 import { resolveArticle } from '@/lib/navmc10132-utils';
@@ -1142,26 +1145,85 @@ describe('the article phrase names the article', () => {
 // acknowledgment lines are part of the entry a Marine signs, and a placed
 // field sits ON one rather than replacing it.
 //
-// WHAT DIFFERS IS THE ARRANGEMENT, because the renderers are not alike. The
-// official XFA form draws 9pt Times into a 266.5pt column and takes the
-// side-by-side block at 211.5pt. navmc11811Generator draws 11pt Helvetica
-// into a 261pt column, where that same block measures 287.5pt and wraps, and
-// its wrapText splits on ' ' so the padding aligning the labels is destroyed
-// before it is ever measured. That is exactly what he saw: one rule instead
-// of two, and "Signature of CO" broken across lines.
+// WHAT DIFFERS IS THE ARRANGEMENT, because the renderers are not alike.
 //
-// THE MEASUREMENTS BELOW ARE THE ASSERTION THE FIRST ATTEMPT LACKED. A block
-// was shipped into a column it does not fit because nothing measured it.
+// THE APP RENDERER, MEASURED RATHER THAN ASSUMED. An earlier revision of
+// this file modelled it as 11pt Helvetica wrapped on measured width. That
+// was wrong, and the block still passed, which is the reason to state it
+// here. services/pdf/navmc11811Generator draws these two columns with
+//
+//   drawSimpleColumn(page, data.remarksLeft, PAGE11_BOXES.remarksLeft,
+//                    monoFont, 9, 10, 48)
+//
+// - Courier, 9pt, 10pt line height, and wrapping by CHARACTER COUNT at 48.
+// Width never enters it. 48 Courier characters is 259.2pt against the box's
+// 261pt, so the character count is the honest measure of that column.
+//
+// The side-by-side block is 52 characters and breaks. Its label line is
+// worse: wrapTextByCharCount splits on ' ' and rejoins with SINGLE spaces,
+// so the padding is gone before anything is counted and the labels collapse
+// onto one 35-character line under a rule that broke across two. That is
+// what Stephen saw on 2026-08-27.
+//
+// THE OFFICIAL FORM is a different renderer with a different answer: Adobe
+// draws 9pt Times into a 266.5pt XFA field, where the side-by-side block
+// measures 211.5pt and fits, and Stephen tuned its alignment by hand.
 // ---------------------------------------------------------------------------
 describe('both targets carry the lines, laid out for their own renderer', () => {
-  /** Advance widths, units per 1000 em, for the two faces that draw these. */
+  /**
+   * The app column, as navmc11811Generator actually draws it.
+   *
+   * READ OFF THE SOURCE, not copied into a constant here, because these are
+   * inline arguments at the call site. A test holding its own copy of "48"
+   * keeps passing after someone edits the generator to 60, and the block it
+   * defends silently starts breaking again.
+   */
+  const GENERATOR = readFileSync(
+    resolve(__dirname, '../src/services/pdf/navmc11811Generator.ts'),
+    'utf-8',
+  );
+  const APP_MAX_CHARS = 48;
+  const APP_LINE_HEIGHT = 10;
+
+  it('models the generator call this file is measured against', () => {
+    expect(GENERATOR).toContain(
+      `drawSimpleColumn(page, data.remarksLeft, PAGE11_BOXES.remarksLeft, monoFont, 9, ${APP_LINE_HEIGHT}, ${APP_MAX_CHARS});`,
+    );
+    expect(GENERATOR).toContain(
+      `drawSimpleColumn(page, data.remarksRight, PAGE11_BOXES.remarksRight, monoFont, 9, ${APP_LINE_HEIGHT}, ${APP_MAX_CHARS});`,
+    );
+    // Courier is 600/1000 em, so the character count has to be the binding
+    // constraint inside the box width, not a looser one.
+    expect((APP_MAX_CHARS * 600 * 9) / 1000).toBeLessThanOrEqual(
+      PAGE11_BOXES.remarksLeft.width,
+    );
+  });
+
+  /** wrapTextByCharCount and drawSimpleColumn's paragraph loop, mirrored. */
+  function appRenderedLines(text: string): string[] {
+    const wrap = (paragraph: string): string[] => {
+      if (!paragraph) return [''];
+      const words = paragraph.split(' ');
+      const lines: string[] = [];
+      let current = words[0];
+      for (let i = 1; i < words.length; i++) {
+        const word = words[i];
+        if (current.length + 1 + word.length <= APP_MAX_CHARS) current += ` ${word}`;
+        else {
+          lines.push(current);
+          current = word;
+        }
+      }
+      lines.push(current);
+      return lines;
+    };
+    return text.split('\n').flatMap(wrap);
+  }
+
+  /** Advance widths, units per 1000 em, for the face Adobe draws the form in. */
   const TIMES: Record<string, number> = {
     ' ': 250, _: 500, S: 556, i: 278, g: 500, n: 500, a: 444, t: 278, u: 500,
     r: 333, e: 444, o: 500, f: 333, M: 889, C: 667, O: 722,
-  };
-  const HELVETICA: Record<string, number> = {
-    ' ': 278, _: 556, S: 667, i: 222, g: 556, n: 556, a: 556, t: 278, u: 556,
-    r: 333, e: 556, o: 556, f: 278, M: 833, C: 722, O: 778,
   };
 
   /** The widest rendered line of a block, in points. */
@@ -1209,32 +1271,106 @@ describe('both targets carry the lines, laid out for their own renderer', () => 
     expect(widest(SIGNATURE_BLOCK, TIMES, 9)).toBeLessThan(266.5);
   });
 
-  it("the app block fits 11pt Helvetica in the generator's 261pt column", () => {
-    expect(widest(APP_PAGE11_SIGNATURE_BLOCK, HELVETICA, 11)).toBeLessThan(261);
-  });
-
-  // THE FAILURE THAT SHIPPED, pinned so it cannot ship again. The official
-  // block is still correct on its own form; it is wrong in this column.
-  it('records that the official block does NOT fit the app renderer', () => {
-    expect(widest(SIGNATURE_BLOCK, HELVETICA, 11)).toBeGreaterThan(261);
+  it('the app block fits the generator 48-character measure', () => {
+    for (const line of APP_PAGE11_SIGNATURE_BLOCK.split('\n')) {
+      expect(line.length, JSON.stringify(line)).toBeLessThanOrEqual(APP_MAX_CHARS);
+    }
+    expect(appRenderedLines(APP_PAGE11_SIGNATURE_BLOCK)).toEqual(
+      APP_PAGE11_SIGNATURE_BLOCK.split('\n'),
+    );
   });
 
   /**
-   * WIDTH ALONE DOES NOT PROVE IT SURVIVES. navmc11811Generator's wrapText
-   * splits each line on ' ' and rejoins with single spaces, so any block
-   * relying on padding for alignment is destroyed before it is drawn.
-   * Simulated on both, because the contrast is the mechanism behind what
-   * Stephen saw on the page.
+   * THE FAILURE THAT SHIPPED, PINNED AS THE RENDERER ACTUALLY PRODUCES IT.
+   *
+   * Two earlier explanations of this were wrong and both survived a green
+   * suite, which is why the exact four lines are written out here rather
+   * than described. The claim was that the padding is destroyed by a split
+   * and rejoin on ' '; it is not. n consecutive spaces split into n - 1
+   * empty strings and rejoin as n spaces, so the padding comes back intact.
+   *
+   * What breaks is the character count alone. The rule line is 52 characters
+   * and splits into a 30-character fragment and a 21-character one. The
+   * label line is 54 and splits with "of CO" orphaned onto a fourth line.
+   * Two rules become three fragments and a dangling signer, which is the
+   * page Stephen reported on 2026-08-27.
    */
-  it('the app block is unchanged by a split-and-rejoin on spaces', () => {
-    const collapse = (block: string) =>
-      block
-        .split('\n')
-        .map((line) => line.split(' ').filter((word) => word !== '').join(' '))
-        .join('\n');
+  it('records how the official block fails in the app column', () => {
+    expect(SIGNATURE_BLOCK.split('\n')[0].length).toBeGreaterThan(APP_MAX_CHARS);
 
-    expect(collapse(APP_PAGE11_SIGNATURE_BLOCK)).toBe(APP_PAGE11_SIGNATURE_BLOCK);
-    expect(collapse(SIGNATURE_BLOCK)).not.toBe(SIGNATURE_BLOCK);
+    expect(appRenderedLines(SIGNATURE_BLOCK)).toEqual([
+      '_____________________         ',
+      '_____________________',
+      'Signature of Marine                    Signature',
+      'of CO',
+    ]);
+  });
+
+  /**
+   * THE APP BLOCK GOES THROUGH THAT SAME WRAPPER UNCHANGED, which is the
+   * property the official block lacks. Asserted as the pair, because a block
+   * that merely fits could still be reflowed.
+   */
+  it('the app block survives the wrapper the official block does not', () => {
+    expect(appRenderedLines(APP_PAGE11_SIGNATURE_BLOCK)).toEqual(
+      APP_PAGE11_SIGNATURE_BLOCK.split('\n'),
+    );
+    expect(appRenderedLines(SIGNATURE_BLOCK)).not.toEqual(SIGNATURE_BLOCK.split('\n'));
+  });
+
+  /**
+   * TWO BLANK LINES IN EACH GAP.
+   *
+   * Stephen, 2026-08-28: "lets add two hard spaces between the I choose (to)
+   * (not to) make a rebuttal. and the MArine signature and the Marine
+   * signature and the co signature line."
+   *
+   * ASSERTED ON RENDERED LINES, NOT ON THE STRING. A blank line only counts
+   * if the renderer spends one on it, and this one does: split('\n') yields
+   * '', wrapTextByCharCount's `if (!text) return ['']` guard returns a
+   * one-element list, and the draw loop advances currentY for it. A test
+   * counting '\n' characters would pass on a renderer that swallowed them.
+   */
+  it('opens two blank lines above each rule on the app Page 11', () => {
+    const page = njpPage11(guiltyCorporal(), COUNSELING, { signatureBlock: 'app-page11' });
+
+    for (const column of [page.remarksLeft, page.remarksRight]) {
+      const drawn = appRenderedLines(column);
+      const rules = drawn
+        .map((line, index) => ({ line, index }))
+        .filter(({ line }) => /^_+$/.test(line));
+      expect(rules).toHaveLength(2);
+
+      for (const { index } of rules) {
+        expect(drawn[index - 1]).toBe('');
+        expect(drawn[index - 2]).toBe('');
+        // Three would be a drift, not a gap he asked for.
+        expect(drawn[index - 3]).not.toBe('');
+      }
+      expect(drawn[rules[0].index - 3]).toBe('rebuttal.');
+      expect(drawn[rules[1].index - 3]).toBe('Signature of Marine');
+    }
+  });
+
+  /**
+   * THE GAPS COST TWO LINES AND THE COLUMN HAS TO STILL FIT.
+   *
+   * drawSimpleColumn breaks out of its draw loop when it passes the bottom
+   * of the box and reports nothing, which is the defect item 21 had. The
+   * left column renders 32 of the 40 available lines on a short corrective
+   * action, so the gaps fit, but the margin is 8 lines and worth stating.
+   */
+  it('still fits the 40-line column after the gaps', () => {
+    const capacity = Math.floor(PAGE11_BOXES.remarksLeft.height / APP_LINE_HEIGHT);
+    expect(capacity).toBe(40);
+
+    const page = njpPage11(guiltyCorporal(), COUNSELING, { signatureBlock: 'app-page11' });
+    for (const column of [page.remarksLeft, page.remarksRight]) {
+      expect(appRenderedLines(column).length).toBeLessThanOrEqual(capacity);
+    }
+    // The block itself must never be the half that falls off the bottom.
+    const drawn = appRenderedLines(page.remarksLeft);
+    expect(drawn[drawn.length - 1]).toBe('Signature of CO');
   });
 
   /**
@@ -1259,8 +1395,6 @@ describe('both targets carry the lines, laid out for their own renderer', () => 
     expect((page.remarksLeft.match(/Signature of CO/g) ?? []).length).toBe(1);
   });
 
-  // AN EMPTY RIGHT COLUMN STAYS EMPTY. A sergeant gets no restriction entry,
-  // and retargeting must not turn '' into a signature block.
   it('leaves an absent right column absent on both targets', () => {
     for (const target of ['official-form', 'app-page11'] as const) {
       const page = njpPage11(guiltyCorporal({ accusedPayGrade: 'E5' }), COUNSELING, {
