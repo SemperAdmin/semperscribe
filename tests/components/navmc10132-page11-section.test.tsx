@@ -126,3 +126,81 @@ describe('the right column stays absent where the paragraph does not reach', () 
     ).toBeInTheDocument();
   });
 });
+
+// ---------------------------------------------------------------------------
+// "OPEN THESE ENTRIES TO SIGN".
+//
+// Stephen, 2026-08-27: "look at how we do pg. 11 in the app already. It might
+// be better to use that interface for the pg. 11 entries as that allows you
+// to sign already." That replaced a plan to build a second facsimile
+// generator. Page11RemarksSection already reads `remarksLeft` and
+// `remarksRight`, which are the exact keys njpPage11 returns, and the
+// navmc11811 pipeline already draws and signs them.
+//
+// WHAT THESE CASES DEFEND. The switch has to carry the entries across AND
+// leave the UPB intact, and those are two separate failures. A handoff that
+// dropped the columns produces an empty Page 11; one that reset document
+// state destroys the Unit Punishment Book. Both are asserted on one act.
+// ---------------------------------------------------------------------------
+describe('handing the entries to the app Page 11', () => {
+  /** Captures the functional setFormData update and applies it. */
+  function switchAndCapture(formData: FormData): FormData {
+    let next: FormData = formData;
+    const setFormData = vi.fn((updater: unknown) => {
+      next = typeof updater === 'function'
+        ? (updater as (p: FormData) => FormData)(formData)
+        : (updater as FormData);
+    });
+    render(
+      <Page11Section formData={formData} setFormData={setFormData} SectionCard={StubSectionCard} />,
+    );
+    screen.getByRole('button', { name: /open these entries to sign/i }).click();
+    expect(setFormData).toHaveBeenCalledTimes(1);
+    return next;
+  }
+
+  it('switches the document to the app Page 11', () => {
+    const next = switchAndCapture(hisDocument({ dispositionNoticeDate: '2026-08-27' }));
+    expect(next.documentType).toBe('page11');
+  });
+
+  it('carries both columns and the Marine across', () => {
+    const next = switchAndCapture(hisDocument({ dispositionNoticeDate: '2026-08-27' }));
+
+    expect(next.name).toBe('Dog, Devil D.');
+    expect(next.edipi).toBe('1234567890');
+    expect(next.remarksLeft).toContain('Counseled this date concerning the following');
+    expect(next.remarksRight).toContain('not recommended for promotion');
+  });
+
+  // THE HALF THAT LOSES A FEDERAL RECORD IF IT BREAKS. The type switch is a
+  // merge, so every NAVMC 10132 field has to still be there afterwards and
+  // the clerk gets the UPB back by reselecting it.
+  it('leaves the Unit Punishment Book intact in document state', () => {
+    const before = hisDocument({ dispositionNoticeDate: '2026-08-27' });
+    const next = switchAndCapture(before);
+
+    expect(next.accusedName).toBe(before.accusedName);
+    expect(next.accusedEdipi).toBe(before.accusedEdipi);
+    expect(next.accusedPayGrade).toBe(before.accusedPayGrade);
+    expect(next.offenses).toEqual(before.offenses);
+    expect(next.punishments).toEqual(before.punishments);
+    expect(next.page11CorrectiveAction).toBe(before.page11CorrectiveAction);
+  });
+
+  // The official-form button has to survive alongside it. They produce
+  // different documents and a clerk picks by what happens next.
+  it('keeps the official-form export offered beside it', () => {
+    render(
+      <Page11Section
+        formData={hisDocument()}
+        setFormData={vi.fn()}
+        SectionCard={StubSectionCard}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /generate page 11/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /open these entries to sign/i }),
+    ).toBeInTheDocument();
+  });
+});

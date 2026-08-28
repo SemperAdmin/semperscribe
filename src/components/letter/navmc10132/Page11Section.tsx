@@ -32,7 +32,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { FileText, AlertTriangle, Info } from 'lucide-react';
+import { FileText, AlertTriangle, Info, PenLine } from 'lucide-react';
 import { FormData } from '@/types';
 import {
   njpPage11,
@@ -76,6 +76,33 @@ export function Page11Section({ formData, setFormData, SectionCard }: SectionPro
 
   const set = (key: string) => (value: string) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
+
+  /**
+   * Hand the two entries to the app's own Page 11 document.
+   *
+   * STEPHEN, 2026-08-27: "look at how we do pg. 11 in the app already. It
+   * might be better to use that interface for the pg. 11 entries as that
+   * allows you to sign already." He is right, and it replaced a plan to
+   * build a second facsimile. Page11RemarksSection already reads
+   * `remarksLeft` and `remarksRight`, which are the exact keys njpPage11
+   * returns, and the navmc11811 pipeline already draws and signs them.
+   *
+   * A MERGE, NOT A HANDOFF. handleDocumentTypeChange spreads `prev`, so the
+   * UPB is still in document state after the switch and comes back whole
+   * when the clerk selects it again. Nothing is copied out and nothing is
+   * discarded.
+   */
+  const openAsPage11 = () => {
+    const built = njpPage11(formData, input);
+    setFormData((prev) => ({
+      ...prev,
+      documentType: 'page11' as FormData['documentType'],
+      name: text(formData, 'accusedName'),
+      edipi: text(formData, 'accusedEdipi'),
+      remarksLeft: built.remarksLeft,
+      remarksRight: built.remarksRight,
+    }));
+  };
 
   const generate = async () => {
     setBusy(true);
@@ -252,10 +279,44 @@ export function Page11Section({ formData, setFormData, SectionCard }: SectionPro
             : 'This will produce a form carrying both entries, the 6105 on the left and the promotion restriction on the right.'}
         </p>
 
-        <Button type="button" variant="outline" size="sm" onClick={generate} disabled={busy}>
-          <FileText className="mr-1 h-4 w-4" />
-          {busy ? 'Generating...' : 'Generate Page 11'}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={generate} disabled={busy}>
+            <FileText className="mr-1 h-4 w-4" />
+            {busy ? 'Generating...' : 'Generate Page 11'}
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={openAsPage11}>
+            <PenLine className="mr-1 h-4 w-4" />
+            Open these entries to sign
+          </Button>
+        </div>
+
+        {/* WHY TWO BUTTONS AND NOT ONE. They produce different documents on
+            purpose, and a clerk picks by what has to happen next.
+
+            Generate Page 11 fills the OFFICIAL NAVMC 118(11). It stays
+            editable in Acrobat and carries the form's own signature field,
+            and it cannot take a placed signature: the form is dynamic XFA
+            and its renderer ignores anything this app appends, so a drawn
+            field would be invisible.
+
+            Open these entries to sign hands the same two columns to the
+            app's Page 11 document, which draws its own 118(11) and DOES
+            take placed signature fields. That is the trade LtCol Moore's
+            question runs into, asked at the 27 August demo: digital signing
+            costs you the official form.
+
+            THE UPB IS NOT LOST BY SWITCHING. handleDocumentTypeChange merges
+            rather than resets, so every NAVMC 10132 field stays in document
+            state and selecting Unit Punishment Book again brings it back
+            untouched. `name`, `edipi`, `remarksLeft` and `remarksRight`
+            collide with nothing this form uses. */}
+        <p className="text-[11px] text-muted-foreground">
+          Generate Page 11 fills the official NAVMC 118(11), still editable in Adobe, signed by
+          hand or with Acrobat&apos;s own signing. Open these entries to sign moves the same two
+          columns into the app&apos;s Page 11, where a signature can be placed, and gives up the
+          official form to do it. Your Unit Punishment Book is kept either way, and selecting it
+          again in the sidebar brings it back.
+        </p>
 
         {error && (
           <p className="flex items-start gap-1 text-[11px] text-destructive">
