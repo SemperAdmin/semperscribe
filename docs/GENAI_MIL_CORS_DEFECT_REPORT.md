@@ -12,7 +12,8 @@
 
 `api.genai.mil` has two independent CORS defects. Either one alone blocks every
 browser-based client. Both are present. Measured on both the server and the
-client side, and replicated across two separate network paths.
+client side, replicated across two workstations, two network paths, and both
+published base URLs.
 
 | # | Defect | Evidence |
 |---|--------|----------|
@@ -167,6 +168,38 @@ policy, extension, or client-side short circuit would fail in near-zero
 time and would not scale with the path. The refusal is being served by the
 gateway.
 
+### 3.4 Both documented base URLs, second machine, 25 August 2026
+
+The documentation points at `https://genai.mil/stark/api` while the
+application calls `https://api.genai.mil`. Both were tested side by side
+from a DIFFERENT government workstation on the government network, with
+the same two controls.
+
+| ID | Request | Result | Elapsed |
+|----|---------|--------|---------|
+| C1 | Control, reachable host, `no-cors` | Resolved, opaque | 468 ms |
+| C2 | Control, unroutable host, `no-cors` | Rejected | 881 ms |
+| A1 | `no-cors` GET `https://api.genai.mil/` | Resolved, opaque | 877 ms |
+| A2 | `cors` GET `https://api.genai.mil/` | Rejected | 555 ms |
+| A3 | `cors` POST `https://api.genai.mil/v1/chat/completions` | Rejected | 555 ms |
+| B1 | `no-cors` GET `https://genai.mil/` | Resolved, opaque | 1045 ms |
+| B2 | `cors` GET `https://genai.mil/stark/api/` | Rejected | 436 ms |
+| B3 | `cors` GET `https://genai.mil/stark/api/v1/models` | Rejected | 435 ms |
+| B4 | `cors` POST `https://genai.mil/stark/api/v1/chat/completions` | Rejected | 443 ms |
+
+Note on the `cors` rows: a resolved promise at ANY status, including 401,
+403 or 404, would have been a pass. The browser exposes a response only
+when the server sent a usable `Access-Control-Allow-Origin`, so whether
+the path exists is a separate question and does not affect the result.
+Every one of the five `cors` rows was refused.
+
+Both hosts are reachable. NEITHER emits usable CORS headers. The
+application is not calling the wrong base URL, and pointing it at the
+documented base does not resolve the failure.
+
+This run also came from a second workstation, which removes any
+machine-specific explanation.
+
 Reading the rows:
 
 - T1 and T2 use only CORS-safelisted request headers, so no preflight is
@@ -196,6 +229,8 @@ Reading the rows:
 | Client-side code defect in the calling application | Dead | T3 and T4 are raw `fetch` calls in a blank HTML page with no framework |
 | VPN, split tunnelling, or a remote access concentrator | Dead | Section 3.3. Identical results wired directly to the local network |
 | A local policy or browser extension killing the request | Dead | T3 and T4 consume a full network round trip and their cost tracks path latency across both runs |
+| The application is calling the wrong base URL | Dead | Section 3.4. `genai.mil/stark/api` refuses the same way `api.genai.mil` does, on all five cors rows |
+| A fault specific to one workstation | Dead | Section 3.4 was run from a second government workstation with identical outcome classes |
 
 ---
 
