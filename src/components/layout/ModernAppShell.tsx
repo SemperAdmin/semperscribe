@@ -8,7 +8,7 @@ import { PreviewModal } from './PreviewModal';
 import { ParagraphData, SavedLetter, FormData } from '@/types';
 import { getBasePath } from '@/lib/path-utils';
 import { getExportFilename } from '@/lib/naval-format-utils';
-import { FEEDBACK_URL } from '@/lib/app-links';
+import { FEEDBACK_URL, PORTAL_URL } from '@/lib/app-links';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 interface ModernAppShellProps {
@@ -187,15 +187,23 @@ export function ModernAppShell({
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-3">
-            <div className="relative h-10 w-10 overflow-hidden rounded-full border-2 border-primary/50 shadow-sm bg-white/10">
+            {/* The seal is the way back to the Semper Admin portal. A linked
+                image takes its accessible name from the alt text (WCAG H30),
+                so alt names the destination, not the picture. */}
+            <a
+              href={PORTAL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative block h-10 w-10 overflow-hidden rounded-full border-2 border-primary/50 shadow-sm bg-white/10 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
               <img
                 src={logoSrc}
-                alt="USMC Seal"
+                alt="Semper Admin Portal (opens in a new tab)"
                 width={40}
                 height={40}
                 className="object-cover w-full h-full"
               />
-            </div>
+            </a>
             
             {/* Wordmark hidden on phones: the actions row needs the width,
                 and the seal + page hero carry the brand there. */}
