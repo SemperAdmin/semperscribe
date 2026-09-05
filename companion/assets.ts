@@ -29,6 +29,29 @@ export function companionPublicDir(): string {
 let registeredRoot: string | null = null;
 
 /**
+ * Every asset path the pipelines ask for is a constant in src/ (fonts,
+ * seals, form blanks, template pages) and never comes from a request.
+ * The check below keeps it so: a path which is absolute or which climbs
+ * out of the public directory is refused before any read.
+ */
+export function confine(relativePath: string): string {
+  // A leading slash means "relative to public/", the seam's own contract
+  // (src/lib/assets.ts strips it the same way), so it is dropped before
+  // the checks rather than treated as an absolute path.
+  const normalised = path.posix.normalize(relativePath.replace(/\\/g, '/').replace(/^\/+/, ''));
+  if (
+    /^[A-Za-z]:/.test(normalised) ||
+    normalised === '..' ||
+    normalised.startsWith('../') ||
+    normalised.includes('/../') ||
+    normalised.includes('\0')
+  ) {
+    throw new Error(`Asset path ${JSON.stringify(relativePath)} is outside the public directory`);
+  }
+  return normalised;
+}
+
+/**
  * Registers the disk loader and path resolver. Idempotent: repeated
  * calls with the same root do nothing, so every entry point calls it
  * without coordinating.
@@ -42,9 +65,9 @@ export function registerCompanionAssets(root: string = companionPublicDir()): st
         'to the public directory of a SemperScribe checkout.',
     );
   }
-  registerAssetPathResolver((relativePath) => path.join(root, relativePath));
+  registerAssetPathResolver((relativePath) => path.join(root, confine(relativePath)));
   registerAssetLoader(async (relativePath) => {
-    const bytes = await readFile(path.join(root, relativePath));
+    const bytes = await readFile(path.join(root, confine(relativePath)));
     return new Uint8Array(bytes);
   });
   registeredRoot = root;

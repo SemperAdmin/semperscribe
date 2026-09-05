@@ -29,10 +29,16 @@ export function outputDir(): string | null {
   return path.resolve(raw.trim());
 }
 
-/** True when `child` is the base itself or sits under it. */
+/**
+ * True when `child` is the base itself or sits under it. Decided through
+ * path.relative rather than a string prefix, so a base which is a prefix
+ * of a sibling name (`/out` against `/out2`) and platform case rules are
+ * handled by the path module, not by this code.
+ */
 function isInside(base: string, child: string): boolean {
   if (child === base) return true;
-  return child.startsWith(base.endsWith(path.sep) ? base : base + path.sep);
+  const relative = path.relative(base, child);
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
 function reject(message: string, details: Record<string, unknown> = {}): never {
