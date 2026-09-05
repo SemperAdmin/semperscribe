@@ -29,6 +29,20 @@ Scope: the two items the DonDocs comparison left open, plus the safety net both 
 
 Correction to the comparison audit: the "2.9x DonDocs" figure compared SemperScribe's total chunk bytes with DonDocs's total. On initial load SemperScribe ships 3.14 MB against DonDocs's 3.73 MB. The remaining 7.5 MB is lazy, and 3.85 MB of it is the seal module.
 
+## Phase 0 status, 2026-09-05: landed on the PR branch (v0.3.0)
+
+| Item | State | Evidence |
+|---|---|---|
+| 0.1 smoke test | done, 3 paths green locally | `tests/e2e/smoke.spec.ts`, `playwright.config.ts`, `scripts/serve-out.mjs`, `e2e` job in test.yml |
+| 0.2 lint ratchet | done, baseline 51 | `scripts/lint-ratchet.mjs`, `.lint-baseline.json`, step in test.yml |
+| 0.3 coverage floor | done | statements 45.48, branches 41.49, functions 36.04, lines 46.42 measured; thresholds one point under in `vitest.config.ts`; `coverage` job in test.yml |
+| 0.4 component tests | done, 40 tests in 5 files | `tests/components/list-sections.test.tsx`, `references-enclosures-sections.test.tsx`, `closing-block-section.test.tsx`, `navmc10132-rows.test.tsx`, `navmc10922-rows.test.tsx` |
+| 0.5 bundle report and budgets | done | `scripts/bundle-report.mjs`; deploy.yml enforces initial 3,460,000 B and total 11,720,000 B |
+
+First catch by the smoke test: the header seal requested `/logo.png` at the origin root on first paint, a live 404 on GitHub Pages, because the base path was applied in an effect after render. Fixed by inlining the base path at build time (`NEXT_PUBLIC_BASE_PATH` from next.config.ts). That also removed one set-state-in-effect warning, so the ratchet baseline is 51.
+
+Two things the local run cannot show. The `e2e` job has not yet run on GitHub's runner, and the coverage figure will read slightly higher there because the LibreOffice half of the parity test runs. Exit criterion "three consecutive green e2e runs on CI" is open until the PR's CI history shows it.
+
 ## Phase 0: safety net (one PR, blocks everything after it)
 
 ### 0.1 Browser smoke test on the built export

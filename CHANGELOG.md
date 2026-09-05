@@ -5,6 +5,34 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.3.0] - 2026-09-05
+
+Phase 0 of `docs/HARDENING_PLAN_2026-09.md`: the safety net every later
+refactor and bundle change runs behind.
+
+### Added
+
+- Browser smoke test on the built static export (`tests/e2e/smoke.spec.ts`,
+  Playwright). Loads the app with zero console errors and zero same-origin
+  4xx responses, types a basic letter and exports it as PDF and DOCX with
+  the subject verified in both files, and exports an AA Form through the
+  official NAVMC 10274 form path. Runs in CI after the build.
+- Lint ratchet (`scripts/lint-ratchet.mjs`, `.lint-baseline.json`). CI
+  fails when any rule's warning count rises above the committed baseline.
+- Coverage floor (`npm run test:coverage`) with thresholds in
+  `vitest.config.ts` set just below the measured baseline.
+- Bundle report (`scripts/bundle-report.mjs`) splitting initial-load from
+  lazy JavaScript. Deploy enforces both an initial-load and a total budget.
+- Forty component tests pinning the show/hide and row-collapse behaviour
+  of the nine sections Phase A.1 will refactor.
+
+### Fixed
+
+- The header seal requested `/logo.png` at the origin root on first paint
+  and only corrected the path in an effect, a live 404 on GitHub Pages.
+  The base path is now inlined at build time so the first request is
+  right. Caught by the new smoke test. One lint warning fewer.
+
 ## [0.2.0] - 2026-09-05
 
 First versioned release. Baseline established by the DonDocs comparison audit
