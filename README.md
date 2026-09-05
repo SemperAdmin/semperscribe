@@ -184,7 +184,7 @@ A professional-grade, local-first web application for creating, formatting, and 
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+ (the active LTS; Node 20 reached end of life in April 2026)
 - npm
 
 ### Installation

@@ -36,7 +36,7 @@ The following are explicit non-concerns for this PoC.
 - Findings against the live GitHub Pages deployment URL (the site is a static export with no backend).
 - Findings that require an attacker to first compromise the user's workstation, browser, or local file system.
 - Findings against samples in `examples/`, `public/templates/`, and `sample-directive.nldp` which contain only fictional data per the audit pass.
-- Two documented residual moderate findings in transitive postcss XSS via CSS stringification, accepted as low-attack-surface per `docs/COMPLIANCE_REMEDIATION_PLAN.md` Phase 3 P3-3.
+- Advisories the CI audit gate already blocks. Every test run executes `npm audit --omit=dev --audit-level=high` against the production tree, and Dependabot files weekly updates for the rest. The two moderate postcss findings recorded in `docs/COMPLIANCE_REMEDIATION_PLAN.md` Phase 3 P3-3 were cleared by the 0.2.0 lockfile refresh; as of 2026-09-05 `npm audit` reports zero advisories in both trees.
 
 ## In Scope
 

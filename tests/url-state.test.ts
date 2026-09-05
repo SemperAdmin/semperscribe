@@ -114,3 +114,32 @@ describe('getStateFromUrl', () => {
     expect(getStateFromUrl()).toBeNull();
   });
 });
+
+describe('share payload shape validation', () => {
+  const encode = (value: unknown) => encodeStateForUrl(value as unknown as ShareableState);
+
+  it('accepts the documented shape with unknown extra keys', () => {
+    const state = makeState({ formData: { ...makeState().formData, futureField: 'x' } as unknown as FormData });
+    expect(decodeStateFromUrl(encode(state))).toEqual(state);
+  });
+
+  it('rejects a payload whose formData is not an object', () => {
+    expect(decodeStateFromUrl(encode({ formData: 'nope', version: 2 }))).toBeNull();
+  });
+
+  it('rejects a payload whose list fields are not string arrays', () => {
+    expect(decodeStateFromUrl(encode(makeState({ references: 'ref' as unknown as string[] })))).toBeNull();
+    expect(decodeStateFromUrl(encode(makeState({ vias: [1, 2] as unknown as string[] })))).toBeNull();
+  });
+
+  it('rejects malformed paragraphs, routing, and comments', () => {
+    expect(decodeStateFromUrl(encode(makeState({ paragraphs: [{ id: 'a', level: 1, content: '' }] as unknown as ParagraphData[] })))).toBeNull();
+    expect(decodeStateFromUrl(encode(makeState({ routing: { note: 'no signer' } as unknown as ShareableState['routing'] })))).toBeNull();
+    expect(decodeStateFromUrl(encode(makeState({ comments: [{ id: 'c1', text: 'missing author' }] as unknown as ShareableState['comments'] })))).toBeNull();
+  });
+
+  it('rejects a payload which is not an object at all', () => {
+    expect(decodeStateFromUrl(encode([1, 2, 3]))).toBeNull();
+    expect(decodeStateFromUrl(encode('string'))).toBeNull();
+  });
+});
