@@ -1,15 +1,15 @@
 'use client';
 
 import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { useHydrated } from '@/hooks/useHydrated';
 import { Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  // The theme only exists in the browser; render nothing until hydrated
+  // so the static export and the first client paint agree.
+  const mounted = useHydrated();
 
   if (!mounted) return null;
 

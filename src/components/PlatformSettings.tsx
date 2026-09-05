@@ -7,6 +7,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { FolderDown, MonitorDown, RefreshCcw, XCircle } from 'lucide-react';
@@ -25,14 +27,17 @@ export function PlatformSettings() {
   const { toast } = useToast();
   const [status, setStatus] = useState<BackupStatus>({ state: isBackupSupported() ? 'off' : 'unsupported' });
   const [busy, setBusy] = useState(false);
-  const [installable, setInstallable] = useState(false);
-  const [standalone, setStandalone] = useState(false);
+  // Both read browser-only state (the parked install prompt, the
+  // display-mode media query): false on the server and while hydrating,
+  // derived on the first client render, and still settable by the
+  // install handler below.
+  const hydrated = useHydrated();
+  const [installable, setInstallable] = useSyncedState(hydrated, h => h && canPromptInstall());
+  const [standalone, setStandalone] = useSyncedState(hydrated, h => h && isStandalone());
 
   useEffect(() => {
     let cancelled = false;
     getBackupStatus().then((s) => { if (!cancelled) setStatus(s); });
-    setInstallable(canPromptInstall());
-    setStandalone(isStandalone());
     return () => { cancelled = true; };
   }, []);
 
