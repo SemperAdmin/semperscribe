@@ -22,8 +22,13 @@ Constraints on this result:
    `SOFFICE_PATH` environment variable (full binary path, checked
    first, errors loudly if set but wrong), then `/usr/bin/soffice`,
    `/usr/local/bin/soffice`, then `which soffice`. Absent all of
-   these, the test FAILS by design. It does not skip. CI installs
-   LibreOffice. Windows local runs: install LibreOffice, then
+   these, the behaviour depends on where the test runs. On CI
+   (`CI=true`), or when `SOFFICE_PATH` is set, the test FAILS by
+   design. Off CI it passes the PDF half, prints a warning naming the
+   DOCX half as not evaluated, and returns, so a contributor without
+   LibreOffice sees one honest skip rather than a red suite on first
+   clone (changed 2026-09-05). CI installs LibreOffice. Windows local
+   runs: install LibreOffice, then
    `$env:SOFFICE_PATH="C:\Program Files\LibreOffice\program\soffice.exe"`
    before `npm test`.
 2. LibreOffice pagination is a proxy for Microsoft Word pagination.
