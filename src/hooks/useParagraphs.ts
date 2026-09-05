@@ -18,6 +18,131 @@ function numberToLetter(num: number): string {
 }
 
 /**
+ * UI citation for a paragraph ("1.", "a", "(1)", "(a)", ...), or the
+ * four-digit directive form when requested. Pure: reads only its
+ * arguments, so callers need no hook dependency on it.
+ */
+export function getUiCitation(
+  paragraph: ParagraphData,
+  index: number,
+  allParagraphs: ParagraphData[],
+  options?: { fourDigitNumbering?: boolean; chapterNumber?: number }
+): string {
+  const { level } = paragraph;
+  const isFourDigit = options?.fourDigitNumbering;
+  const chapterNum = options?.chapterNumber || 1;
+
+  const getCitationPart = (targetLevel: number, parentIndex: number) => {
+    let listStartIndex = 0;
+    if (targetLevel > 1) {
+      for (let i = parentIndex - 1; i >= 0; i--) {
+        if (allParagraphs[i].level < targetLevel) {
+          listStartIndex = i + 1;
+          break;
+        }
+      }
+    }
+
+    let count = 0;
+    for (let i = listStartIndex; i <= parentIndex; i++) {
+      if (allParagraphs[i].level === targetLevel) {
+        count++;
+      }
+    }
+
+    // 4-digit numbering shifts level mapping per MCO 5215.1K para 34
+    if (isFourDigit) {
+      switch (targetLevel) {
+        case 1: return `${chapterNum}${String(count).padStart(3, '0')}.`;
+        case 2: return `${count}`;
+        case 3: return `${numberToLetter(count)}`;
+        case 4: return `(${count})`;
+        case 5: return `(${numberToLetter(count)})`;
+        case 6: return `${count}.`;
+        case 7: return `${numberToLetter(count)}.`;
+        case 8: return `(${count})`;
+        default: return '';
+      }
+    }
+
+    switch (targetLevel) {
+      case 1: return `${count}.`;
+      case 2: return `${numberToLetter(count)}`;
+      case 3: return `(${count})`;
+      case 4: return `(${numberToLetter(count)})`;
+      case 5: return `${count}.`;
+      case 6: return `${numberToLetter(count)}.`;
+      case 7: return `(${count})`;
+      case 8: return `(${numberToLetter(count)})`;
+      default: return '';
+    }
+  };
+
+  if (level === 1) return getCitationPart(1, index);
+  if (level === 2) {
+    let parentCitation = '';
+    for (let i = index - 1; i >= 0; i--) {
+      if (allParagraphs[i].level === 1) {
+        parentCitation = getCitationPart(1, i).replace('.', '');
+        break;
+      }
+    }
+    const sep = isFourDigit ? '.' : '';
+    return `${parentCitation}${sep}${getCitationPart(2, index)}`;
+  }
+
+  const citationPath: string[] = [];
+  let parentLevel = level - 1;
+  for (let i = index - 1; i >= 0; i--) {
+    const p = allParagraphs[i];
+    if (p.level === parentLevel) {
+      citationPath.unshift(getCitationPart(p.level, i).replace(/[.()]/g, ''));
+      parentLevel--;
+      if (parentLevel === 0) break;
+    }
+  }
+  citationPath.push(getCitationPart(level, index));
+  return citationPath.join('');
+}
+
+/**
+ * Numbering errors: any sub-paragraph without a sibling at its level.
+ * Pure, like getUiCitation.
+ */
+export function validateParagraphNumbering(allParagraphs: ParagraphData[]): string[] {
+  const errors: string[] = [];
+  const levelGroups: { [key: string]: number[] } = {};
+
+  allParagraphs.forEach((paragraph, index) => {
+    const { level } = paragraph;
+    let parentPath = '';
+    let currentLevel = level - 1;
+    for (let i = index - 1; i >= 0 && currentLevel > 0; i--) {
+      if (allParagraphs[i].level === currentLevel) {
+        const citation = getUiCitation(allParagraphs[i], i, allParagraphs);
+        parentPath = citation.replace(/[.()]/g, '') + parentPath;
+        currentLevel--;
+      }
+    }
+    const groupKey = `${parentPath}_level${level}`;
+    if (!levelGroups[groupKey]) levelGroups[groupKey] = [];
+    levelGroups[groupKey].push(index);
+  });
+
+  Object.entries(levelGroups).forEach(([, indices]) => {
+    if (indices.length === 1) {
+      const index = indices[0];
+      const paragraph = allParagraphs[index];
+      const citation = getUiCitation(paragraph, index, allParagraphs);
+      if (paragraph.level > 1) {
+        errors.push(`Paragraph ${citation} requires at least one sibling paragraph at the same level.`);
+      }
+    }
+  });
+  return errors;
+}
+
+/**
  * Legacy data migration: level 0 paragraphs become level 1. Returns the
  * same array when nothing needs changing, so identity is preserved.
  */
@@ -130,122 +255,6 @@ export function useParagraphs(initialParagraphs?: ParagraphData[]) {
       return newParagraphs;
     });
   }, []);
-
-  const getUiCitation = useCallback((
-    paragraph: ParagraphData,
-    index: number,
-    allParagraphs: ParagraphData[],
-    options?: { fourDigitNumbering?: boolean; chapterNumber?: number }
-  ): string => {
-    const { level } = paragraph;
-    const isFourDigit = options?.fourDigitNumbering;
-    const chapterNum = options?.chapterNumber || 1;
-
-    const getCitationPart = (targetLevel: number, parentIndex: number) => {
-      let listStartIndex = 0;
-      if (targetLevel > 1) {
-        for (let i = parentIndex - 1; i >= 0; i--) {
-          if (allParagraphs[i].level < targetLevel) {
-            listStartIndex = i + 1;
-            break;
-          }
-        }
-      }
-
-      let count = 0;
-      for (let i = listStartIndex; i <= parentIndex; i++) {
-        if (allParagraphs[i].level === targetLevel) {
-          count++;
-        }
-      }
-
-      // 4-digit numbering shifts level mapping per MCO 5215.1K para 34
-      if (isFourDigit) {
-        switch (targetLevel) {
-          case 1: return `${chapterNum}${String(count).padStart(3, '0')}.`;
-          case 2: return `${count}`;
-          case 3: return `${numberToLetter(count)}`;
-          case 4: return `(${count})`;
-          case 5: return `(${numberToLetter(count)})`;
-          case 6: return `${count}.`;
-          case 7: return `${numberToLetter(count)}.`;
-          case 8: return `(${count})`;
-          default: return '';
-        }
-      }
-
-      switch (targetLevel) {
-        case 1: return `${count}.`;
-        case 2: return `${numberToLetter(count)}`;
-        case 3: return `(${count})`;
-        case 4: return `(${numberToLetter(count)})`;
-        case 5: return `${count}.`;
-        case 6: return `${numberToLetter(count)}.`;
-        case 7: return `(${count})`;
-        case 8: return `(${numberToLetter(count)})`;
-        default: return '';
-      }
-    };
-
-    if (level === 1) return getCitationPart(1, index);
-    if (level === 2) {
-      let parentCitation = '';
-      for (let i = index - 1; i >= 0; i--) {
-        if (allParagraphs[i].level === 1) {
-          parentCitation = getCitationPart(1, i).replace('.', '');
-          break;
-        }
-      }
-      const sep = isFourDigit ? '.' : '';
-      return `${parentCitation}${sep}${getCitationPart(2, index)}`;
-    }
-
-    const citationPath: string[] = [];
-    let parentLevel = level - 1;
-    for (let i = index - 1; i >= 0; i--) {
-      const p = allParagraphs[i];
-      if (p.level === parentLevel) {
-        citationPath.unshift(getCitationPart(p.level, i).replace(/[.()]/g, ''));
-        parentLevel--;
-        if (parentLevel === 0) break;
-      }
-    }
-    citationPath.push(getCitationPart(level, index));
-    return citationPath.join('');
-  }, []);
-
-  const validateParagraphNumbering = useCallback((allParagraphs: ParagraphData[]): string[] => {
-    const errors: string[] = [];
-    const levelGroups: { [key: string]: number[] } = {};
-
-    allParagraphs.forEach((paragraph, index) => {
-      const { level } = paragraph;
-      let parentPath = '';
-      let currentLevel = level - 1;
-      for (let i = index - 1; i >= 0 && currentLevel > 0; i--) {
-        if (allParagraphs[i].level === currentLevel) {
-          const citation = getUiCitation(allParagraphs[i], i, allParagraphs);
-          parentPath = citation.replace(/[.()]/g, '') + parentPath;
-          currentLevel--;
-        }
-      }
-      const groupKey = `${parentPath}_level${level}`;
-      if (!levelGroups[groupKey]) levelGroups[groupKey] = [];
-      levelGroups[groupKey].push(index);
-    });
-
-    Object.entries(levelGroups).forEach(([, indices]) => {
-      if (indices.length === 1) {
-        const index = indices[0];
-        const paragraph = allParagraphs[index];
-        const citation = getUiCitation(paragraph, index, allParagraphs);
-        if (paragraph.level > 1) {
-          errors.push(`Paragraph ${citation} requires at least one sibling paragraph at the same level.`);
-        }
-      }
-    });
-    return errors;
-  }, [getUiCitation]);
 
   return {
     paragraphs,

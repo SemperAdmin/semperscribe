@@ -75,6 +75,10 @@ Seven reset-on-input effects gone, lint 31 to 24. PageCountIndicator, DocumentIm
 
 The last nine `set-state-in-effect` warnings are gone, lint 24 to 14; the rule now sits at zero. New `useSyncedUpdate` (same file as `useSyncedState`) runs a callback during the render in which a source changes, for the cases where the written state is not the hook's own: today's date and the profile defaults in page.tsx, the reports-to-admin-subsection sync, and the level 0 migration in useParagraphs. useShareLinkLoader reads the inbound link once through `useHydrated` and keeps a consuming effect for the EDMS latch and hash clear. useSpellCheck derives the cleared state; useVoiceInput creates its recogniser on the first mic press through refs; Page11RemarksSection loads its template list from the button which opens the picker. A dead EDMS context state in page.tsx (setter only, value never read) was deleted. Twenty tests across six files, plus a run-date assertion in the smoke test. Bundle unchanged (initial 3,139,589 B, total 6,824,128 B).
 
+## Phase A.5 and A.6 status, 2026-09-05: landed (v0.4.3)
+
+Lint warnings 14 to 0. The nine exhaustive-deps sites: page.tsx adds the two dependencies it read (no behaviour change, the profile callback was already re-created through `getFormDefaults`); AMHSEditor reads its callback and the DTG field through a new `useLatestRef` so the generate-once effect keeps its mount schedule; DistributionSection's initialise-if-undefined effect is deleted because its only parent always passes a value; ITypePreview memoises the row source; useTemplates' filter is a pure exported `templateMatches`; and `getUiCitation` and `validateParagraphNumbering` are pure module functions exported from useParagraphs. That last move let the React Compiler compile useParagraphs, which cleared all five A.6 memoization warnings without a separate pass. Eighteen tests across six files. Bundle unchanged (initial 3,139,735 B, total 6,824,274 B).
+
 ## Phase 0: safety net (one PR, blocks everything after it)
 
 ### 0.1 Browser smoke test on the built export

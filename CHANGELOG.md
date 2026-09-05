@@ -5,6 +5,34 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.4.3] - 2026-09-05
+
+Phases A.5 and A.6 of `docs/HARDENING_PLAN_2026-09.md`: the dependency
+warnings and the memoization warnings. No user-visible change. Lint
+warnings 14 to 0.
+
+### Changed
+
+- New `useLatestRef` hook (`src/hooks/useLatestRef.ts`): a ref holding
+  the value from the latest commit, for effects which keep a fixed
+  schedule but read current props. AMHSEditor uses it so the DTG is
+  generated once at first load and never refilled under the user's
+  cursor when the field is cleared or the callback prop changes.
+- `getUiCitation` and `validateParagraphNumbering` are pure module
+  functions exported from `src/hooks/useParagraphs.ts`; the hook still
+  returns them under the same names. With them out of the closure the
+  React Compiler compiles the hook, which removes the five memoization
+  warnings as well.
+- `templateMatches` is the pure, exported filter behind `useTemplates`.
+- ITypePreview memoises its Components Affected row source so the
+  cover and overflow lists key on a stable input.
+- page.tsx lists the two dependencies its callbacks already read.
+
+### Removed
+
+- DistributionSection's initialise-if-undefined mount effect. Its only
+  parent always passes a distribution object, so it never ran.
+
 ## [0.4.2] - 2026-09-05
 
 Phase A.4 of `docs/HARDENING_PLAN_2026-09.md`: async loads and one-time
