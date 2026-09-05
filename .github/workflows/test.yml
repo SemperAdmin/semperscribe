@@ -46,6 +46,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # BLOCKING. High and critical advisories in the PRODUCTION tree fail
+      # the run. devDependencies are excluded: they never ship. No
+      # allowlist - if an advisory has no fix, replace the dependency or
+      # discuss before adding an exception here.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
       # BLOCKING, and the reason this workflow exists in its current form.
       # `next build` typechecks, but only on main, and only at deploy time.
       # Catching it here is the difference between a bad five minutes and a
@@ -56,7 +63,7 @@ jobs:
       - name: Typecheck the tests
         run: npm run typecheck:tests
 
-      # Blocking on ERRORS only. The repo carries 54 warnings today, almost
+      # Blocking on ERRORS only. The repo carries 52 warnings today, almost
       # all react-hooks/set-state-in-effect, and eslint exits 0 on warnings.
       # Do not add --max-warnings 0 without clearing those first.
       - name: Lint
