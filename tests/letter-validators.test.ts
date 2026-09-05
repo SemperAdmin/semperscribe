@@ -12,11 +12,23 @@ import {
   indexToRefLetter,
   validateDirectiveTypography,
   validateDirectiveSchema, validateBulletinCancellation,
+  validateEndorsementContinuation,
+  runLetterValidators,
   validateRevisionSuffix } from '@/lib/letter-validators';
 import type { ParagraphData, FormData } from '@/types';
 
 const p = (id: number, level: number, content: string): ParagraphData => ({ id, level, content });
 const fd = (extra: Record<string, unknown> = {}): FormData => ({ documentType: 'basic', ...extra });
+
+/** The two references a FIRST endorsement adds after a basic letter listing (a) and (b). */
+const ENDORSEMENT_REFS = ['MCO 1500.1 of 3 Mar 25', 'MCO 1600.2 of 4 Apr 25'];
+const ENDORSEMENT_BODY = p(1, 1, 'Forwarded per ref (c) and ref (d).');
+
+/** (a) through (z), then (aa). */
+const LETTERS_27 = [
+  ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(97 + i)),
+  'aa',
+];
 
 describe('reference letters past (z)', () => {
   // audit line 147: >26 references -> (aa)+
@@ -67,6 +79,142 @@ describe('validateReferences (M-5216.5; audit line 24)', () => {
     const w = issues.find((i) => i.id.startsWith('ref-notal-format'));
     expect(w?.severity).toBe('warn');
     expect(w?.citation).toContain('plan-only');
+  });
+
+  it('letters the list from a starting letter, so (c) and (d) pass', () => {
+    const issues = validateReferences(ENDORSEMENT_REFS, [ENDORSEMENT_BODY], 'c');
+    expect(issues).toEqual([]);
+  });
+
+  it('still reports a real gap when the list starts at (c)', () => {
+    const issues = validateReferences(
+      ENDORSEMENT_REFS,
+      [p(1, 1, 'Forwarded per ref (c).')],
+      'c',
+    );
+    expect(issues.map((i) => i.id)).toEqual(['ref-not-cited-d']);
+  });
+
+  it('letters past (z) from the starting letter as well', () => {
+    // 27 listed references starting at (a) run to (aa), never to "{".
+    const refs = Array.from({ length: 27 }, (_, i) => `MCO ${i + 1}`);
+    const citation = LETTERS_27.map((l) => `ref (${l})`).join(', ');
+    expect(validateReferences(refs, [p(1, 1, citation)])).toEqual([]);
+    const short = validateReferences(refs, [p(1, 1, 'Per ref (a).')]);
+    expect(short.map((i) => i.id)).toContain('ref-not-cited-z');
+    expect(short.map((i) => i.id)).toContain('ref-not-cited-aa');
+  });
+});
+
+/**
+ * Endorsement continuation, M-5216.5 9-2.3 and 9-2.4.
+ *
+ * Before D.3 the correct FIRST endorsement below drew five fails from
+ * validateReferences, which always lettered the list from (a):
+ * ref-not-cited-a, ref-not-cited-b, ref-cited-not-listed-c,
+ * ref-cited-not-listed-d and ref-citation-order.
+ */
+describe('endorsement continuation (M-5216.5 9-2.3, 9-2.4)', () => {
+  const ENDORSEMENT = fd({
+    documentType: 'endorsement',
+    endorsementLevel: 'FIRST',
+    basicLetterReference: '1500 G-1 of 3 Mar 25',
+    startingReferenceLevel: 'c',
+    startingEnclosureNumber: '3',
+  });
+
+  it('a correct FIRST endorsement starting at (c) reports no reference issue', () => {
+    const ids = runLetterValidators(ENDORSEMENT, [], ENDORSEMENT_REFS, [ENDORSEMENT_BODY])
+      .map((i) => i.id)
+      .filter((id) => id.startsWith('ref-'));
+    expect(ids).toEqual([]);
+  });
+
+  it('the five pre-D.3 failures are exactly what lettering from (a) produces', () => {
+    const ids = validateReferences(ENDORSEMENT_REFS, [ENDORSEMENT_BODY]).map((i) => i.id);
+    expect(ids).toEqual([
+      'ref-not-cited-a',
+      'ref-not-cited-b',
+      'ref-cited-not-listed-c',
+      'ref-cited-not-listed-d',
+      'ref-citation-order',
+    ]);
+  });
+
+  it('only an endorsement continues the sequence, so a basic letter reads from (a)', () => {
+    const stale = fd({ documentType: 'basic', startingReferenceLevel: 'c' });
+    const ids = runLetterValidators(stale, [], ENDORSEMENT_REFS, [ENDORSEMENT_BODY])
+      .map((i) => i.id)
+      .filter((id) => id.startsWith('ref-'));
+    expect(ids).toContain('ref-not-cited-a');
+    expect(ids).toContain('ref-cited-not-listed-c');
+  });
+
+  it('warns when an endorsement with enclosures still starts them at 1', () => {
+    const issues = validateEndorsementContinuation(
+      fd({ documentType: 'endorsement', startingReferenceLevel: 'c', startingEnclosureNumber: '1' }),
+      ENDORSEMENT_REFS,
+      ['Roster of 4 Apr 25'],
+    );
+    const warn = issues.find((i) => i.id === 'endorsement-enclosure-continuation');
+    expect(warn?.severity).toBe('warn');
+    expect(warn?.citation).toBe('M-5216.5 9-2.4');
+    expect(warn?.detail).toContain('continuing the sequence of numbers');
+  });
+
+  it('an empty starting enclosure number warns the same way', () => {
+    const issues = validateEndorsementContinuation(
+      fd({ documentType: 'endorsement', startingEnclosureNumber: '' }),
+      [],
+      ['Roster of 4 Apr 25'],
+    );
+    expect(issues.map((i) => i.id)).toEqual(['endorsement-enclosure-continuation']);
+  });
+
+  it('warns when an endorsement with references still starts them at (a)', () => {
+    const issues = validateEndorsementContinuation(
+      fd({ documentType: 'endorsement', startingReferenceLevel: 'a', startingEnclosureNumber: '4' }),
+      ENDORSEMENT_REFS,
+      [],
+    );
+    const warn = issues.find((i) => i.id === 'endorsement-reference-continuation');
+    expect(warn?.severity).toBe('warn');
+    expect(warn?.citation).toBe('M-5216.5 9-2.3');
+    expect(warn?.detail).toContain('continuing the sequence of letters');
+  });
+
+  it('never fails, because a basic letter with no references starts an endorsement at (a)', () => {
+    const issues = validateEndorsementContinuation(
+      fd({ documentType: 'endorsement' }),
+      ENDORSEMENT_REFS,
+      ['Roster of 4 Apr 25'],
+    );
+    expect(issues).toHaveLength(2);
+    expect(issues.every((i) => i.severity === 'warn')).toBe(true);
+  });
+
+  it('a set starting letter and number silence both warns', () => {
+    expect(validateEndorsementContinuation(ENDORSEMENT, ENDORSEMENT_REFS, ['Roster'])).toEqual([]);
+  });
+
+  it('no other document type carries the rule', () => {
+    const basic = fd({ documentType: 'basic', startingEnclosureNumber: '1' });
+    expect(validateEndorsementContinuation(basic, ENDORSEMENT_REFS, ['Roster'])).toEqual([]);
+  });
+
+  it('runLetterValidators reads the enclosures from its options', () => {
+    const under = fd({
+      documentType: 'endorsement',
+      startingReferenceLevel: 'c',
+      startingEnclosureNumber: '1',
+    });
+    const withEncls = runLetterValidators(under, [], ENDORSEMENT_REFS, [ENDORSEMENT_BODY], {
+      enclosures: ['Roster of 4 Apr 25'],
+    }).map((i) => i.id);
+    expect(withEncls).toContain('endorsement-enclosure-continuation');
+    const without = runLetterValidators(under, [], ENDORSEMENT_REFS, [ENDORSEMENT_BODY])
+      .map((i) => i.id);
+    expect(without).not.toContain('endorsement-enclosure-continuation');
   });
 });
 

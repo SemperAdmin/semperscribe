@@ -38,6 +38,7 @@ import {
   getCopyToSpacing, 
   getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle, resolveDistributionStatement } from './naval-format-utils';
 import { createFormattedParagraph } from "./paragraph-formatter";
+import { refLetterAt, startingRefLetterFor, startingEnclosureNumberFor } from "./reference-letters";
 import { generateCitation } from "./citation";
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from "./indent-engine";
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from "./font-policy";
@@ -1022,10 +1023,18 @@ export async function generateDocxBlob(
   // the exclusion below mirrors the preview's gate exactly.
   const civilianNoRefs = isCivilianStyle && !isDLAType;
   if (refs.length > 0 && !isStaffingPaper && !civilianNoRefs) {
-    const startCharCode = (formData.startingReferenceLevel || 'a').charCodeAt(0);
-    
+    // Only an endorsement continues the basic letter's reference
+    // lettering (M-5216.5 9-2.3), which is the scoping rule the preview
+    // applies. The DOCX used to apply a saved startingReferenceLevel to
+    // every document type, so a stale "c" on a basic letter lettered
+    // Word (c) and (d) against a preview reading (a) and (b).
+    const startRefLetter = startingRefLetterFor(
+      formData.documentType,
+      formData.startingReferenceLevel,
+    );
+
     refs.forEach((ref, index) => {
-      const letter = String.fromCharCode(startCharCode + index);
+      const letter = refLetterAt(startRefLetter, index);
       const refLabel = getRefSpacing(letter, index, formData.bodyFont);
       
       let refIndent;
@@ -1092,7 +1101,11 @@ export async function generateDocxBlob(
         enclParagraphs.push(createEmptyLine(font));
     } else {
         // Standard Naval Enclosures
-        const startNum = parseInt(formData.startingEnclosureNumber || '1', 10);
+        // Enclosure numbering is scoped the same way (9-2.4).
+        const startNum = startingEnclosureNumberFor(
+          formData.documentType,
+          formData.startingEnclosureNumber,
+        );
         
         encls.forEach((encl, index) => {
             const num = startNum + index;

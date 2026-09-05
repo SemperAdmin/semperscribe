@@ -19,7 +19,7 @@
 import { PDFDocument, PDFName, PDFDict, PDFArray, PDFString, PDFHexString } from 'pdf-lib';
 import { FormData, ParagraphData } from '@/types';
 import { generateCitation } from '@/lib/citation';
-import { indexToRefLetter } from '@/lib/letter-validators';
+import { refLetterAt } from '@/lib/reference-letters';
 import { resolvePublicPath } from '@/lib/path-utils';
 import { loadAssetBytes } from '@/lib/assets';
 // NAVMC 10922 needs a POSITIONAL emitter - 77 of its 102 datasets
@@ -66,9 +66,12 @@ export function buildNavmc10274Xml(slices: FormSlices): string {
     ? (viaList[0] ?? '')
     : viaList.map((v, i) => `(${i + 1}) ${v}`).join('\n');
 
-  const refStart = (formData.startingReferenceLevel || 'a').charCodeAt(0) - 96;
+  // Same letter walk as the preview, the Word export and the validator
+  // (src/lib/reference-letters.ts), so a starting letter past (z) reads
+  // as "aa" here too rather than as its first character.
+  const refStart = formData.startingReferenceLevel || 'a';
   const refText = references.filter(r => r.trim())
-    .map((r, i) => `(${indexToRefLetter(refStart + i)}) ${r}`).join('\n');
+    .map((r, i) => `(${refLetterAt(refStart, i)}) ${r}`).join('\n');
 
   const enclStart = parseInt(formData.startingEnclosureNumber || '1', 10);
   const enclText = enclosures.filter(e => e.trim())

@@ -5,6 +5,50 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.5.3] - 2026-09-05
+
+Phase D.3 of the 2026-09-05 UX and policy plan: endorsement
+correctness. SECNAV M-5216.5 9-2.3 has an endorser "assign a letter to all
+references you add by continuing the sequence of letters from the basic
+letter and previous endorsements", and 9-2.4 says the same of enclosure
+numbers. Both emitters honoured the continuation. The validator did
+not, and the two emitters disagreed on which documents it applies to.
+
+### Fixed
+
+- A correct FIRST endorsement whose references continue the basic
+  letter at (c) and (d) reports nothing. `validateReferences` takes the
+  starting letter and letters the list from it, so the cited-not-listed,
+  listed-not-cited and first-citation-order rules read the list the
+  drafter sees. Before this the same endorsement drew five failures in
+  the compliance dialog: `ref-not-cited-a`, `ref-not-cited-b`,
+  `ref-cited-not-listed-c`, `ref-cited-not-listed-d` and
+  `ref-citation-order`. Five wrong failures on a right document teach a
+  drafter to close the dialog unread.
+- The Word export applies the starting reference letter and the
+  starting enclosure number only to an endorsement, which is the rule
+  the preview already applied. A stale starting letter of "c" on a
+  basic letter, as a saved draft or a shared link carries, lettered
+  Word (c) and (d) against a preview reading (a) and (b).
+- The 27th reference letters as (aa) in the preview, in the Word export
+  and in the validator. The emitters walked character codes from the
+  starting letter and printed "{" past (z), where the validator and the
+  package assembler read "aa". The walk now lives in one module,
+  `src/lib/reference-letters.ts`, and all three call it. The preview's
+  reference-letter column widens by one character for a two-letter
+  reference, which react-pdf used to wrap to "(-" and "aa)".
+
+### Added
+
+- A warning when an endorsement carries enclosures and still starts
+  their numbering at 1, citing 9-2.4, and the matching warning when an
+  endorsement lists references and still starts their lettering at (a),
+  citing 9-2.3. Both stay at warn severity rather than fail: a basic
+  letter which listed no references leaves its first endorsement
+  starting at (a) correctly, and the same holds for enclosure 1.
+  `runLetterValidators` reads the enclosure lines from its options
+  argument, and the editor and the proofread panel both supply them.
+
 ## [0.5.2] - 2026-09-05
 
 Phase D.2 of `docs/UX_POLICY_PLAN_2026-09.md`: the editor is usable at

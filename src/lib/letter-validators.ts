@@ -20,6 +20,12 @@ import {
   validateCivilianReferences,
   validateRetiredFouo,
 } from '@/lib/schema-validators';
+import { refLetterAt, startingRefLetterFor } from '@/lib/reference-letters';
+
+// One source for reference lettering across the validator and both
+// emitters (src/lib/reference-letters.ts). Re-exported here so the
+// existing importers of indexToRefLetter keep their path.
+export { indexToRefLetter } from '@/lib/reference-letters';
 
 export type ValidatorSeverity = 'block' | 'fail' | 'warn';
 
@@ -31,25 +37,21 @@ export interface ValidationIssue {
   detail: string;
 }
 
-/** Excel-style letters: 1 -> a, 26 -> z, 27 -> aa (audit line 147). */
-export function indexToRefLetter(num: number): string {
-  let result = '';
-  while (num > 0) {
-    const remainder = (num - 1) % 26;
-    result = String.fromCharCode(97 + remainder) + result;
-    num = Math.floor((num - 1) / 26);
-  }
-  return result;
-}
-
 /**
  * Reference rules (audit line 24): every listed reference must be
- * cited in the text; references are listed in order of FIRST text
- * citation; citations must not exceed the list.
+ * cited in the text, references are listed in order of FIRST text
+ * citation, and citations must not exceed the list.
+ *
+ * startLetter is the letter the first listed reference carries. It is
+ * "a" for every document which starts its own sequence and the
+ * continuation letter for an endorsement (M-5216.5 9-2.3), so an
+ * endorsement whose list runs (c) and (d) is read against those two
+ * letters rather than against (a) and (b).
  */
 export function validateReferences(
   references: string[],
   paragraphs: ParagraphData[],
+  startLetter: string = 'a',
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const refs = references.filter((r) => r.trim());
@@ -74,7 +76,7 @@ export function validateReferences(
   }
 
   const citedSet = new Set(cited);
-  const listedLetters = refs.map((_, i) => indexToRefLetter(i + 1));
+  const listedLetters = refs.map((_, i) => refLetterAt(startLetter, i));
 
   // Every listed ref cited in text.
   listedLetters.forEach((letter, i) => {
@@ -97,7 +99,7 @@ export function validateReferences(
         severity: 'fail',
         rule: 'Cited references must appear in the reference list',
         citation: 'M-5216.5; audit line 24',
-        detail: `Text cites ref (${letter}) but only ${refs.length} reference(s) are listed.`,
+        detail: `Text cites ref (${letter}) but the reference list runs (${listedLetters[0]}) to (${listedLetters[listedLetters.length - 1]}).`,
       });
     }
   }
@@ -125,11 +127,11 @@ export function validateReferences(
   refs.forEach((r, i) => {
     if (/\bNOTAL\b/.test(r) && !/\(NOTAL\)/.test(r)) {
       issues.push({
-        id: `ref-notal-format-${indexToRefLetter(i + 1)}`,
+        id: `ref-notal-format-${refLetterAt(startLetter, i)}`,
         severity: 'warn',
         rule: 'NOTAL annotation is parenthesized: "(NOTAL)"',
         citation: 'CORE_CONCEPTS_UPDATE_PLAN.md Phase 2 item 2 (plan-only; not located in audit text)',
-        detail: `Reference (${indexToRefLetter(i + 1)}) contains NOTAL without parentheses.`,
+        detail: `Reference (${refLetterAt(startLetter, i)}) contains NOTAL without parentheses.`,
       });
     }
   });
@@ -783,6 +785,54 @@ export function secnavPageCapIssue(
   };
 }
 
+/**
+ * Endorsement continuation (M-5216.5 9-2.3 and 9-2.4). An endorsement
+ * letters its added references and numbers its added enclosures by
+ * "continuing the sequence" from the basic letter and previous
+ * endorsements, so a second document in a package which still starts
+ * at (a) and 1 repeats letters and numbers already in use.
+ *
+ * Both issues are warns rather than fails. A basic letter which listed
+ * no references leaves its first endorsement legitimately starting at
+ * (a), and the same holds for enclosure 1, so the starting values are
+ * never wrong on their face. The package assembler sets them from the
+ * running totals when the endorsement is filed in a package.
+ */
+export function validateEndorsementContinuation(
+  formData: FormData,
+  references: string[],
+  enclosures: readonly string[] = [],
+): ValidationIssue[] {
+  if (formData.documentType !== 'endorsement') return [];
+  const issues: ValidationIssue[] = [];
+
+  const refCount = references.filter((r) => r.trim()).length;
+  const startLetter = String(formData.startingReferenceLevel ?? '').trim();
+  if (refCount > 0 && (startLetter === '' || startLetter.toLowerCase() === 'a')) {
+    issues.push({
+      id: 'endorsement-reference-continuation',
+      severity: 'warn',
+      rule: 'Endorsement references continue the basic letter lettering',
+      citation: 'M-5216.5 9-2.3',
+      detail: `This endorsement adds ${refCount} reference(s) starting at (a). Paragraph 9-2.3 assigns added references a letter by "continuing the sequence of letters from the basic letter and previous endorsements". Set the starting reference letter to the one after the last reference already in use, unless nothing before this endorsement listed a reference.`,
+    });
+  }
+
+  const enclCount = enclosures.filter((e) => e.trim()).length;
+  const startNumber = String(formData.startingEnclosureNumber ?? '').trim();
+  if (enclCount > 0 && (startNumber === '' || startNumber === '1')) {
+    issues.push({
+      id: 'endorsement-enclosure-continuation',
+      severity: 'warn',
+      rule: 'Endorsement enclosures continue the basic letter numbering',
+      citation: 'M-5216.5 9-2.4',
+      detail: `This endorsement adds ${enclCount} enclosure(s) starting at 1. Paragraph 9-2.4 assigns added enclosures a number by "continuing the sequence of numbers from the basic letter and previous endorsements". Set the starting enclosure number to the one after the last enclosure already in use, unless nothing before this endorsement carried an enclosure.`,
+    });
+  }
+
+  return issues;
+}
+
 export interface LetterValidatorOptions {
   /**
    * The military dictionary, when the caller has loaded it. Optional:
@@ -790,6 +840,12 @@ export interface LetterValidatorOptions {
    * table is loaded on demand (B.5) so the validators never import it.
    */
   dictionary?: readonly DictionaryEntry[];
+  /**
+   * The enclosure lines, when the caller holds them. Only the
+   * endorsement continuation rule (9-2.4) reads them, so a caller with
+   * no enclosures in scope leaves the rule inert rather than wrong.
+   */
+  enclosures?: readonly string[];
 }
 
 export function runLetterValidators(
@@ -799,8 +855,17 @@ export function runLetterValidators(
   paragraphs: ParagraphData[],
   options: LetterValidatorOptions = {},
 ): ValidationIssue[] {
+  // Only an endorsement continues another document's reference
+  // sequence (9-2.3), which is the scoping rule the PDF already
+  // applies. Every other type reads against (a) whatever a saved draft
+  // carries in the field.
+  const startRefLetter = startingRefLetterFor(
+    formData.documentType,
+    formData.startingReferenceLevel,
+  );
   return [
-    ...validateReferences(references, paragraphs),
+    ...validateReferences(references, paragraphs, startRefLetter),
+    ...validateEndorsementContinuation(formData, references, options.enclosures),
     ...validateParagraphStructure(paragraphs),
     ...validateWindowEnvelope(formData, vias),
     ...validateActionAddressees(formData),

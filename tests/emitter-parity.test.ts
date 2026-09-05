@@ -25,6 +25,10 @@ import { generateBasePDFBlob } from '@/lib/pdf-generator';
 import { extractPdfTextLayout } from './golden/helpers';
 import { runLetterValidators } from '@/lib/letter-validators';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
+import { indexToRefLetter } from '@/lib/reference-letters';
+
+/** (a) through the nth letter, using the one shared walk. */
+const indexRange = (n: number) => Array.from({ length: n }, (_, i) => indexToRefLetter(i + 1));
 
 const PARAGRAPHS = [{ id: '1', level: 1, content: 'Body text alpha.', title: '' }] as any;
 
@@ -66,6 +70,22 @@ async function pdfText(formData: any, paragraphs: any = PARAGRAPHS): Promise<str
   const blob = await generateBasePDFBlob(formData, [], [], [], [], paragraphs, []);
   const layout = await extractPdfTextLayout(blob);
   return layout.map((i) => i.text).join('\n');
+}
+
+/** The same two, with a reference and enclosure list the emitters letter and number. */
+async function docxListText(formData: any, references: string[], enclosures: string[] = []): Promise<string> {
+  const blob = await generateDocxBlob(formData, [], references, enclosures, [], PARAGRAPHS, []);
+  const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+  return (await zip.file('word/document.xml')!.async('string')).replace(/<[^>]+>/g, '');
+}
+
+async function pdfListText(formData: any, references: string[], enclosures: string[] = []): Promise<string> {
+  const blob = await generateBasePDFBlob(formData, [], references, enclosures, [], PARAGRAPHS, []);
+  const layout = await extractPdfTextLayout(blob);
+  // A reference line reaches the layout as separate runs for "(", the
+  // letter and ")", so the runs are joined without a separator and the
+  // parenthesized letter reads as one token.
+  return layout.map((i) => i.text).join('');
 }
 
 describe('empty date, From and To are never fabricated', () => {
@@ -585,5 +605,103 @@ describe('Courier headings hang to their own 7-character column', () => {
       expect(wrapped, `${label} must wrap for this test to mean anything`).toBeDefined();
       expect(wrapped!.x - margin, `${label} wrap column`).toBeCloseTo(COURIER_COLUMN, 1);
     }
+  });
+});
+
+/**
+ * Reference lettering and enclosure numbering, M-5216.5 9-2.3 and
+ * 9-2.4. Two divergences of the same class, both measured before D.3:
+ *
+ *   5. The DOCX applied startingReferenceLevel and
+ *      startingEnclosureNumber to every document type while the PDF
+ *      applied them only to an endorsement, so a stale "c" on a basic
+ *      letter (a saved draft, a shared link) lettered Word (c) and (d)
+ *      against a preview reading (a) and (b).
+ *   6. Both emitters walked character codes from the starting letter,
+ *      so the 27th reference printed "{" where the validator and the
+ *      package assembler read "aa".
+ *
+ * Only an endorsement continues another document's sequences, and the
+ * walk itself lives in src/lib/reference-letters.ts.
+ */
+describe('reference letters and enclosure numbers are scoped and shared', () => {
+  const REFS = ['MCO 1500.1 of 3 Mar 25', 'MCO 1600.2 of 4 Apr 25'];
+  const ENCLS = ['Roster of 4 Apr 25'];
+  const CONTINUED = { startingReferenceLevel: 'c', startingEnclosureNumber: '3' };
+
+  const STALE_BASIC = {
+    ...BASE,
+    documentType: 'basic',
+    from: 'Commanding Officer, Unit',
+    to: 'Commandant of the Marine Corps',
+    ...CONTINUED,
+  };
+
+  const ENDORSEMENT = {
+    ...STALE_BASIC,
+    documentType: 'endorsement',
+    endorsementLevel: 'FIRST',
+    basicLetterReference: '1500 G-1 of 3 Mar 25',
+  };
+
+  it('a basic letter carrying a stale starting letter renders (a) and (b) in the DOCX', async () => {
+    const text = await docxListText(STALE_BASIC, REFS, ENCLS);
+    expect(text).toContain('(a)');
+    expect(text).toContain('(b)');
+    expect(text).not.toContain('(c)');
+    expect(text).toContain('(1)');
+    expect(text).not.toContain('(3)');
+  });
+
+  it('and the same (a) and (b) in the PDF', async () => {
+    const text = await pdfListText(STALE_BASIC, REFS, ENCLS);
+    expect(text).toContain('(a)');
+    expect(text).toContain('(b)');
+    expect(text).not.toContain('(c)');
+    expect(text).toContain('(1)');
+    expect(text).not.toContain('(3)');
+  });
+
+  it('an endorsement renders (c) and (d) in the DOCX', async () => {
+    const text = await docxListText(ENDORSEMENT, REFS, ENCLS);
+    expect(text).toContain('(c)');
+    expect(text).toContain('(d)');
+    expect(text).not.toContain('(a)');
+    expect(text).toContain('(3)');
+  });
+
+  it('and the same (c) and (d) in the PDF', async () => {
+    const text = await pdfListText(ENDORSEMENT, REFS, ENCLS);
+    expect(text).toContain('(c)');
+    expect(text).toContain('(d)');
+    expect(text).not.toContain('(a)');
+    expect(text).toContain('(3)');
+  });
+
+  const MANY = Array.from({ length: 27 }, (_, i) => `MCO ${1500 + i}.1 of 3 Mar 25`);
+
+  it('the 27th reference letters as (aa) in the DOCX, never as "{"', async () => {
+    const text = await docxListText({ ...STALE_BASIC, ...{ startingReferenceLevel: 'a' } }, MANY);
+    expect(text).toContain('(z)');
+    expect(text).toContain('(aa)');
+    expect(text).not.toContain('({)');
+  });
+
+  it('the 27th reference letters as (aa) in the PDF, never as "{"', async () => {
+    const text = await pdfListText({ ...STALE_BASIC, ...{ startingReferenceLevel: 'a' } }, MANY);
+    expect(text).toContain('(z)');
+    expect(text).toContain('(aa)');
+    expect(text).not.toContain('({)');
+  });
+
+  it('and the validator letters the same 27 the same way', () => {
+    const cited = indexRange(27).map((l) => `ref (${l})`).join(', ');
+    const issues = runLetterValidators(
+      { ...STALE_BASIC, startingReferenceLevel: 'a' } as any,
+      [],
+      MANY,
+      [{ id: '1', level: 1, content: cited, title: '' }] as any,
+    );
+    expect(issues.filter((i) => i.id.startsWith('ref-'))).toEqual([]);
   });
 });
