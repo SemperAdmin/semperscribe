@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,13 +21,6 @@ export function DistributionSection({
   onUpdateDistribution
 }: DistributionSectionProps) {
   const [showDistribution, setShowDistribution] = useState(distribution?.type !== 'none' && distribution?.type !== undefined);
-
-  useEffect(() => {
-    // Initialize if undefined
-    if (!distribution) {
-      onUpdateDistribution({ type: 'none' });
-    }
-  }, []);
 
   const handleToggleDistribution = (enabled: boolean) => {
     setShowDistribution(enabled);

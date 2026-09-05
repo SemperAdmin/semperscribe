@@ -395,7 +395,7 @@ function NavalLetterGeneratorInner() {
       setCurrentUnitName(profile.manualUnitName.trim().toUpperCase());
     }
     setFormKey(prev => prev + 1);
-  }, [getFormDefaults, profile.unitRuc]);
+  }, [getFormDefaults, profile.unitRuc, profile.manualUnitName]);
 
   // Apply user profile defaults once the profile has loaded. Keyed on
   // the loaded flag only: re-application on later profile edits happens
@@ -425,7 +425,7 @@ function NavalLetterGeneratorInner() {
         setParagraphs(prev => prev.filter(p => p.title !== 'Cancellation Contingency'));
       }
     }
-  }, [formData.documentType, formData.cancellationType, paragraphs]);
+  }, [formData.documentType, formData.cancellationType, paragraphs, setParagraphs]);
 
   // Sync Reports to Admin Subsections. Re-derived when the reports list
   // or the document type changes identity, same triggers as the effect
