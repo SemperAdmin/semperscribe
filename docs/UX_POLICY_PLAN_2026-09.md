@@ -95,6 +95,7 @@ Size: 8 files. Risk: medium.
 - Models of address from Appendices A and B behind the recipient fields.
 - `.nldp` enclosure portability and in-PDF enclosure links.
 - Personal address book (R9), scoped small, as a validation experiment.
+- zod: held at 4.4.3 since 0.5.7 because 4.5.x adds 83 KB to the initial load (`docs/audits/2026-09-05/bundle-attribution.md`). Lift it with a `zod/mini` migration or a slimmer release.
 
 ## Not in this plan
 
