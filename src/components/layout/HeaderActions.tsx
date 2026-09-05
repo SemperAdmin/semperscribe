@@ -410,10 +410,10 @@ export function HeaderActions({
       {/* P3.2: undo/redo */}
       {onUndo && onRedo && (
         <div className="flex items-center">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 max-sm:min-h-11 max-sm:min-w-11 text-muted-foreground hover:text-foreground" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
             <Undo2 className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 max-sm:min-h-11 max-sm:min-w-11 text-muted-foreground hover:text-foreground" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">
             <Redo2 className="w-4 h-4" />
           </Button>
         </div>
@@ -669,7 +669,7 @@ export function HeaderActions({
         <Button
           variant="ghost"
           size="icon"
-          className={buttonClass("h-8 w-8 hidden md:flex xl:hidden")}
+          className={buttonClass("h-8 w-8 max-sm:min-h-11 max-sm:min-w-11 hidden md:flex xl:hidden")}
           onClick={onOpenPreviewModal}
           title="Preview"
           aria-label="Open preview"
@@ -682,7 +682,7 @@ export function HeaderActions({
           variant="ghost"
           size="icon"
           className={cn(
-            "h-8 w-8 hidden xl:flex",
+            "h-8 w-8 max-sm:min-h-11 max-sm:min-w-11 hidden xl:flex",
             showPreview
               ? "text-primary bg-primary/10 hover:bg-primary/15"
               : buttonClass("")
@@ -700,7 +700,7 @@ export function HeaderActions({
       <Button
         variant="ghost"
         size="icon"
-        className={buttonClass("h-8 w-8 hidden md:flex")}
+        className={buttonClass("h-8 w-8 max-sm:min-h-11 max-sm:min-w-11 hidden md:flex")}
         onClick={() => openGunnyBot(true)}
         title="GunnyBot assistant"
         aria-label="Open GunnyBot assistant"
@@ -716,7 +716,7 @@ export function HeaderActions({
             <Button
               variant="ghost"
               size="icon"
-              className={buttonClass("h-8 w-8 hidden md:flex")}
+              className={buttonClass("h-8 w-8 max-sm:min-h-11 max-sm:min-w-11 hidden md:flex")}
               title="Settings"
               aria-label="Settings and feedback"
             >
@@ -748,7 +748,7 @@ export function HeaderActions({
           <Button
             variant="ghost"
             size="icon"
-            className={buttonClass("h-8 w-8 md:hidden shrink-0")}
+            className={buttonClass("h-8 w-8 max-sm:min-h-11 max-sm:min-w-11 md:hidden shrink-0")}
             title="More"
             aria-label="More options"
           >

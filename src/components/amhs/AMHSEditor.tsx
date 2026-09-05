@@ -67,7 +67,7 @@ export function AMHSEditor({ formData, onUpdate }: AMHSEditorProps) {
       {/* DTG with Refresh Button */}
       <Card>
         <CardHeader className="py-4">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle as="h3" className="text-lg flex items-center gap-2">
             <Clock className="h-5 w-5" />
             Date-Time Group
           </CardTitle>

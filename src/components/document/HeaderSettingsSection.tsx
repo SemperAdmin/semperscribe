@@ -47,13 +47,17 @@ export function HeaderSettingsSection({ formData, setFormData }: HeaderSettingsS
     : allowedFonts[0];
   return (
     <div className="bg-card p-6 rounded-lg shadow-sm border border-border mb-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* D.8: the three selects here were the three unnamed buttons the
+          UX audit counted. The labels rendered as loose text with no
+          association, so a screen reader announced a button with no
+          name at all. htmlFor plus an id on the trigger names them. */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Header Type</label>
+        <label htmlFor="header-type-select" className="text-sm font-medium text-foreground">Header Type</label>
         <Select
           value={headerValue}
           onValueChange={(val: any) => setFormData(prev => ({ ...prev, headerType: val }))}
         >
-          <SelectTrigger className="bg-background border-input">
+          <SelectTrigger id="header-type-select" className="bg-background border-input">
             <SelectValue placeholder="Select Header" />
           </SelectTrigger>
           <SelectContent>
@@ -68,13 +72,13 @@ export function HeaderSettingsSection({ formData, setFormData }: HeaderSettingsS
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Body Font</label>
+        <label htmlFor="body-font-select" className="text-sm font-medium text-foreground">Body Font</label>
         <Select
           value={fontValue}
           disabled={fontLocked}
           onValueChange={(val: any) => setFormData(prev => ({ ...prev, bodyFont: val }))}
         >
-          <SelectTrigger className="bg-background border-input">
+          <SelectTrigger id="body-font-select" className="bg-background border-input">
             <SelectValue placeholder="Select Font" />
           </SelectTrigger>
           <SelectContent>
@@ -91,12 +95,12 @@ export function HeaderSettingsSection({ formData, setFormData }: HeaderSettingsS
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Header Color</label>
+        <label htmlFor="header-color-select" className="text-sm font-medium text-foreground">Header Color</label>
         <Select
           value={formData.accentColor || 'black'}
           onValueChange={(val: any) => setFormData(prev => ({ ...prev, accentColor: val }))}
         >
-          <SelectTrigger className="bg-background border-input">
+          <SelectTrigger id="header-color-select" className="bg-background border-input">
             <SelectValue placeholder="Select Color" />
           </SelectTrigger>
           <SelectContent>

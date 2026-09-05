@@ -143,7 +143,7 @@ export function ParagraphSection({
   return (
     <Card className="mb-8 border-border shadow-sm border-l-4 border-l-primary">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="text-lg font-semibold flex items-center font-headline tracking-wide">
+        <CardTitle as="h3" className="text-lg font-semibold flex items-center font-headline tracking-wide">
           <Indent className="mr-2 h-5 w-5 text-primary-foreground" />
           Body Paragraphs
         </CardTitle>

@@ -31,7 +31,7 @@ export function ExecutiveCorrespondenceForm() {
       {isMemoFormat && (
         <Card className="mb-6 border-border shadow-sm">
           <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-            <CardTitle className="text-lg font-semibold">
+            <CardTitle as="h3" className="text-lg font-semibold">
               {isActionMemo ? 'Action Memorandum' : isInfoMemo ? 'Information Memorandum' : 'Standard Memorandum'}
             </CardTitle>
           </CardHeader>
@@ -149,7 +149,7 @@ export function ExecutiveCorrespondenceForm() {
       {isLetter && (
         <Card className="mb-6 border-border shadow-sm">
           <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-            <CardTitle className="text-lg font-semibold">Inside Address</CardTitle>
+            <CardTitle as="h3" className="text-lg font-semibold">Inside Address</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
@@ -239,7 +239,7 @@ export function ExecutiveCorrespondenceForm() {
       {/* Signature Block (shared) */}
       <Card className="mb-6 border-border shadow-sm">
         <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-          <CardTitle className="text-lg font-semibold">Signature Block</CardTitle>
+          <CardTitle as="h3" className="text-lg font-semibold">Signature Block</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2">

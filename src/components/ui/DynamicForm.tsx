@@ -21,11 +21,36 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { AutoSuggestInput } from '@/components/ui/AutoSuggestInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSsics } from '@/hooks/useReferenceData';
+import { useListboxNavigation } from '@/hooks/useListboxNavigation';
+import { cn } from '@/lib/utils';
 
-function SSICCombobox({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+/**
+ * D.8 (UX audit finding 10): the SSIC picker as a WAI-ARIA combobox. It
+ * was a plain div list whose entries fired on `onPointerDown` alone, so
+ * no keyboard user reached an option and a screen reader was
+ * told nothing about the list. Arrow keys move, Enter selects, Escape
+ * closes, and a click works as well as a pointer down.
+ */
+function SSICCombobox({
+  value,
+  onChange,
+  placeholder,
+  label,
+  ...controlProps
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  /**
+   * Accessible name, used when nothing else names the input. The audit
+   * counted this control among the five named by placeholder alone.
+   */
+  label?: string;
+} & Pick<React.ComponentProps<'input'>, 'id' | 'aria-describedby' | 'aria-invalid'>) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const listboxId = React.useId();
   const { ssics } = useSsics();
 
   const filtered = React.useMemo(() => {
@@ -36,10 +61,39 @@ function SSICCombobox({ value, onChange, placeholder }: { value: string; onChang
     ).slice(0, 30);
   }, [query, ssics]);
 
+  const commit = React.useCallback((index: number) => {
+    const picked = filtered[index];
+    if (!picked) return;
+    onChange(picked.code);
+    setOpen(false);
+    inputRef.current?.blur();
+  }, [filtered, onChange]);
+
+  const nav = useListboxNavigation({
+    idPrefix: listboxId,
+    count: filtered.length,
+    open,
+    setOpen,
+    onSelect: commit,
+  });
+
+  const expanded = open && filtered.length > 0;
+
   return (
     <div className="relative">
       <Input
         ref={inputRef}
+        // FormControl clones this component with the id the visible
+        // FormLabel points at, so forwarding it turns the label into a
+        // real association instead of a placeholder standing in for one.
+        {...controlProps}
+        role="combobox"
+        aria-expanded={expanded}
+        aria-controls={expanded ? listboxId : undefined}
+        aria-activedescendant={nav.activeId}
+        aria-autocomplete="list"
+        aria-label={controlProps.id ? undefined : label}
+        autoComplete="off"
         placeholder={placeholder || 'Search SSIC by code or name...'}
         value={value}
         onChange={(e) => {
@@ -47,28 +101,39 @@ function SSICCombobox({ value, onChange, placeholder }: { value: string; onChang
           setQuery(e.target.value);
           setOpen(true);
         }}
+        onKeyDown={nav.onKeyDown}
         onFocus={() => { setQuery(value); setOpen(true); }}
         onBlur={() => setTimeout(() => setOpen(false), 200)}
       />
-      {open && filtered.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
-          {filtered.map((s) => (
-            <button
+      {expanded && (
+        <ul
+          id={listboxId}
+          role="listbox"
+          aria-label="SSIC matches"
+          className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md"
+        >
+          {filtered.map((s, index) => (
+            <li
               key={`${s.code}-${s.nomenclature}`}
-              type="button"
-              className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                onChange(s.code);
-                setOpen(false);
-                inputRef.current?.blur();
-              }}
+              id={nav.optionId(index)}
+              role="option"
+              aria-selected={index === nav.activeIndex}
+              className={cn(
+                'px-3 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground',
+                index === nav.activeIndex && 'bg-accent text-accent-foreground',
+              )}
+              onMouseMove={() => nav.setActiveIndex(index)}
+              // Pointer down beats the input's blur, which would close
+              // the list before a click landed. Click stays wired for
+              // pointer types and harnesses which emit no pointer event.
+              onPointerDown={(e) => { e.preventDefault(); commit(index); }}
+              onClick={() => commit(index)}
             >
               <span className="font-mono font-bold">{s.code}</span>
               <span className="ml-2 text-muted-foreground">{s.nomenclature}</span>
-            </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );
@@ -230,7 +295,7 @@ export function DynamicForm({ documentType, onSubmit, defaultValues, children }:
             <FormLabel>{field.label} {field.required && <span className="text-destructive">*</span>}</FormLabel>
             <FormControl>
               {field.type === 'combobox' ? (
-                <SSICCombobox value={formField.value ?? ''} onChange={formField.onChange} placeholder={field.placeholder} />
+                <SSICCombobox value={formField.value ?? ''} onChange={formField.onChange} placeholder={field.placeholder} label={field.label} />
               ) : field.type === 'text' ? (
                 <Input placeholder={field.placeholder} {...formField} value={formField.value ?? ''} />
               ) : field.type === 'date' ? (
@@ -288,7 +353,10 @@ export function DynamicForm({ documentType, onSubmit, defaultValues, children }:
         {documentType.sections.map(section => (
           <Card key={section.id} className="mb-8 border-border shadow-sm">
              <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-                <CardTitle className="text-lg font-semibold flex items-center">
+                {/* D.8: a real heading, so the editor is navigable by
+                    heading. h3 sits under the document-type h2 that
+                    DocumentLayout renders above this form. */}
+                <CardTitle as="h3" className="text-lg font-semibold flex items-center">
                     {section.title}
                 </CardTitle>
                 {section.description && <p className="text-sm text-secondary-foreground/80">{section.description}</p>}

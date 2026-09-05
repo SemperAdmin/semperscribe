@@ -40,7 +40,7 @@ export function ManualDistributionSection({ distList, setDistList }: ManualDistr
   return (
     <Card className="mb-8 border-border shadow-sm">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="flex items-center text-lg font-semibold">
+        <CardTitle as="h3" className="flex items-center text-lg font-semibold">
           <Users className="mr-2 h-5 w-5 text-primary-foreground" />
           Distribution
         </CardTitle>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { ParagraphData, SavedLetter, ValidationState, FormData, ReportData } from '@/types';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
+import { EXAMPLE_DOCUMENT_URL } from '@/components/layout/LandingPage';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
 import { getLoadedUnits, loadUnits } from '@/lib/reference-data';
 import { resolveUnit } from '@/hooks/useUserProfile';
@@ -928,6 +929,14 @@ function NavalLetterGeneratorInner() {
     },
   });
 
+  // D.8: the landing page's filled example. It routes through
+  // handleLoadTemplateUrl, the same fetch-parse-import path the File
+  // menu uses for a .nldp, so the example loads exactly as a drafter's
+  // own package would.
+  const handleLoadExample = useCallback(() => {
+    handleLoadTemplateUrl(EXAMPLE_DOCUMENT_URL);
+  }, [handleLoadTemplateUrl]);
+
   // Phase 2: inline compliance issues for the live preview banner. The
   // military dictionary only adds suggested expansions to acronym
   // warnings, so it is fetched once there is body text to scan (B.5);
@@ -1052,6 +1061,7 @@ function NavalLetterGeneratorInner() {
         signatureLetterPageCount={signatureLetterPageCount}
         handleDynamicFormSubmit={handleDynamicFormSubmit}
         onDocumentTypeChange={handleDocumentTypeChange}
+        onLoadExample={handleLoadExample}
         enclosureRows={enclosureRows}
         enclosureFiles={enclosureFiles}
         onAddEnclosureRow={handleAddEnclosureRow}

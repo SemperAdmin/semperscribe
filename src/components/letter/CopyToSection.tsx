@@ -39,7 +39,7 @@ export function CopyToSection({ copyTos, setCopyTos }: CopyToSectionProps) {
   return (
     <Card className="mb-8 border-border shadow-sm">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="flex items-center text-lg font-semibold">
+        <CardTitle as="h3" className="flex items-center text-lg font-semibold">
           <Copy className="mr-2 h-5 w-5 text-primary-foreground" />
           Copy To
         </CardTitle>

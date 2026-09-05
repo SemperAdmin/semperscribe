@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import { FormData, AMHSReference } from '@/types';
 import { generateFullMessage } from '@/services/amhs/amhsFormatter';
 import { ComplianceBanner, type PreviewIssue } from './ComplianceBanner';
+import { PreviewEmptyState } from './LivePreview';
+import type { RequiredFieldStatus } from '@/lib/required-fields';
 
 interface PreviewModalProps {
   open: boolean;
@@ -26,6 +28,8 @@ interface PreviewModalProps {
   /** D.2: the sheet is the only preview below 1280 px, so it carries
       the compliance failures too. */
   issues?: PreviewIssue[];
+  /** D.8: required fields, present only while the document is untouched. */
+  emptyStateFields?: RequiredFieldStatus[] | null;
 }
 
 export function PreviewModal({
@@ -38,6 +42,7 @@ export function PreviewModal({
   isLoading,
   onUpdatePreview,
   issues,
+  emptyStateFields,
 }: PreviewModalProps) {
   const isAMHS = documentType === 'amhs';
   const hasTriggeredRefresh = useRef(false);
@@ -108,7 +113,9 @@ export function PreviewModal({
           ) : (
             // PDF Preview
             <div className="h-full bg-muted/40 relative">
-              {isLoading ? (
+              {emptyStateFields && emptyStateFields.length > 0 ? (
+                <PreviewEmptyState fields={emptyStateFields} />
+              ) : isLoading ? (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>

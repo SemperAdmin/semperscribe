@@ -83,6 +83,8 @@ interface DocumentLayoutProps {
   onAttachmentCoverPagesChange?: (value: boolean) => void;
   /** Landing quick starts route through the same handler as the sidebar. */
   onDocumentTypeChange?: (type: string) => void;
+  /** D.8: landing card loading the shipped example .nldp. */
+  onLoadExample?: () => void;
   /** R1: review comments threaded to the paragraph pins. */
   comments?: import('@/lib/review-comments').ReviewComment[];
   reviewMode?: boolean;
@@ -144,10 +146,11 @@ export function DocumentLayout({
   onRemoveComment,
   commentAuthor,
   handleDynamicFormSubmit,
+  onLoadExample,
 }: DocumentLayoutProps) {
   // Show landing page when no document type is selected
   if (!formData.documentType) {
-    return <LandingPage onSelectType={onDocumentTypeChange} />;
+    return <LandingPage onSelectType={onDocumentTypeChange} onLoadExample={onLoadExample} />;
   }
 
   const docTypeDef = DOCUMENT_TYPES[formData.documentType] || DOCUMENT_TYPES['basic'];

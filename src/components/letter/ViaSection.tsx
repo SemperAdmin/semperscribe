@@ -39,7 +39,7 @@ export function ViaSection({ vias, setVias }: ViaSectionProps) {
   return (
     <Card className="shadow-sm border-border border-l-4 border-l-primary">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="flex items-center text-lg font-semibold font-headline tracking-wide">
+        <CardTitle as="h3" className="flex items-center text-lg font-semibold font-headline tracking-wide">
           <Route className="mr-2 h-5 w-5 text-primary-foreground" />
           Via
         </CardTitle>
