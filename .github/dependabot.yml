@@ -1,0 +1,30 @@
+# Dependency update feed. Security advisories against production
+# dependencies fail CI through `npm audit` in test.yml; this keeps the
+# rest of the tree from drifting into an advisory later. Grouped so a
+# week's minor and patch bumps arrive as one PR the test suite gates.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Exact pins with a reason recorded in package.json ("//"): bump
+      # deliberately, not by feed.
+      - dependency-name: pdfjs-dist
+      - dependency-name: mammoth
+      # Major versions are a review conversation, never an auto-PR.
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5

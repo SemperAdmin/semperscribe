@@ -5,6 +5,30 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.4.7] - 2026-09-05
+
+Security review. `npm audit` reports zero advisories in both trees and
+CodeQL reports no alerts on the code it scans. The changes below close
+the gaps the review found in the inputs the app accepts and in the
+supply chain around the build. No user-visible change.
+
+### Changed
+
+- Share links are shape-checked before anything reaches the editor. A
+  `?share=` link is attacker-constructable and an `#es=` payload is only
+  as trustworthy as the password holder; both now pass through a zod
+  schema which requires every field the app iterates or indexes to be
+  the type it expects. A failing payload is reported as damaged.
+- Every third-party GitHub Action is pinned to a full commit SHA with
+  its version noted, and a test keeps it that way, along with declared
+  permissions on every workflow and no `pull_request_target`.
+- Dependabot files weekly grouped updates for npm (minor and patch, with
+  the two deliberate exact pins excluded) and for GitHub Actions.
+- CI and the documented minimum move to Node.js 22. Node 20 reached end
+  of life in April 2026 and the runner had started warning on it.
+- `SECURITY.md` no longer cites the two postcss findings which the 0.2.0
+  lockfile refresh cleared.
+
 ## [0.4.6] - 2026-09-05
 
 Editor commit timing. No change to any document's content.
