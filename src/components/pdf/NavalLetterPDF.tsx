@@ -509,7 +509,13 @@ function ParagraphItem({
 
     return (
       <View style={{ marginBottom: isLast ? 0 : PDF_SPACING.paragraph }}>
-        <Text>
+        {/* D.1: two-line orphan and widow floor, the same rule the
+            correspondence branch below carries. M-5216.5 Fig 7-1 para
+            3.a: do not start a paragraph at the bottom of the page
+            unless at least two lines of text remain on that page and at
+            least two lines carry over. Courier serves every USMC
+            directive and every courier-font letter. */}
+        <Text orphans={2} widows={2}>
           {leadingSpaces}
           {isUnderlined ? (
             <>
@@ -577,7 +583,7 @@ function ParagraphItem({
   return (
     <View style={{ flexDirection: 'row', marginLeft: tabs.citation, marginBottom: isLast ? 0 : PDF_SPACING.paragraph }}>
       <View style={{ width: hangingIndent }}>
-        <Text>
+        <Text orphans={2} widows={2}>
           {isUnderlined ? (
             <>
               {citation.includes('(') && '('}
@@ -591,7 +597,10 @@ function ParagraphItem({
           )}
         </Text>
       </View>
-      <Text style={{ flex: 1 }}>
+      {/* D.1: same two-line floor as the correspondence branch
+          (M-5216.5 Fig 7-1 para 3.a). This branch serves the Times
+          formats which carry no indent spec. */}
+      <Text style={{ flex: 1 }} orphans={2} widows={2}>
         {paragraph.title && (
             <Text style={{
               fontWeight: shouldBoldTitle ? 'bold' : 'normal',
@@ -1910,10 +1919,14 @@ export function NavalLetterPDF({
         {/* Copy to (Standard Letter) - Hide for Business/Exec Letter AND Staffing Papers (show for DLA) */}
         {!isDirective && (!isCivilianStyle || isDLAType) && !isStaffingPaper && copiesWithContent.length > 0 && (
           <View style={styles.copyToSection}>
-            {/* Add full space if any distribution list was rendered above */}
-            {(isToDistribution || (distListWithContent.length > 0)) && (
-               <View style={styles.emptyLine} />
-            )}
+            {/* D.1: one blank line always precedes the label, so "Copy to:"
+                lands on the second line below the line above it, whether
+                that is the signature line (M-5216.5 7-2.15.b: "Type 'Copy
+                to:' at the left margin on the second line below the
+                signature line") or the last line of a distribution list.
+                The DOCX emitter pushes the same blank line unconditionally
+                (docx-generator.ts, Standard Letter Copy To). */}
+            <View style={styles.emptyLine} />
             <Text style={styles.copyToLabel}>
               {isDLAType ? 'cc:' : (formData.bodyFont === 'courier' ? 'Copy to:  ' : 'Copy to:')}
             </Text>
