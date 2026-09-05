@@ -79,6 +79,10 @@ The last nine `set-state-in-effect` warnings are gone, lint 24 to 14; the rule n
 
 Lint warnings 14 to 0. The nine exhaustive-deps sites: page.tsx adds the two dependencies it read (no behaviour change, the profile callback was already re-created through `getFormDefaults`); AMHSEditor reads its callback and the DTG field through a new `useLatestRef` so the generate-once effect keeps its mount schedule; DistributionSection's initialise-if-undefined effect is deleted because its only parent always passes a value; ITypePreview memoises the row source; useTemplates' filter is a pure exported `templateMatches`; and `getUiCitation` and `validateParagraphNumbering` are pure module functions exported from useParagraphs. That last move let the React Compiler compile useParagraphs, which cleared all five A.6 memoization warnings without a separate pass. Eighteen tests across six files. Bundle unchanged (initial 3,139,735 B, total 6,824,274 B).
 
+## Phase B.4 status, 2026-09-05: landed (v0.4.4)
+
+Initial-load JS 3,139,817 B to 2,655,337 B (minus 484 KB, 15 percent). Total 6,824,631 B to 6,887,368 B (the lazy pdf-lib chunk carries its own copy of a few shared helpers). The row model, the file reader and the merge schedule moved to `src/lib/enclosure-rows.ts`; `enclosure-attachments.ts` keeps the pdf-lib merge and re-exports the rows module, so the three dynamic importers are unchanged. The static chain the plan missed was EnclosuresSection's multi-line import of `fileToAttachment`. jszip moved to a dynamic import in useBatchGenerate in the same PR (42 KB plus its pako inflater). A source-map attribution of the initial load (a one-off local build) put the remaining weight at: next 883 KB, zod 264 KB, src/components/letter 176 KB, military-dictionary 102 KB (B.5), react-day-picker 64 KB, schemas 61 KB. Deploy initial budget lowered to 2,920,000 B. Two guards added: a unit test on the module boundary and a smoke test asserting neither pdf-lib nor jszip markers appear in any chunk index.html references.
+
 ## Phase 0: safety net (one PR, blocks everything after it)
 
 ### 0.1 Browser smoke test on the built export

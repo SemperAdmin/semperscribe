@@ -70,14 +70,14 @@ interface DocumentLayoutProps {
   // Dynamic form
   handleDynamicFormSubmit: (data: any) => void;
   /** ENC: enclosure rows (title + optional bound file) and file map */
-  enclosureRows: import('@/lib/enclosure-attachments').EnclosureRow[];
-  enclosureFiles: ReadonlyMap<string, import('@/lib/enclosure-attachments').EnclosureAttachment>;
+  enclosureRows: import('@/lib/enclosure-rows').EnclosureRow[];
+  enclosureFiles: ReadonlyMap<string, import('@/lib/enclosure-rows').EnclosureAttachment>;
   onAddEnclosureRow: () => void;
   onRemoveEnclosureRow: (key: string) => void;
   onUpdateEnclosureTitle: (key: string, title: string) => void;
   onMoveEnclosureRow: (key: string, direction: -1 | 1) => void;
   onClearEnclosureRows: () => void;
-  onBindEnclosureFile: (rowKey: string, attachment: import('@/lib/enclosure-attachments').EnclosureAttachment) => void;
+  onBindEnclosureFile: (rowKey: string, attachment: import('@/lib/enclosure-rows').EnclosureAttachment) => void;
   onUnbindEnclosureFile: (rowKey: string) => void;
   attachmentCoverPages?: boolean;
   onAttachmentCoverPagesChange?: (value: boolean) => void;

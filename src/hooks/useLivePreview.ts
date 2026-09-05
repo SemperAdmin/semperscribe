@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { FormData, ParagraphData, SignaturePosition } from '@/types';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { getClassification, bannerText } from '@/lib/classification';
-import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-attachments';
+import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-rows';
 
 /** The document state slices every PDF surface renders from. */
 export interface DocumentDataSlices {

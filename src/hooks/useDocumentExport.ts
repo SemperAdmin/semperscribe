@@ -6,7 +6,7 @@ import { getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-uti
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { downloadDocument } from '@/services/export/index';
 import type { DocumentDataSlices } from './useLivePreview';
-import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-attachments';
+import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-rows';
 import { getClassification, bannerText } from '@/lib/classification';
 import { getEdmsContext, edmsBaseFilename } from '@/lib/edms-mode';
 import { clearedForExport } from '@/lib/export-gate';
