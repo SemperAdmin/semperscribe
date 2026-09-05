@@ -5,6 +5,68 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.5.4] - 2026-09-05
+
+Phase D.5 of the 2026-09-05 UX and policy plan: civilian letter
+layout. The business letter and executive correspondence share one
+render branch, and five of its geometry rules departed from SECNAV
+M-5216.5 chapters 11 and 12. Every position below was measured by
+rendering both emitters through `extractPdfTextLayout`, the helper the
+audit used, at 12 point Times on letter paper with one inch side
+margins. One line is 13.8 points.
+
+### Fixed
+
+- Business-letter identification symbols block at the upper LEFT
+  (11-2.1, Fig 11-2). The SSIC, the originator code and the date
+  measured x=460.3pt in the preview and sat in a right-anchored table
+  in the export. Both now start at x=72.0pt, the left margin. The
+  window-envelope variant keeps the right anchor, which is where Fig
+  11-4 sets those symbols so they clear the address window. Executive
+  correspondence keeps its right block: chapter 12 states no placement
+  for it and Fig 12-2 shows the date to the right.
+- The signer's name renders in capitals on the civilian branch
+  (11-2.9.a(1)). The preview printed "j. q. public" as typed while the
+  export and the naval branch both capitalised it.
+- Main paragraphs indent half an inch. 11-2.6 indents a main paragraph
+  "four spaces (or set margin at half inch)" and 12-3.2.c(2) has "Each
+  paragraph must be indented 1/2 inch". The preview measured x=72.0pt,
+  no indent at all, because react-pdf reads `textIndent` on the Text
+  node and ignores it on the enclosing View. The first line now starts
+  at x=108.0pt and the wrapped line returns to x=72.0pt. The DOCX
+  first-line indent moves from 360 twips to 720. The old quarter inch
+  cited the "eight spaces" of Fig 11-1, which governs subdivisions.
+  Subdivision indents are unchanged.
+- The complimentary close sits on the second line below the text
+  (11-2.8, 12-3.4) and the name on the fourth line below the close
+  (11-2.9.a, 12-3.2.e(3)(a)). Measured on a business letter before:
+  last body line y=441.4, close y=400.0, a gap of 41.4pt or three
+  lines. The name measured y=317.2, 82.8pt or six lines below the close. After:
+  close y=413.8 at 27.6pt or two lines, name y=358.6 at 55.2pt or four.
+  The executive letter moves the same two lines. The enclosure line
+  stays on the second line below the signature line (11-2.10.a), and
+  the DOCX already spaced both correctly, so the two surfaces now agree.
+- Business-letter enclosure entries are numbered (11-2.10.a, "number
+  and describe them briefly"): "(1) Widget report", "(2) Cost sheet".
+  Chapter 12 states no enclosure-line form, so the executive letter
+  keeps its plain list.
+
+### Added
+
+- Eleven cases in `tests/emitter-parity.test.ts` pinning the five rules
+  on the business letter and the executive letter across both emitters:
+  identification-block position, capitalised name, first-line indent
+  and wrapped-line return, the close and name line offsets, and the
+  numbered enclosures. Line offsets are asserted as measured points in
+  the PDF and as counted blank paragraphs in the DOCX.
+- A no-change assertion for the DLA business letter. The DLA plan makes
+  the DLA ruleset a separate, parallel ruleset under the DLA
+  Correspondence Manual, so it does not move with chapters 11 and 12.
+  Every block this phase touches already excludes the DLA types, and
+  the case pins the pre-D.5 measurement: date at x=460.3 y=675.2, body
+  at the left margin, subdivision at x=108.0, the attachment line above
+  the body, the close at x=306.0 with the name six lines below it.
+
 ## [0.5.3] - 2026-09-05
 
 Phase D.3 of the 2026-09-05 UX and policy plan: endorsement

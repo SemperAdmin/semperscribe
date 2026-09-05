@@ -294,9 +294,16 @@ export async function generateDocxBlob(
 
       // SSIC Block: right-aligned table so the longest line's right edge
       // touches the right margin, with all lines left-aligned within the block.
+      // The business letter is the exception: M-5216.5 11-2.1 and Fig 11-2
+      // block its three identification symbols in the upper LEFT corner, so
+      // the table anchors left. The window-envelope variant keeps the right
+      // anchor, which is where Fig 11-4 sets those symbols. Chapter 12 gives
+      // executive correspondence no placement rule and Fig 12-2 shows the
+      // date to the right, so it stays right.
+      const idBlockLeft = isBusinessLetter && !formData.isWindowEnvelope;
       const ssicTable = new Table({
           width: { size: 0, type: WidthType.AUTO },
-          alignment: AlignmentType.RIGHT,
+          alignment: idBlockLeft ? AlignmentType.LEFT : AlignmentType.RIGHT,
           borders: {
               top: { style: BorderStyle.NONE, size: 0, color: "auto" },
               bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
@@ -1091,9 +1098,13 @@ export async function generateDocxBlob(
             spacing: { after: 0 }
         }));
 
-        encls.forEach(encl => {
+        // M-5216.5 11-2.10.a: the business letter numbers its enclosures
+        // and describes them briefly. Chapter 12 states no enclosure-line
+        // form, so the executive letter keeps its plain list.
+        encls.forEach((encl, index) => {
+            const text = isBusinessLetter ? `(${index + 1}) ${encl}` : encl;
             enclParagraphs.push(new Paragraph({
-                children: [new TextRun({ text: encl, font, size: FONT_SIZE_BODY })],
+                children: [new TextRun({ text, font, size: FONT_SIZE_BODY })],
                 alignment: AlignmentType.LEFT,
                 spacing: { after: 0 }
             }));

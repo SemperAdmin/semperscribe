@@ -22,7 +22,8 @@ import JSZip from 'jszip';
 
 import { generateDocxBlob } from '@/lib/docx-generator';
 import { generateBasePDFBlob } from '@/lib/pdf-generator';
-import { extractPdfTextLayout } from './golden/helpers';
+import { extractPdfTextLayout, type PdfTextItem } from './golden/helpers';
+import { LINE_HEIGHT_12PT, PDF_MARGINS } from '@/lib/pdf-settings';
 import { runLetterValidators } from '@/lib/letter-validators';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
 import { indexToRefLetter } from '@/lib/reference-letters';
@@ -703,5 +704,226 @@ describe('reference letters and enclosure numbers are scoped and shared', () => 
       [{ id: '1', level: 1, content: cited, title: '' }] as any,
     );
     expect(issues.filter((i) => i.id.startsWith('ref-'))).toEqual([]);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * D.5, 2026-09-05: the civilian branch follows chapters 11 and 12.    *
+ * ------------------------------------------------------------------ */
+
+describe('business and executive letters follow chapters 11 and 12', () => {
+  /** Two body paragraphs. The first wraps, so the wrapped line shows
+   *  the first-line indent against the left margin; the second is the
+   *  last line of text the close is measured from. */
+  const CIVIL_PARAGRAPHS = [
+    {
+      id: '1',
+      level: 1,
+      title: '',
+      content:
+        'Alpha paragraph body long enough to wrap onto a second line so the ' +
+        'wrapped line sits at the left margin while the first line is indented.',
+    },
+    { id: '2', level: 1, title: '', content: 'ZLASTBODYZ' },
+  ] as any;
+
+  const CIVIL = {
+    ...BASE,
+    ssic: '5216',
+    originatorCode: 'Ser JA/28',
+    sig: 'j. q. public',
+    signerTitle: 'Executive Officer',
+    recipientName: 'Mr. A. B. Seay',
+    recipientAddress: '1234 Any Street\nBaltimore, MD 21085-1234',
+    salutation: 'Dear Mr. Seay:',
+  };
+
+  const BUSINESS = { ...CIVIL, documentType: 'business-letter' };
+  const EXECUTIVE = { ...CIVIL, documentType: 'executive-correspondence', execFormat: 'letter' };
+  const ENCLOSURES = ['Widget report', 'Cost sheet'];
+
+  async function civilianLayout(formData: any) {
+    const blob = await generateBasePDFBlob(formData, [], [], ENCLOSURES, [], CIVIL_PARAGRAPHS, []);
+    return extractPdfTextLayout(blob);
+  }
+
+  /** The y and x of the first layout item whose text starts with `prefix`. */
+  const yOf = (layout: PdfTextItem[], prefix: string) =>
+    layout.find((i) => i.text.startsWith(prefix))!.y;
+  const xOf = (layout: PdfTextItem[], prefix: string) =>
+    layout.find((i) => i.text.startsWith(prefix))!.x;
+
+  /** Paragraphs of word/document.xml as {text, firstLine} in order. */
+  async function docxParagraphs(formData: any) {
+    const blob = await generateDocxBlob(formData, [], [], ENCLOSURES, [], CIVIL_PARAGRAPHS, []);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file('word/document.xml')!.async('string');
+    return [...xml.matchAll(/<w:p(?: [^>]*)?>([\s\S]*?)<\/w:p>/g)].map((m) => ({
+      text: [...m[1].matchAll(/<w:t(?: [^>]*)?>([\s\S]*?)<\/w:t>/g)].map((t) => t[1]).join(''),
+      firstLine: /w:firstLine="(\d+)"/.exec(m[1])?.[1] ?? null,
+    }));
+  }
+
+  /** Alignment of the identification-symbol table in the DOCX. */
+  async function docxIdBlockAlignment(formData: any) {
+    const blob = await generateDocxBlob(formData, [], [], ENCLOSURES, [], CIVIL_PARAGRAPHS, []);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file('word/document.xml')!.async('string');
+    const tblPr = /<w:tblPr>([\s\S]*?)<\/w:tblPr>/.exec(xml)![1];
+    return /<w:jc w:val="(\w+)"\/>/.exec(tblPr)![1];
+  }
+
+  /** Blank paragraphs between the two given texts in the DOCX body. */
+  function blanksBetween(paragraphs: { text: string }[], first: string, second: string) {
+    const from = paragraphs.findIndex((p) => p.text.includes(first));
+    const to = paragraphs.findIndex((p, i) => i > from && p.text.includes(second));
+    return paragraphs.slice(from + 1, to).filter((p) => p.text.trim() === '').length;
+  }
+
+  // M-5216.5 11-2.1 and Fig 11-2: the three identification symbols sit
+  // "in the upper left corner, blocked one below the other". Both
+  // emitters anchored them right, measured x=460.3pt in the preview.
+  it('the business-letter identification symbols block at the left margin', async () => {
+    const layout = await civilianLayout(BUSINESS);
+    expect(xOf(layout, '5216')).toBe(PDF_MARGINS.left);
+    expect(xOf(layout, 'Ser JA/28')).toBe(PDF_MARGINS.left);
+    expect(xOf(layout, 'August 14, 2026')).toBe(PDF_MARGINS.left);
+    expect(await docxIdBlockAlignment(BUSINESS)).toBe('left');
+  });
+
+  // Fig 11-4 sets the window-envelope symbols right of centre on line
+  // 10, clear of the address window, so that variant keeps its anchor.
+  it('the window-envelope variant keeps its right-anchored block', async () => {
+    const layout = await civilianLayout({ ...BUSINESS, isWindowEnvelope: true });
+    expect(xOf(layout, '5216')).toBeGreaterThan(400);
+    expect(await docxIdBlockAlignment({ ...BUSINESS, isWindowEnvelope: true })).toBe('right');
+  });
+
+  // Chapter 12 states no placement for the executive identification
+  // symbols and Fig 12-2 shows the date to the right, so it is left
+  // where it is.
+  it('the executive letter keeps its right-anchored block', async () => {
+    const layout = await civilianLayout(EXECUTIVE);
+    expect(xOf(layout, '5216')).toBeGreaterThan(400);
+    expect(await docxIdBlockAlignment(EXECUTIVE)).toBe('right');
+  });
+
+  // M-5216.5 11-2.9.a(1): "Signer's name in all capital letters."
+  // The preview printed it as typed while the export capitalised it.
+  it.each([['business', BUSINESS], ['executive', EXECUTIVE]] as const)(
+    'the %s signer name renders in capitals on both surfaces',
+    async (_label, formData) => {
+      const layout = await civilianLayout(formData);
+      const text = layout.map((i) => i.text).join('\n');
+      expect(text).toContain('J. Q. PUBLIC');
+      expect(text).not.toContain('j. q. public');
+      const paragraphs = await docxParagraphs(formData);
+      expect(paragraphs.some((p) => p.text === 'J. Q. PUBLIC')).toBe(true);
+    },
+  );
+
+  // M-5216.5 11-2.6 "four spaces, or set margin at half inch" and
+  // 12-3.2.c(2) "Each paragraph must be indented 1/2 inch". The
+  // preview measured x=72.0pt, no indent at all, because react-pdf
+  // reads textIndent on the Text node and not on the View.
+  it.each([['business', BUSINESS], ['executive', EXECUTIVE]] as const)(
+    'the %s first line indents half an inch and the wrap returns to the margin',
+    async (_label, formData) => {
+      const layout = await civilianLayout(formData);
+      expect(xOf(layout, 'Alpha paragraph body')).toBe(PDF_MARGINS.left + 36);
+      expect(xOf(layout, 'ZLASTBODYZ')).toBe(PDF_MARGINS.left + 36);
+      // The run after the first line is that paragraph's wrapped line,
+      // which returns to the left margin.
+      const first = layout.findIndex((i) => i.text.startsWith('Alpha paragraph body'));
+      const wrapped = layout[first + 1];
+      expect(wrapped.text).not.toContain('ZLASTBODYZ');
+      expect(wrapped.x).toBe(PDF_MARGINS.left);
+      const paragraphs = await docxParagraphs(formData);
+      expect(paragraphs.find((p) => p.text === 'ZLASTBODYZ')?.firstLine).toBe('720');
+    },
+  );
+
+  // M-5216.5 11-2.8 and 12-3.4: the close on the second line below the
+  // text. 11-2.9.a and 12-3.2.e(3)(a): the name on the fourth line
+  // below the close. Measured three and six before this change.
+  it.each([['business', BUSINESS], ['executive', EXECUTIVE]] as const)(
+    'the %s close and name sit on the second and fourth lines',
+    async (_label, formData) => {
+      const layout = await civilianLayout(formData);
+      const lastBody = yOf(layout, 'ZLASTBODYZ');
+      const close = yOf(layout, 'Sincerely,');
+      const name = yOf(layout, 'J. Q. PUBLIC');
+      expect(lastBody - close).toBeCloseTo(2 * LINE_HEIGHT_12PT, 1);
+      expect(close - name).toBeCloseTo(4 * LINE_HEIGHT_12PT, 1);
+      const paragraphs = await docxParagraphs(formData);
+      expect(blanksBetween(paragraphs, 'ZLASTBODYZ', 'Sincerely,')).toBe(1);
+      expect(blanksBetween(paragraphs, 'Sincerely,', 'J. Q. PUBLIC')).toBe(3);
+    },
+  );
+
+  // M-5216.5 11-2.10.a: "Type 'Enclosure' on the second line below the
+  // signature line, number and describe them briefly." Chapter 12
+  // states no enclosure-line form, so the executive letter keeps its
+  // plain list.
+  it('the business letter numbers its enclosure entries on both surfaces', async () => {
+    const layout = await civilianLayout(BUSINESS);
+    const text = layout.map((i) => i.text).join('');
+    expect(text).toContain('(1) Widget report');
+    expect(text).toContain('(2) Cost sheet');
+    const paragraphs = await docxParagraphs(BUSINESS);
+    expect(paragraphs.some((p) => p.text === '(1) Widget report')).toBe(true);
+    expect(paragraphs.some((p) => p.text === '(2) Cost sheet')).toBe(true);
+  });
+
+  it('the executive letter leaves its enclosure entries unnumbered', async () => {
+    const paragraphs = await docxParagraphs(EXECUTIVE);
+    expect(paragraphs.some((p) => p.text === 'Widget report')).toBe(true);
+    expect(paragraphs.some((p) => p.text === '(1) Widget report')).toBe(false);
+  });
+});
+
+describe('DLA correspondence does not move with the business letter', () => {
+  // The DLA plan (docs/DLA_CORRESPONDENCE_PLAN.md) makes the DLA
+  // ruleset "a separate, parallel ruleset", additive only, governed by
+  // the DLA Correspondence Manual rather than M-5216.5 chapters 11 and
+  // 12. Every block D.5 touches already excludes the DLA types, and
+  // this pins that: the positions below are the pre-D.5 measurement.
+  const DLA = {
+    ...BASE,
+    documentType: 'dla-business-letter',
+    headerType: 'DLA',
+    ssic: '5216',
+    originatorCode: 'Ser JA/28',
+    sig: 'j. q. public',
+    signerFullName: 'J. Q. PUBLIC',
+    recipientName: 'Mr. A. B. Seay',
+    recipientAddress: '1234 Any Street',
+    salutation: 'Dear Mr. Seay:',
+  } as any;
+
+  const DLA_PARAGRAPHS = [
+    { id: '1', level: 1, title: '', content: 'Alpha paragraph body.' },
+    { id: '2', level: 2, title: '', content: 'Subdivision body.' },
+  ] as any;
+
+  it('the DLA business letter renders the layout it rendered before D.5', async () => {
+    const blob = await generateBasePDFBlob(DLA, [], [], ['Widget report'], [], DLA_PARAGRAPHS, []);
+    const layout = await extractPdfTextLayout(blob);
+    const at = (prefix: string) => {
+      const item = layout.find((i) => i.text.startsWith(prefix))!;
+      return { x: item.x, y: item.y };
+    };
+    // Date flush right, no SSIC block: DLA Corr Manual Ch.3.
+    expect(at('August 14, 2026')).toEqual({ x: 460.3, y: 675.2 });
+    // Level 1 body at the left margin, subdivision one tab in.
+    expect(at('Alpha paragraph body.').x).toBe(72);
+    expect(at('a.').x).toBe(108);
+    // Attachment line above the body, not below the signature.
+    expect(at('Attachment:').y).toBeGreaterThan(at('Alpha paragraph body.').y);
+    // Close and full name as the DLA branch has always placed them.
+    const close = at('Sincerely,');
+    const name = at('J. Q. PUBLIC');
+    expect(close.x).toBe(306);
+    expect(close.y - name.y).toBeCloseTo(6 * LINE_HEIGHT_12PT, 1);
   });
 });
