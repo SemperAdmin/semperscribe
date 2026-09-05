@@ -1,6 +1,6 @@
 {
   "name": "semperscribe",
-  "version": "0.4.8",
+  "version": "0.5.0",
   "private": true,
   "license": "MIT",
   "//": [
@@ -23,10 +23,13 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "lint:ratchet": "node scripts/lint-ratchet.mjs",
-    "bundle:report": "node scripts/bundle-report.mjs"
+    "bundle:report": "node scripts/bundle-report.mjs",
+    "companion": "tsx companion/server.ts",
+    "companion:mcp": "tsx companion/mcp.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-avatar": "^1.1.10",
@@ -99,6 +102,7 @@
     "postcss": "^8.5.10",
     "tailwindcss": "^3.4.14",
     "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.23.13",
     "typescript": "5.9.3",
     "vitest": "^4.0.18"
   }

@@ -64,6 +64,36 @@ validation the ingest side already performs.
 Exporting a data package does not change what may be typed into the app.
 The CUI warning still governs.
 
+## Headless Companion Surface
+
+The `companion/` directory holds an HTTP server and an MCP stdio server
+which render documents outside the browser. Neither ships in the web
+application, and neither runs unless an operator starts it.
+
+The HTTP server binds `127.0.0.1` and carries no authentication by
+design. Its trust boundary is the loopback interface and the operating
+system account it runs under, so anything which reaches the socket
+renders documents. `COMPANION_HOST` widens the bind, and a wider bind
+publishes an unauthenticated renderer to whatever the new address
+reaches. Put a reverse proxy which authenticates the caller in front of
+it before widening it. The process prints a warning on startup when the
+bind is not loopback. No CORS headers are sent, so a browser page from
+another origin is refused the response.
+
+Three controls sit inside the surface. The export sensitive-data scan is
+mirrored, so a document with SSN, EDIPI, or clustered PHI hits is refused
+with a 422 naming the findings until the caller sets
+`acknowledgeSensitive`. File writes happen only under
+`COMPANION_OUT_DIR`, resolved through realpath before the confinement
+check, so traversal, absolute paths, planted symlinks, and symlinked
+subdirectories are refused. Request bodies are capped at two megabytes
+and each operation is bounded by a forty five second timer.
+
+A path traversal, an injection, or a confinement bypass in `companion/`
+is in scope for a report on the same terms as `src/`. The absence of
+authentication on a loopback listener is the documented design and is
+not a finding. See [`docs/COMPANION.md`](docs/COMPANION.md).
+
 ## Third-Party Data Flow (GunnyBot)
 
 SemperScribe includes an optional assistant, GunnyBot, disabled until the user supplies a personal LLM provider API key. When enabled and used, GunnyBot sends the text the user submits to it (a typed question, a draft paragraph, or the document body for a review) directly from the browser to the user-chosen provider (Google or GenAI.mil), under the user's own key. The provider processes that text under the provider's own terms, outside SemperScribe's control. The key is held in browser session memory only, clears when the tab closes, and is never written to disk or sent to any SemperScribe-controlled host. This is an opt-in, user-controlled data flow, documented in the Privacy and Security Notice. The application applies no attestation or content filtering before sending, so the user is solely responsible for not submitting CUI, PII, or classified text to GunnyBot. This intentional flow is not an information-leakage defect. See In Scope above for the GunnyBot behavior that remains reportable.
