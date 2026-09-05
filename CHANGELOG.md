@@ -5,6 +5,21 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.3.3] - 2026-09-05
+
+Phase A.7 of `docs/HARDENING_PLAN_2026-09.md`: the four image lint
+warnings. Lint baseline 35 to 31. No runtime change.
+
+### Changed
+
+- The two `<img>` elements (header seal, I-type seal preview) carry a
+  documented `no-img-element` disable: the export runs with
+  `images.unoptimized`, so `next/image` would render the same element with
+  no optimisation.
+- `jsx-a11y/alt-text` is switched off for `src/components/pdf/**`: it
+  matched @react-pdf's `Image` drawing primitive by name, which has no alt
+  prop. The PDFs are untagged either way (SECTION_508_FINDINGS F1).
+
 ## [0.3.2] - 2026-09-05
 
 Phase A.2 of `docs/HARDENING_PLAN_2026-09.md`: mount and media flags. No

@@ -14,6 +14,16 @@ const config = [
     },
   },
   {
+    // @react-pdf/renderer's <Image> is a PDF drawing primitive with no alt
+    // prop; the a11y rule matches it by name only. The output PDFs are
+    // untagged either way (SECTION_508_FINDINGS F1), so this rule has no
+    // bearing on accessibility here.
+    files: ["src/components/pdf/**/*.tsx"],
+    rules: {
+      "jsx-a11y/alt-text": "off",
+    },
+  },
+  {
     ignores: ["out/", ".next/", "node_modules/"],
   },
 ];
