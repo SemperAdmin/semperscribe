@@ -366,6 +366,8 @@ export const EndorsementSchema = BasicLetterSchema.extend({
     z.object({ kind: z.literal('file'), fileId: z.string(), fileName: z.string() }),
     z.object({ kind: z.literal('draft'), letterId: z.string(), title: z.string() }),
   ]).optional(),
+  /** E.4: render-time flag, see FormData.samePageRenderAsBlock. */
+  samePageRenderAsBlock: z.boolean().optional(),
 });
 
 export const EndorsementDefinition: DocumentTypeDefinition = {

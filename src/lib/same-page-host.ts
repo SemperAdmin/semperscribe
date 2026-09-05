@@ -17,7 +17,7 @@
  * browser, the tests and a headless caller run the same code.
  */
 import type { FormData, ParagraphData, SamePageHost, SavedLetter } from '@/types';
-import { composeSamePage } from '@/lib/same-page-endorsement';
+import { composeSamePage, asSamePageBlock } from '@/lib/same-page-endorsement';
 
 /** What the drafter sees naming the attached letter. */
 export function hostLabel(host: SamePageHost | undefined | null): string | null {
@@ -127,7 +127,8 @@ export async function renderSamePageWithHost(
   render: RenderPdf,
   hostBytes: Uint8Array,
 ): Promise<EndorsedDocument> {
-  const blockBlob = await render(ctx);
+  // E.4: the block, not the page: the letter under it carries the letterhead.
+  const blockBlob = await render({ ...ctx, formData: asSamePageBlock(ctx.formData) });
   const blockBytes = new Uint8Array(await blockBlob.arrayBuffer());
   const result = await composeSamePage(hostBytes, blockBytes);
   if (result.fits) {

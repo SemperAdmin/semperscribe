@@ -21,7 +21,7 @@ import {
   PackageMember, ComputedSequence, computeSequences, validatePackage,
   applySequence, toMember, moveMember, asNewPageFallback,
 } from '@/lib/package-assembly';
-import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
+import { isSamePageEndorsement, asSamePageBlock } from '@/lib/same-page-endorsement';
 
 interface UsePackageAssemblyArgs {
   savedLetters: SavedLetter[];
@@ -93,7 +93,8 @@ export function usePackageAssembly({ savedLetters, toast }: UsePackageAssemblyAr
               startingReferenceLevel: indexToRefLetter(refsSoFar + 1),
               startingEnclosureNumber: String(enclsSoFar + 1),
             };
-        const blob = await renderMember(generatePdfForDocType, positioned);
+        // E.4: a same-page member composes as the bare block.
+        const blob = await renderMember(generatePdfForDocType, samePage ? asSamePageBlock(positioned) : positioned);
         let bytes = new Uint8Array(await blob.arrayBuffer());
 
         if (samePage && previousBytes) {
@@ -174,7 +175,8 @@ export function usePackageAssembly({ savedLetters, toast }: UsePackageAssemblyAr
               startingReferenceLevel: indexToRefLetter(refsSoFar + 1),
               startingEnclosureNumber: String(enclsSoFar + 1),
             };
-        const blob = await renderMember(generatePdfForDocType, positioned);
+        // E.4: a same-page member composes as the bare block.
+        const blob = await renderMember(generatePdfForDocType, samePage ? asSamePageBlock(positioned) : positioned);
         let bytes = new Uint8Array(await blob.arrayBuffer());
 
         if (samePage) {

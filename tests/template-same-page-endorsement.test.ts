@@ -23,7 +23,9 @@ import {
   endorsementLineText,
   omitsIdentification,
   isSamePageEndorsement,
+  asSamePageBlock,
 } from '@/lib/same-page-endorsement';
+import { SAME_PAGE_ENDORSEMENT_OPTION, resolvePickerType } from '@/lib/document-type-options';
 import type { FormData, ParagraphData } from '@/types';
 import {
   FIXTURE_FORM_DATA,
@@ -47,9 +49,13 @@ const templateParagraphs: ParagraphData[] = nldp.data.paragraphs;
 /** The merge useImportExport.handleImport performs: template over the current form. */
 const merged: FormData = { ...FIXTURE_FORM_DATA, ...templateFormData };
 
+/**
+ * Figure 9-1's first endorsement carries a Via line, a Copy to and a
+ * three-line paragraph, 276 pt in all, so the letter under it needs
+ * a short body: the fixture with one paragraph leaves 295 pt.
+ */
 const SHORT_HOST_BODY: ParagraphData[] = [
   { id: 1, level: 1, content: 'Request approval of the action described below.', isMandatory: true },
-  { id: 2, level: 1, content: 'The point of contact is the unit adjutant.' },
 ];
 
 async function hostBytes(): Promise<Uint8Array> {
@@ -62,7 +68,7 @@ async function hostBytes(): Promise<Uint8Array> {
 
 async function blockBytes(): Promise<Uint8Array> {
   const blob = await generateBasePDFBlob(
-    merged, nldp.data.vias, nldp.data.references, nldp.data.enclosures,
+    asSamePageBlock(merged), nldp.data.vias, nldp.data.references, nldp.data.enclosures,
     nldp.data.copyTos, templateParagraphs, [],
   );
   return new Uint8Array(await blob.arrayBuffer());
@@ -73,9 +79,13 @@ beforeAll(() => {
 });
 
 describe('Same-Page Endorsement template (library entry)', () => {
-  it('is listed next to the new-page endorsement under the endorsement type', () => {
+  it('is listed next to the new-page endorsement under the same-page option', () => {
     expect(entry).toBeDefined();
-    expect(entry.documentType).toBe('endorsement');
+    // E.4: the index names the picker option, so the template shows under
+    // Same-Page Endorsement and not under Endorsement.
+    expect(entry.documentType).toBe(SAME_PAGE_ENDORSEMENT_OPTION);
+    expect(resolvePickerType(entry.documentType!).documentType).toBe('endorsement');
+    expect(index.find((e) => e.id === 'endorsement')?.documentType).toBe('endorsement');
     expect(entry.title).toBe('Same-Page Endorsement');
     const ids = index.map((e) => e.id);
     expect(ids.indexOf(TEMPLATE_ID)).toBe(ids.indexOf('endorsement') + 1);
@@ -101,9 +111,16 @@ describe('Same-Page Endorsement template (library entry)', () => {
     expect(parsed.success, JSON.stringify(parsed.success ? null : parsed.error.issues)).toBe(true);
   });
 
-  it('carries a body with no added references or enclosures', () => {
-    expect(templateParagraphs.length).toBeGreaterThan(0);
-    expect(templateParagraphs[0].content).toBe('Forwarded, recommending approval.');
+  it('is Figure 9-1\'s first endorsement', () => {
+    expect(templateFormData.from).toBe('Commander, Sea Based Anti-Submarine Warfare Wing, Atlantic');
+    expect(templateFormData.to).toBe('Commander, Fleet Forces Command');
+    expect(templateFormData.originatorCode).toBe('Ser 019/870');
+    expect(templateFormData.date).toBe('23 Apr 15');
+    expect(templateFormData.sig).toBe('R. L. GABEL');
+    expect(nldp.data.vias).toEqual(['Commander, Naval Air Force, U.S. Atlantic Fleet']);
+    expect(nldp.data.copyTos).toEqual(['NAS Meridian (Code 11)']);
+    expect(templateParagraphs).toHaveLength(1);
+    expect(templateParagraphs[0].content).toMatch(/^A same-page endorsement may omit the SSIC/);
     expect(templateParagraphs[0].isMandatory).toBe(true);
     expect(nldp.data.references).toEqual([]);
     expect(nldp.data.enclosures).toEqual([]);

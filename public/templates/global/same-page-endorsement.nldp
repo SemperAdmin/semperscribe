@@ -9,13 +9,14 @@
     },
     "package": {
       "title": "Same-Page Endorsement",
-      "description": "A short endorsement placed on the signature page of the letter it forwards when it fits there (SECNAV M-5216.5 9-1). SSIC, subject and basic letter identification omitted (9-2.1.a).",
-      "subject": "ENDORSEMENT TEMPLATE",
+      "description": "Figure 9-1 of SECNAV M-5216.5, the first endorsement: added to the signature page of the basic letter when it fits (9-1), with the SSIC, subject and basic letter identification omitted (9-2.1.a).",
+      "subject": "HOW TO PREPARE AN ENDORSEMENT",
       "documentType": "endorsement",
       "tags": [
         "template",
         "standard",
-        "same-page"
+        "same-page",
+        "figure-9-1"
       ]
     },
     "checksums": {
@@ -29,15 +30,15 @@
       "endorsementPlacement": "same-page",
       "samePageOmitsIdentification": true,
       "endorsementLevel": "FIRST",
-      "basicLetterReference": "C 400",
-      "basicLetterSsic": "1000",
-      "ssic": "1000",
-      "originatorCode": "CODE",
-      "date": "10 Feb 26",
-      "from": "Commanding Officer, Endorsing Unit",
-      "to": "Commanding Officer, Destination Unit",
-      "subj": "ENDORSEMENT TEMPLATE",
-      "sig": "I. M. MARINE",
+      "basicLetterReference": "NAS Meridian ltr 5216 Ser 11/273 of 22 Apr 15",
+      "basicLetterSsic": "5216",
+      "ssic": "5216",
+      "originatorCode": "Ser 019/870",
+      "date": "23 Apr 15",
+      "from": "Commander, Sea Based Anti-Submarine Warfare Wing, Atlantic",
+      "to": "Commander, Fleet Forces Command",
+      "subj": "HOW TO PREPARE AN ENDORSEMENT",
+      "sig": "R. L. GABEL",
       "delegationText": "",
       "line1": "",
       "line2": "",
@@ -47,27 +48,26 @@
       "referenceDate": "",
       "startingReferenceLevel": "",
       "startingEnclosureNumber": "",
-      "startingPageNumber": 2,
-      "previousPackagePageCount": 1,
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0,
       "headerType": "USMC",
       "bodyFont": "times",
       "accentColor": "black"
     },
-    "vias": [],
+    "vias": [
+      "Commander, Naval Air Force, U.S. Atlantic Fleet"
+    ],
     "references": [],
     "enclosures": [],
-    "copyTos": [],
+    "copyTos": [
+      "NAS Meridian (Code 11)"
+    ],
     "paragraphs": [
       {
         "id": 1,
         "level": 1,
-        "content": "Forwarded, recommending approval.",
+        "content": "A same-page endorsement may omit the SSIC, subject, and the basic letter's identification if the entire page will be photocopied. However, these elements are required on all new-page endorsements, such as the one on the next page.",
         "isMandatory": true
-      },
-      {
-        "id": 2,
-        "level": 1,
-        "content": "Keep any comment short. An endorsement that no longer fits on the signature page exports on a new page of its own."
       }
     ]
   }

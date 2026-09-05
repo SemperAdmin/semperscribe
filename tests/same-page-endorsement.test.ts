@@ -81,6 +81,9 @@ function endorsement(overrides: Partial<FormData> = {}): FormData {
     ...FIXTURE_FORM_DATA,
     documentType: 'endorsement',
     endorsementPlacement: 'same-page',
+    // E.4: the block for composition. Rendered without this flag a
+    // same-page endorsement is a page of its own with the letterhead.
+    samePageRenderAsBlock: true,
     endorsementLevel: 'FIRST',
     basicLetterReference: 'CO, Golden Unit ltr 1000 Ser CODE/1 of 10 Feb 26',
     basicLetterSsic: '1000',
@@ -344,28 +347,31 @@ describe('the Courier body font', () => {
   }, 60000);
 });
 
-describe('the DOCX block', () => {
-  it('carries the endorsement line and no letterhead table', async () => {
+describe('the page on its own (E.4)', () => {
+  it('renders a same-page endorsement with the letterhead and the 9-2.1.a omission when no letter is under it', async () => {
+    const page = await blockBytes(endorsement({ samePageRenderAsBlock: undefined }));
+    const layout = await extractPdfTextLayout(new Blob([new Uint8Array(page)]));
+    const joined = layout.map((i) => i.text).join('');
+    expect(joined).toContain('UNITED STATES MARINE CORPS');
+    expect(joined).toContain('FIRST ENDORSEMENT');
+    expect(joined).not.toContain('FIRST ENDORSEMENT on');
+    expect(joined).not.toContain('Subj:');
+    expect(joined).toContain('Ser 019/870');
+  }, 60000);
+
+  it('the DOCX is always the page, letterhead included, with the omission taken', async () => {
     const JSZip = (await import('jszip')).default;
     const blob = await generateDocxBlob(
-      endorsement(), ['Commanding General, Higher Headquarters'], [], [],
+      endorsement({ samePageRenderAsBlock: undefined }), ['Commanding General, Higher Headquarters'], [], [],
       ['NAS Meridian (Code 11)'], SHORT_BODY, [],
     );
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
     const xml = await zip.file('word/document.xml')!.async('string');
     expect(xml).toContain('FIRST ENDORSEMENT');
-    expect(xml).not.toContain('UNITED STATES MARINE CORPS');
     expect(xml).not.toContain('Subj:');
-    // The SSIC block is the only table a letter body carries, and with
-    // the SSIC omitted it holds Ser and date alone.
     expect(xml).toContain('Ser 019/870');
     expect(xml).not.toContain('>5216<');
-
     const header = await zip.file('word/header1.xml')?.async('string');
-    if (header) expect(header).not.toContain('UNITED STATES MARINE CORPS');
-    const footers = zip.file(/word\/footer\d*\.xml/);
-    for (const f of footers) {
-      expect(await f.async('string')).not.toContain('PAGE');
-    }
+    expect((header ?? '') + xml).toContain('UNITED STATES MARINE CORPS');
   }, 60000);
 });

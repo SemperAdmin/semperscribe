@@ -16,15 +16,15 @@
   {
     "id": "endorsement",
     "title": "New-Page Endorsement",
-    "description": "Used to forward a basic letter with comments, recommendations, or new information.",
+    "description": "Figure 9-1 of SECNAV M-5216.5, the second endorsement: on a new page, repeating the basic letter's SSIC and subject and identifying the basic letter in the endorsement line.",
     "documentType": "endorsement",
     "url": "/templates/global/endorsement.nldp"
   },
   {
     "id": "same-page-endorsement",
     "title": "Same-Page Endorsement",
-    "description": "A short endorsement placed on the signature page of the letter it forwards when it fits there. SSIC, subject and basic letter identification omitted.",
-    "documentType": "endorsement",
+    "description": "Figure 9-1 of SECNAV M-5216.5, the first endorsement: added to the signature page of the basic letter when it fits, with the SSIC, subject and basic letter identification omitted.",
+    "documentType": "same-page-endorsement",
     "url": "/templates/global/same-page-endorsement.nldp"
   },
   {
