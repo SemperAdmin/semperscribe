@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { useSyncedState } from '@/hooks/useSyncedState';
-import { AlertTriangle, ChevronDown, FileUp } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ClipboardPaste, FileUp } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -98,6 +98,55 @@ interface DocumentImportModalProps {
   onChangeDocumentType: (documentType: string) => void;
   onConfirm: (edited: ExtractionResult) => void;
   onCancel: () => void;
+  /** R11 (D.7): sends pasted text into the same extraction pipeline. */
+  onImportText?: (raw: string) => void;
+}
+
+/**
+ * R11 (D.7): the paste step. It stands in for the file picker when the
+ * modal opens with no source, and hands its text to the same detect and
+ * parse the .docx and .pdf paths run, so both land on the review grid
+ * below.
+ */
+function PasteStep({ onImportText, onCancel }: { onImportText: (raw: string) => void; onCancel: () => void }) {
+  const [text, setText] = React.useState('');
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <ClipboardPaste className="w-5 h-5" />
+          Paste Text to Import
+        </DialogTitle>
+        <DialogDescription>
+          Paste the text of a letter, from an email or any other document. It is read the same way an
+          uploaded Word or PDF file is, and the fields come back for review before anything changes.
+          Nothing leaves this browser.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-1.5 py-2">
+        <Label htmlFor="import-paste-text">Letter text</Label>
+        <Textarea
+          id="import-paste-text"
+          value={text}
+          onChange={e => setText(e.target.value)}
+          rows={14}
+          placeholder={'From: Commanding Officer\nTo: Commanding General\n\nSubj: SUBJECT LINE\n\n1. First paragraph.'}
+          className="text-sm font-mono"
+        />
+      </div>
+
+      <DialogFooter className="flex-col sm:flex-row sm:items-center gap-2 border-t border-border pt-3">
+        <p className="text-xs text-muted-foreground sm:mr-auto">
+          Word and PDF files import from File, Import Word/PDF Document.
+        </p>
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button onClick={() => onImportText(text)} disabled={text.trim().length === 0}>
+          Read Pasted Text
+        </Button>
+      </DialogFooter>
+    </>
+  );
 }
 
 interface EditableState {
@@ -150,6 +199,7 @@ export function DocumentImportModal({
   onChangeDocumentType,
   onConfirm,
   onCancel,
+  onImportText,
 }: DocumentImportModalProps) {
   // Editable copy keyed on the parse result: a new result (new import, or a
   // document-type override re-parse) replaces the edits during render.
@@ -167,7 +217,19 @@ export function DocumentImportModal({
     return set;
   }, [result]);
 
-  if (!result || !edited) return null;
+  // R11: no source yet means the paste step. The file path never opens
+  // the modal until it has a parse result, so this branch is the paste
+  // entry point alone.
+  if (!result || !edited) {
+    if (!open || !onImportText) return null;
+    return (
+      <Dialog open={open} onOpenChange={isOpen => { if (!isOpen) onCancel(); }}>
+        <DialogContent className="sm:max-w-[700px] max-h-[85vh] flex flex-col bg-card text-card-foreground">
+          <PasteStep onImportText={onImportText} onCancel={onCancel} />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   const setField = (name: ExtractedFieldName, value: string) =>
     setEdited(prev => (prev ? { ...prev, fields: { ...prev.fields, [name]: value } } : prev));

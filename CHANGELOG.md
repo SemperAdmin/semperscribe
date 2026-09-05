@@ -5,6 +5,72 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.5.8] - 2026-09-05
+
+Phase D.7 of the 2026-09-05 UX and policy plan: reuse for the daily
+driver. The admin corporal drafting the same three letters weekly is why
+the template library exists, and the audit measured what reached that
+person. 69 templates ship. From a basic letter the picker read "Standard
+Templates (1)", because it filtered to the current document type with no
+control on screen and no way to clear it. The library empty state named
+Save Draft without offering it. The command palette had answered
+Ctrl+K since it shipped with nothing anywhere naming the key. And the
+import pipeline read Word and PDF files only, though its extraction step
+was already separate from its file reading.
+
+### Fixed
+
+- Every template is reachable from every document. The picker carries a
+  "Matches this document type" chip, on by default when the current type
+  has templates of its own and off when it has none, so a type with
+  nothing of its own opens on the full index rather than on an empty
+  list. A label beside it states the filter and the count, "Showing 12
+  of 69, filtered to basic", and each card is badged as a match or as a
+  switch to its own type. The hard filter at `useTemplates.ts:79-81` is
+  gone. `templateMatches` stays pure and takes the document type only
+  while the chip is on, so the count the label prints and the list the
+  dialog renders come from one predicate.
+- Picking a template of another document type switches the type first,
+  through the same `handleDocumentTypeChange` the sidebar uses. Loading
+  the template alone set `formData.documentType` from the template's own
+  payload and skipped the type change, so an MCO or a staffing paper
+  arrived under its own type with a basic letter's single empty
+  paragraph instead of its paragraph template. On a document which
+  already holds body text or any of the SSIC, subject, From or To
+  fields, the switch asks first, the same `window.confirm` Clear Form
+  and paragraph deletion use.
+- The library empty state offers the action it names. "No saved
+  documents yet. Use File, Save Draft." gains a "Save this document now"
+  button on the same Save Draft path the File menu calls. It is held
+  back on an untouched document, where saving would file an empty draft
+  under "Untitled", and it never appears over a search which matched
+  nothing.
+
+### Added
+
+- A command palette hint in the header: the word Commands and a `kbd`
+  printing the shortcut, Ctrl K on Windows and Linux and Cmd K on macOS,
+  matching the modifiers the palette's own listener reads. Clicking it
+  opens the palette, so a pointer or a touch screen reaches R8 for the
+  first time. The label resolves after hydration, so the static export's
+  markup and the first client render agree.
+- Paste-to-import (roadmap R11). File, Paste Text to Import opens the
+  import modal on a paste box beside the Word and PDF entry. Pasted text
+  is normalised by `linesFromText`, the same normaliser the .docx and
+  .pdf extractors run over their own output, then goes through the same
+  `docTypeDetector` and `correspondenceParser` calls and lands on the
+  same review-fields step. `useDocumentImport` gains `importFromText`
+  and `startPasteImport`, and the detect-parse-review half of the file
+  path is now one function both sources call. Blank text is refused
+  rather than opening an empty review.
+- Tests for the filter on and off with the counts either way, the picker
+  chip and its label, the card badges and the type carried back with a
+  pick, the library empty-state action and the two states holding it
+  back, the shortcut label on both platform families and the hint
+  rendering, and a pasted basic letter parsing into From, To, Subj,
+  SSIC, two Via lines, two references, two enclosures and two body
+  paragraphs, from the fixture the parser tests use.
+
 ## [0.5.7] - 2026-09-05
 
 Hold zod at 4.4.3. The weekly dependency group (#49) raised the

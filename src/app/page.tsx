@@ -713,6 +713,38 @@ function NavalLetterGeneratorInner() {
 
   const documentImport = useDocumentImport({ applyImport: applyDocumentImport, toast });
 
+  /**
+   * D.7: whether the document on screen holds work worth protecting.
+   * Body text or any of the four SECNAV M-5216.5 header elements the
+   * drafter types counts. The pre-filled date and the unit lines do not,
+   * because the app puts those there before the user has done anything.
+   */
+  const documentHasContent =
+    paragraphs.some(p => p.content.trim() !== '') ||
+    [formData.ssic, formData.subj, formData.from, formData.to]
+      .some(value => typeof value === 'string' && value.trim() !== '');
+
+  /**
+   * D.7: picking a template of another document type switches the type
+   * first, through the same handleDocumentTypeChange the sidebar uses,
+   * so the paragraph template and the type-dependent header fields are
+   * set the way the app sets them everywhere else. Loading the template
+   * alone left the directive and paper types with a basic letter's
+   * single empty paragraph under their own document type.
+   */
+  const handleTemplatePick = (url: string, templateDocumentType?: string) => {
+    const targetType = templateDocumentType || 'basic';
+    if (targetType !== formData.documentType) {
+      if (documentHasContent && !window.confirm(
+        `This template is a ${targetType} document. Switching document types replaces the paragraphs you have written. Do you want to proceed?`
+      )) {
+        return;
+      }
+      handleDocumentTypeChange(targetType);
+    }
+    handleLoadTemplateUrl(url);
+  };
+
   const handleClearSavedLetters = () => {
     clearSavedLetters();
     libClear().catch((error) => console.error('Library clear failed', error));
@@ -924,10 +956,12 @@ function NavalLetterGeneratorInner() {
       onImport={handleImport}
       onImportDocument={documentImport.startImport}
       isImportingDocument={documentImport.isProcessing}
+      onPasteImport={documentImport.startPasteImport}
+      onOpenCommandPalette={() => setPaletteOpen(true)}
       onClearForm={handleClearForm}
       savedLetters={savedLetters}
       onOpenLibrary={() => setShowLibrary(true)}
-      onLoadTemplateUrl={handleLoadTemplateUrl}
+      onLoadTemplateUrl={handleTemplatePick}
       currentUnitCode={currentUnitCode}
       currentUnitName={currentUnitName}
       onExportNldp={() => setShowExportNldpDialog(true)}
@@ -1044,6 +1078,7 @@ function NavalLetterGeneratorInner() {
         onChangeDocumentType={documentImport.changeDocumentType}
         onConfirm={documentImport.confirmImport}
         onCancel={documentImport.cancelImport}
+        onImportText={documentImport.importFromText}
       />
       <ProofreadModal
         open={showProofreadModal}
@@ -1083,6 +1118,8 @@ function NavalLetterGeneratorInner() {
         onRename={handleRenameDocument}
         onDuplicate={handleDuplicateDocument}
         onDelete={handleDeleteDocument}
+        onSaveCurrent={saveLetter}
+        canSaveCurrent={documentHasContent}
       />
       <UnlockShareDialog
         open={hasEncryptedPending}

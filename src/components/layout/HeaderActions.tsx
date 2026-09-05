@@ -10,6 +10,8 @@ import {
   File,
   ChevronDown,
   Search,
+  Filter,
+  ClipboardPaste,
   LayoutTemplate,
   Eye,
   EyeOff,
@@ -54,41 +56,72 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { SavedLetter } from '@/types';
-import { useTemplates, Template } from '@/hooks/useTemplates';
+import { useTemplates, templateMatchesDocumentType, Template } from '@/hooks/useTemplates';
 import { useGunnyStore } from '@/store/gunnyStore';
 
-function TemplateList({ templates, onSelect }: { templates: Template[]; onSelect: (url: string) => void }) {
+interface TemplateListProps {
+  templates: Template[];
+  onSelect: (template: Template) => void;
+  /** The document type on screen, so each card states whether it matches. */
+  documentType?: string;
+  /** Shown in the empty state, so a hidden filter is never the dead end. */
+  typeFilterOn: boolean;
+}
+
+function TemplateList({ templates, onSelect, documentType, typeFilterOn }: TemplateListProps) {
   if (templates.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground text-sm">
-        No templates found matching your criteria.
+        {typeFilterOn
+          ? 'No templates of this document type match. Turn off "Matches this document type" to search every template.'
+          : 'No templates found matching your criteria.'}
       </div>
     );
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-1">
-      {templates.map(template => (
-        <button
-          key={template.id}
-          onClick={() => onSelect(template.url)}
-          className="flex flex-col items-start p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
-        >
-          <div className="font-medium text-foreground group-hover:text-primary">
-            {template.title}
-          </div>
-          {template.description && (
-            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-              {template.description}
+      {templates.map(template => {
+        const matchesType = Boolean(documentType) && templateMatchesDocumentType(template, documentType!);
+        return (
+          <button
+            key={template.id}
+            onClick={() => onSelect(template)}
+            className="flex flex-col items-start p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
+          >
+            <div className="font-medium text-foreground group-hover:text-primary">
+              {template.title}
             </div>
-          )}
-          {template.unitName && (
-            <Badge variant="secondary" className="mt-2 text-[10px] font-normal bg-secondary/10 text-secondary border border-secondary/20">
-              {template.unitName}
-            </Badge>
-          )}
-        </button>
-      ))}
+            {template.description && (
+              <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                {template.description}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              {documentType && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'text-[10px] font-normal',
+                    matchesType
+                      ? 'border-emerald-500/50 text-emerald-700 dark:text-emerald-400'
+                      : 'border-border text-muted-foreground',
+                  )}
+                >
+                  {matchesType
+                    ? 'Matches this document type'
+                    : `Switches to ${template.documentType || 'basic'}`}
+                </Badge>
+              )}
+              {template.unitName && (
+                <Badge variant="secondary" className="text-[10px] font-normal bg-secondary/10 text-secondary border border-secondary/20">
+                  {template.unitName}
+                </Badge>
+              )}
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -101,11 +134,14 @@ interface HeaderActionsProps {
   onImport: (data: any) => void;
   onImportDocument?: (file: File) => void;
   isImportingDocument?: boolean;
+  /** R11 (D.7): opens the import review modal on its paste step. */
+  onPasteImport?: () => void;
   onExportDocx: () => void;
   onGeneratePdf: () => void;
   onClearForm: () => void;
   savedLetters: SavedLetter[];
-  onLoadTemplateUrl: (url: string) => void;
+  /** D.7: the picked template's document type rides along with its url. */
+  onLoadTemplateUrl: (url: string, templateDocumentType?: string) => void;
   documentType: string;
   currentUnitCode?: string;
   currentUnitName?: string;
@@ -149,6 +185,7 @@ export function HeaderActions({
   onImport,
   onImportDocument,
   isImportingDocument,
+  onPasteImport,
   onExportDocx,
   onGeneratePdf,
   onClearForm,
@@ -180,11 +217,16 @@ export function HeaderActions({
   canRedo,
   onSettings
 }: HeaderActionsProps) {
-  const { 
-    globalTemplates, 
-    unitTemplates, 
-    searchQuery, 
-    setSearchQuery, 
+  const {
+    globalTemplates,
+    unitTemplates,
+    globalTotal,
+    unitTotal,
+    typeFilterOn,
+    setTypeFilterOn,
+    typeMatchCount,
+    searchQuery,
+    setSearchQuery,
   } = useTemplates({ documentType, currentUnitCode, currentUnitName });
 
   // GunnyBot opens from the store, the same wiring the header bot button used
@@ -243,8 +285,11 @@ export function HeaderActions({
     return date.toLocaleDateString();
   };
 
-  const handleTemplateSelect = (url: string) => {
-    onLoadTemplateUrl(url);
+  // D.7: the template's own document type travels with the pick, so the
+  // page switches the type through its normal path before loading a
+  // template from another type.
+  const handleTemplateSelect = (template: Template) => {
+    onLoadTemplateUrl(template.url, template.documentType || 'basic');
     setIsTemplateOpen(false);
   };
 
@@ -300,6 +345,37 @@ export function HeaderActions({
             />
           </div>
 
+          {/* D.7: the type filter, visible and reversible. It used to run
+              silently, which left 68 of the 69 shipped templates
+              unreachable from a basic letter with nothing on screen
+              saying so. */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={typeFilterOn}
+              disabled={!documentType}
+              onClick={() => setTypeFilterOn(on => !on)}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors disabled:opacity-50',
+                typeFilterOn
+                  ? 'border-primary/50 bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Filter className="w-3 h-3" />
+              Matches this document type
+            </button>
+            <p className="text-xs text-muted-foreground" data-testid="template-filter-label">
+              {typeFilterOn && documentType
+                ? `Showing ${globalTemplates.length + unitTemplates.length} of ${globalTotal + unitTotal}, filtered to ${documentType}.`
+                : `Showing ${globalTemplates.length + unitTemplates.length} of ${globalTotal + unitTotal}, every document type.`}
+              {documentType && (
+                <span> {typeMatchCount} match this document type.</span>
+              )}
+            </p>
+          </div>
+
           <Tabs defaultValue="global" className="flex-1 flex flex-col min-h-0">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="global">Standard Templates ({globalTemplates.length})</TabsTrigger>
@@ -311,10 +387,20 @@ export function HeaderActions({
                 (26+ templates). A plain overflow-y div cannot fail. */}
             <div className="flex-1 min-h-0 mt-4 max-h-[55vh] overflow-y-auto pr-2">
               <TabsContent value="global" className="mt-0">
-                <TemplateList templates={globalTemplates} onSelect={handleTemplateSelect} />
+                <TemplateList
+                  templates={globalTemplates}
+                  onSelect={handleTemplateSelect}
+                  documentType={documentType}
+                  typeFilterOn={typeFilterOn}
+                />
               </TabsContent>
               <TabsContent value="unit" className="mt-0">
-                <TemplateList templates={unitTemplates} onSelect={handleTemplateSelect} />
+                <TemplateList
+                  templates={unitTemplates}
+                  onSelect={handleTemplateSelect}
+                  documentType={documentType}
+                  typeFilterOn={typeFilterOn}
+                />
               </TabsContent>
             </div>
           </Tabs>
@@ -390,6 +476,15 @@ export function HeaderActions({
             <DropdownMenuItem onClick={handleImportDocumentClick} disabled={isImportingDocument} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
               <FileUp className="w-4 h-4 mr-2" />
               {isImportingDocument ? 'Reading Document...' : 'Import Word/PDF Document...'}
+            </DropdownMenuItem>
+          )}
+
+          {/* R11 (D.7): the same extraction pipeline, reached by pasting
+              letter text from an email instead of opening a file. */}
+          {onPasteImport && (
+            <DropdownMenuItem onClick={onPasteImport} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <ClipboardPaste className="w-4 h-4 mr-2" />
+              Paste Text to Import...
             </DropdownMenuItem>
           )}
 
