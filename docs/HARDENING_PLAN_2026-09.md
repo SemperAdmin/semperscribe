@@ -55,6 +55,10 @@ Six set-state-in-effect warnings removed, baseline 41 to 35. ModernAppShell's si
 
 Sixteen tests added across six files: hook semantics for `useHydrated` and `useIsMobile` (with a matchMedia stub, since jsdom has none), and component behaviour for DisclaimerModal, GuidanceDialog, ThemeToggle, and PlatformSettings. The smoke test's zero-console-error assertion on the built export is the hydration-mismatch guard for this phase.
 
+## Phase A.7 status, 2026-09-05: landed (v0.3.3)
+
+Four image warnings removed, baseline 35 to 31. Two documented per-line disables for `<img>` under `images.unoptimized`, and a scoped `jsx-a11y/alt-text` override for `src/components/pdf/**` where the rule matched @react-pdf's `Image` by name. Comments and config only; no runtime change.
+
 ## Phase 0: safety net (one PR, blocks everything after it)
 
 ### 0.1 Browser smoke test on the built export
