@@ -28,6 +28,15 @@ user-visible change beyond timing. First-load JavaScript drops from
 - The smoke test's first-load marker check now covers the dictionary
   alongside pdf-lib and jszip.
 
+### Fixed
+
+- Leaving a field or a paragraph editor now commits its text to the
+  document at once. Both editors debounce their commit by 500 ms while
+  typing; before this, an export or save issued inside that window read
+  the previous text. Seen as a CI failure (run 149) where a fast runner
+  exported a letter with an empty body, and reproducible by a user who
+  types and exports within half a second.
+
 ## [0.4.4] - 2026-09-05
 
 Phase B.4 of `docs/HARDENING_PLAN_2026-09.md`: pdf-lib out of the
