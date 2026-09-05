@@ -149,3 +149,55 @@ describe('registry', () => {
     expect(result.paragraphs[0].content).toBe('Signed 23 May 2014 and due 5 May 2015.');
   });
 });
+
+describe('fixReferenceOrder on an endorsement (D.4, M-5216.5 9-2.3)', () => {
+  /** An endorsement whose own list continues the basic letter at (c). */
+  function endorsement(paras: string[], references: string[]): DocumentSlices {
+    return {
+      formData: {
+        documentType: 'endorsement',
+        startingReferenceLevel: 'c',
+      } as FormData,
+      paragraphs: paras.map((content, i) => ({ id: i + 1, level: 1, content })) as ParagraphData[],
+      vias: [], references, enclosures: [], copyTos: [], distList: [],
+    };
+  }
+
+  // The fixer used to walk from (a) whatever the document started at,
+  // so it read a correct endorsement as out of order and relettered it
+  // into a wrong one.
+  it('leaves a correctly ordered endorsement list untouched', () => {
+    const input = endorsement(['Forwarded per ref (c), then ref (d).'], ['REF CEE', 'REF DEE']);
+    const result = fixReferenceOrder(input);
+    expect(result.references).toEqual(['REF CEE', 'REF DEE']);
+    expect(result.paragraphs[0].content).toBe('Forwarded per ref (c), then ref (d).');
+  });
+
+  it('reorders inside the continued range rather than restarting at (a)', () => {
+    const result = fixReferenceOrder(
+      endorsement(['Forwarded per ref (d), then ref (c).'], ['REF CEE', 'REF DEE']),
+    );
+    expect(result.references).toEqual(['REF DEE', 'REF CEE']);
+    expect(result.paragraphs[0].content).toBe('Forwarded per ref (c), then ref (d).');
+  });
+
+  it('agrees with the validator: the fix clears the issue it answers', () => {
+    const before = endorsement(['Forwarded per ref (d), then ref (c).'], ['REF CEE', 'REF DEE']);
+    expect(
+      validateReferences(before.references, before.paragraphs, 'c').map((i) => i.id),
+    ).toContain('ref-citation-order');
+    const after = fixReferenceOrder(before);
+    expect(validateReferences(after.references, after.paragraphs, 'c')).toEqual([]);
+  });
+
+  it('still starts a non-endorsement at (a) whatever the saved field says', () => {
+    const stale: DocumentSlices = {
+      formData: { documentType: 'basic', startingReferenceLevel: 'c' } as FormData,
+      paragraphs: [{ id: 1, level: 1, content: 'Per ref (b), then ref (a).' }] as ParagraphData[],
+      vias: [], references: ['REF AY', 'REF BEE'], enclosures: [], copyTos: [], distList: [],
+    };
+    const result = fixReferenceOrder(stale);
+    expect(result.references).toEqual(['REF BEE', 'REF AY']);
+    expect(result.paragraphs[0].content).toBe('Per ref (a), then ref (b).');
+  });
+});

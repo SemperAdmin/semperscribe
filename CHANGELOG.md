@@ -5,6 +5,93 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.5.6] - 2026-09-05
+
+Phase D.4 of the 2026-09-05 UX and policy plan: messages that teach the
+rule, and gates that hold. Three things the validators were doing wrong.
+They cited a TypeScript path where a paragraph of the manual belongs.
+Four items on the SECNAV M-5216.5 2-19.b proofreading list reported a
+pass with no measurement behind them, one of them asserting a 1 inch top
+margin the generator does not produce. And `block` severity, documented
+as "export must refuse", was enforced in exactly one place, the signature
+ceremony, so the PDF and DOCX downloads and the batch generator shipped a
+document the app had already judged non-compliant.
+
+### Changed
+
+- Schema-field messages state the requirement and cite the paragraph it
+  comes from. "SSIC fails its document schema", cited to "Basic Letter
+  schema (src/lib/schemas.ts)", now reads "An SSIC is required on every
+  naval letter" against 7-2.3.a(1), with the detail carrying what the
+  manual asks for. The map covers the required header fields for both
+  branches: SSIC, originator's code and date as the three parts of the
+  sender's symbol (7-2.3.a(1) to (3), with the date formats at 2-16),
+  From (7-2.6.a), To (7-2.7.a), Via (7-2.8.a), Subj (7-2.9.a) and the
+  signature line (7-2.14.a(1)); and for a business or executive letter
+  the same three identification symbols in the upper left (11-2.1.a to
+  .c), the inside address (11-2.2.a) and the signer's name (11-2.9.a(1)).
+  A field outside the map cites its document type's own authority. No
+  message names a file in this repository. Issue ids are unchanged.
+- The four hardcoded passes in the proofreading panel either measure or
+  say they do not. Margins (b.(2)) and the header margin (b.(10)) report
+  the generator's real figures: 0.61 inches at the top by the recorded
+  2026-06-10 ruling against the 1 inch at 7-2.1, 1 inch at the sides and
+  bottom, and 2 inches at the sides in Short Letter mode, which is the
+  allowance at 12-4.2.b. Paragraph numbering (b.(6)) measures the
+  paragraph level ladder and warns when a document opens below level 1 or
+  skips a level, which leaves the app generating a designator figure 7-8
+  has no reading for. Page numbers (b.(3)), paragraph alignment (b.(5))
+  and the footer margin (b.(11)) report as manual items with what to
+  check by eye, because the geometry they ask about lives in the PDF
+  component rather than in the values the checklist reads.
+- The proofreading panel passes the real Via addressees into the
+  validators. It passed an empty array, so every rule which reads a Via,
+  the window-envelope block at figure 7-3 among them, was inert in that
+  surface and the drafter met the refusal for the first time at the
+  export gate.
+- A blocked export opens the compliance dialog instead of a native
+  `alert()`. The SECNAV five page cap reports there too. Each issue which
+  belongs to one field carries the field name, and the dialog gives it a
+  jump-to-field action which scrolls the field into view and focuses it.
+  The header form marks every field wrapper for the lookup.
+- The reference re-lettering fixer letters a list from the same starting
+  letter the validator reads. On an endorsement continuing the basic
+  letter's sequence at (c), per 9-2.3, it used to walk from (a) and
+  reletter a correct list into a wrong one.
+
+### Added
+
+- Subject line rules at warn severity. An acronym in the subject line is
+  reported against 7-2.9.a and 12-3.2.c(4), which allow an acronym in the
+  text once it is spelled out but never in the subject or the title. A
+  token is reported only when the military dictionary carries it as an
+  abbreviation and only at three letters or more: the whole subject is
+  upper case by format, so flagging every capitalised word would flag
+  every subject ever written. The dictionary arrives as an argument, the
+  way the first-use rule takes it, so the table stays off the initial
+  load. Terminal punctuation is reported against figure 7-1, which writes
+  the subject in normal word order with all letters capitalised and no
+  punctuation.
+- An enclosure-order rule against 7-2.11.a, "List enclosures in the
+  enclosure line in the order they appear in the text". It mirrors the
+  reference-order rule at 7-2.10.a and carries the same severity, and it
+  reads an endorsement against the numbering it continues (9-2.4), so a
+  list starting at enclosure 3 is checked against 3 and 4.
+- A warning when a naval signature line carries a rank or a grade.
+  Paragraph 7-2.14.b lists four forms, name, name and title, name and
+  title with "Acting", and name with "By direction", and none of them
+  carries a rank. The Marine abbreviations come from the app's own rank
+  table, with the other services and the pay grades added beside it.
+- `getExportBlockers` gates the PDF and DOCX download paths and the batch
+  generator, which is where the documented refusal was missing. The batch
+  gate runs over the template, since the window-envelope controls, the
+  addressee counts and the classification are all template state a merge
+  row cannot change.
+- Tests for every rule above, for the four proofreading statuses, for the
+  endorsement re-lettering fixer, for the dialog's jump-to-field action,
+  and for the download and batch paths refusing a blocking document and
+  proceeding on a clear one.
+
 ## [0.5.5] - 2026-09-05
 
 The spell check stops crying wolf. The paragraph editor carried its own

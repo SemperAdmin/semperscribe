@@ -10,7 +10,7 @@
 import { FormData, ParagraphData } from '@/types';
 import { validateClassification } from '@/lib/classification';
 import { validateSignature } from '@/lib/signature-validators';
-import { validateAcronyms } from '@/lib/acronym-validators';
+import { validateAcronyms, ACRONYM_STOPLIST, expansionIndexFor } from '@/lib/acronym-validators';
 import type { DictionaryEntry } from '@/lib/military-dictionary';
 import { runNavmc10922Validators } from '@/lib/navmc10922-validators';
 import { runNavmc10132Validators } from '@/lib/navmc10132-validators';
@@ -20,7 +20,11 @@ import {
   validateCivilianReferences,
   validateRetiredFouo,
 } from '@/lib/schema-validators';
-import { refLetterAt, startingRefLetterFor } from '@/lib/reference-letters';
+import {
+  refLetterAt,
+  startingRefLetterFor,
+  startingEnclosureNumberFor,
+} from '@/lib/reference-letters';
 
 // One source for reference lettering across the validator and both
 // emitters (src/lib/reference-letters.ts). Re-exported here so the
@@ -35,6 +39,13 @@ export interface ValidationIssue {
   rule: string;
   citation: string;
   detail: string;
+  /**
+   * The form field the issue belongs to, when one field owns it. The
+   * compliance dialog turns this into a jump-to-field action, so the
+   * value is a form field name (the same name the header inputs
+   * carry), never a label.
+   */
+  field?: string;
 }
 
 /**
@@ -833,6 +844,150 @@ export function validateEndorsementContinuation(
   return issues;
 }
 
+/**
+ * Subject-line rules (M-5216.5 7-2.9.a and 12-3.2.c(4), figure 7-1).
+ *
+ * Two rules the app had no check for at all. 7-2.9.a says "In
+ * correspondence, do not use acronyms in the subject line", and
+ * 12-3.2.c(4) repeats it for executive correspondence: an acronym is
+ * allowed once spelled out "except in the subject line or title".
+ * Figure 7-1 sets the shape of the line itself, "NORMAL WORD ORDER
+ * WITH ALL LETTERS CAPITALIZED AND NO PUNCTUATION".
+ *
+ * The whole subject is upper case by format, so an all-caps token
+ * proves nothing. A token is reported only when the military
+ * dictionary carries it as an abbreviation, which is the same index
+ * the first-use rule reads, and only at three letters or more: a
+ * two-letter token in a capitalised subject is an ordinary word far
+ * more often than an acronym. The dictionary arrives on demand
+ * (B.5), so it comes in as an argument the way validateAcronyms takes
+ * it, never as a static import.
+ *
+ * Both rules are warn severity. A drafter who means the acronym, or
+ * whose command writes a subject with a slash in it, keeps the export.
+ */
+const SUBJECT_RULE_TYPES = new Set([
+  'basic', 'multiple-address', 'endorsement',
+  'from-to-memo', 'letterhead-memo', 'mfr',
+  'executive-correspondence',
+]);
+
+/** Trailing punctuation figure 7-1 keeps off the subject line. */
+const TERMINAL_PUNCTUATION = /[.,;:!?]+$/;
+
+export function validateSubjectLine(
+  formData: FormData,
+  dictionary: readonly DictionaryEntry[] = [],
+): ValidationIssue[] {
+  if (!SUBJECT_RULE_TYPES.has(formData.documentType)) return [];
+  const subject = String(formData.subj ?? '').trim();
+  if (!subject) return [];
+
+  const issues: ValidationIssue[] = [];
+
+  // Acronyms. Dictionary membership is the gate, so a subject of
+  // ordinary words in capitals reports nothing.
+  const index = dictionary.length > 0 ? expansionIndexFor(dictionary) : null;
+  if (index) {
+    const found: string[] = [];
+    for (const match of subject.matchAll(/\b[A-Z]{3,8}\b/g)) {
+      const token = match[0];
+      if (found.includes(token) || ACRONYM_STOPLIST.has(token)) continue;
+      if (!index.has(token)) continue;
+      found.push(token);
+    }
+    if (found.length > 0) {
+      const readings = found
+        .map((token) => {
+          const expansions = index.get(token) ?? [];
+          return expansions.length > 0 ? `${token} ("${expansions[0]}")` : token;
+        })
+        .join(', ');
+      issues.push({
+        id: 'subject-acronym',
+        severity: 'warn',
+        field: 'subj',
+        rule: 'The subject line carries no acronyms',
+        citation: 'SECNAV M-5216.5 7-2.9.a and 12-3.2.c(4)',
+        detail:
+          `The subject line uses ${readings}. Write the words out here and use the acronym in the paragraphs below.`,
+      });
+    }
+  }
+
+  // Terminal punctuation.
+  const trailing = subject.match(TERMINAL_PUNCTUATION);
+  if (trailing) {
+    issues.push({
+      id: 'subject-terminal-punctuation',
+      severity: 'warn',
+      field: 'subj',
+      rule: 'The subject line ends without punctuation',
+      citation: 'SECNAV M-5216.5 7-2.9.a, Fig 7-1',
+      detail:
+        `The subject line ends with "${trailing[0]}". Figure 7-1 writes it in normal word order, capitalised, with no punctuation.`,
+    });
+  }
+
+  return issues;
+}
+
+/**
+ * Enclosure order (M-5216.5 7-2.11.a): "List enclosures in the
+ * enclosure line in the order they appear in the text." The reference
+ * line carries the same rule at 7-2.10.a and has been checked three
+ * ways since Phase 2. The enclosure line had only a count cross-check
+ * in the proofread panel, so a letter which cites enclosure (2) before
+ * enclosure (1) passed every check the app ran.
+ *
+ * Numbering starts wherever the document starts it, so an endorsement
+ * continuing the basic letter's sequence at (3) is read against (3)
+ * and (4) rather than against (1) and (2) (9-2.4).
+ *
+ * Same severity as the reference-order rule it mirrors: fail. The
+ * order is not a matter of judgment once the citations are in the text.
+ */
+export function validateEnclosureOrder(
+  formData: FormData,
+  enclosures: readonly string[],
+  paragraphs: ParagraphData[],
+): ValidationIssue[] {
+  const encls = enclosures.filter((e) => e.trim());
+  if (encls.length < 2) return [];
+
+  const start = startingEnclosureNumberFor(formData.documentType, formData.startingEnclosureNumber);
+  const listed = encls.map((_, i) => String(start + i));
+
+  const allText = paragraphs.map((p) => `${p.title ?? ''} ${p.content}`).join(' ');
+
+  // Mirrors the reference clause matcher: separators are required
+  // tokens inside the starred group, so whitespace has one parse and
+  // the pattern cannot backtrack polynomially on imported text.
+  const enclClause = /\bencls?(?:osures?)?\s*((?:\(\d+\)(?:\s*(?:,|and|through|thru))*\s*)+)/gi;
+  const cited: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = enclClause.exec(allText)) !== null) {
+    for (const n of m[1].matchAll(/\((\d+)\)/g)) {
+      if (!cited.includes(n[1])) cited.push(n[1]);
+    }
+  }
+
+  const firstCitationOrder = cited.filter((n) => listed.includes(n));
+  const expected = listed.filter((n) => firstCitationOrder.includes(n));
+  const mismatch = firstCitationOrder.findIndex((n, i) => n !== expected[i]);
+  if (mismatch === -1) return [];
+
+  return [{
+    id: 'encl-citation-order',
+    severity: 'fail',
+    rule: 'Enclosures are listed in the order they are first cited in the text',
+    citation: 'SECNAV M-5216.5 7-2.11.a',
+    detail:
+      `First-citation order is (${firstCitationOrder.join('), (')}), so enclosure (${firstCitationOrder[mismatch]}) ` +
+      `is cited before enclosure (${expected[mismatch]}). Reorder the enclosure list to match the text.`,
+  }];
+}
+
 export interface LetterValidatorOptions {
   /**
    * The military dictionary, when the caller has loaded it. Optional:
@@ -880,6 +1035,8 @@ export function runLetterValidators(
     ...validateClassification(formData, paragraphs),
     ...validateSignature(formData),
     ...validateAcronyms(paragraphs, options.dictionary),
+    ...validateSubjectLine(formData, options.dictionary),
+    ...validateEnclosureOrder(formData, options.enclosures ?? [], paragraphs),
     // NAVMC 10922 dependency-application rules - no-op for every other
     // documentType (docs/NAVMC_10922_SPEC.md section 9).
     ...runNavmc10922Validators(formData),

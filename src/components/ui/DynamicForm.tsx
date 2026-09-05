@@ -221,7 +221,12 @@ export function DynamicForm({ documentType, onSubmit, defaultValues, children }:
         control={form.control}
         name={field.name}
         render={({ field: formField }) => (
-          <FormItem className={field.className}>
+          // D.4: the compliance dialog's jump-to-field action finds a
+          // field by this attribute, so an issue which names a field
+          // takes the drafter to it. It sits on the wrapper rather than
+          // the control because a combobox, a select and a date picker
+          // all render something other than a plain input.
+          <FormItem className={field.className} data-field={field.name}>
             <FormLabel>{field.label} {field.required && <span className="text-destructive">*</span>}</FormLabel>
             <FormControl>
               {field.type === 'combobox' ? (

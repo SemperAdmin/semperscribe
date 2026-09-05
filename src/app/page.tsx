@@ -16,6 +16,7 @@ import {
 } from '@/lib/document-library';
 import { backupDocument } from '@/lib/auto-backup';
 import { runLetterValidators } from '@/lib/letter-validators';
+import type { ValidationIssue } from '@/lib/letter-validators';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
 import { AMHSPreview } from '@/components/amhs/AMHSPreview';
@@ -42,6 +43,7 @@ import { RecoveryDialog } from '@/components/RecoveryDialog';
 import type { WorkingCopy } from '@/lib/autosave';
 import { CommandPalette, useCommandPalette } from '@/components/CommandPalette';
 import { ComplianceDialog } from '@/components/ComplianceDialog';
+import { focusDocumentField } from '@/lib/field-focus';
 import { getFixer, fixAll, DocumentSlices } from '@/lib/autofix';
 import { RevisionCompareDialog } from '@/components/RevisionCompareDialog';
 import { PackageDialog } from '@/components/PackageDialog';
@@ -282,7 +284,23 @@ function NavalLetterGeneratorInner() {
   );
 
   // Export orchestration (gate, SECNAV cap, download) via hook
-  const { generateDocument } = useDocumentExport({ data: documentData, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages, toast });
+  // D.4: the export gate refuses a block-severity document, and the
+  // refusal opens the compliance dialog on the blocking issues instead
+  // of the native alert() the hook used to raise. The hook takes a
+  // callback rather than the dialog, so no UI reaches into it.
+  const [exportBlockers, setExportBlockers] = useState<ValidationIssue[] | null>(null);
+  const { generateDocument } = useDocumentExport({
+    data: documentData,
+    applySignatureFields,
+    enclosureRows,
+    enclosureFiles,
+    attachmentCoverPages,
+    toast,
+    onBlocked: (blockers) => {
+      setExportBlockers(blockers);
+      setShowCompliance(true);
+    },
+  });
 
   // Signature ceremony (placement modal, request links) via hook.
   // ENC: enclosures show in the placement modal (view-only pages) and
@@ -1034,6 +1052,7 @@ function NavalLetterGeneratorInner() {
         paragraphs={paragraphs}
         enclosures={enclosures}
         references={references}
+        vias={vias}
       />
       <BatchGenerateModal
         open={showBatchModal}
@@ -1103,10 +1122,18 @@ function NavalLetterGeneratorInner() {
       />
       <ComplianceDialog
         open={showCompliance}
-        onOpenChange={setShowCompliance}
-        issues={validationIssues}
+        onOpenChange={(next) => {
+          setShowCompliance(next);
+          if (!next) setExportBlockers(null);
+        }}
+        issues={exportBlockers ?? validationIssues}
         onFix={handleFixIssue}
         onFixAll={handleFixAll}
+        onJumpToField={(field) => {
+          setShowCompliance(false);
+          setExportBlockers(null);
+          focusDocumentField(field);
+        }}
       />
       <CommandPalette
         open={paletteOpen}

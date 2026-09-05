@@ -47,7 +47,7 @@ export const GUIDANCE: GuidanceEntry[] = [
       'Same-page response when a separate-page format is required by the addressee',
     ],
     example: 'FIRST ENDORSEMENT on Sgt Smith ltr of 3 May 26',
-    citation: 'SECNAV M-5216.5, Ch. 8',
+    citation: 'SECNAV M-5216.5, Ch. 9',
   },
   {
     type: 'mfr',
@@ -92,7 +92,7 @@ export const GUIDANCE: GuidanceEntry[] = [
       'One-sided direction to a subordinate - use a directive or letter',
     ],
     example: 'AGREEMENT BETWEEN MCB QUANTICO AND FBI ACADEMY FOR RANGE FACILITY USE',
-    citation: 'SECNAV M-5216.5, Ch. 11',
+    citation: 'SECNAV M-5216.5, Ch. 10',
   },
   {
     type: 'mou',
@@ -106,7 +106,7 @@ export const GUIDANCE: GuidanceEntry[] = [
       'Any exchange of funds, personnel, or resources - use an MOA',
     ],
     example: 'UNDERSTANDING BETWEEN I MEF AND NAVAL HOSPITAL REGARDING MEDICAL TRAINING',
-    citation: 'SECNAV M-5216.5, Ch. 11',
+    citation: 'SECNAV M-5216.5, Ch. 10',
   },
   {
     type: 'business-letter',
@@ -120,7 +120,7 @@ export const GUIDANCE: GuidanceEntry[] = [
       'Communication between naval activities - use the standard letter',
     ],
     example: 'Response to a vendor inquiry regarding facility access procedures',
-    citation: 'SECNAV M-5216.5, Ch. 9',
+    citation: 'SECNAV M-5216.5, Ch. 11',
   },
   {
     type: 'mco',
