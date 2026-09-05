@@ -362,7 +362,7 @@ export const EndorsementSchema = BasicLetterSchema.extend({
 export const EndorsementDefinition: DocumentTypeDefinition = {
   id: 'endorsement',
   name: 'Endorsement',
-  description: 'Forwards correspondence on the signature page when it fits, or on a new page.',
+  description: 'Forwards correspondence with comments or recommendations on a page of its own.',
   icon: '📝',
   schema: EndorsementSchema,
   features: { ...STANDARD_LETTER_FEATURES, showEndorsementDetails: true },

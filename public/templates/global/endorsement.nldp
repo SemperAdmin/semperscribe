@@ -69,12 +69,22 @@
       {
         "id": 3,
         "level": 2,
-        "content": "Sub-paragraph level (a)."
+        "content": "Sub-paragraph level (a). A subdivision needs at least two members."
       },
       {
         "id": 4,
         "level": 3,
         "content": "Sub-sub-paragraph level (1)."
+      },
+      {
+        "id": 5,
+        "level": 3,
+        "content": "Sub-sub-paragraph level (2)."
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "Sub-paragraph level (b)."
       }
     ]
   }

@@ -2,6 +2,7 @@
 
 import { ParagraphData, FormData } from '@/types';
 import { DocumentFeatures, DOCUMENT_TYPES } from '@/lib/schemas';
+import { pickerDefinitionFor } from '@/lib/document-type-options';
 import { DynamicForm } from '@/components/ui/DynamicForm';
 import { AMHSEditor } from '@/components/amhs/AMHSEditor';
 import { LandingPage } from '@/components/layout/LandingPage';
@@ -155,20 +156,24 @@ export function DocumentLayout({
 
   const docTypeDef = DOCUMENT_TYPES[formData.documentType] || DOCUMENT_TYPES['basic'];
   const features: DocumentFeatures = docTypeDef.features;
+  // E.2: the header names the option the drafter picked. A same-page
+  // endorsement is the endorsement type with its placement set, and the
+  // header says so rather than repeating the type's name.
+  const headerDef = pickerDefinitionFor(formData);
 
   return (
     <>
       {/* Document Type Header */}
       <div className="bg-card p-6 rounded-lg shadow-sm border border-border mb-6 flex items-center gap-4">
         <div className="text-4xl text-primary">
-          {docTypeDef.icon || DOCUMENT_TYPES['basic'].icon}
+          {headerDef.icon || DOCUMENT_TYPES['basic'].icon}
         </div>
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
-            {docTypeDef.name || DOCUMENT_TYPES['basic'].name}
+            {headerDef.name || DOCUMENT_TYPES['basic'].name}
           </h2>
           <p className="text-muted-foreground">
-            {docTypeDef.description || DOCUMENT_TYPES['basic'].description}
+            {headerDef.description || DOCUMENT_TYPES['basic'].description}
           </p>
         </div>
       </div>

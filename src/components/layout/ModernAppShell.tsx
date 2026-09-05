@@ -12,6 +12,7 @@ import { requiredFieldStatus, isDocumentUnstarted } from '@/lib/required-fields'
 import { FEEDBACK_URL } from '@/lib/app-links';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useCommandPaletteHint } from '@/hooks/useCommandPaletteHint';
+import { pickerTypeFor } from '@/lib/document-type-options';
 
 interface ModernAppShellProps {
   children: React.ReactNode;
@@ -192,7 +193,7 @@ export function ModernAppShell({
 
           <div className="hidden sm:flex items-center space-x-2 text-sm">
             <span className="px-2 py-1 rounded bg-primary text-primary-foreground font-medium border border-primary-foreground/20 text-xs shadow-sm">
-              {documentType === 'navmc10274' ? 'AA FORM' : (documentType ? documentType.toUpperCase() : 'HOME')}
+              {documentType === 'navmc10274' ? 'AA FORM' : (documentType ? pickerTypeFor({ documentType, endorsementPlacement: formData?.endorsementPlacement }).toUpperCase() : 'HOME')}
             </span>
             {documentType && (
               <>
