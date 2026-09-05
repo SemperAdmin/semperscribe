@@ -7,8 +7,10 @@ export const metadata: Metadata = {
   description: 'SemperScribe Privacy and Security Notice. Non-official Proof of Concept disclosures.',
 };
 
-const LAST_REVIEWED = '2026-07-22';
-const DOC_VERSION = '1.1';
+const LAST_REVIEWED = '2026-09-05';
+const DOC_VERSION = '1.2';
+/** Inlined at build time from package.json via next.config.ts. */
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? 'dev';
 
 export default function PrivacyAndSecurityNoticePage() {
   const home = getBasePath() || '/';
@@ -18,7 +20,7 @@ export default function PrivacyAndSecurityNoticePage() {
         <header className="border-b pb-4 mb-4">
           <h1 className="text-2xl sm:text-3xl font-bold font-headline">SemperScribe Privacy and Security Notice</h1>
           <p className="text-xs text-muted-foreground mt-2">
-            Last reviewed: {LAST_REVIEWED}. Document version: {DOC_VERSION}.
+            Last reviewed: {LAST_REVIEWED}. Document version: {DOC_VERSION}. Application version: {APP_VERSION}.
           </p>
           <p className="mt-2">
             <Link href={home} className="text-primary underline hover:no-underline">Return to the application</Link>
@@ -124,6 +126,7 @@ export default function PrivacyAndSecurityNoticePage() {
         <footer className="border-t pt-4 mt-8 text-xs text-muted-foreground">
           <p>
             SemperScribe Privacy and Security Notice. Last reviewed {LAST_REVIEWED}. Document version {DOC_VERSION}.
+            Application version {APP_VERSION}. Cite the application version in any bug or security report.
           </p>
           <p className="mt-1">
             <Link href={home} className="text-primary underline hover:no-underline">Return to the application</Link>

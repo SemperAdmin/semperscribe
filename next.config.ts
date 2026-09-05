@@ -1,4 +1,5 @@
 import type {NextConfig} from 'next';
+import pkg from './package.json';
 
 // Polyfill Promise.withResolvers for Node.js < 22 (used by react-pdf/pdfjs-dist)
 if (!('withResolvers' in Promise)) {
@@ -29,6 +30,11 @@ console.log(`[NextConfig] DeployTarget: '${deployTarget}'`);
 console.log(`[NextConfig] BasePath: '${basePath}'`);
 
 const nextConfig: NextConfig = {
+  // The running version, surfaced in the Privacy and Security Notice so
+  // a bug report carries a build identifier. Single source: package.json.
+  env: {
+    NEXT_PUBLIC_APP_VERSION: pkg.version,
+  },
   basePath,
   assetPrefix: basePath ? `${basePath}/` : undefined,
   output: isProd ? 'export' : undefined,

@@ -28,7 +28,7 @@ Auditor-friendly mapping of project artifacts to NIST SP 800-218 (SSDF v1.1) pra
 |----------|-------------|----------------------|----------|
 | PS.1.1 | Store code securely | GitHub repository, contributor model | https://github.com/SemperAdmin/semperscribe |
 | PS.2.1 | Provide software integrity verification | Git commit SHA hashes, CycloneDX SBOM with hashes | `npm run sbom` output, GitHub commit signatures |
-| PS.3.1 | Securely archive necessary files | Git tags including `baseline-pre-compliance` and `pre-p2-2-orphan-removal` | `git tag -l` |
+| PS.3.1 | Securely archive necessary files | GitHub repository plus a GitLab mirror on every push. Tagged releases begin at v0.2.0 and are created automatically from `package.json` version bumps on `main`. Earlier tags (`baseline-pre-compliance`, `pre-p2-2-orphan-removal`) did not survive the 2026-07-15 history reset and are no longer citable. | `.github/workflows/mirror-to-gitlab.yml`, `.github/workflows/release.yml`, `git tag -l` |
 | PS.3.2 | Collect, safeguard, and share provenance data | SBOM artifact uploaded on every deploy, retained 90 days | Workflow artifact `sbom-{sha}` |
 
 ### PW. Produce Well-Secured Software
@@ -101,7 +101,7 @@ The following are deliberately not addressed by this compliance posture.
 
 ## Audit Trail
 
-Every compliance-relevant change since the audit started is recorded in `docs/COMPLIANCE_REMEDIATION_PLAN.md` and the git commit history. Pre-compliance baseline is tagged `baseline-pre-compliance` at SHA `4561cf5531696e8407082f5c8cf77854ce6e1dc3`.
+Every compliance-relevant change since the audit started is recorded in `docs/COMPLIANCE_REMEDIATION_PLAN.md`. The repository history was reset on 2026-07-15 at the start of the DonDocs parity program, so commits and tags from before that date, including the `baseline-pre-compliance` tag at SHA `4561cf55`, are not present in this repository. The remediation plan remains the record of what was done. From v0.2.0 onward, `CHANGELOG.md` and tagged releases carry the change record.
 
 ## Refresh Cadence
 

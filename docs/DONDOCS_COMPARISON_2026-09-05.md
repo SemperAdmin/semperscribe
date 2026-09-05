@@ -58,7 +58,7 @@ All numbers measured in this sandbox on 2026-09-05.
 | Of which embedded data tables | units and SSIC live in JSON, lazy loaded | about 20,300 lines (military dictionary 13,540, units 3,707, SSIC 2,711) |
 | Test files, test lines | 196 files, 26,067 lines | 92 files, 17,853 lines |
 | Unit suite result | 2,241 passed, 0 failed, 149 files, 87 s | 2,322 passed, 1 failed, 83 files, 92 s |
-| The one failure | n/a | tests/golden/page-parity.test.ts requires LibreOffice, absent here, fails by design |
+| The one failure | n/a | tests/golden/page-parity.test.ts needs LibreOffice Writer. The sandbox has libreoffice-core without the Writer module, so soffice converts nothing. Environmental, and the test fails by design when the converter is present but broken. |
 | Typecheck | pass | pass (app and tests) |
 | Lint | 0 errors, 0 warnings, eslint-plugin-security active | 0 errors, 54 warnings (react-hooks/set-state-in-effect) |
 | npm audit, production tree | 27 moderate, 0 high | 1 high (browserslist), 1 moderate, 1 low |
@@ -210,7 +210,7 @@ SemperScribe.
 - No versioning, no changelog, no release. A user has no way to say which build they are on when reporting a bug, and there is no issue tracker activity to report to.
 - 54 lint warnings suppressed to warning level, mostly setState inside effects.
 - JavaScript payload about 2.9x DonDocs.
-- The page-parity test hard-fails without LibreOffice, so a contributor without it sees a red suite on first clone.
+- The page-parity test hard-failed without LibreOffice, so a contributor without it saw a red suite on first clone. Changed 2026-09-05: it now skips off CI when soffice is absent, and reports the converter's own output when soffice is present but writes nothing.
 - 60 files under docs, several stale: docs/README.md still calls the project "Naval Letter Generator," package.json name is naval-letter-generator, the roadmap is dated 2026-02-16.
 - Git history rewritten to start at the parity program. Provenance before 2026-07-15 is gone from the repository.
 
