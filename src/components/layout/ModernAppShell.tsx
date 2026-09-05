@@ -129,6 +129,11 @@ export function ModernAppShell({
   const logoSrc = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/logo.png`;
   const paletteShortcut = useCommandPaletteHint();
 
+  // E.2/E.4: the option on screen. A same-page endorsement is the
+  // endorsement type with its placement set, and the header badge and
+  // the templates filter follow the option, not the type.
+  const pickerType = pickerTypeFor({ documentType, endorsementPlacement: formData?.endorsementPlacement });
+
   // D.8 (UX audit finding 9): a chosen type with nothing typed gets a
   // list of what the preview is waiting for rather than a blank page.
   // Null once anything has been entered.
@@ -193,7 +198,7 @@ export function ModernAppShell({
 
           <div className="hidden sm:flex items-center space-x-2 text-sm">
             <span className="px-2 py-1 rounded bg-primary text-primary-foreground font-medium border border-primary-foreground/20 text-xs shadow-sm">
-              {documentType === 'navmc10274' ? 'AA FORM' : (documentType ? pickerTypeFor({ documentType, endorsementPlacement: formData?.endorsementPlacement }).toUpperCase() : 'HOME')}
+              {documentType === 'navmc10274' ? 'AA FORM' : (documentType ? pickerType.toUpperCase() : 'HOME')}
             </span>
             {documentType && (
               <>
@@ -253,7 +258,7 @@ export function ModernAppShell({
 
         <HeaderActions
             className="text-primary-foreground"
-            documentType={documentType}
+            documentType={pickerType}
             onSave={onSave}
             onLoadDraft={onLoadDraft}
             onImport={onImport}

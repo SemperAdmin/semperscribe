@@ -42,7 +42,7 @@ import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from '@/lib/fon
 import type { ParagraphIndentSpec } from '@/lib/indent-engine';
 import { generateDisplayCitation } from '@/lib/citation';
 import { refLetterAt, startingRefLetterFor, startingEnclosureNumberFor } from '@/lib/reference-letters';
-import { isSamePageEndorsement, omitsIdentification, endorsementLineText } from '@/lib/same-page-endorsement';
+import { isSamePageBlockRender, omitsIdentification, endorsementLineText } from '@/lib/same-page-endorsement';
 
 interface NavalLetterPDFProps {
   formData: FormData;
@@ -713,14 +713,17 @@ export function NavalLetterPDF({
   const isStaffingPaper = ['position-paper', 'information-paper', 'decision-paper'].includes(formData.documentType);
 
   /**
-   * E.1 (M-5216.5 9-1, 9-2.1.a, Figure 9-1). A same-page endorsement
+   * E.1 (M-5216.5 9-1, 9-2.1.a, Figure 9-1). When composed onto the
+   * signature page of the letter it endorses, a same-page endorsement
    * renders as a BLOCK, not as a document: no letterhead, no seal, no
-   * page number and no continuation header, because it is added to the
-   * signature page of the letter it endorses and that page already
+   * page number and no continuation header, because that page already
    * carries all of those. The composer in lib/same-page-endorsement.ts
    * places the block; this branch only decides what the block contains.
+   * E.4: rendered on its own, with no letter under it, the same-page
+   * endorsement is a page like any other, letterhead and seal included,
+   * with the 9-2.1.a omission still taken.
    */
-  const isSamePageBlock = isSamePageEndorsement(formData);
+  const isSamePageBlock = isSamePageBlockRender(formData);
   const omitEndorsementIdentification = omitsIdentification(formData);
 
   // Determine if standard header (Seal + Letterhead) should be shown
@@ -1190,7 +1193,7 @@ export function NavalLetterPDF({
             With the same-page omission taken there is no basic-letter
             identification to append, so Figure 9-1 shows the ordinal
             and the word alone. */}
-        {isEndorsement && formData.endorsementLevel && (formData.basicLetterReference || isSamePageBlock) && (
+        {isEndorsement && formData.endorsementLevel && (formData.basicLetterReference || omitEndorsementIdentification) && (
           <View style={{ marginBottom: PDF_SPACING.sectionGap }}>
             <Text style={styles.addressLine}>
               {endorsementLineText(formData)}

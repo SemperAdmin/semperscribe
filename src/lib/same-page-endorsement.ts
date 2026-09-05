@@ -44,6 +44,24 @@ export function isSamePageEndorsement(
 }
 
 /**
+ * E.4: true when this render is the bare block for composition onto
+ * the signature page of the letter being endorsed. The flag is set by
+ * the callers that compose (the endorsed-document renderer and package
+ * assembly), never by the drafter, so a same-page endorsement rendered
+ * on its own is a page with the letterhead and seal.
+ */
+export function isSamePageBlockRender(
+  formData: Pick<FormData, 'documentType' | 'endorsementPlacement' | 'samePageRenderAsBlock'>,
+): boolean {
+  return isSamePageEndorsement(formData) && formData.samePageRenderAsBlock === true;
+}
+
+/** The same form data, marked to render as the bare block. */
+export function asSamePageBlock<T extends Pick<FormData, 'documentType'>>(formData: T): T {
+  return { ...formData, samePageRenderAsBlock: true };
+}
+
+/**
  * 9-2.1.a: the omission is the manual's own default for a same-page
  * endorsement (Figure 9-1 prints neither the SSIC nor a subject), so
  * an unset flag reads as true. It is read only for a same-page

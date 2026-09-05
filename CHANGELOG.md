@@ -5,6 +5,42 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.8.0] - 2026-09-05
+
+Phase E.4: the same-page endorsement on its own page, and the two
+endorsement templates taken from Figure 9-1 of SECNAV M-5216.5 and
+kept apart in the picker.
+
+### Changed
+
+- A same-page endorsement with no letter attached now previews and
+  exports as a page of its own: letterhead, seal, the identification
+  block in its usual place, page numbering as any letter, with the
+  9-2.1.a omission still taken, so the endorsement line reads FIRST
+  ENDORSEMENT alone and there is no Subj line. The bare block, with no
+  letterhead and no page number, is what the composer draws onto the
+  signature page of the letter being endorsed (Figure 9-1), and it is
+  rendered only when a letter is attached or the package is assembled.
+  A render-time flag carries that instruction; it is never saved.
+- The Word export of a same-page endorsement is the page, letterhead
+  included. Word takes no PDF host, so there is no block to export.
+- The "Same-Page Endorsement" template is Figure 9-1's first
+  endorsement: Ser 019/870 of 23 Apr 15, from Commander, Sea Based
+  Anti-Submarine Warfare Wing, Atlantic, via Commander, Naval Air
+  Force, U.S. Atlantic Fleet, to Commander, Fleet Forces Command, the
+  figure's own paragraph, signed R. L. GABEL, copy to NAS Meridian
+  (Code 11).
+- The "New-Page Endorsement" template is Figure 9-1's second
+  endorsement: 5216, Ser N72/420 of 28 Apr 15, "SECOND ENDORSEMENT on
+  NAS Meridian ltr 5216 Ser 11/273 of 22 Apr 15", the subject repeated,
+  enclosure (2), the figure's two paragraphs, signed J. T. CHILDRESS by
+  direction, copy to the prior endorser and the originator (9-2.5).
+- Template index entries name the picker option they belong to. The
+  same-page template shows under "Same-Page Endorsement" and the
+  new-page template under "Endorsement"; picking either from the other
+  option switches the option first, the way every cross-type template
+  pick does.
+
 ## [0.7.0] - 2026-09-05
 
 Phase E.3: the letter being endorsed. SECNAV M-5216.5 9-1 puts a

@@ -9,12 +9,14 @@
     },
     "package": {
       "title": "New-Page Endorsement",
-      "description": "Used to forward a basic letter with comments, recommendations, or new information.",
-      "subject": "ENDORSEMENT TEMPLATE",
+      "description": "Figure 9-1 of SECNAV M-5216.5, the second endorsement: on a new page, repeating the basic letter's SSIC and subject and identifying the basic letter in the endorsement line.",
+      "subject": "HOW TO PREPARE AN ENDORSEMENT",
       "documentType": "endorsement",
       "tags": [
         "template",
-        "standard"
+        "standard",
+        "new-page",
+        "figure-9-1"
       ]
     },
     "checksums": {
@@ -25,17 +27,17 @@
   "data": {
     "formData": {
       "documentType": "endorsement",
-      "endorsementLevel": "FIRST",
-      "basicLetterReference": "C 400",
-      "basicLetterSsic": "1000",
-      "ssic": "1000",
-      "originatorCode": "CODE",
-      "date": "10 Feb 26",
-      "from": "Commanding Officer, Endorsing Unit",
-      "to": "Commanding Officer, Destination Unit",
-      "subj": "ENDORSEMENT TEMPLATE",
-      "sig": "I. M. MARINE",
-      "delegationText": "",
+      "endorsementLevel": "SECOND",
+      "basicLetterReference": "NAS Meridian ltr 5216 Ser 11/273 of 22 Apr 15",
+      "basicLetterSsic": "5216",
+      "ssic": "5216",
+      "originatorCode": "Ser N72/420",
+      "date": "28 Apr 15",
+      "from": "Commander, Naval Air Force, U.S. Atlantic Fleet",
+      "to": "Commander, Fleet Forces Command",
+      "subj": "HOW TO PREPARE AN ENDORSEMENT",
+      "sig": "J. T. CHILDRESS",
+      "delegationText": "By direction",
       "line1": "",
       "line2": "",
       "line3": "",
@@ -43,48 +45,34 @@
       "referenceType": "",
       "referenceDate": "",
       "startingReferenceLevel": "",
-      "startingEnclosureNumber": "",
+      "startingEnclosureNumber": "2",
       "startingPageNumber": 2,
       "previousPackagePageCount": 1,
       "headerType": "USMC",
       "bodyFont": "times",
-      "accentColor": "black"
+      "accentColor": "black",
+      "endorsementPlacement": "new-page"
     },
     "vias": [],
     "references": [],
-    "enclosures": [],
-    "copyTos": [],
+    "enclosures": [
+      "SECNAV M-5216.5"
+    ],
+    "copyTos": [
+      "Commander, Sea Based Anti-Submarine Warfare Wing, Atlantic",
+      "NAS Meridian (Code 11)"
+    ],
     "paragraphs": [
       {
         "id": 1,
         "level": 1,
-        "content": "Forwarded, recommending approval.",
+        "content": "Start an endorsement on a new page. Number each page of your endorsement and continue the sequence of numbers from the previous endorsement or from the basic letter if you are the first endorser.",
         "isMandatory": true
       },
       {
         "id": 2,
         "level": 1,
-        "content": "Additional comments can be added here."
-      },
-      {
-        "id": 3,
-        "level": 2,
-        "content": "Sub-paragraph level (a). A subdivision needs at least two members."
-      },
-      {
-        "id": 4,
-        "level": 3,
-        "content": "Sub-sub-paragraph level (1)."
-      },
-      {
-        "id": 5,
-        "level": 3,
-        "content": "Sub-sub-paragraph level (2)."
-      },
-      {
-        "id": 6,
-        "level": 2,
-        "content": "Sub-paragraph level (b)."
+        "content": "Every \"new page\" endorsement must repeat the basic letter's SSIC, identify the basic letter in the endorsement line, and use the basic letter's subject as its own."
       }
     ]
   }

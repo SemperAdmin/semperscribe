@@ -81,13 +81,15 @@ block fits, and appended as a new-page endorsement numbered after the
 letter's pages when it does not, with the identification restored. The
 details card and the export toast say which happened.
 
-Without a letter attached, exporting a same-page endorsement produces
-the block alone: no letterhead, no seal, no page number, because the
-page it lands on carries all of those (Figure 9-1). There is no
+Without a letter attached, a same-page endorsement previews and
+exports as a page of its own: letterhead, seal and page numbering like
+any letter, with the 9-2.1.a omission still taken. There is no
 signature page present to measure against, so the compliance panel
-reports that and cites 9-1 rather than refusing. The Word export is
-always the block, so a Word user pastes it onto the signature page of
-the document being endorsed.
+reports that and cites 9-1 rather than refusing. The bare block, with
+no letterhead and no page number, exists only inside the composer: it
+is rendered when a letter is attached or a package is assembled, and
+drawn onto that letter's signature page (Figure 9-1). The Word export
+is always the page, since Word takes no PDF host.
 
 Figure 9-1 draws a horizontal rule between the basic letter and the
 first endorsement. The text of 9-2 prescribes no rule, so none is

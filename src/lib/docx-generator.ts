@@ -39,7 +39,7 @@ import {
   getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle, resolveDistributionStatement } from './naval-format-utils';
 import { createFormattedParagraph } from "./paragraph-formatter";
 import { refLetterAt, startingRefLetterFor, startingEnclosureNumberFor } from "./reference-letters";
-import { isSamePageEndorsement, omitsIdentification, endorsementLineText } from "./same-page-endorsement";
+import { isSamePageBlockRender, omitsIdentification, endorsementLineText } from "./same-page-endorsement";
 import { generateCitation } from "./citation";
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from "./indent-engine";
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from "./font-policy";
@@ -149,7 +149,11 @@ export async function generateDocxBlob(
    * and no page number: the drafter adds it to the signature page of
    * the document being endorsed, which already carries all three.
    */
-  const isSamePageBlock = isSamePageEndorsement(formData);
+  // E.4: the DOCX is always a page of its own (Word takes no PDF host),
+  // so the block flag is never set here and a same-page endorsement
+  // carries the letterhead. Kept as a branch so the two emitters read
+  // the same way.
+  const isSamePageBlock = isSamePageBlockRender(formData);
   const omitEndorsementIdentification = omitsIdentification(formData);
 
   const moaData = formData.moaData || {
@@ -724,7 +728,7 @@ export async function generateDocxBlob(
   // ordinal and the word alone.
   const endorsementParagraphs: Paragraph[] = [];
   if (formData.documentType === 'endorsement' && formData.endorsementLevel
-      && (formData.basicLetterReference || isSamePageBlock)) {
+      && (formData.basicLetterReference || omitEndorsementIdentification)) {
     const endorsementText = endorsementLineText(formData);
     endorsementParagraphs.push(new Paragraph({
       children: [new TextRun({ text: endorsementText, font, size: FONT_SIZE_BODY })],

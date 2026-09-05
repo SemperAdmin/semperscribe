@@ -20,7 +20,7 @@ import { runLetterValidators } from '@/lib/letter-validators';
 import type { ValidationIssue } from '@/lib/letter-validators';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
-import { resolvePickerType } from '@/lib/document-type-options';
+import { resolvePickerType, pickerTypeFor } from '@/lib/document-type-options';
 import { resolveHostBytes } from '@/lib/same-page-host';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { AMHSPreview } from '@/components/amhs/AMHSPreview';
@@ -837,7 +837,9 @@ function NavalLetterGeneratorInner() {
    */
   const handleTemplatePick = (url: string, templateDocumentType?: string) => {
     const targetType = templateDocumentType || 'basic';
-    if (targetType !== formData.documentType) {
+    // E.4: templates name the picker option they belong to, so a
+    // same-page template switches to the same-page option.
+    if (targetType !== pickerTypeFor(formData)) {
       if (documentHasContent && !window.confirm(
         `This template is a ${targetType} document. Switching document types replaces the paragraphs you have written. Do you want to proceed?`
       )) {

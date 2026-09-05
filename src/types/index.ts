@@ -24,6 +24,15 @@ export type FormData = {
    * previews and exports as the block alone.
    */
   samePageHost?: SamePageHost;
+  /**
+   * E.4: render-time instruction, never persisted. True renders a
+   * same-page endorsement as the bare block the composer draws onto
+   * the signature page of the letter being endorsed: no letterhead, no
+   * seal, no page number, no continuation header (Figure 9-1). Unset,
+   * a same-page endorsement previews and exports as a page of its own
+   * with the letterhead and seal, the 9-2.1.a omission still taken.
+   */
+  samePageRenderAsBlock?: boolean;
   [key: string]: any;
 };
 
