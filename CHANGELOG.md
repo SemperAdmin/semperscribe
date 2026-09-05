@@ -5,6 +5,47 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.4.8] - 2026-09-05
+
+Companion, part 1 of 2: the asset seam. Every file the export pipelines
+read from `public/` (fonts, seals, form blanks, NAVMC template pages) now
+goes through one module, `src/lib/assets.ts`, so a Node process can point
+the pipelines at a directory on disk. This is the precondition for the
+headless HTTP and MCP companion (part 2) which serves EDMS and other
+integrations without a browser. No user-visible change in the app.
+
+### Changed
+
+- `src/lib/assets.ts` (new) owns asset access: `loadAssetBytes` and
+  `loadOptionalAssetBytes` for byte consumers, `resolveAssetPath` for
+  path consumers, and `registerAssetLoader` and
+  `registerAssetPathResolver` to replace the same-origin fetch under Node.
+  With nothing registered, the browser behaviour is unchanged.
+- Font registration, the letterhead seals, the NAVMC 10274, 118(11), and
+  10922 template loaders, the XFA and AcroForm official-form exports, and
+  the I-Type DOCX cover seal read through the seam. The seal module's
+  private loader hook is replaced by the shared one.
+- `officialFormAsset(type)` returns the blank's path relative to
+  `public/`; `officialFormPath` is unchanged for URL consumers.
+- The test suite registers the disk loader once in `tests/setup.ts` and
+  the fourteen per-file font mocks are gone with the mock module.
+
+### Fixed
+
+- The I-Type DOCX cover seal was fetched from `/USMC.png` without the
+  deployment base path, so on GitHub Pages it silently rendered without
+  the seal. It now resolves under the base path like every other asset.
+
+### Added
+
+- `tests/node-render.test.ts` runs under the plain Node environment (no
+  window, no document) and renders the fixture letter to PDF and DOCX,
+  the I-Type cover with its seal, and both official-form fills from disk.
+  A hidden browser dependency in a pipeline fails here before it fails in
+  the companion.
+- `tests/assets.test.ts` pins the seam contract: leading-slash tolerance,
+  fetch fallback under the base path, error text, and the optional loader.
+
 ## [0.4.7] - 2026-09-05
 
 Security review. `npm audit` reports zero advisories in both trees and

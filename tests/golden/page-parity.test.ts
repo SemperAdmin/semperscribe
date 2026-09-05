@@ -15,13 +15,11 @@
  * Baseline: commit 82a6c52. Result at baseline is recorded in
  * tests/golden/PARITY_STATUS.md, red or green, honestly.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'child_process';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
-
-vi.mock('@/lib/pdf-fonts', () => import('./pdf-fonts-mock'));
 
 import { generateBasePDFBlob } from '@/lib/pdf-generator';
 import { generateDocxBlob } from '@/lib/docx-generator';

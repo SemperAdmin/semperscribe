@@ -7,11 +7,7 @@
  *
  * Baseline: commit 82a6c52.
  */
-import { describe, it, expect, vi } from 'vitest';
-
-// The production font module resolves URLs from window.location, which
-// fails under vitest. Substitute local font files with identical metrics.
-vi.mock('@/lib/pdf-fonts', () => import('./pdf-fonts-mock'));
+import { describe, it, expect } from 'vitest';
 
 import { generateBasePDFBlob } from '@/lib/pdf-generator';
 import { extractPdfTextLayout, layoutToSnapshotText } from './helpers';

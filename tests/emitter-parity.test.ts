@@ -17,10 +17,8 @@
  * neither emitter invents text the drafter never typed, and an empty
  * required field is reported by the validators instead.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { generateDocxBlob } from '@/lib/docx-generator';
 import { generateBasePDFBlob } from '@/lib/pdf-generator';

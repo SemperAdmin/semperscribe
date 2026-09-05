@@ -8,10 +8,8 @@
  * d. Coordinating Instructions. Level 0 means a pre-formatted line:
  * rendered verbatim at the left margin, no generated designator.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { fixedLadderEngine } from '@/lib/indent-engine';
 import { getMCOParagraphs, getAssumptionOfCommandParagraphs } from '@/lib/naval-format-utils';

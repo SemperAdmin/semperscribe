@@ -2,7 +2,7 @@ import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import { Navmc10274Data, BoxBoundary } from '@/types/navmc';
 import { ParagraphData } from '@/types';
 import { generateCitation } from '@/lib/citation';
-import { getBasePath } from '@/lib/path-utils';
+import { loadAssetBytes } from '@/lib/assets';
 
 // --- Configuration & Constants ---
 
@@ -65,11 +65,10 @@ const PAGE3_CONTENT_BOX: BoxBoundary = {
  * Loads the PDF templates from the public folder.
  */
 async function loadTemplates() {
-  const basePath = getBasePath();
   const [page1Bytes, page2Bytes, page3Bytes] = await Promise.all([
-    fetch(`${basePath}/templates/navmc10274/page1.pdf`).then((res) => res.arrayBuffer()),
-    fetch(`${basePath}/templates/navmc10274/page2.pdf`).then((res) => res.arrayBuffer()),
-    fetch(`${basePath}/templates/navmc10274/page3.pdf`).then((res) => res.arrayBuffer()),
+    loadAssetBytes('templates/navmc10274/page1.pdf'),
+    loadAssetBytes('templates/navmc10274/page2.pdf'),
+    loadAssetBytes('templates/navmc10274/page3.pdf'),
   ]);
   return { page1Bytes, page2Bytes, page3Bytes };
 }
@@ -222,7 +221,7 @@ function drawLineWithHighlights(
 async function drawSupplementalInfo(
   doc: PDFDocument,
   page2: PDFPage,
-  page3Bytes: ArrayBuffer,
+  page3Bytes: Uint8Array,
   supplementalInfo: string,
   font: PDFFont,
   paragraphs?: ParagraphData[],
@@ -423,7 +422,7 @@ function drawVia(
   });
 }
 
-async function appendPage3(doc: PDFDocument, page3Bytes: ArrayBuffer) {
+async function appendPage3(doc: PDFDocument, page3Bytes: Uint8Array) {
   const [embeddedPage3] = await doc.embedPdf(page3Bytes, [0]); // Embed first page of template
   const page = doc.addPage([embeddedPage3.width, embeddedPage3.height]);
   page.drawPage(embeddedPage3);

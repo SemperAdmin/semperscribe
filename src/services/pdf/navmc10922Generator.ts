@@ -24,7 +24,7 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, degrees, rgb } from 'pdf-lib';
 import { FormData } from '@/types';
 import { navmc10922Values } from '@/lib/navmc10922-xfa';
-import { getBasePath } from '@/lib/path-utils';
+import { loadAssetBytes } from '@/lib/assets';
 import layout from './navmc10922-layout.json';
 
 const MM_TO_PT = 72 / 25.4;
@@ -168,22 +168,16 @@ function drawCheckboxIn(page: PDFPage, box: Box, checked: boolean, font: PDFFont
  * construction). Null when unavailable: the programmatic redraw below
  * then carries the full form itself.
  */
-async function loadBackgroundPages(): Promise<ArrayBuffer[] | null> {
+async function loadBackgroundPages(): Promise<Uint8Array[] | null> {
   try {
-    const basePath = getBasePath();
-    return await Promise.all([1, 2, 3].map((n) =>
-      fetch(`${basePath}/templates/navmc10922/page${n}.pdf`).then((res) => {
-        if (!res.ok) throw new Error(String(res.status));
-        return res.arrayBuffer();
-      })
-    ));
+    return await Promise.all([1, 2, 3].map((n) => loadAssetBytes(`templates/navmc10922/page${n}.pdf`)));
   } catch {
     return null;
   }
 }
 
 /** Renders the flattened NAVMC 10922 from the document state.
- *  `backgrounds` overrides the fetch (tests, node harnesses). */
+ *  `backgrounds` overrides the asset load (tests, node harnesses). */
 export async function generateNavmc10922(
   formData: FormData,
   backgrounds?: ArrayBuffer[] | Uint8Array[] | null

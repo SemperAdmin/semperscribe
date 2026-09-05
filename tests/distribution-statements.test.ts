@@ -10,10 +10,8 @@
  * Any edit to DISTRIBUTION_STATEMENTS must re-verify against the
  * source, not against this test.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { DISTRIBUTION_STATEMENTS } from '@/lib/constants';
 import { resolveDistributionStatement } from '@/lib/naval-format-utils';

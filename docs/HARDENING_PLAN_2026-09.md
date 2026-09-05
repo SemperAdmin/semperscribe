@@ -87,6 +87,22 @@ Initial-load JS 3,139,817 B to 2,655,337 B (minus 484 KB, 15 percent). Total 6,8
 
 Initial-load JS 2,655,337 B to 2,553,227 B. The plan's diagnosis was half stale: useReferenceData already loaded the dictionary through `loadMilitaryDictionary`; the live static chain was page.tsx to letter-validators to acronym-validators to the 148 KB table. `validateAcronyms` now takes the dictionary as an optional argument (detection needs none; it only adds the suggested expansion) with the inverted index cached per array, `runLetterValidators` threads it through an options object, and page.tsx supplies it from `useMilitaryDictionary(enabled)`, which holds the fetch until there is body text. proofread-checks and the export gate call without it and report the same acronyms unsuggested. B.6 is complete in effect: the initial budget is 2,810,000 B and the total 7,490,000 B, each within ten percent of the measurement, and the smoke test's marker check now covers the dictionary. Remaining initial weight by attribution: next 883 KB, zod 264 KB, letter components 176 KB, react-day-picker 64 KB, schemas 61 KB. None is in this plan.
 
+## Phase C.1 status, 2026-09-05: landed (v0.4.8)
+
+The asset seam. `src/lib/assets.ts` is the one place the export pipelines read `public/` from: byte consumers call `loadAssetBytes` (or the optional variant which yields null), path consumers call `resolveAssetPath`, and Node registers a disk loader and a path resolver in place of the same-origin fetch. Fonts, seals, the three NAVMC template loaders, the XFA and AcroForm blanks, and the I-Type cover seal all go through it; nothing in `src/lib` or `src/services` fetches a static file on its own any more. The seal module's private loader hook is gone in favour of the shared one, and the fourteen per-file `vi.mock` font substitutions in the test suite are gone with the mock module they pointed at. A new test file runs under the plain Node environment and renders PDF, DOCX, the I-Type cover, and both official-form fills with no window and no document, which is the companion's premise. One latent defect surfaced: the I-Type seal was fetched from `/USMC.png` without the base path, so the GitHub Pages deployment dropped it silently. Bundle unchanged within noise.
+
+## Phase C: headless companion (added 2026-09-05, after the DonDocs second audit)
+
+Requested for EDMS integration. Two PRs.
+
+### C.1 Asset seam
+
+Replace the window-dependent font URL builder and the six static-file fetch sites in the generators with one loader and path resolver module which a Node process can point at `public/` on disk. Convert the test suite's seal loader and font mock to it. Add a Node-environment render test.
+
+### C.2 Companion process
+
+A `companion/` package run with `tsx`: an HTTP server bound to loopback with `GET /health`, `GET /document-types`, `POST /validate`, and `POST /render` (NLDP document in, PDF or DOCX out, optional write to a confined output directory), plus an MCP stdio server exposing the same operations as tools. The export gate's sensitive-data findings refuse a render unless the caller acknowledges them, mirroring the UI. Body cap, render timeout, and contract tests including a golden parity check against the browser pipeline.
+
 ## Phase 0: safety net (one PR, blocks everything after it)
 
 ### 0.1 Browser smoke test on the built export
@@ -247,4 +263,4 @@ Thirteen PRs. Each is small enough to review in one sitting and revert with one 
 
 - It does not enable the React Compiler or upgrade React to 19. That would remove the memoization warnings by another route, but it is a framework change with its own risk and belongs in its own plan.
 - It does not touch the PDF or DOCX generators' output. Any diff in a golden snapshot during this plan is a defect in the PR, not a snapshot to accept.
-- It does not add features. The DonDocs feature deltas (version history, headless companion, block editor) are a separate roadmap item.
+- It does not add features. The DonDocs feature deltas (version history, block editor) are a separate roadmap item. The headless companion was added as Phase C on 2026-09-05 at the owner's request for EDMS integration.

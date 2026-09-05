@@ -4,12 +4,14 @@
  * Pins the contract both export pipelines rely on: bytes are real PNGs
  * matching the files under public/seals/, each seal loads once and is
  * shared, the data URL is the shape @react-pdf consumes, a failed load
- * does not poison the cache, and a registered loader beats fetch.
+ * does not poison the cache, and a loader registered on the asset seam
+ * beats fetch.
  */
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { loadSealBytes, loadSealDataUrl, registerSealLoader, SEAL_FILES } from '@/lib/seal-assets';
+import { clearSealCache, loadSealBytes, loadSealDataUrl, SEAL_FILES } from '@/lib/seal-assets';
+import { registerAssetLoader } from '@/lib/assets';
 
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47];
 
@@ -17,9 +19,13 @@ function diskLoader(relativePath: string): Promise<Uint8Array> {
   return Promise.resolve(new Uint8Array(readFileSync(path.join(process.cwd(), 'public', relativePath))));
 }
 
-beforeEach(() => registerSealLoader(diskLoader));
+beforeEach(() => {
+  registerAssetLoader(diskLoader);
+  clearSealCache();
+});
 afterEach(() => {
-  registerSealLoader(diskLoader);
+  registerAssetLoader(diskLoader);
+  clearSealCache();
   vi.restoreAllMocks();
 });
 
@@ -36,7 +42,7 @@ describe('seal assets', () => {
 
   it('loads each seal once and shares the bytes', async () => {
     const loader = vi.fn(diskLoader);
-    registerSealLoader(loader);
+    registerAssetLoader(loader);
     const [a, b] = await Promise.all([loadSealBytes('dod'), loadSealBytes('dod')]);
     await loadSealDataUrl('dod');
     expect(a).toBe(b);
@@ -52,7 +58,7 @@ describe('seal assets', () => {
 
   it('retries after a failed load instead of caching the failure', async () => {
     let calls = 0;
-    registerSealLoader(async rel => {
+    registerAssetLoader(async rel => {
       calls += 1;
       if (calls === 1) throw new Error('offline');
       return diskLoader(rel);
@@ -64,7 +70,7 @@ describe('seal assets', () => {
   });
 
   it('falls back to a same-origin fetch under the base path when no loader is registered', async () => {
-    registerSealLoader(null);
+    registerAssetLoader(null);
     const png = new Uint8Array([...PNG_MAGIC, 1, 2, 3]);
     const fetchMock = vi.fn(async (_input: RequestInfo | URL) => new Response(png, { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
@@ -76,7 +82,7 @@ describe('seal assets', () => {
   });
 
   it('reports a missing file as an error naming the URL and status', async () => {
-    registerSealLoader(null);
+    registerAssetLoader(null);
     vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 404 })));
     await expect(loadSealBytes('navy')).rejects.toThrow(/seals\/navy-seal\.png returned HTTP 404/);
     vi.unstubAllGlobals();
