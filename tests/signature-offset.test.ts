@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Signature placement — 4th line below the last line of text
  * (SECNAV M-5216.5 7-2.16: three blank lines, signature on the fourth).

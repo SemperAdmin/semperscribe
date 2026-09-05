@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P3.7 — Reports Required rule (MCO 5216.20B par. 29b/29c; audit
  * line 142): up to 4 reports list in the heading block on the

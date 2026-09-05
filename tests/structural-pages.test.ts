@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P4.1 — directive structural pages and roman-numeral cascade
  * (MCO 5215.1K para 48; plan Phase 4 item 1).

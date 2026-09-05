@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * S3 — continuation-page header geometry (audit gap G3 companion).
  *

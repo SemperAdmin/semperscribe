@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P3.6 — distribution statements and placement (MCO 5215.1K encl (1),
  * "Letterhead Stationery" section, statements block at pages 1-8/1-9;

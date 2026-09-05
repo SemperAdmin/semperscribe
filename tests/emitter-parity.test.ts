@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Emitter parity: the preview and the export must carry the same
  * content (audit 2026-08-16).
