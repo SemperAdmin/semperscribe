@@ -67,6 +67,10 @@ recharts, file-saver, @types/file-saver, and embla-carousel-react removed; autop
 
 Seals moved to `public/seals/` byte-identical; `dod-seal-data.ts` deleted. Total JS 10,654,691 B to 6,809,010 B, initial load unchanged. One shared loader (`src/lib/seal-assets.ts`) feeds a data URL to @react-pdf and an ArrayBuffer to docx; tests register a disk loader in `tests/setup.ts` since Node has no origin to fetch from. Golden PDF and DOCX tests passed unchanged. The smoke test gained an image-XObject assertion. Deploy total budget lowered to 7,490,000 B. B.2 (downscaling) remains a human-review item.
 
+## Phase A.3 status, 2026-09-05: landed (v0.4.1)
+
+Seven reset-on-input effects gone, lint 31 to 24. PageCountIndicator, DocumentImportModal and RevisionCompareDialog re-derive through `useSyncedState` keyed on the URL, the parse result and the dialog phase. ShareLinkDialog and GunnyBotSettings derive the EDMS lock and the saved proxy URL from `useHydrated`; the GunnyBot effect keeps only the store side effects. SignaturePlacementModal is split into a wrapper and a body remounted by key on each open, with the object URL memoised in the wrapper and revoked in a cleanup-only effect. Twenty component tests added across six files, one file per dialog. Bundle unchanged (initial 3,139,086 B, total 6,823,625 B).
+
 ## Phase 0: safety net (one PR, blocks everything after it)
 
 ### 0.1 Browser smoke test on the built export

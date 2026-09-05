@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import { AlertTriangle, ChevronDown, FileUp } from 'lucide-react';
 import {
   Dialog,
@@ -150,15 +151,11 @@ export function DocumentImportModal({
   onConfirm,
   onCancel,
 }: DocumentImportModalProps) {
-  // Lazy initializer covers the first mount; the effect resyncs when the
-  // result changes (new import, or a document-type override re-parse).
-  const [edited, setEdited] = useState<EditableState | null>(
-    () => (result ? stateFromResult(result) : null),
+  // Editable copy keyed on the parse result: a new result (new import, or a
+  // document-type override re-parse) replaces the edits during render.
+  const [edited, setEdited] = useSyncedState(result, (r): EditableState | null =>
+    r ? stateFromResult(r) : null,
   );
-
-  useEffect(() => {
-    setEdited(result ? stateFromResult(result) : null);
-  }, [result]);
 
   const lowConfidence = useMemo(() => {
     const set = new Set<ExtractedFieldName>();
