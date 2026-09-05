@@ -16,14 +16,11 @@ if (!('withResolvers' in Promise)) {
   };
 }
 
-// B.1 (HARDENING_PLAN_2026-09): the letterhead seals are static files under
-// public/seals/, fetched from the origin in the browser. Node has no origin
-// to fetch from, so the suite reads them from disk through the loader hook.
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
-import { registerSealLoader } from '@/lib/seal-assets';
+// Static assets (fonts, seals, form blanks, NAVMC template pages) are
+// fetched from the origin in the browser. Node has no origin to fetch
+// from, so the suite reads public/ from disk through the asset seam in
+// src/lib/assets.ts. The same registration is what the headless
+// companion performs.
+import { registerNodeAssets } from './node-assets';
 
-registerSealLoader(async (relativePath) => {
-  const bytes = await readFile(path.join(process.cwd(), 'public', relativePath));
-  return new Uint8Array(bytes);
-});
+registerNodeAssets();

@@ -7,10 +7,8 @@
  * Signature: 5th line below the last text line (4 blanks) for
  * MCO/MCBul; correspondence keeps the 4th line (M-5216.5 7-2.16).
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { generateDocxBlob } from '@/lib/docx-generator';
 import { generateBasePDFBlob } from '@/lib/pdf-generator';

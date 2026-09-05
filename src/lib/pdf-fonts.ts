@@ -1,16 +1,13 @@
 import { Font } from '@react-pdf/renderer';
-import { resolvePublicPath } from './path-utils';
+import { resolveAssetPath } from '@/lib/assets';
 
 /**
- * Get the full URL for fonts based on deployment environment
- * Isolated for testability and to handle browser-specific logic
+ * Where @react-pdf reads a font from: the absolute URL in the browser,
+ * or a file path under a registered asset path resolver (tests, the
+ * headless companion). See src/lib/assets.ts.
  */
 export function getFullFontUrl(fontPath: string): string {
-  if (typeof window !== 'undefined') {
-    const basePath = resolvePublicPath(fontPath);
-    return `${window.location.origin}${basePath}`;
-  }
-  return fontPath;
+  return resolveAssetPath(fontPath);
 }
 
 /**

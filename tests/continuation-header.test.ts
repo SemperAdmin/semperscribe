@@ -8,10 +8,8 @@
  *   body top   = 7/6 in = 84pt from the page top edge
  * pdfjs reports baseline-origin y from the BOTTOM edge (792pt page).
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { generateBasePDFBlob } from '@/lib/pdf-generator';
 import { generateDocxBlob } from '@/lib/docx-generator';

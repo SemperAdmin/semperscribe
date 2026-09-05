@@ -21,6 +21,7 @@ import { FormData, ParagraphData } from '@/types';
 import { generateCitation } from '@/lib/citation';
 import { indexToRefLetter } from '@/lib/letter-validators';
 import { resolvePublicPath } from '@/lib/path-utils';
+import { loadAssetBytes } from '@/lib/assets';
 // NAVMC 10922 needs a POSITIONAL emitter - 77 of its 102 datasets
 // nodes share one name, so the tag() helper above cannot address them.
 import { buildNavmc10922Xml } from '@/lib/navmc10922-xfa';
@@ -171,33 +172,38 @@ export async function fillXfaDatasets(baseBytes: ArrayBuffer | Uint8Array, datas
 }
 
 /**
- * Which document types have an official XFA base form. The path is
+ * The bundled blank for a document type, as a path relative to public/.
+ * NAVMC 10132 is a plain AcroForm, not XFA. It is registered here because
+ * this is the one place that maps a document type to its bundled blank,
+ * but it fills through navmc10132-export.ts, never through
+ * exportOfficialForm below.
+ */
+export function officialFormAsset(documentType: string): string | null {
+  return documentType === 'aa-form' ? 'forms/navmc-10274-blank.pdf'
+    : documentType === 'page11' ? 'forms/navmc-118-11-blank.pdf'
+    : documentType === 'navmc10922' ? 'forms/navmc-10922-blank.pdf'
+    : documentType === 'navmc10132' ? 'forms/navmc-10132-blank.pdf'
+    : null;
+}
+
+/**
+ * The URL of the official blank for a document type. The path is
  * forced absolute: with an empty basePath the resolver returns a bare
  * relative name, which resolves against the current route instead of
  * the origin (the same trap that broke the pdfjs worker on cloud.gov).
  */
 export function officialFormPath(documentType: string): string | null {
-  const file = documentType === 'aa-form' ? 'forms/navmc-10274-blank.pdf'
-    : documentType === 'page11' ? 'forms/navmc-118-11-blank.pdf'
-    : documentType === 'navmc10922' ? 'forms/navmc-10922-blank.pdf'
-    // NAVMC 10132 is a plain AcroForm, not XFA. It is registered here because
-    // this is the one place that maps a document type to its bundled blank,
-    // but it fills through navmc10132-export.ts, never through
-    // exportOfficialForm below.
-    : documentType === 'navmc10132' ? 'forms/navmc-10132-blank.pdf'
-    : null;
+  const file = officialFormAsset(documentType);
   if (!file) return null;
   const path = resolvePublicPath(file);
   return path.startsWith('/') || /^https?:\/\//.test(path) ? path : `/${path}`;
 }
 
-/** Fetches the bundled blank and fills it from the document state. */
+/** Loads the bundled blank through the asset seam and fills it from the document state. */
 export async function exportOfficialForm(slices: FormSlices): Promise<Blob> {
-  const path = officialFormPath(slices.formData.documentType);
-  if (!path) throw new Error(`No official form for type "${slices.formData.documentType}".`);
-  const res = await fetch(path);
-  if (!res.ok) throw new Error(`Failed to load the blank form (${res.status}).`);
-  const base = await res.arrayBuffer();
+  const asset = officialFormAsset(slices.formData.documentType);
+  if (!asset) throw new Error(`No official form for type "${slices.formData.documentType}".`);
+  const base = await loadAssetBytes(asset);
   const xml = slices.formData.documentType === 'aa-form'
     ? buildNavmc10274Xml(slices)
     : slices.formData.documentType === 'navmc10922'

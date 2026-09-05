@@ -12,11 +12,11 @@
  * data URL string, the docx ImageRun takes an ArrayBuffer. Both come from
  * one cached byte load per seal.
  *
- * Node has no same-origin fetch, so a test or script registers a loader
- * which reads public/ from disk (tests/setup.ts does this). A registered
- * loader always wins over fetch.
+ * The bytes come through the asset seam in src/lib/assets.ts: a
+ * same-origin fetch in the browser, a registered disk loader under Node
+ * (tests/setup.ts and the headless companion register one).
  */
-import { getBasePath } from '@/lib/path-utils';
+import { loadAssetBytes } from '@/lib/assets';
 
 export type SealKind = 'dod' | 'navy';
 
@@ -26,34 +26,20 @@ export const SEAL_FILES: Record<SealKind, string> = {
   navy: 'seals/navy-seal.png',
 };
 
-export type SealLoader = (relativePath: string) => Promise<Uint8Array>;
-
-let registeredLoader: SealLoader | null = null;
 const byteCache = new Map<SealKind, Promise<Uint8Array>>();
 const dataUrlCache = new Map<SealKind, Promise<string>>();
 
-/** Override the fetch-based loader (Node tests, scripts). Pass null to restore. */
-export function registerSealLoader(loader: SealLoader | null): void {
-  registeredLoader = loader;
+/** Drops the cached seals so the next load goes back to the asset seam (tests). */
+export function clearSealCache(): void {
   byteCache.clear();
   dataUrlCache.clear();
-}
-
-async function fetchFromOrigin(relativePath: string): Promise<Uint8Array> {
-  const url = `${getBasePath()}/${relativePath}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Seal asset ${url} returned HTTP ${res.status}`);
-  }
-  return new Uint8Array(await res.arrayBuffer());
 }
 
 /** Raw PNG bytes for a seal, loaded once and shared. */
 export function loadSealBytes(kind: SealKind): Promise<Uint8Array> {
   let pending = byteCache.get(kind);
   if (!pending) {
-    const load = registeredLoader ?? fetchFromOrigin;
-    pending = load(SEAL_FILES[kind]);
+    pending = loadAssetBytes(SEAL_FILES[kind]);
     byteCache.set(kind, pending);
     // A failed load must not poison the cache for the next attempt.
     pending.catch(() => byteCache.delete(kind));
