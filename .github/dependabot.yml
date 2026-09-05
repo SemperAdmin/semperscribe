@@ -13,6 +13,11 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+        # The PDF renderer gets its own PR. 4.9.0 emitted flate streams
+        # pdf.js rejects under Node (every text-layer test read an empty
+        # page), and one bad renderer release must not hold back the
+        # other thirty updates in the week's group.
+        exclude-patterns: ["@react-pdf/*"]
     ignore:
       # Exact pins with a reason recorded in package.json ("//"): bump
       # deliberately, not by feed.
