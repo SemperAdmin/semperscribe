@@ -64,12 +64,13 @@ jobs:
       # Bundle-size budgets, two of them. Initial-load counts the chunks
       # out/index.html references (what a browser fetches before first
       # paint); total counts every chunk including lazy ones. Baseline
-      # measured 2026-09-05: initial 3,138,673 B, total 10,654,516 B.
+      # measured 2026-09-05: initial 3,138,673 B, total 10,654,516 B; total
+      # re-measured after B.1 (seals out of JS) at 6,809,010 B.
       # Budgets are baseline plus ~10%. Lower them in the PR which
       # achieves a reduction; raise them only in a PR which justifies the
       # growth, so bundle changes are a review conversation.
       - name: Bundle-size budgets
-        run: node scripts/bundle-report.mjs --initial-budget=3460000 --total-budget=11720000
+        run: node scripts/bundle-report.mjs --initial-budget=3460000 --total-budget=7490000
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
