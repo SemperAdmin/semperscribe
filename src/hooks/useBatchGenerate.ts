@@ -13,6 +13,7 @@ import {
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { getExportFilename } from '@/lib/naval-format-utils';
 import JSZip from 'jszip';
+import { clearedForExport } from '@/lib/export-gate';
 
 export type BatchStatus = 'idle' | 'generating' | 'done' | 'error';
 
@@ -76,6 +77,23 @@ export function useBatchGenerate() {
     mergeFields: MergeField[],
     rows: Record<string, string>[],
   ): Promise<void> => {
+    // Pre-export sensitive-data check over the template AND every merge
+    // row. Merge values (names, EDIPIs, case numbers) are exactly where
+    // identifiers arrive in a batch, so the template alone is not enough.
+    const cleared = await clearedForExport({
+      formData: templateFormData,
+      paragraphs: templateParagraphs,
+      vias,
+      references,
+      enclosures,
+      copyTos,
+      distList,
+      rows,
+    });
+    if (!cleared) {
+      return;
+    }
+
     setStatus('generating');
     setProgress({ current: 0, total: rows.length, currentLabel: 'Starting...', errors: [] });
 

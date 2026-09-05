@@ -54,6 +54,7 @@ import { DocumentLibraryDialog } from '@/components/DocumentLibraryDialog';
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { GunnyBotPanel } from '@/components/gunnybot/GunnyBotPanel';
 import { GunnyBotRuntime } from '@/components/gunnybot/GunnyBotRuntime';
+import { ExportScanGate } from '@/components/ExportScanGate';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useLivePreview } from '@/hooks/useLivePreview';
 import { useDocumentExport } from '@/hooks/useDocumentExport';
@@ -1113,6 +1114,7 @@ function NavalLetterGeneratorInner() {
       />
       <GunnyBotPanel />
       <GunnyBotRuntime />
+      <ExportScanGate />
     </ModernAppShell>
   );
 }
