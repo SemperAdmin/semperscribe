@@ -5,6 +5,19 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.4.6] - 2026-09-05
+
+Editor commit timing. No change to any document's content.
+
+### Fixed
+
+- Leaving a field or a paragraph editor now commits its text to the
+  document at once. Both editors debounce their commit by 500 ms while
+  typing; before this, an export or save issued inside that window read
+  the previous text. Seen as a CI failure (run 149) where a fast runner
+  exported a letter with an empty body, and reproducible by a user who
+  types and exports within half a second.
+
 ## [0.4.5] - 2026-09-05
 
 Phases B.5 and B.6 of `docs/HARDENING_PLAN_2026-09.md`: the military
@@ -27,15 +40,6 @@ user-visible change beyond timing. First-load JavaScript drops from
   stays at 7,490,000 B against 6,887,587 B measured.
 - The smoke test's first-load marker check now covers the dictionary
   alongside pdf-lib and jszip.
-
-### Fixed
-
-- Leaving a field or a paragraph editor now commits its text to the
-  document at once. Both editors debounce their commit by 500 ms while
-  typing; before this, an export or save issued inside that window read
-  the previous text. Seen as a CI failure (run 149) where a fast runner
-  exported a letter with an empty body, and reproducible by a user who
-  types and exports within half a second.
 
 ## [0.4.4] - 2026-09-05
 
