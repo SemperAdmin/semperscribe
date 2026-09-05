@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar';
 import { LivePreview } from './LivePreview';
 import { HeaderActions } from './HeaderActions';
 import { PreviewModal } from './PreviewModal';
+import { ComplianceBanner, type PreviewIssue } from './ComplianceBanner';
 import { ParagraphData, SavedLetter, FormData } from '@/types';
 import { getExportFilename } from '@/lib/naval-format-utils';
 import { FEEDBACK_URL } from '@/lib/app-links';
@@ -15,7 +16,7 @@ interface ModernAppShellProps {
   documentType: string;
   onDocumentTypeChange: (type: string) => void;
   previewUrl?: string;
-  validationIssues?: import('./LivePreview').PreviewIssue[];
+  validationIssues?: PreviewIssue[];
   isGeneratingPreview?: boolean;
   onExportDocx: () => void;
   onGeneratePdf: () => void;
@@ -178,19 +179,24 @@ export function ModernAppShell({
             {documentType && (
               <>
                 <span className="text-primary-foreground/50">/</span>
-                {isDirty ? (
-                  <span className="text-amber-300 font-medium text-xs flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                    Unsaved
-                  </span>
-                ) : lastSavedAt ? (
-                  <span className="text-emerald-300 font-medium text-xs flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    Saved
-                  </span>
-                ) : (
-                  <span className="text-primary-foreground/70 font-medium text-xs">Draft</span>
-                )}
+                {/* D.2: the save state, live at last. "Saved" means an
+                    explicit Save Draft, never the autosaved working copy,
+                    which the user did not choose to keep. */}
+                <span role="status">
+                  {isDirty ? (
+                    <span className="text-amber-300 font-medium text-xs flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                      Unsaved changes
+                    </span>
+                  ) : lastSavedAt ? (
+                    <span className="text-emerald-300 font-medium text-xs flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      Saved {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  ) : (
+                    <span className="text-primary-foreground/70 font-medium text-xs">Draft</span>
+                  )}
+                </span>
               </>
             )}
           </div>
@@ -263,11 +269,20 @@ export function ModernAppShell({
         </Sheet>
 
         {/* Center Pane: Editor */}
-        {/* F2 (SECTION_508_FINDINGS): app/layout.tsx owns the main
-            landmark - this is a labeled region, not a second main. */}
-        <div id="main-content" tabIndex={-1} role="region" aria-label="Document form" className="flex-1 overflow-y-auto bg-muted/10 p-4 md:p-6 lg:p-8 relative scroll-smooth">
-          <div className="max-w-4xl mx-auto space-y-6 pb-8">
-             {children}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* D.2: compliance feedback at every viewport width. This is
+              the one announced copy - the preview sheet renders a silent
+              one, and the preview aside no longer carries it at all. */}
+          {documentType && (
+            <ComplianceBanner issues={validationIssues} onOpenIssues={onCompliance} />
+          )}
+
+          {/* F2 (SECTION_508_FINDINGS): app/layout.tsx owns the main
+              landmark - this is a labeled region, not a second main. */}
+          <div id="main-content" tabIndex={-1} role="region" aria-label="Document form" className="flex-1 overflow-y-auto bg-muted/10 p-4 md:p-6 lg:p-8 relative scroll-smooth">
+            <div className="max-w-4xl mx-auto space-y-6 pb-8">
+               {children}
+            </div>
           </div>
         </div>
 
@@ -284,8 +299,6 @@ export function ModernAppShell({
             </aside>
           ) : (
             <LivePreview
-              issues={validationIssues}
-              onOpenIssues={onCompliance}
               previewUrl={previewUrl}
               isLoading={isGeneratingPreview}
               onUpdatePreview={onUpdatePreview}
@@ -329,6 +342,7 @@ export function ModernAppShell({
         previewUrl={previewUrl}
         isLoading={isGeneratingPreview}
         onUpdatePreview={onUpdatePreview}
+        issues={validationIssues}
       />
     </div>
   );

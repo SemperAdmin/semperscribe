@@ -113,6 +113,7 @@ export function ParagraphItem({
   commentAuthor
 }: ParagraphItemProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const readRef = useRef<HTMLDivElement>(null);
   const [localContent, setLocalContent] = useState(paragraph.content || '');
   const lastEmitted = useRef(paragraph.content || '');
   const [isEditing, setIsEditing] = useState(false);
@@ -144,6 +145,19 @@ export function ParagraphItem({
       lastEmitted.current = localContent;
       onUpdateContent(paragraph.id, localContent);
     }
+  };
+
+  // D.2 (WCAG 2.1.1): the body is a real control. The read view carries
+  // the rendered bold, italic and underline, so it stays, and it now
+  // takes focus and opens on Enter or Space. Its accessible name is the
+  // paragraph's own citation, falling back to the position in the list
+  // when the citation is a bullet or blank.
+  const citationLabel = /[0-9a-z]/i.test(citation) ? citation.replace(/[.\s]+$/, '') : String(index + 1);
+  const bodyLabel = `Paragraph ${citationLabel} body`;
+
+  const startEditing = () => {
+    setIsEditing(true);
+    setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   // Auto-grow textarea to fit content
@@ -346,22 +360,40 @@ export function ParagraphItem({
               value={localContent}
               onChange={(e) => setLocalContent(e.target.value)}
               onFocus={() => onFocus(paragraph.id)}
+              onKeyDown={(e) => {
+                // Escape leaves the body without reaching for the mouse.
+                // Blur commits the text and closes edit mode, so focus
+                // returns to the read view the blur puts back on screen.
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                  setTimeout(() => readRef.current?.focus(), 0);
+                }
+              }}
               onBlur={() => {
                 commitNow();
                 onFocus(-1);
                 setIsEditing(false);
               }}
+              aria-label={bodyLabel}
               placeholder="Enter paragraph content..."
               className="min-h-[100px] resize-none overflow-hidden focus:ring-2 focus:ring-primary/50 pr-16 text-base font-serif bg-background text-foreground border-border"
               autoFocus
             />
           ) : (
             <div
-              onClick={() => {
-                setIsEditing(true);
-                setTimeout(() => textareaRef.current?.focus(), 0);
+              ref={readRef}
+              role="button"
+              tabIndex={0}
+              aria-label={bodyLabel}
+              onClick={startEditing}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  startEditing();
+                }
               }}
-              className="min-h-[100px] p-3 text-base font-serif bg-background text-foreground border border-border rounded-md cursor-text whitespace-pre-wrap"
+              className="min-h-[100px] p-3 text-base font-serif bg-background text-foreground border border-border rounded-md cursor-text whitespace-pre-wrap focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
               {localContent
                 ? renderFormattedPreview(localContent)

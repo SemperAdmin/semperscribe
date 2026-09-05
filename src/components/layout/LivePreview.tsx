@@ -4,20 +4,12 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 import { PageCountIndicator } from './PageCountIndicator';
-import { hasFixer } from '@/lib/autofix';
 
-export interface PreviewIssue {
-  /** Validator issue id - the autofix registry keys on it (R5). */
-  id: string;
-  severity: 'block' | 'fail' | 'warn';
-  rule: string;
-  detail: string;
-  citation: string;
-}
+// D.2: the compliance banner moved to the shell so it renders at every
+// width. The issue shape it reads keeps its old import path.
+export type { PreviewIssue } from './ComplianceBanner';
 
 interface LivePreviewProps {
-  /** Phase 2 validator issues rendered inline above the preview. */
-  issues?: PreviewIssue[];
   className?: string;
   previewUrl?: string; // If we have a blob URL
   isLoading?: boolean;
@@ -25,8 +17,6 @@ interface LivePreviewProps {
   documentType?: string;
   /** R12: filename for the Download button (defaults to a sensible name). */
   downloadFileName?: string;
-  /** R5: opens the full compliance issue list. */
-  onOpenIssues?: () => void;
   /**
    * XFA: the real export. The preview blob is a RENDER, and for the
    * NAVMC forms the real export is a different artifact (the official
@@ -37,9 +27,7 @@ interface LivePreviewProps {
   onDownloadExport?: () => void;
 }
 
-export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview, documentType = 'standard', issues = [], downloadFileName, onOpenIssues, onDownloadExport }: LivePreviewProps) {
-  const blocking = issues.filter((i) => i.severity === 'block');
-  const failing = issues.filter((i) => i.severity === 'fail');
+export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview, documentType = 'standard', downloadFileName, onDownloadExport }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // R12 (USER_DRIVEN_ROADMAP): the Print and Download buttons were inert.
@@ -113,40 +101,6 @@ export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview,
            </Button>
         </div>
       </div>
-
-      {(blocking.length > 0 || failing.length > 0) && (
-        <div
-          role="alert"
-          className={cn(
-            "px-4 py-1.5 text-xs text-white shrink-0 flex items-center justify-between gap-3",
-            blocking.length > 0 ? "bg-red-900" : "bg-amber-900",
-          )}
-          title={[...blocking, ...failing].map((i) => `${i.rule} — ${i.detail} [${i.citation}]`).join('\n')}
-        >
-          <span className="min-w-0 truncate">
-            <span className="font-semibold">
-              {blocking.length > 0 ? 'EXPORT BLOCKED: ' : 'Compliance: '}
-            </span>
-            {[...new Set([...blocking, ...failing].map((i) => i.rule))].slice(0, 2).join(' | ')}
-            {(() => {
-              const rules = [...new Set([...blocking, ...failing].map((i) => i.rule))];
-              return rules.length > 2 ? ` (+${rules.length - 2} more)` : '';
-            })()}
-          </span>
-          {/* R5: the overflow pointer used to say "see Proofread" - a
-              different check system that never listed these. This opens
-              the real list, with autofix. */}
-          {onOpenIssues && (
-            <button
-              type="button"
-              onClick={onOpenIssues}
-              className="shrink-0 underline font-semibold hover:no-underline focus:outline-none focus:ring-2 focus:ring-white/50 rounded"
-            >
-              Review{issues.some((i) => hasFixer(i.id)) ? ' & fix' : ''}
-            </button>
-          )}
-        </div>
-      )}
 
       <div className="flex-1 overflow-hidden relative bg-muted/40">
         {/* F5 (SECTION_508_FINDINGS): announce preview state changes */}

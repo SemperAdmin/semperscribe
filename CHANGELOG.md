@@ -5,6 +5,44 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.5.2] - 2026-09-05
+
+Phase D.2 of `docs/UX_POLICY_PLAN_2026-09.md`: the editor is usable at
+every width and honest about saving. No change to any exported document.
+
+### Fixed
+
+- The paragraph body takes keyboard focus and text without a mouse
+  click. It was a plain div with a click handler, and no textarea
+  existed in the page until a pointer landed on it, so the primary input
+  of the app failed WCAG 2.1.1 Level A. The read view stays, because it
+  carries the rendered bold, italic and underline, and it is now a real
+  control: Tab reaches it, Enter or Space opens the editor, Escape
+  leaves it, and it names itself after the paragraph it holds
+  ("Paragraph 1 body"). The textarea carries the same name.
+- Compliance failures render above the editor at every viewport width.
+  The banner sat inside the preview aside, hidden below 1280 px, so a
+  drafter on a laptop or a phone validated nothing and exported letters
+  missing required header elements with nothing on screen saying so
+  (SECNAV M-5216.5 2-3, 7-2.9). The mobile preview sheet receives the
+  same issues. One copy announces, so a screen reader hears the failures
+  once.
+- The header save indicator reports the real state. `isDirty` and
+  `lastSavedAt` were declared on the shell and read by its header, and
+  no caller ever passed them, so the indicator read "Draft" forever. The
+  page counts edits from the moment the initial load settles and records
+  the count each Save Draft wrote: "Draft" before the first edit,
+  "Unsaved changes" after it, and "Saved 14:31" after an explicit save.
+  The autosaved working copy does not read as saved, because the drafter
+  did not choose to keep it.
+
+### Changed
+
+- The compliance banner lives in
+  `src/components/layout/ComplianceBanner.tsx`, shared by the shell and
+  the preview sheet. `LivePreview` no longer takes `issues`, and the
+  `PreviewIssue` type keeps its old import path.
+
 ## [0.5.1] - 2026-09-05
 
 Standard-letter output correctness in the PDF. The DOCX emitter is not

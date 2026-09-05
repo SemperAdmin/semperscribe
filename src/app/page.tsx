@@ -35,6 +35,7 @@ import { FindReplaceDialog } from '@/components/FindReplaceDialog';
 import { GuidanceDialog } from '@/components/GuidanceDialog';
 import { FindReplaceResult } from '@/lib/find-replace';
 import { useUndoHistory } from '@/hooks/useUndoHistory';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import { EnclosureAttachment, EnclosureRow, newRow, reconcileRows } from '@/lib/enclosure-rows';
 import { useAutosave } from '@/hooks/useAutosave';
 import { RecoveryDialog } from '@/components/RecoveryDialog';
@@ -516,6 +517,26 @@ function NavalLetterGeneratorInner() {
     setParagraphs(newParagraphs);
   };
 
+  // D.2: the header save state. Edits are counted from the moment the
+  // initial load settles, the same gate autosave uses, so the profile
+  // defaults and the date effect never read as a user edit. Save Draft
+  // records the count it wrote, and any edit after it is unsaved work.
+  // The autosaved working copy deliberately does not read as saved,
+  // because the drafter did not choose to keep it.
+  const documentSlices = useMemo(
+    () => ({ formData, paragraphs, vias, references, enclosures, copyTos, distList }),
+    [formData, paragraphs, vias, references, enclosures, copyTos, distList],
+  );
+  const [changeCount] = useSyncedState<typeof documentSlices, number>(
+    documentSlices,
+    (_slices, previousCount) => {
+      if (previousCount === undefined) return 0;
+      return autosaveReady ? previousCount + 1 : 0;
+    },
+  );
+  const [savedMark, setSavedMark] = useState<{ at: Date; changeCount: number } | null>(null);
+  const isDirty = savedMark ? changeCount !== savedMark.changeCount : changeCount > 0;
+
   const saveLetter = () => {
     debugUserAction('Save Letter', {
       subject: formData.subj.substring(0, 30) + (formData.subj.length > 30 ? '...' : ''),
@@ -541,6 +562,9 @@ function NavalLetterGeneratorInner() {
 
     // R3: an explicit save supersedes the autosaved working copy.
     clearAutosave();
+
+    // D.2: this is the only place the header reads as saved.
+    setSavedMark({ at: now, changeCount });
 
     // P1.2: IndexedDB is the store of record - no eviction cap. A
     // failed write is reported, never silently dropped.
@@ -683,6 +707,7 @@ function NavalLetterGeneratorInner() {
     setFormData, setParagraphs, setVias, setReferences, setEnclosures, setCopyTos, setDistList,
     setFormKey,
   });
+
 
   // P3.1: apply a replace-all through the normal setters (one undo step)
   const handleFindReplaceApply = (result: FindReplaceResult) => {
@@ -867,6 +892,8 @@ function NavalLetterGeneratorInner() {
   return (
     <ModernAppShell
       validationIssues={validationIssues}
+      isDirty={isDirty}
+      lastSavedAt={savedMark?.at ?? null}
       documentType={formData.documentType}
       onDocumentTypeChange={handleDocumentTypeChange}
       previewUrl={previewUrl}

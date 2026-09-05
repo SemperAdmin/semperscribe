@@ -33,6 +33,10 @@ STATUS: Measured computationally (WCAG relative luminance). Light muted-foregrou
 ### F7 (L) - Portion-marking select is native
 The paragraph marking dropdown is a native `<select>` - fully accessible by default, but visually inconsistent with the Radix selects. Cosmetic only; do not trade accessibility for consistency.
 
+### F8 (H) - Paragraph body unreachable by keyboard - FIXED (2026-09-05)
+The letter body was a plain div with a click handler and no textarea existed in the DOM until a pointer landed on it, so the primary input of the app took neither focus nor text from the keyboard. WCAG 2.1.1 Level A.
+STATUS: Fixed 2026-09-05 (phase D.2) - the read view is a control with tabIndex 0, role button, and an accessible name carrying the paragraph citation ("Paragraph 1 body"). Enter or Space opens the textarea under the same name, Escape returns focus to the read view. Pinned by tests/components/paragraph-item-keyboard.test.tsx and a Tab-to-body step in the e2e smoke test.
+
 ## What already passes
 
 - Radix primitives (dialogs, menus, selects) ship focus trapping, escape handling, and ARIA wiring.
@@ -43,6 +47,6 @@ The paragraph marking dropdown is a native `<select>` - fully accessible by defa
 
 ## Remediation status
 
-F2, F3, F4, F5: fixed in code. F6: measured, compliant, no changes. F1: mitigated in the UI; the PDF-tagging strategy decision belongs in the Track A app.gov conversation. F7: documented decision, no change.
+F2, F3, F4, F5, F8: fixed in code. F6: measured, compliant, no changes. F1: mitigated in the UI; the PDF-tagging strategy decision belongs in the Track A app.gov conversation. F7: documented decision, no change.
 
 Remaining for the accessibility close-out: an assistive-technology pass (NVDA or JAWS) and an axe scan on a live build - static analysis cannot substitute for either.

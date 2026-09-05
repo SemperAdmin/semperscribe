@@ -10,6 +10,7 @@ import {
 import { cn } from '@/lib/utils';
 import { FormData, AMHSReference } from '@/types';
 import { generateFullMessage } from '@/services/amhs/amhsFormatter';
+import { ComplianceBanner, type PreviewIssue } from './ComplianceBanner';
 
 interface PreviewModalProps {
   open: boolean;
@@ -22,6 +23,9 @@ interface PreviewModalProps {
   previewUrl?: string;
   isLoading?: boolean;
   onUpdatePreview?: () => void;
+  /** D.2: the sheet is the only preview below 1280 px, so it carries
+      the compliance failures too. */
+  issues?: PreviewIssue[];
 }
 
 export function PreviewModal({
@@ -33,6 +37,7 @@ export function PreviewModal({
   previewUrl,
   isLoading,
   onUpdatePreview,
+  issues,
 }: PreviewModalProps) {
   const isAMHS = documentType === 'amhs';
   const hasTriggeredRefresh = useRef(false);
@@ -82,6 +87,10 @@ export function PreviewModal({
             )}
           </div>
         </SheetHeader>
+
+        {/* D.2: the shell banner owns the announcement, this one is
+            silent, so the failures are read out once. */}
+        <ComplianceBanner issues={issues} live={false} />
 
         {/* Content */}
         <div className="flex-1 overflow-hidden">
