@@ -37,16 +37,17 @@ export const GUIDANCE: GuidanceEntry[] = [
   {
     type: 'endorsement',
     label: 'Endorsement',
-    what: 'Forwards a basic letter through the chain of command, adding approval, disapproval, comment, or information at each level.',
+    what: 'Forwards a basic letter through the chain of command, adding approval, disapproval, comment, or information at each level. It goes on the signature page of the letter it endorses when the whole endorsement fits there, and on a new page when it does not (9-1).',
     whenToUse: [
       'Routing a subordinate\'s request up the chain with your recommendation',
       'Returning correspondence down the chain with a decision',
+      'Adding a short endorsement to the signature page of the letter below it, which 9-1 allows when it fits',
     ],
     whenNotToUse: [
       'Starting new correspondence - an endorsement always rides an existing basic letter',
-      'Same-page response when a separate-page format is required by the addressee',
+      'Same-page placement for an endorsement long enough to run past the foot of the signature page',
     ],
-    example: 'FIRST ENDORSEMENT on Sgt Smith ltr of 3 May 26',
+    example: 'FIRST ENDORSEMENT on Sgt Smith ltr of 3 May 26, or FIRST ENDORSEMENT alone on a same-page endorsement which omits the identification (9-2.1.a)',
     citation: 'SECNAV M-5216.5, Ch. 9',
   },
   {

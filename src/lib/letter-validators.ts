@@ -14,6 +14,7 @@ import { validateAcronyms, ACRONYM_STOPLIST, expansionIndexFor } from '@/lib/acr
 import type { DictionaryEntry } from '@/lib/military-dictionary';
 import { runNavmc10922Validators } from '@/lib/navmc10922-validators';
 import { runNavmc10132Validators } from '@/lib/navmc10132-validators';
+import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
 import {
   validateSchemaFields,
   validateSalutation,
@@ -845,6 +846,26 @@ export function validateEndorsementContinuation(
 }
 
 /**
+ * E.1 (M-5216.5 9-1). A same-page endorsement has no meaning on its
+ * own: 9-1 decides its placement by whether it fits on the signature
+ * page of the document it endorses, and that page is not present when
+ * the endorsement is exported by itself. The single-document export
+ * produces the block, which is the right file to hand a drafter who
+ * will add it to a signed page, so this reports rather than refuses.
+ */
+export function validateSamePageEndorsementExport(formData: FormData): ValidationIssue[] {
+  if (!isSamePageEndorsement(formData)) return [];
+  return [{
+    id: 'same-page-endorsement-alone',
+    severity: 'warn',
+    rule: 'Same-page placement is decided against the page below it',
+    citation: 'M-5216.5 9-1',
+    detail: 'Same-page placement is decided at package export against the basic letter; exported alone, this is the block only. Assemble the package to have the fit measured and the block placed.',
+    field: 'endorsementPlacement',
+  }];
+}
+
+/**
  * Subject-line rules (M-5216.5 7-2.9.a and 12-3.2.c(4), figure 7-1).
  *
  * Two rules the app had no check for at all. 7-2.9.a says "In
@@ -1037,6 +1058,7 @@ export function runLetterValidators(
     ...validateAcronyms(paragraphs, options.dictionary),
     ...validateSubjectLine(formData, options.dictionary),
     ...validateEnclosureOrder(formData, options.enclosures ?? [], paragraphs),
+    ...validateSamePageEndorsementExport(formData),
     // NAVMC 10922 dependency-application rules - no-op for every other
     // documentType (docs/NAVMC_10922_SPEC.md section 9).
     ...runNavmc10922Validators(formData),

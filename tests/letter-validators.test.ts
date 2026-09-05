@@ -16,7 +16,8 @@ import {
   runLetterValidators,
   validateRevisionSuffix,
   validateSubjectLine,
-  validateEnclosureOrder } from '@/lib/letter-validators';
+  validateEnclosureOrder,
+  validateSamePageEndorsementExport } from '@/lib/letter-validators';
 import { validateSignature } from '@/lib/signature-validators';
 import type { ParagraphData, FormData } from '@/types';
 
@@ -628,5 +629,32 @@ describe('vias reach the rules which read them', () => {
   it('and reports nothing on the same letter with no Via', () => {
     const ids = runLetterValidators(WINDOW, [], [], [p(1, 1, 'Body.')]).map((i) => i.id);
     expect(ids).not.toContain('window-via');
+  });
+});
+
+describe('same-page endorsement exported alone (E.1, M-5216.5 9-1)', () => {
+  const SAME_PAGE = fd({
+    documentType: 'endorsement', endorsementLevel: 'FIRST',
+    endorsementPlacement: 'same-page', subj: 'FORWARDING', from: 'CO', to: 'CG',
+    sig: 'I. M. MARINE', ssic: '5216', date: '10 Feb 26',
+  });
+
+  it('warns that the fit is decided at package export, and cites 9-1', () => {
+    const [issue] = validateSamePageEndorsementExport(SAME_PAGE);
+    expect(issue.severity).toBe('warn');
+    expect(issue.citation).toBe('M-5216.5 9-1');
+    expect(issue.detail).toContain('exported alone, this is the block only');
+  });
+
+  it('says nothing about a new-page endorsement or any other type', () => {
+    expect(validateSamePageEndorsementExport(fd({ documentType: 'endorsement' }))).toEqual([]);
+    expect(validateSamePageEndorsementExport(fd({ documentType: 'basic', endorsementPlacement: 'same-page' }))).toEqual([]);
+  });
+
+  it('does not block the export', () => {
+    const blockers = getExportBlockers(SAME_PAGE, [], [], [p(1, 1, 'Forwarded, recommending approval.')]);
+    expect(blockers.map((i) => i.id)).not.toContain('same-page-endorsement-alone');
+    const all = runLetterValidators(SAME_PAGE, [], [], [p(1, 1, 'Forwarded, recommending approval.')]);
+    expect(all.map((i) => i.id)).toContain('same-page-endorsement-alone');
   });
 });

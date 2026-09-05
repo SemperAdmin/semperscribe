@@ -5,6 +5,95 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.6.0] - 2026-09-05
+
+Phase E.1 of the 2026-09-05 UX and policy plan: the same-page
+endorsement. Paragraph 9-1 of SECNAV M-5216.5 says that if the
+endorsement "will completely fit on the signature page of the basic
+letter or the preceding endorsement", it goes on that page, and if not
+it goes on a new page. The app offered the new-page form
+only, so every endorsement, short ones included, started a page of its own
+and pushed the page count of the package by one. The fit is a
+measurement, not a preference, and this phase makes the app take it.
+
+### Added
+
+- Endorsement placement. An endorsement carries a placement of new page
+  or same page. Same page draws the endorsement onto the signature page
+  of the document it endorses when it fits there, which is the test
+  9-1 states. Unset placement reads as new page, so every saved
+  document, .nldp package and share link keeps the placement it was
+  written with.
+- The same-page block. A same-page endorsement renders with no
+  letterhead, no seal, no page number and no continuation header,
+  because the page it lands on already carries all four. Figure 9-1
+  gives the order: identification symbols flush right, a blank line,
+  the endorsement line at the left margin on the second line below the
+  date line (9-2.1.a), From, To, Via, the body, the signature four
+  lines below the last line of text (7-2.14), and Copy to on the second
+  line below the signature (7-2.15.b).
+- The 9-2.1.a omission, on by default. When preparing a same-page
+  endorsement, as long as "the entire page will be photocopied", the
+  SSIC, the subject and the basic letter's identification symbols are
+  omitted. With the omission taken, the identification block is the
+  Ser line and the date alone, the endorsement line reads FIRST
+  ENDORSEMENT with nothing after it, and there is no Subj, which is
+  what Figure 9-1 draws. A checkbox clears the omission and the SSIC,
+  the subject and the "on ..." clause come back.
+- `src/lib/same-page-endorsement.ts`, the fit arithmetic, pure over PDF
+  bytes. It reads the last line of content on the host's last page, the
+  extent of the block's text, and composes the two when the block plus
+  two blank lines clears the one inch bottom margin. The browser, the
+  headless companion and the tests run the same code, and the PDF
+  engines load on demand so the module costs the first load nothing.
+- Package assembly measures and reports the fit. A same-page member is
+  composed onto the member before it; when it fits it adds no page and
+  the next member continues from the host's count, and the dialog says
+  which page it landed on. When it does not fit it exports as a
+  new-page endorsement with the SSIC, the subject and the "on ..." line
+  restored, which is Figure 9-1's second endorsement, and the dialog
+  and the export toast say so. Two package rules follow: a same-page
+  endorsement as the first member fails, because there is no signature
+  page under it, and an unmeasured same-page member warns.
+- A warn on the single-document export. Placement is settled against a
+  page that is not present when the endorsement is exported by itself,
+  so the export gate reports that the file is the block only and cites
+  9-1. It does not refuse: the block is the right file to hand a
+  drafter who will add it to a signed page.
+
+### Changed
+
+- The document type is named Endorsement rather than New-Page
+  Endorsement, and described as forwarding correspondence on the
+  signature page when it fits, or on a new page. The landing card, the
+  template and the guidance entry follow.
+- The Page Numbering inputs are hidden for a same-page endorsement,
+  which adds no page and so has none to number. The Identifier
+  Sequencing inputs stay: 9-2.3 and 9-2.4 apply to added references and
+  enclosures under either placement.
+
+### Decisions
+
+- No horizontal rule between the basic letter and the endorsement.
+  Figure 9-1 draws one, and the text of 9-2 prescribes none. The
+  figure's rule separates two documents printed on one illustrated
+  page, so nothing is drawn.
+- Two blank lines between the host's last line of content and the
+  block's first, the spacing the manual uses wherever it says "on the
+  second line below". Measured on the golden fixture letter with a two
+  paragraph body: last content baseline 339.43 pt, so 267.43 pt of the
+  page remain above the one inch margin. The shortest endorsement block
+  measures 220.79 pt from its Ser line to its Copy to entry, is placed
+  with its first line at 311.83 pt, and ends at 91.04 pt, clear of the
+  bottom margin by 19.04 pt. The same fixture with its full body ends
+  146.24 pt up, leaving 74.24 pt, which is the everyday case 9-1 sends
+  to a new page. Keeping the identification costs the block 41.40 pt
+  (262.19 pt in all); Courier measures 218.94 pt.
+- Text within the bottom margin band is not content. The page-number
+  footer, the classification banner and the distribution statement all
+  sit there, so the last line the fit measures against is the lowest
+  baseline above one inch.
+
 ## [0.5.10] - 2026-09-05
 
 Renderer 4.9.0, and the test harness it broke. The owner merged the

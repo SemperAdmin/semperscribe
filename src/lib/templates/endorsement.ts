@@ -4,7 +4,7 @@ import { EndorsementDefinition } from '@/lib/schemas';
 export const EndorsementTemplate: DocumentTemplate = {
   id: 'endorsement-default',
   typeId: 'endorsement',
-  name: 'New-Page Endorsement',
+  name: 'Endorsement',
   description: 'Used to forward a basic letter with comments, recommendations, or new information.',
   definition: EndorsementDefinition,
   defaultData: {
@@ -79,6 +79,11 @@ export const EndorsementTemplate: DocumentTemplate = {
     startingEnclosureNumber: '2',
     startingPageNumber: 2, // Usually starts after the basic letter
     previousPackagePageCount: 1,
+    // E.1 (M-5216.5 9-1): the template ships on a new page, which is
+    // the placement that always works. Switching to same-page has the
+    // fit measured at package export.
+    endorsementPlacement: 'new-page',
+    samePageOmitsIdentification: true,
     headerType: 'USMC',
     bodyFont: 'times',
     accentColor: 'black'

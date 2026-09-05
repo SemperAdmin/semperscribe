@@ -42,6 +42,7 @@ import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from '@/lib/fon
 import type { ParagraphIndentSpec } from '@/lib/indent-engine';
 import { generateDisplayCitation } from '@/lib/citation';
 import { refLetterAt, startingRefLetterFor, startingEnclosureNumberFor } from '@/lib/reference-letters';
+import { isSamePageEndorsement, omitsIdentification, endorsementLineText } from '@/lib/same-page-endorsement';
 
 interface NavalLetterPDFProps {
   formData: FormData;
@@ -711,9 +712,20 @@ export function NavalLetterPDF({
   const isDecisionPaper = formData.documentType === 'decision-paper';
   const isStaffingPaper = ['position-paper', 'information-paper', 'decision-paper'].includes(formData.documentType);
 
+  /**
+   * E.1 (M-5216.5 9-1, 9-2.1.a, Figure 9-1). A same-page endorsement
+   * renders as a BLOCK, not as a document: no letterhead, no seal, no
+   * page number and no continuation header, because it is added to the
+   * signature page of the letter it endorses and that page already
+   * carries all of those. The composer in lib/same-page-endorsement.ts
+   * places the block; this branch only decides what the block contains.
+   */
+  const isSamePageBlock = isSamePageEndorsement(formData);
+  const omitEndorsementIdentification = omitsIdentification(formData);
+
   // Determine if standard header (Seal + Letterhead) should be shown
   // HIDDEN for MFR, From-To Memo, and Staffing Papers (per MCO 5216.20B)
-  const showStandardHeader = !isFromToMemo && !isMfr && !isStaffingPaper;
+  const showStandardHeader = !isFromToMemo && !isMfr && !isStaffingPaper && !isSamePageBlock;
 
   const moaData = formData.moaData || {
     activityA: '',
@@ -857,7 +869,7 @@ export function NavalLetterPDF({
           style={styles.continuationHeader}
           fixed
           render={({ pageNumber }) => (
-            pageNumber > 1 ? (
+            pageNumber > 1 && !isSamePageBlock ? (
               <View>
                 {isCivilianStyle && (
                    <View style={{ marginBottom: 12 }}>
@@ -901,7 +913,7 @@ export function NavalLetterPDF({
         <View
           fixed
           render={({ pageNumber }) => (
-            pageNumber > 1 ? (
+            pageNumber > 1 && !isSamePageBlock ? (
               <View style={{ height: isDirective
                 ? CONTINUATION_HEADER_HEIGHT
                 : isCivilianStyle
@@ -1001,10 +1013,15 @@ export function NavalLetterPDF({
         {!isFromToMemo && !isMfr && !isMoaOrMou && !isStaffingPaper && !isDLAType && (
           <View style={{ flexDirection: 'row', justifyContent: idBlockLeft ? 'flex-start' : 'flex-end', marginBottom: PDF_SPACING.sectionGap }}>
              <View style={{ alignItems: 'flex-start' }}>
+                {/* E.1 (9-2.1.a): a same-page endorsement omits the SSIC
+                    when the whole page is photocopied, which is what
+                    Figure 9-1 draws - Ser and date alone. */}
+                {!omitEndorsementIdentification && (
                 <Text style={styles.addressLine}>
                   {/* P3.4: designation = abbreviation + SSIC (audit line 138) */}
                   {isDirective ? getDirectiveDesignation(formData) : (formData.ssic || '')}
                 </Text>
+                )}
                 <Text style={styles.addressLine}>{formData.originatorCode || ''}</Text>
                 {/* The executive letter carries its date in its own block
                     below (Ch 12-3 para 3), which also honors omitDate.
@@ -1167,11 +1184,16 @@ export function NavalLetterPDF({
           </View>
         )}
 
-        {/* Endorsement Identification Line - Between date and From */}
-        {isEndorsement && formData.endorsementLevel && formData.basicLetterReference && (
+        {/* Endorsement Identification Line - Between date and From.
+            M-5216.5 9-2.1.a places it at the left margin on the second
+            line below the date line, and 9-2.1.b gives the wording.
+            With the same-page omission taken there is no basic-letter
+            identification to append, so Figure 9-1 shows the ordinal
+            and the word alone. */}
+        {isEndorsement && formData.endorsementLevel && (formData.basicLetterReference || isSamePageBlock) && (
           <View style={{ marginBottom: PDF_SPACING.sectionGap }}>
             <Text style={styles.addressLine}>
-              {`${formData.endorsementLevel} ENDORSEMENT on ${formData.basicLetterReference}`}
+              {endorsementLineText(formData)}
             </Text>
           </View>
         )}
@@ -1415,8 +1437,21 @@ export function NavalLetterPDF({
         )}
 
         {/* Subject */}
-        {/* Subject Line - Hide for MOA/MOU (handled in header), Staffing Papers (handled in custom header), Business/Exec Letter (custom placement) */}
-        {!isMoaOrMou && !isStaffingPaper && !isCivilianStyle && (
+        {/* Subject Line - Hide for MOA/MOU (handled in header), Staffing
+            Papers (handled in custom header), Business/Exec Letter
+            (custom placement), and a same-page endorsement which omits
+            the subject with the rest of the identification (9-2.1.a). */}
+        {/* E.1: with the subject omitted the blank line above it is
+            still owed. Figure 9-1 shows the body starting on the second
+            line below the Via line, and a reference or enclosure list
+            added by the endorsement sits in the same place the subject
+            would have. The spacer carries the subject section's top
+            margin so nothing else moves. */}
+        {omitEndorsementIdentification && (
+          <View style={{ marginTop: PDF_SPACING.sectionGap }} />
+        )}
+
+        {!isMoaOrMou && !isStaffingPaper && !isCivilianStyle && !omitEndorsementIdentification && (
         <View style={styles.subjectSection}>
           {formData.bodyFont === 'courier' ? (
             <>
@@ -1984,6 +2019,10 @@ export function NavalLetterPDF({
 
         {/* Footer - page number on pages after first */}
         {/* DLA: page number at right margin per Ch.3-2 Para 13 */}
+        {/* E.1: a same-page endorsement adds no page, so it carries no
+            page number of its own. The signature page it lands on keeps
+            the number the host document gave it. */}
+        {!isSamePageBlock && (
         <Text
           style={isDLAType ? { ...styles.footer, textAlign: 'right', right: PDF_MARGINS.right } : styles.footer}
           render={({ pageNumber }) => {
@@ -1992,6 +2031,7 @@ export function NavalLetterPDF({
           }}
           fixed
         />
+        )}
 
         {/* Distribution Statement Footer — first page only for directives */}
         {distributionStatementText !== '' && (

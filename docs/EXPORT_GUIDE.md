@@ -39,6 +39,54 @@ If you want to skip the dialog configuration:
 2. Immediately click "Export Package" in the dialog (uses default settings)
 3. File downloads with minimal configuration
 
+## Same-Page Endorsements
+
+An endorsement carries a placement: new page or same page. SECNAV
+M-5216.5 9-1 decides between them by measurement, not by taste. If the
+endorsement "will completely fit on the signature page of the basic
+letter or the preceding endorsement", it goes on that page. If not, it
+goes on a new page.
+
+The fit is measured when the package is assembled, because it depends
+on the document underneath. Open Assemble Package, add the basic letter
+and its endorsements in order, and press Measure pages. Each same-page
+member reports either "Fits on page N of the previous document" or
+"Does not fit: exported as a new-page endorsement". Export package PDF
+then draws the fitting blocks onto the signature pages above them, so
+they add no page and the members after them keep their numbering, and
+exports the rest as new-page endorsements.
+
+The measurement itself: the block fits when it renders to a single page
+and its height plus two blank lines clears the one inch bottom margin,
+counting down from the last line of content on the page below it. Page
+numbers, classification banners and distribution statements sit inside
+that margin and are not counted as content.
+
+A same-page endorsement omits the SSIC, the subject and the basic
+letter's identification by default, which 9-2.1.a allows as long as the
+entire page will be photocopied. With that omission the endorsement
+line reads FIRST ENDORSEMENT with nothing after it, and the
+identification block is the Ser line and the date, which is what
+Figure 9-1 draws. Clearing the checkbox brings the SSIC, the subject
+and the "on ..." clause back. When a same-page endorsement does not
+fit and falls back to a new page, the identification is restored
+whatever the checkbox said, because every new-page endorsement carries
+it (Figure 9-1, second endorsement).
+
+Exporting a same-page endorsement on its own, as a PDF or a DOCX from
+the editor, produces the block alone: no letterhead, no seal, no page
+number. There is no signature page present to measure against, so the
+compliance panel reports that and cites 9-1 rather than refusing. The
+block is the right file to hand a drafter who will add it to a page
+that has already been signed. The Word export is the same block, so a
+Word user pastes it onto the signature page of the document being
+endorsed.
+
+Figure 9-1 draws a horizontal rule between the basic letter and the
+first endorsement. The text of 9-2 prescribes no rule, so none is
+drawn: the figure's rule separates two documents printed on one
+illustrated page.
+
 ## Official NAVMC Form Exports (XFA)
 
 Three document types export onto the OFFICIAL fillable NAVMC form
