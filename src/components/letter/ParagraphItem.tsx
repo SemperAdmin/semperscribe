@@ -126,7 +126,9 @@ export function ParagraphItem({
     }
   }, [paragraph.content]);
 
-  // Debounce update to parent
+  // Debounce update to parent while typing. Blur commits at once (below),
+  // so leaving the editor never leaves up to 500 ms of text uncommitted
+  // for an export or a save which follows immediately.
   useEffect(() => {
     const timer = setTimeout(() => {
       if (localContent !== lastEmitted.current) {
@@ -136,6 +138,13 @@ export function ParagraphItem({
     }, 500);
     return () => clearTimeout(timer);
   }, [localContent, paragraph.id, onUpdateContent]);
+
+  const commitNow = () => {
+    if (localContent !== lastEmitted.current) {
+      lastEmitted.current = localContent;
+      onUpdateContent(paragraph.id, localContent);
+    }
+  };
 
   // Auto-grow textarea to fit content
   useEffect(() => {
@@ -338,6 +347,7 @@ export function ParagraphItem({
               onChange={(e) => setLocalContent(e.target.value)}
               onFocus={() => onFocus(paragraph.id)}
               onBlur={() => {
+                commitNow();
                 onFocus(-1);
                 setIsEditing(false);
               }}

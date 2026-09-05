@@ -147,34 +147,50 @@ export function DynamicForm({ documentType, onSubmit, defaultValues, children }:
     mode: 'onChange',
   });
 
-  // Watch for changes to sync with parent immediately (optional but good for previews)
-  // form.watch subscription (not useWatch) is deliberate: the callback
-  // debounces without re-rendering this large form on every keystroke.
+  // Watch for changes to sync with parent. form.watch subscription (not
+  // useWatch) is deliberate: the callback debounces without re-rendering
+  // this large form on every keystroke. The pending commit is kept in a
+  // ref so a blur anywhere in the form flushes it at once: leaving a
+  // field never leaves up to 500 ms of typing uncommitted for an export
+  // or a save which follows immediately.
+  const pendingCommit = React.useRef<(() => void) | null>(null);
+  const commitTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   React.useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
     // eslint-disable-next-line react-hooks/incompatible-library
     const subscription = form.watch((value) => {
-       if (onSubmit) {
-         clearTimeout(timeoutId);
-         timeoutId = setTimeout(() => {
-           // Double-check filtering (though sanitizedDefaultValues should handle it)
-           const filteredValue: any = {};
-           Object.keys(value).forEach(key => {
-               if (allowedTopLevelKeys.has(key)) {
-                   filteredValue[key] = value[key];
-               }
-           });
-           onSubmit(filteredValue);
-         }, 500);
-       }
+      if (!onSubmit) return;
+      if (commitTimer.current) clearTimeout(commitTimer.current);
+      const commit = () => {
+        pendingCommit.current = null;
+        commitTimer.current = null;
+        // Double-check filtering (though sanitizedDefaultValues should handle it)
+        const filteredValue: any = {};
+        Object.keys(value).forEach(key => {
+          if (allowedTopLevelKeys.has(key)) {
+            filteredValue[key] = value[key];
+          }
+        });
+        onSubmit(filteredValue);
+      };
+      pendingCommit.current = commit;
+      commitTimer.current = setTimeout(commit, 500);
     });
     return () => {
       subscription.unsubscribe();
-      clearTimeout(timeoutId);
+      if (commitTimer.current) clearTimeout(commitTimer.current);
+      pendingCommit.current = null;
+      commitTimer.current = null;
     };
   // form is the stable useForm instance; allowedTopLevelKeys is memoized
   // per documentType - the subscription still attaches once per form.
   }, [form, onSubmit, allowedTopLevelKeys]);
+
+  const flushPendingCommit = () => {
+    const commit = pendingCommit.current;
+    if (!commit) return;
+    if (commitTimer.current) clearTimeout(commitTimer.current);
+    commit();
+  };
 
   const renderField = (field: FieldDefinition) => {
     // Dynamic condition check
@@ -263,7 +279,7 @@ export function DynamicForm({ documentType, onSubmit, defaultValues, children }:
 
   return (
     <Form {...form}>
-      <form className="space-y-4"> {/* Removed onSubmit since we auto-sync */}
+      <form className="space-y-4" onBlurCapture={flushPendingCommit}> {/* Removed onSubmit since we auto-sync */}
         {documentType.sections.map(section => (
           <Card key={section.id} className="mb-8 border-border shadow-sm">
              <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">

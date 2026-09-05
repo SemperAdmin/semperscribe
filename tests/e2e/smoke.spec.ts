@@ -110,10 +110,14 @@ test('basic letter exports to PDF and DOCX with the typed subject', async ({ pag
   await page.getByLabel(/^To\b/).first().fill('Commanding General, 2d Marine Division');
   await page.getByLabel(/^Subject\b/).first().fill(SUBJECT);
   // Paragraphs render as click-to-edit blocks; the textarea mounts on click.
+  // Clicking it blurs the Subject field, which flushes the header form's
+  // debounced commit to document state.
   await page.getByText('Enter paragraph content...').first().click();
   await page.getByPlaceholder('Enter paragraph content...').first().fill(PARAGRAPH);
-  // Blur commits the local draft back to document state.
-  await page.getByLabel(/^Subject\b/).first().click();
+  // Blur commits the paragraph draft at once. Both editors debounce while
+  // typing (500 ms) and flush on blur, so nothing here waits on a timer:
+  // a fast runner once exported before the debounce fired (run #149).
+  await page.getByPlaceholder('Enter paragraph content...').first().blur();
 
   // PDF: real bytes, one page, subject present in the text layer.
   const pdf = await exportVia(page, 'PDF Document (.pdf)', 'pdf');
