@@ -79,6 +79,40 @@ async function exportVia(page: Page, itemName: string | RegExp, ext: 'pdf' | 'do
   return { bytes: readFileSync(path as string), name: file.suggestedFilename() };
 }
 
+/**
+ * Polls the autosave working copy (IndexedDB `semperscribe` / `settings` /
+ * `workingCopy`, written from document state 1.5 s after the last change)
+ * until one paragraph carries `text`. The failure message quotes what the
+ * document state held, which is the fact a lost-body export needs.
+ */
+async function waitForCommittedParagraph(page: Page, text: string) {
+  const deadline = Date.now() + 20_000;
+  let last = '(no working copy yet)';
+  while (Date.now() < deadline) {
+    last = await page.evaluate(async () => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const req = indexedDB.open('semperscribe');
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      try {
+        if (!db.objectStoreNames.contains('settings')) return '(no settings store)';
+        const copy = await new Promise<{ paragraphs?: { content: string }[] } | undefined>((resolve, reject) => {
+          const req = db.transaction('settings', 'readonly').objectStore('settings').get('workingCopy');
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+        return JSON.stringify(copy?.paragraphs ?? null);
+      } finally {
+        db.close();
+      }
+    });
+    if (last.includes(text)) return;
+    await page.waitForTimeout(250);
+  }
+  throw new Error(`document state never carried the typed paragraph; working copy paragraphs: ${last}`);
+}
+
 /** Every download the page emits, for the failure message. */
 function collectDownloads(page: Page): string[] {
   const names: string[] = [];
@@ -109,15 +143,37 @@ test('basic letter exports to PDF and DOCX with the typed subject', async ({ pag
   await page.getByLabel(/^From\b/).first().fill('Commanding Officer, 1st Battalion, 6th Marines');
   await page.getByLabel(/^To\b/).first().fill('Commanding General, 2d Marine Division');
   await page.getByLabel(/^Subject\b/).first().fill(SUBJECT);
-  // Paragraphs render as click-to-edit blocks; the textarea mounts on click.
-  // Clicking it blurs the Subject field, which flushes the header form's
-  // debounced commit to document state.
-  await page.getByText('Enter paragraph content...').first().click();
-  await page.getByPlaceholder('Enter paragraph content...').first().fill(PARAGRAPH);
+  // D.2 (WCAG 2.1.1): the body is reachable without a mouse. Tab out of
+  // the Subject field, which flushes the header form's debounced commit,
+  // until the paragraph body takes focus, open it with Enter, and type.
+  // No pointer touches the editor on this path.
+  const body = page.getByRole('button', { name: 'Paragraph 1 body' });
+  await expect(body).toBeVisible();
+  let bodyFocused = false;
+  for (let stop = 0; stop < 40 && !bodyFocused; stop++) {
+    await page.keyboard.press('Tab');
+    bodyFocused = await body.evaluate((el) => el === document.activeElement);
+  }
+  expect(bodyFocused, 'the paragraph body must be reachable by Tab').toBe(true);
+  await page.keyboard.press('Enter');
+  const paragraphBox = page.getByPlaceholder('Enter paragraph content...').first();
+  await expect(paragraphBox).toBeFocused();
+  await page.keyboard.type(PARAGRAPH);
   // Blur commits the paragraph draft at once. Both editors debounce while
   // typing (500 ms) and flush on blur, so nothing here waits on a timer:
   // a fast runner once exported before the debounce fired (run #149).
-  await page.getByPlaceholder('Enter paragraph content...').first().blur();
+  await paragraphBox.blur();
+  // The blur handler swaps the textarea for the read view, which shows
+  // the same local text. Seeing it proves the handler ran with the
+  // typed content in scope, so the commit to document state went out.
+  await expect(page.getByText(PARAGRAPH)).toBeVisible();
+  // Then wait until DOCUMENT state, not editor state, carries the text:
+  // the autosave working copy is written from the same state the export
+  // reads. Deploy run 91 on main exported a letter with no body twice in
+  // a row while the same commit passed everywhere else; if the commit
+  // path is what loses the text, this fails here with the working copy
+  // quoted instead of failing later on the PDF with nothing to go on.
+  await waitForCommittedParagraph(page, PARAGRAPH);
 
   // PDF: real bytes, one page, subject present in the text layer.
   const pdf = await exportVia(page, 'PDF Document (.pdf)', 'pdf');
@@ -161,6 +217,21 @@ test('AA Form exports through the official NAVMC 10274 form path', async ({ page
   await expect(page.getByText('Official Form Exported', { exact: true })).toBeVisible();
 
   expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('compliance failures are visible at laptop width', async ({ page }) => {
+  // D.2: the banner used to live in the preview aside, which is hidden
+  // below 1280 px, so a drafter on a laptop or a phone validated
+  // nothing. A fresh basic letter is missing every required header
+  // element, and must say so at this width.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await enterApp(page);
+  await page.getByRole('button', { name: /Standard Naval Letter/ }).click();
+
+  const compliance = page.getByRole('alert').filter({ hasText: /EXPORT BLOCKED|Compliance:/ });
+  await expect(compliance).toHaveCount(1);
+  await expect(compliance).toBeVisible();
+  await expect(compliance).toContainText(/SSIC/);
 });
 
 /**
