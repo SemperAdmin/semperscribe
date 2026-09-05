@@ -5,6 +5,54 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.5.5] - 2026-09-05
+
+The spell check stops crying wolf. The paragraph editor carried its own
+English dictionary, a hand-typed list of 341 words, and reported every
+word outside it as unknown. On the forty-eight word paragraph the UX
+audit sampled, the pass produced six false positives and zero true
+positives, among them "approval", "third", "eighty-two", "sourced" and
+"organically". A bar which is wrong six times out of six teaches the
+drafter to ignore it. English spelling is now the browser's job, and the
+custom pass keeps the one rule the browser has no view of: SECNAV
+M-5216.5 paragraph 2-17.c, spell an acronym out at first use and put the
+acronym in parentheses.
+
+### Changed
+
+- The paragraph textarea carries `spellCheck={true}` and `lang="en-US"`
+  explicitly, so the platform dictionary underlines misspellings in the
+  text where the drafter is typing and offers the platform's own
+  corrections. The shadcn `Textarea` sets no such attribute, so the
+  behavior rested on a browser default until now.
+- `useSpellCheck` reports acronym suggestions and nothing else. A token
+  has to be written the way the acronym table spells it before it
+  matches, so lowercase prose draws no suggestion, and an acronym the
+  paragraph already spells out with the expansion in parentheses is left
+  alone.
+- `SpellCheckBar` is labelled "Acronyms" and reads as reference material
+  rather than a warning. The alert icon and the amber warning color are
+  gone, the tooltip gives the expansion to write, and the bar stays
+  hidden when it has nothing to show. The per-word dismiss still works.
+- One place per rule: the document-level checker in
+  `src/lib/acronym-validators.ts` is unchanged and stays the only place a
+  first-use violation is reported, because first use is a property of the
+  whole document and a single paragraph has no view of it. The per-paragraph
+  bar states no rule and cites no policy. It supplies the expansion to
+  write, which is the material the drafter needs to satisfy the rule.
+
+### Removed
+
+- The `COMMON_ENGLISH` allowlist and the `unknown` branch of the custom
+  pass, along with the `unknown` member of `SpellIssue`. Initial-load JS
+  drops 3,940 bytes, from 2,554,573 to 2,550,633.
+- The military word set load from `useSpellCheck`. The set is a flat list
+  of recognized terms with no record of a preferred spelling, so it
+  supports an allowlist and no correction, and the allowlist it fed is
+  gone. `loadMilitaryWordSet` stays in `src/lib/reference-data.ts` for
+  other callers, and the word set is no longer fetched while a drafter
+  edits a paragraph.
+
 ## [0.5.4] - 2026-09-05
 
 Phase D.5 of the 2026-09-05 UX and policy plan: civilian letter

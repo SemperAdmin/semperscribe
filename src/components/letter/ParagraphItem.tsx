@@ -378,6 +378,8 @@ export function ParagraphItem({
               aria-label={bodyLabel}
               placeholder="Enter paragraph content..."
               className="min-h-[100px] resize-none overflow-hidden focus:ring-2 focus:ring-primary/50 pr-16 text-base font-serif bg-background text-foreground border-border"
+              spellCheck={true}
+              lang="en-US"
               autoFocus
             />
           ) : (

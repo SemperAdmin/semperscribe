@@ -1,84 +1,40 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useSyncedState } from '@/hooks/useSyncedState';
-import { loadMilitaryWordSet } from '@/lib/reference-data';
 import { MILITARY_ACRONYMS } from '@/lib/acronyms';
 
+/**
+ * Acronym guidance for a single paragraph (D.6).
+ *
+ * English spelling belongs to the browser. The paragraph textarea carries
+ * spellCheck and lang="en-US", so the platform dictionary marks misspelled
+ * words in the text itself. This pass no longer keeps an English word list
+ * and no longer reports unknown words: the hand-typed allowlist it used to
+ * carry flagged ordinary prose as suspect and taught drafters to ignore
+ * the bar.
+ *
+ * What is left is the one thing the browser has no view of: SECNAV
+ * M-5216.5 paragraph 2-17.c, spell an acronym out at first use and put the
+ * acronym in parentheses. This pass supplies the expansion to write. It
+ * does not state the rule or report a violation. The document-level
+ * checker in acronym-validators.ts owns the rule, because first use is a
+ * property of the whole document and a single paragraph has no view of it.
+ * A paragraph which already spells an acronym out is left alone.
+ */
 export interface SpellIssue {
   word: string;
-  index: number;        // character position in text
-  type: 'unknown' | 'acronym-suggestion';
-  suggestion?: string;  // e.g. expansion of an acronym, or a correction
+  index: number;       // character position in text
+  suggestion: string;  // expansion to write on first use
+  type: 'acronym-suggestion';
 }
 
-// Common English words that should never be flagged.
-// This is intentionally small — we only need words that might appear
-// in military correspondence and are NOT in the military word set.
-const COMMON_ENGLISH = new Set([
-  'THE', 'BE', 'TO', 'OF', 'AND', 'A', 'IN', 'THAT', 'HAVE', 'I',
-  'IT', 'FOR', 'NOT', 'ON', 'WITH', 'HE', 'AS', 'YOU', 'DO', 'AT',
-  'THIS', 'BUT', 'HIS', 'BY', 'FROM', 'THEY', 'WE', 'SAY', 'HER',
-  'SHE', 'OR', 'AN', 'WILL', 'MY', 'ONE', 'ALL', 'WOULD', 'THERE',
-  'THEIR', 'WHAT', 'SO', 'UP', 'OUT', 'IF', 'ABOUT', 'WHO', 'GET',
-  'WHICH', 'GO', 'ME', 'WHEN', 'MAKE', 'CAN', 'LIKE', 'TIME', 'NO',
-  'JUST', 'HIM', 'KNOW', 'TAKE', 'PEOPLE', 'INTO', 'YEAR', 'YOUR',
-  'GOOD', 'SOME', 'COULD', 'THEM', 'SEE', 'OTHER', 'THAN', 'THEN',
-  'NOW', 'LOOK', 'ONLY', 'COME', 'ITS', 'OVER', 'THINK', 'ALSO',
-  'BACK', 'AFTER', 'USE', 'TWO', 'HOW', 'OUR', 'WORK', 'FIRST',
-  'WELL', 'WAY', 'EVEN', 'NEW', 'WANT', 'BECAUSE', 'ANY', 'THESE',
-  'GIVE', 'DAY', 'MOST', 'US', 'IS', 'ARE', 'WAS', 'WERE', 'BEEN',
-  'BEING', 'HAS', 'HAD', 'DOES', 'DID', 'DOING', 'DONE', 'MADE',
-  'SHOULD', 'SHALL', 'MAY', 'MUST', 'NEED', 'EACH', 'EVERY', 'BOTH',
-  'FEW', 'MORE', 'MANY', 'MUCH', 'SUCH', 'BEFORE', 'BETWEEN',
-  'UNDER', 'AGAIN', 'FURTHER', 'THOSE', 'OWN', 'SAME', 'DURING',
-  'WHILE', 'WHERE', 'VERY', 'THROUGH', 'BELOW', 'ABOVE', 'BELOW',
-  'PER', 'THE', 'FOLLOWING', 'ENSURE', 'UPON', 'WITHIN', 'WITHOUT',
-  'ACCORDINGLY', 'WHEREAS', 'HEREBY', 'THEREOF', 'HEREIN', 'THEREIN',
-  'HEREWITH', 'HOWEVER', 'THEREFORE', 'REFERENCE', 'REFERENCED',
-  'SUBJECT', 'PURSUANT', 'EFFECTIVE', 'IMMEDIATELY', 'ATTACHED',
-  'ENCLOSED', 'FORWARDED', 'RECOMMENDED', 'APPROVED', 'DISAPPROVED',
-  'REQUESTED', 'DIRECTED', 'AUTHORIZED', 'REQUIRED', 'SUBMITTED',
-  'PROVIDED', 'INDICATED', 'ADDRESSED', 'ASSIGNED', 'DESIGNATED',
-  'ESTABLISHED', 'ACCOMPLISHED', 'COMPLETED', 'CONTINUED', 'RECEIVED',
-  'NOTED', 'CONCUR', 'NONCONCUR', 'SIGNED', 'UNSIGNED', 'CLASSIFIED',
-  'UNCLASSIFIED', 'DISTRIBUTION', 'COMMANDING', 'OFFICER', 'GENERAL',
-  'COLONEL', 'CAPTAIN', 'LIEUTENANT', 'MAJOR', 'SERGEANT', 'CORPORAL',
-  'PRIVATE', 'ADMIRAL', 'COMMANDER', 'CHIEF', 'STAFF', 'DEPUTY',
-  'ASSISTANT', 'DIRECTOR', 'HEAD', 'SECTION', 'DIVISION', 'BRANCH',
-  'OFFICE', 'UNIT', 'COMMAND', 'FORCE', 'GROUP', 'TEAM', 'SQUADRON',
-  'BATTALION', 'REGIMENT', 'BRIGADE', 'COMPANY', 'PLATOON', 'MARINE',
-  'MARINES', 'NAVY', 'NAVAL', 'CORPS', 'AMPHIBIOUS', 'INFANTRY',
-  'ARTILLERY', 'AVIATION', 'LOGISTICS', 'COMBAT', 'OPERATIONS',
-  'TRAINING', 'EDUCATION', 'PERSONNEL', 'SUPPLY', 'MAINTENANCE',
-  'COMMUNICATION', 'INTELLIGENCE', 'SECURITY', 'SUPPORT', 'SERVICE',
-  'SERVICES', 'REPORT', 'REPORTS', 'ORDER', 'ORDERS', 'INSTRUCTION',
-  'DIRECTIVE', 'POLICY', 'PROCEDURE', 'STANDARD', 'REGULATION',
-  'MANUAL', 'GUIDE', 'CHAPTER', 'PARAGRAPH', 'SECTION', 'ENCLOSURE',
-  'APPENDIX', 'ANNEX', 'TAB', 'EXHIBIT', 'FIGURE', 'TABLE', 'PAGE',
-  'DATE', 'NUMBER', 'TOTAL', 'AMOUNT', 'PERIOD', 'FISCAL', 'CALENDAR',
-  'ANNUAL', 'QUARTERLY', 'MONTHLY', 'WEEKLY', 'DAILY', 'CURRENT',
-  'PREVIOUS', 'NEXT', 'LAST', 'BEGINNING', 'ENDING', 'EFFECTIVE',
-  'MISSION', 'SITUATION', 'EXECUTION', 'COORDINATING', 'COORDINATION',
-  'ADMINISTRATION', 'LOGISTICS', 'CONCEPT', 'INTENT', 'PURPOSE',
-  'BACKGROUND', 'DISCUSSION', 'RECOMMENDATION', 'RECOMMENDATIONS',
-  'ACTION', 'ACTIONS', 'DECISION', 'POINT', 'POINTS', 'ISSUE',
-  'ISSUES', 'INFORMATION', 'DATA', 'ANALYSIS', 'ASSESSMENT', 'REVIEW',
-  'PLAN', 'PROGRAM', 'PROJECT', 'BUDGET', 'FUNDING', 'RESOURCES',
-  'EQUIPMENT', 'MATERIAL', 'WEAPON', 'VEHICLE', 'AIRCRAFT', 'SHIP',
-  'FACILITY', 'INSTALLATION', 'BASE', 'CAMP', 'STATION', 'POST',
-  'NOT', 'BEEN', 'HAVE', 'HAS', 'WILL', 'SHALL', 'WOULD', 'SHOULD',
-  'COULD', 'CAN', 'MAY', 'MIGHT', 'MUST', 'NEED', 'DOES', 'DID',
-  'REGARDING', 'CONCERNING', 'PERTAINING', 'RELATED', 'APPLICABLE',
-  'APPROPRIATE', 'NECESSARY', 'SUFFICIENT', 'ADEQUATE', 'SPECIFIC',
-]);
-
-// Strip formatting markers so they don't pollute word extraction
+// Strip formatting markers so they do not pollute word extraction
 function stripFormatting(text: string): string {
   return text
-    .replace(/\*\*(.+?)\*\*/g, '$1')   // **bold**
-    .replace(/\*(.+?)\*/g, '$1')         // *italic*
-    .replace(/<u>(.+?)<\/u>/g, '$1');    // <u>underline</u>
+    .replace(/\*\*(.+?)\*\*/g, '$1')   // bold
+    .replace(/\*(.+?)\*/g, '$1')       // italic
+    .replace(/<u>(.+?)<\/u>/g, '$1');  // underline
 }
 
 // Tokenize text into words with their positions
@@ -93,88 +49,68 @@ function tokenize(text: string): { word: string; index: number }[] {
 }
 
 /**
- * Check a single word against our dictionaries.
- * Returns null if the word is recognized, or a SpellIssue if not.
+ * Look up a token in the acronym table. The match is exact, so the token
+ * has to be written the way the table spells it: "MCO", or "GySgt" for the
+ * mixed-case ranks. A lowercase token is ordinary prose and draws no
+ * suggestion, which is what keeps this pass off the drafter's back.
  */
-function checkWord(word: string, index: number, milWords: Set<string>): SpellIssue | null {
-  const upper = word.toUpperCase();
+function expansionFor(word: string): string | null {
+  if (!Object.prototype.hasOwnProperty.call(MILITARY_ACRONYMS, word)) return null;
+  return MILITARY_ACRONYMS[word];
+}
 
-  // Skip very short words (1-2 chars) — too many false positives
-  if (word.length <= 2) return null;
+/**
+ * True when the paragraph spells the acronym out, as a word followed by
+ * the acronym in parentheses. This is the form 2-17.c asks for, and it is
+ * the same shape the document-level checker reads as a definition.
+ */
+function definedInText(text: string, acronym: string): boolean {
+  const escaped = acronym.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&');
+  return new RegExp(`\\w\\s*\\(${escaped}\\)`).test(text);
+}
 
-  // Skip numbers and number-prefixed tokens (e.g. "3d", "1st")
-  if (/^\d/.test(word)) return null;
+function findAcronyms(content: string): SpellIssue[] {
+  const stripped = stripFormatting(content);
+  const found: SpellIssue[] = [];
+  const seen = new Set<string>();
 
-  // Check common English
-  if (COMMON_ENGLISH.has(upper)) return null;
+  for (const token of tokenize(stripped)) {
+    // Report each acronym once, at its first appearance
+    if (seen.has(token.word)) continue;
+    seen.add(token.word);
 
-  // Check military word set
-  if (milWords.has(upper)) return null;
+    const expansion = expansionFor(token.word);
+    if (!expansion) continue;
+    if (definedInText(stripped, token.word)) continue;
 
-  // Check if it's a known military acronym — show its expansion as a suggestion
-  const acronymMeaning = MILITARY_ACRONYMS[upper] || MILITARY_ACRONYMS[word];
-  if (acronymMeaning) {
-    return { word, index, type: 'acronym-suggestion', suggestion: `${acronymMeaning} (${upper})` };
+    found.push({
+      word: token.word,
+      index: token.index,
+      suggestion: `${expansion} (${token.word})`,
+      type: 'acronym-suggestion',
+    });
   }
 
-  // If it looks like an all-caps acronym (3+ caps), be lenient — many acronyms
-  // won't be in our set. Only flag if it's mixed case.
-  if (/^[A-Z]{3,}$/.test(word)) return null;
-
-  // Flag as unknown
-  return { word, index, type: 'unknown' };
+  return found;
 }
 
 export function useSpellCheck(text: string, enabled: boolean = true, debounceMs: number = 800) {
   // Issues clear in the render where the text empties or the check is
-  // disabled; while text is merely edited, the previous issues stay
+  // disabled. While text is merely edited, the previous issues stay
   // until the debounced check replaces them, so the list does not
   // flicker on every keystroke.
   const cleared = !enabled || !text;
   const [issues, setIssues] = useSyncedState(cleared, (isCleared, prev): SpellIssue[] =>
     isCleared ? [] : prev ?? [],
   );
-  // Lazy-loaded word set; null until the chunk arrives. Checks are
-  // deferred (not run with an empty set) so military terms are never
-  // briefly flagged as unknown while the data loads.
-  const [milWordSet, setMilWordSet] = useState<Set<string> | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    loadMilitaryWordSet().then(set => {
-      if (!cancelled) setMilWordSet(set);
-    }).catch(e => console.error('Failed to load military word set:', e));
-    return () => { cancelled = true; };
-  }, [enabled]);
 
   const runCheck = useCallback((content: string) => {
     if (!content || !enabled) {
       setIssues([]);
       return;
     }
-    if (!milWordSet) return;
-
-    const milWords = milWordSet;
-    const stripped = stripFormatting(content);
-    const tokens = tokenize(stripped);
-    const found: SpellIssue[] = [];
-    const seen = new Set<string>();
-
-    for (const token of tokens) {
-      // Deduplicate — only report each unique word once
-      const key = token.word.toUpperCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      const issue = checkWord(token.word, token.index, milWords);
-      if (issue) {
-        found.push(issue);
-      }
-    }
-
-    setIssues(found);
-  }, [enabled, milWordSet, setIssues]);
+    setIssues(findAcronyms(content));
+  }, [enabled, setIssues]);
 
   useEffect(() => {
     if (cleared) return;
