@@ -14,7 +14,8 @@ export default defineConfig({
     setupFiles: './tests/setup.ts',
     // Playwright specs live under tests/e2e and run through
     // `npm run test:e2e` against the built export, never under vitest.
-    exclude: ['tests/e2e/**', 'node_modules/**', 'out/**', '.next/**'],
+    // .claude/ holds nested agent worktrees, whole checkouts of this repo.
+    exclude: ['tests/e2e/**', 'node_modules/**', 'out/**', '.next/**', '.claude/**'],
     coverage: {
       provider: 'v8',
       // Write the report even when a test fails, so a local run with the

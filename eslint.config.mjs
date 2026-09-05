@@ -24,7 +24,8 @@ const config = [
     },
   },
   {
-    ignores: ["out/", ".next/", "node_modules/"],
+    // .claude/ holds nested agent worktrees (whole checkouts of this repo).
+    ignores: ["out/", ".next/", "node_modules/", ".claude/"],
   },
 ];
 
