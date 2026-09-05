@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { consumeEdmsPrefill, clearEdmsHash, type EdmsPrefill } from '@/lib/edms-handoff';
+import { useEffect, useCallback } from 'react';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useSyncedState } from '@/hooks/useSyncedState';
+import { consumeEdmsPrefill, clearEdmsHash, getEdmsPrefillFromHash, type EdmsPrefill } from '@/lib/edms-handoff';
 import {
   getStateFromUrl,
   clearShareParam,
@@ -26,6 +28,31 @@ interface UseShareLinkLoaderArgs {
   onEdmsPrefill?: (prefill: EdmsPrefill) => void;
 }
 
+/** What the page was opened with, read once from the URL. */
+type InboundLink =
+  | { kind: 'none' }
+  | { kind: 'edms'; prefill: EdmsPrefill }
+  | { kind: 'encrypted'; payload: string }
+  | { kind: 'shared'; state: ShareableState };
+
+const NO_LINK: InboundLink = { kind: 'none' };
+
+/**
+ * Pure read of the inbound link, in priority order: EDMS handoff, then
+ * the encrypted fragment, then the legacy query param. Consuming the
+ * URL (latching EDMS mode, clearing the hash or param) happens in the
+ * effect and handlers below, never here.
+ */
+function readInboundLink(): InboundLink {
+  const prefill = getEdmsPrefillFromHash();
+  if (prefill) return { kind: 'edms', prefill };
+  const payload = getEncryptedPayloadFromHash();
+  if (payload) return { kind: 'encrypted', payload };
+  const state = getStateFromUrl();
+  if (state) return { kind: 'shared', state };
+  return NO_LINK;
+}
+
 /**
  * Loads shared state from a share link on mount and surfaces the S2
  * routing slip when the link is a request for signature.
@@ -41,14 +68,24 @@ interface UseShareLinkLoaderArgs {
  *   password IS the consent step for this format.
  */
 export function useShareLinkLoader({ handleImport, toast, onComments, onEdmsPrefill }: UseShareLinkLoaderArgs) {
+  // The URL is read on the first client render, never during the
+  // static-export prerender (no window there) or the hydration render
+  // (the markup has to match the export). useHydrated flips once.
+  const hydrated = useHydrated();
+  const [inbound] = useSyncedState(hydrated, (h): InboundLink => (h ? readInboundLink() : NO_LINK));
+
   // S2: routing slip arriving on a request-for-signature link
-  const [routingRequest, setRoutingRequest] = useState<SignatureRouting | null>(null);
+  const [routingRequest, setRoutingRequest] = useSyncedState(inbound, (): SignatureRouting | null => null);
 
   // P1.1: encrypted payload waiting for a password
-  const [encryptedPayload, setEncryptedPayload] = useState<string | null>(null);
+  const [encryptedPayload, setEncryptedPayload] = useSyncedState(inbound, (link): string | null =>
+    link.kind === 'encrypted' ? link.payload : null,
+  );
 
   // Decoded `?share=` state waiting for the user's go-ahead
-  const [pendingShared, setPendingShared] = useState<ShareableState | null>(null);
+  const [pendingShared, setPendingShared] = useSyncedState(inbound, (link): ShareableState | null =>
+    link.kind === 'shared' ? link.state : null,
+  );
 
   const applyImportedState = useCallback((sharedState: ShareableState) => {
     handleImport(sharedState);
@@ -69,34 +106,19 @@ export function useShareLinkLoader({ handleImport, toast, onComments, onEdmsPref
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load shared state from URL on mount
+  // EDMS handoff. It latches EDMS mode, which gates GunnyBot egress in
+  // lib/gunnybot/client.ts, so it runs as soon as the link is read and
+  // before anything else can reach a provider. consumeEdmsPrefill() sets
+  // the mode; the callback seeds the form. There is no document to
+  // import. The hash is cleared so a reload does not re-run it.
   useEffect(() => {
-    // EDMS handoff first. It latches EDMS mode, which gates GunnyBot
-    // egress in lib/gunnybot/client.ts, so it has to run before anything
-    // else can reach a provider. consumeEdmsPrefill() sets the mode; the
-    // callback seeds the form. There is no document to import.
-    const prefill = consumeEdmsPrefill();
-    if (prefill) {
-      onEdmsPrefill?.(prefill);
-      clearEdmsHash();
-      return;
-    }
-
-    // Encrypted fragment takes priority over the legacy query param.
-    const payload = getEncryptedPayloadFromHash();
-    if (payload) {
-      setEncryptedPayload(payload);
-      return;
-    }
-
-    const sharedState = getStateFromUrl();
-    if (sharedState) {
-      // Held, not imported: the user confirms first (ConfirmShareDialog).
-      setPendingShared(sharedState);
-    }
-    // Mount-only by design: the share param is consumed exactly once.
+    if (inbound.kind !== 'edms') return;
+    consumeEdmsPrefill();
+    onEdmsPrefill?.(inbound.prefill);
+    clearEdmsHash();
+    // Consumed once per inbound link; the callback is read at that moment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [inbound]);
 
   /** User confirmed the plain share link: import it and consume the param. */
   const confirmShared = useCallback(() => {
@@ -104,13 +126,13 @@ export function useShareLinkLoader({ handleImport, toast, onComments, onEdmsPref
     applyImportedState(pendingShared);
     setPendingShared(null);
     clearShareParam();
-  }, [pendingShared, applyImportedState]);
+  }, [pendingShared, applyImportedState, setPendingShared]);
 
   /** Discards a pending plain share link and opens the blank editor. */
   const dismissShared = useCallback(() => {
     setPendingShared(null);
     clearShareParam();
-  }, []);
+  }, [setPendingShared]);
 
   /**
    * Attempts to unlock the pending encrypted payload.
@@ -140,13 +162,13 @@ export function useShareLinkLoader({ handleImport, toast, onComments, onEdmsPref
       case 'corrupt':
         return 'This link is damaged or incomplete. Ask the sender to copy it again.';
     }
-  }, [encryptedPayload, applyImportedState, toast]);
+  }, [encryptedPayload, applyImportedState, toast, setEncryptedPayload]);
 
   /** Discards a pending encrypted link and opens the blank editor. */
   const dismissEncrypted = useCallback(() => {
     setEncryptedPayload(null);
     clearShareHash();
-  }, []);
+  }, [setEncryptedPayload]);
 
   return {
     routingRequest,

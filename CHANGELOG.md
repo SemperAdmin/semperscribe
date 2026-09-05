@@ -5,6 +5,43 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.4.2] - 2026-09-05
+
+Phase A.4 of `docs/HARDENING_PLAN_2026-09.md`: async loads and one-time
+initialisation. No user-visible change. Lint warnings 24 to 14, and the
+`set-state-in-effect` rule reaches zero.
+
+### Changed
+
+- New `useSyncedUpdate` in `src/hooks/useSyncedState.ts`: runs a callback
+  during the render in which a source value changes, for state the
+  component owns but a single `useSyncedState` cannot hold. Used for
+  today's date (applied on the first client render, gated by
+  `useHydrated` so the prerendered markup still matches), the profile
+  defaults once the profile loads, the reports-to-admin-subsection sync,
+  and the legacy level 0 paragraph migration.
+- `useShareLinkLoader` reads the inbound link (EDMS handoff, encrypted
+  fragment, legacy share param, in that order) once on the first client
+  render. The EDMS latch, callback and hash clear stay in an effect
+  which runs once per link.
+- `useSpellCheck` clears its issue list in the render where the text
+  empties or the check is disabled, and keeps the previous list while
+  text is edited until the debounced check replaces it, as before.
+- `useVoiceInput` creates one speech recogniser on the first mic press
+  and reads the latest paragraphs and update callback through refs. The
+  previous version created a recogniser at mount and another each time
+  the update callback changed identity.
+- Page 11 remarks: the template list loads from the button which opens
+  the picker instead of an effect watching the open flag. A failed load
+  still toasts and retries on the next open.
+- The smoke test asserts the exported letter carries the run date in
+  navy format, so a build-time date baked into the export fails CI.
+
+### Removed
+
+- A write-only EDMS context state in `page.tsx` whose value was never
+  read.
+
 ## [0.4.1] - 2026-09-05
 
 Phase A.3 of `docs/HARDENING_PLAN_2026-09.md`: state reset when an input

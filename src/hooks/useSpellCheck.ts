@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import { loadMilitaryWordSet } from '@/lib/reference-data';
 import { MILITARY_ACRONYMS } from '@/lib/acronyms';
 
@@ -125,8 +126,14 @@ function checkWord(word: string, index: number, milWords: Set<string>): SpellIss
 }
 
 export function useSpellCheck(text: string, enabled: boolean = true, debounceMs: number = 800) {
-  const [issues, setIssues] = useState<SpellIssue[]>([]);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Issues clear in the render where the text empties or the check is
+  // disabled; while text is merely edited, the previous issues stay
+  // until the debounced check replaces them, so the list does not
+  // flicker on every keystroke.
+  const cleared = !enabled || !text;
+  const [issues, setIssues] = useSyncedState(cleared, (isCleared, prev): SpellIssue[] =>
+    isCleared ? [] : prev ?? [],
+  );
   // Lazy-loaded word set; null until the chunk arrives. Checks are
   // deferred (not run with an empty set) so military terms are never
   // briefly flagged as unknown while the data loads.
@@ -167,22 +174,13 @@ export function useSpellCheck(text: string, enabled: boolean = true, debounceMs:
     }
 
     setIssues(found);
-  }, [enabled, milWordSet]);
+  }, [enabled, milWordSet, setIssues]);
 
   useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-
-    if (!enabled || !text) {
-      setIssues([]);
-      return;
-    }
-
-    timerRef.current = setTimeout(() => runCheck(text), debounceMs);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [text, enabled, debounceMs, runCheck]);
+    if (cleared) return;
+    const timer = setTimeout(() => runCheck(text), debounceMs);
+    return () => clearTimeout(timer);
+  }, [text, cleared, debounceMs, runCheck]);
 
   return { issues, recheck: () => runCheck(text) };
 }

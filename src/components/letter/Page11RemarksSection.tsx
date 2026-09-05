@@ -14,7 +14,7 @@
  * column; no fill-order lock (either column stays freely editable).
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -51,9 +51,11 @@ export function Page11RemarksSection({ formData, setFormData }: Page11RemarksSec
   const rightEmpty = right.trim() === '';
 
   // Page 11 templates come from the same index the Templates browser
-  // reads - one source, so a new entry file shows up in both.
-  useEffect(() => {
-    if (!pickerOpen || entries.length > 0) return;
+  // reads - one source, so a new entry file shows up in both. Loaded
+  // from the button press which opens the picker, not from an effect
+  // watching the open flag, and retried on the next open after a failure
+  // (the list stays empty then).
+  const loadEntries = () => {
     setLoading(true);
     fetch(`${getBasePath()}/templates/global/index.json`)
       .then((r) => (r.ok ? r.json() : []))
@@ -62,7 +64,12 @@ export function Page11RemarksSection({ formData, setFormData }: Page11RemarksSec
       })
       .catch(() => toast({ title: 'Templates Unavailable', description: 'Could not load the Page 11 template list.', variant: 'destructive' }))
       .finally(() => setLoading(false));
-  }, [pickerOpen, entries.length, toast]);
+  };
+
+  const openPicker = () => {
+    setPickerOpen(true);
+    if (entries.length === 0 && !loading) loadEntries();
+  };
 
   const insertIntoRight = async (entry: TemplateEntry) => {
     try {
@@ -111,7 +118,7 @@ export function Page11RemarksSection({ formData, setFormData }: Page11RemarksSec
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => setPickerOpen(true)}
+                onClick={openPicker}
               >
                 <FilePlus2 className="w-3.5 h-3.5 mr-1.5" />
                 Insert template
