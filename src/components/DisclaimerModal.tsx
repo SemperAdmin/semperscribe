@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,15 +12,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { DISCLAIMERS } from '@/lib/security-utils';
 import { hasSeenDisclaimer, markDisclaimerSeen } from '@/lib/storage-utils';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useSyncedState } from '@/hooks/useSyncedState';
 
 export function DisclaimerModal() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
-    if (!hasSeenDisclaimer()) {
-      setIsOpen(true);
-    }
-  }, []);
+  // Closed on the server and during hydration (localStorage is not there
+  // yet), then derived from the stored flag on the first client render.
+  // Still directly settable by the close handler and the reopen event.
+  const hydrated = useHydrated();
+  const [isOpen, setIsOpen] = useSyncedState(hydrated, h => h && !hasSeenDisclaimer());
 
   const handleClose = () => {
     markDisclaimerSeen();
@@ -33,7 +33,7 @@ export function DisclaimerModal() {
     const handleOpenEvent = () => setIsOpen(true);
     window.addEventListener('open-disclaimer', handleOpenEvent);
     return () => window.removeEventListener('open-disclaimer', handleOpenEvent);
-  }, []);
+  }, [setIsOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

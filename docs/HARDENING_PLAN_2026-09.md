@@ -49,6 +49,12 @@ Ten set-state-in-effect warnings removed, baseline 51 to 41. Every site turned o
 
 Two behaviours differ from the effect version, both improvements with no visible change: the derived value is present on the first render instead of one commit later, and a source change re-derives in the same render. Stateful tests added in `tests/components/list-sections-stateful.test.tsx` pin the interplay the static tests could not: Yes on the page default opens one empty input, clearing the only typed entry collapses, a template load opens, a form clear closes even after a manual Yes.
 
+## Phase A.2 status, 2026-09-05: landed (v0.3.2)
+
+Six set-state-in-effect warnings removed, baseline 41 to 35. ModernAppShell's site had already gone in Phase 0 with the logo fix, so A.2 had six sites, not seven. `useHydrated` (`useSyncExternalStore` with a false server snapshot) replaced the mounted flag in ThemeToggle and gated the browser-only reads in DisclaimerModal and PlatformSettings, which then derive through `useSyncedState`. `useIsMobile` moved onto `useSyncExternalStore`. GuidanceDialog's open-time preselection turned out to be a reset-on-input case and took `useSyncedState` keyed on open state and document type. `carousel.tsx` was unused by anything in `src/` and was deleted rather than patched; `embla-carousel-react` becomes a B.3 removal.
+
+Sixteen tests added across six files: hook semantics for `useHydrated` and `useIsMobile` (with a matchMedia stub, since jsdom has none), and component behaviour for DisclaimerModal, GuidanceDialog, ThemeToggle, and PlatformSettings. The smoke test's zero-console-error assertion on the built export is the hydration-mismatch guard for this phase.
+
 ## Phase 0: safety net (one PR, blocks everything after it)
 
 ### 0.1 Browser smoke test on the built export

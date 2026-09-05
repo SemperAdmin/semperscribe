@@ -5,6 +5,30 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.3.2] - 2026-09-05
+
+Phase A.2 of `docs/HARDENING_PLAN_2026-09.md`: mount and media flags. No
+user-visible change. Lint warnings 41 to 35.
+
+### Changed
+
+- New `useHydrated` hook (`src/hooks/useHydrated.ts`): false on the server
+  and hydration render, true from the first client render, through
+  `useSyncExternalStore`. Replaces the mounted-flag effect in ThemeToggle
+  and gates the browser-only reads in DisclaimerModal (stored
+  acknowledgement) and PlatformSettings (parked install prompt, standalone
+  display mode), which now derive through `useSyncedState` and stay
+  settable by their handlers.
+- `useIsMobile` rewritten on `useSyncExternalStore` with a matchMedia
+  subscription; same values, read during render.
+- GuidanceDialog preselects the active document type through
+  `useSyncedState` keyed on open state and type, instead of an effect.
+
+### Removed
+
+- `src/components/ui/carousel.tsx`, an unused shadcn component carrying
+  one of the warnings. Nothing imported it.
+
 ## [0.3.1] - 2026-09-05
 
 Phase A.1 of `docs/HARDENING_PLAN_2026-09.md`: derived state mirrored from
