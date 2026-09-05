@@ -6,7 +6,6 @@ import { LivePreview } from './LivePreview';
 import { HeaderActions } from './HeaderActions';
 import { PreviewModal } from './PreviewModal';
 import { ParagraphData, SavedLetter, FormData } from '@/types';
-import { getBasePath } from '@/lib/path-utils';
 import { getExportFilename } from '@/lib/naval-format-utils';
 import { FEEDBACK_URL } from '@/lib/app-links';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -112,13 +111,12 @@ export function ModernAppShell({
   const [showPreview, setShowPreview] = React.useState(true);
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = React.useState(false);
-  const [logoSrc, setLogoSrc] = React.useState('/logo.png');
-
-  React.useEffect(() => {
-    // Get basePath on client-side for proper logo loading
-    const basePath = getBasePath();
-    setLogoSrc(`${basePath}/logo.png`);
-  }, []);
+  // Build-time base path (next.config.ts env), identical on the server
+  // render and the client, so the first paint requests the right URL.
+  // The previous state-plus-effect version rendered "/logo.png" first,
+  // which 404s on GitHub Pages before the effect corrected it (caught by
+  // the e2e smoke test's zero-console-error assertion).
+  const logoSrc = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/logo.png`;
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-sans overflow-hidden">
