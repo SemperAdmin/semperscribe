@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P3.4 — directive identification block (MCO 5215.1K para 38;
  * POLICY_COMPLIANCE_AUDIT.md lines 98, 126, 138, 144, 160, 170).

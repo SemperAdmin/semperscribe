@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * D.1 - standard-letter output correctness in the PDF.
  *

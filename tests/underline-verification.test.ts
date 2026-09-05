@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * S5 — level 5-8 designator underlines, both emitters (audit gap G6).
  *

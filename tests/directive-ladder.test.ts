@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P3.2/P3.3 — USMC directive geometry (MCO 5215.1K paras 33, 37).
  *

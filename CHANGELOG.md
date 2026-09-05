@@ -5,6 +5,32 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.5.10] - 2026-09-05
+
+Renderer 4.9.0, and the test harness it broke. The owner merged the
+Dependabot bump of `@react-pdf/renderer` from 4.5.1 to 4.9.0 (#59) and
+the main deploy went red: forty-six PDF layout tests read an empty text
+layer. The app itself was never wrong. Every Playwright path passes
+against the built export on 4.9.0, and every golden snapshot matches to
+the point, so the new renderer lays out the same letter.
+
+### Fixed
+
+- The twelve PDF layout suites run under the Node test environment
+  instead of jsdom. 4.8 replaced the `@react-pdf/pdfkit` fork with
+  upstream pdfkit, and under jsdom the seal PNG, a Node Buffer, fails
+  pdfkit's `instanceof Uint8Array` check against jsdom's own global and
+  is handed to `fs.readFileSync` as a path, while the deflate streams
+  come out with headers pdf.js rejects ("Bad FCHECK"). Under the Node
+  environment, where the companion and the same-page tests already run,
+  the same renders produce valid streams and full text. None of the
+  twelve suites ever touched the DOM. Resolver aliases and export
+  conditions were tried first and changed nothing, since the fault is
+  the realm, not the build selected.
+- No snapshot moved. The basic-letter PDF and DOCX goldens, the
+  continuation header, the signature offsets, the directive ladders and
+  the copy-to spacing all measure the same on 4.9.0 as on 4.5.1.
+
 ## [0.5.9] - 2026-09-05
 
 Phase D.8 of the 2026-09-05 UX and policy plan: first run and the

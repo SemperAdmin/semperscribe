@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * PHASE 0 PARITY HARNESS — PDF golden file.
  *
