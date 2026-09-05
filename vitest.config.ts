@@ -39,7 +39,6 @@ export default defineConfig({
         'src/**/*.d.ts',
         // Pure data tables and generated assets: measuring them inflates
         // or deflates the percentage without saying anything about tests.
-        'src/lib/dod-seal-data.ts',
         'src/lib/military-dictionary.ts',
         'src/lib/military-wordset.ts',
         'src/lib/units.ts',

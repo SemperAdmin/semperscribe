@@ -63,6 +63,10 @@ Four image warnings removed, baseline 35 to 31. Two documented per-line disables
 
 recharts, file-saver, @types/file-saver, and embla-carousel-react removed; autoprefixer, postcss, tailwindcss, and tailwindcss-animate moved to devDependencies. Production SBOM 340 to 232 components, audit clean, lockfile regenerated and verified with `npm ci`. Bundle bytes unchanged, as predicted: the bundler had already tree-shaken the unused packages.
 
+## Phase B.1 status, 2026-09-05: landed (v0.4.0)
+
+Seals moved to `public/seals/` byte-identical; `dod-seal-data.ts` deleted. Total JS 10,654,691 B to 6,809,010 B, initial load unchanged. One shared loader (`src/lib/seal-assets.ts`) feeds a data URL to @react-pdf and an ArrayBuffer to docx; tests register a disk loader in `tests/setup.ts` since Node has no origin to fetch from. Golden PDF and DOCX tests passed unchanged. The smoke test gained an image-XObject assertion. Deploy total budget lowered to 7,490,000 B. B.2 (downscaling) remains a human-review item.
+
 ## Phase 0: safety net (one PR, blocks everything after it)
 
 ### 0.1 Browser smoke test on the built export

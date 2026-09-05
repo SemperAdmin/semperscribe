@@ -4,7 +4,7 @@
  * Offline strategy for a fully static export:
  * - Navigations: network first, cached app shell as the offline fallback.
  * - Hashed /_next/ chunks: cache first - the hash IS the invalidation.
- * - Stable-named assets (pdf worker, fonts, templates, forms, manifest):
+ * - Stable-named assets (pdf worker, fonts, templates, forms, seals, manifest):
  *   NETWORK FIRST, cache as the offline fallback only. Their filenames
  *   never change, so a cache-first or stale-first read cannot
  *   distinguish current content from a previous deploy's - and did
