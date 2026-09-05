@@ -69,5 +69,67 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Warning counts only move down. Compares per-rule counts against
+      # .lint-baseline.json; a PR which lowers a count updates the baseline
+      # in the same PR (node scripts/lint-ratchet.mjs --update).
+      - name: Lint ratchet
+        run: npm run lint:ratchet
+
       - name: Run tests
         run: npm test
+
+  coverage:
+    # Coverage floor. Thresholds live in vitest.config.ts, set just below
+    # the measured baseline, so a PR which drops coverage fails here.
+    # Separate job so a threshold miss reads as "coverage", not "tests".
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # The parity test needs LibreOffice here too, otherwise it fails and
+      # the run reads red for the wrong reason.
+      - name: Install LibreOffice and Liberation fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-writer fonts-liberation
+      - run: npm ci
+      - name: Coverage threshold
+        run: npm run test:coverage
+
+  e2e:
+    # Browser smoke test against the BUILT static export. Unit tests never
+    # exercise dynamic import() boundaries, chunk loading, or the service
+    # worker; this job is the only guard for that class of break. See
+    # tests/e2e/smoke.spec.ts and docs/HARDENING_PLAN_2026-09.md Phase 0.1.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build static export
+        run: npm run build
+      - name: Bundle report
+        run: npm run bundle:report
+      - name: Smoke test
+        run: npm run test:e2e
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-traces-${{ github.sha }}
+          path: test-results/e2e
+          retention-days: 7
+          if-no-files-found: ignore

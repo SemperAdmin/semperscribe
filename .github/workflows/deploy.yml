@@ -61,22 +61,15 @@ jobs:
             exit 1
           fi
 
-      # Bundle-size budget. Every byte under out/_next/static/**/*.js can
-      # ship to a browser. Baseline measured 2026-09-05: 10.65 MB across
-      # all chunks (Next.js counts shared code once per route, so this is
-      # an upper bound on first load). Budget is baseline plus ~10%.
-      # Bump BUDGET_BYTES in the same PR that legitimately grows the
-      # bundle, so growth is a review conversation, not a surprise.
-      - name: Bundle-size budget
-        run: |
-          BUDGET_BYTES=12288000   # 11.7 MiB
-          TOTAL=$(find out/_next/static -name '*.js' -exec stat -c %s {} \; | awk '{s+=$1} END {print s+0}')
-          echo "Total out/_next/static JS: $TOTAL bytes (budget: $BUDGET_BYTES)"
-          if [ "$TOTAL" -gt "$BUDGET_BYTES" ]; then
-            echo "::error::Bundle ${TOTAL}B exceeds budget ${BUDGET_BYTES}B (~$((TOTAL * 100 / BUDGET_BYTES))% of budget)."
-            echo "Bump BUDGET_BYTES in deploy.yml if growth is justified."
-            exit 1
-          fi
+      # Bundle-size budgets, two of them. Initial-load counts the chunks
+      # out/index.html references (what a browser fetches before first
+      # paint); total counts every chunk including lazy ones. Baseline
+      # measured 2026-09-05: initial 3,138,673 B, total 10,654,516 B.
+      # Budgets are baseline plus ~10%. Lower them in the PR which
+      # achieves a reduction; raise them only in a PR which justifies the
+      # growth, so bundle changes are a review conversation.
+      - name: Bundle-size budgets
+        run: node scripts/bundle-report.mjs --initial-budget=3460000 --total-budget=11720000
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

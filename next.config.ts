@@ -34,6 +34,11 @@ const nextConfig: NextConfig = {
   // a bug report carries a build identifier. Single source: package.json.
   env: {
     NEXT_PUBLIC_APP_VERSION: pkg.version,
+    // The computed base path, inlined at build time so server-rendered
+    // HTML and the client agree on asset URLs from the first paint. The
+    // .env.production value is superseded by this so the two can never
+    // drift when DEPLOY_TARGET changes.
+    NEXT_PUBLIC_BASE_PATH: basePath,
   },
   basePath,
   assetPrefix: basePath ? `${basePath}/` : undefined,

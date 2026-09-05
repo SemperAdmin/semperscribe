@@ -1,6 +1,6 @@
 {
   "name": "semperscribe",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "license": "MIT",
   "//": [
@@ -19,7 +19,11 @@
     "deploy": "next build && gh-pages -d out",
     "sbom": "cyclonedx-npm --output-format JSON --output-file sbom.cdx.json --omit dev",
     "typecheck": "tsc --noEmit",
-    "typecheck:tests": "tsc --noEmit -p tsconfig.tests.json"
+    "typecheck:tests": "tsc --noEmit -p tsconfig.tests.json",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "lint:ratchet": "node scripts/lint-ratchet.mjs",
+    "bundle:report": "node scripts/bundle-report.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -83,6 +87,7 @@
   },
   "devDependencies": {
     "@cyclonedx/cyclonedx-npm": "^5.0.0",
+    "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/file-saver": "^2.0.7",
@@ -92,6 +97,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@vitejs/plugin-react": "^5.1.4",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9",
     "eslint-config-next": "^16.1.6",
     "fake-indexeddb": "^6.2.5",
