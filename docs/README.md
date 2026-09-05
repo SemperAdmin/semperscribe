@@ -20,5 +20,6 @@ Then open [http://localhost:3000](http://localhost:3000).
 - Export pipelines: [`EXPORT_GUIDE.md`](EXPORT_GUIDE.md).
 - Portable document packages: [`NLDP_FEATURE_GUIDE.md`](NLDP_FEATURE_GUIDE.md).
 - Headless HTTP and MCP companion for EDMS and agent integration: [`COMPANION.md`](COMPANION.md).
+- UX and policy program, 2026-09-05: [`UX_POLICY_PLAN_2026-09.md`](UX_POLICY_PLAN_2026-09.md), with the three audits behind it under [`audits/2026-09-05/`](audits/2026-09-05/) (policy, user experience, roadmap reconciliation).
 - Benchmark comparison against DonDocs: [`DONDOCS_COMPARISON_2026-09-05.md`](DONDOCS_COMPARISON_2026-09-05.md) (first audit, v0.1.0) and [`DONDOCS_COMPARISON_2026-09-05-R2.md`](DONDOCS_COMPARISON_2026-09-05-R2.md) (second audit after the hardening program, v0.4.7).
 - Source excerpts of SECNAV M-5216.5 used for rule citations: [`SecNav5216/`](SecNav5216/).
