@@ -69,7 +69,7 @@ All numbers measured in this sandbox on 2026-09-05.
 
 Reading.
 
-- SemperScribe ships roughly 2.9 times the JavaScript. Next.js chunk totals double-count shared code across routes, so the true first-load gap is smaller than 2.9x, but the largest single chunk is still 39 percent bigger than DonDocs's main chunk.
+- SemperScribe ships roughly 2.9 times the JavaScript in total, but not on first load. The chunks referenced by out/index.html total 3.14 MB against DonDocs's 3.73 MB. The 3.85 MB largest chunk is lazy and is the DoD and Navy seal PNGs stored as base64 inside src/lib/dod-seal-data.ts. Moving those to static PNGs is the single largest bundle fix. See docs/HARDENING_PLAN_2026-09.md.
 - DonDocs's PDF path costs 17 MB of TeX assets before the first preview renders. Its DOCX path costs a further 58 MB on first use. SemperScribe renders both formats from its 10.65 MB of JavaScript with no second download.
 - DonDocs's build has a hard network dependency on unpkg.com. Any network policy blocking unpkg, as this sandbox's proxy did, breaks the default build. The script documents a manual staging path for offline builds. SemperScribe builds from npm ci alone.
 - SemperScribe's README states "zero known vulnerabilities in production dependencies as of the last audit pass." The audit today shows one high-severity advisory in the production tree. The claim is time-bound and now stale.
