@@ -79,6 +79,40 @@ async function exportVia(page: Page, itemName: string | RegExp, ext: 'pdf' | 'do
   return { bytes: readFileSync(path as string), name: file.suggestedFilename() };
 }
 
+/**
+ * Polls the autosave working copy (IndexedDB `semperscribe` / `settings` /
+ * `workingCopy`, written from document state 1.5 s after the last change)
+ * until one paragraph carries `text`. The failure message quotes what the
+ * document state held, which is the fact a lost-body export needs.
+ */
+async function waitForCommittedParagraph(page: Page, text: string) {
+  const deadline = Date.now() + 20_000;
+  let last = '(no working copy yet)';
+  while (Date.now() < deadline) {
+    last = await page.evaluate(async () => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const req = indexedDB.open('semperscribe');
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      try {
+        if (!db.objectStoreNames.contains('settings')) return '(no settings store)';
+        const copy = await new Promise<{ paragraphs?: { content: string }[] } | undefined>((resolve, reject) => {
+          const req = db.transaction('settings', 'readonly').objectStore('settings').get('workingCopy');
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+        return JSON.stringify(copy?.paragraphs ?? null);
+      } finally {
+        db.close();
+      }
+    });
+    if (last.includes(text)) return;
+    await page.waitForTimeout(250);
+  }
+  throw new Error(`document state never carried the typed paragraph; working copy paragraphs: ${last}`);
+}
+
 /** Every download the page emits, for the failure message. */
 function collectDownloads(page: Page): string[] {
   const names: string[] = [];
@@ -129,6 +163,17 @@ test('basic letter exports to PDF and DOCX with the typed subject', async ({ pag
   // typing (500 ms) and flush on blur, so nothing here waits on a timer:
   // a fast runner once exported before the debounce fired (run #149).
   await paragraphBox.blur();
+  // The blur handler swaps the textarea for the read view, which shows
+  // the same local text. Seeing it proves the handler ran with the
+  // typed content in scope, so the commit to document state went out.
+  await expect(page.getByText(PARAGRAPH)).toBeVisible();
+  // Then wait until DOCUMENT state, not editor state, carries the text:
+  // the autosave working copy is written from the same state the export
+  // reads. Deploy run 91 on main exported a letter with no body twice in
+  // a row while the same commit passed everywhere else; if the commit
+  // path is what loses the text, this fails here with the working copy
+  // quoted instead of failing later on the PDF with nothing to go on.
+  await waitForCommittedParagraph(page, PARAGRAPH);
 
   // PDF: real bytes, one page, subject present in the text layer.
   const pdf = await exportVia(page, 'PDF Document (.pdf)', 'pdf');
