@@ -5,6 +5,34 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.4.1] - 2026-09-05
+
+Phase A.3 of `docs/HARDENING_PLAN_2026-09.md`: state reset when an input
+changes. No user-visible change. Lint warnings 31 to 24.
+
+### Changed
+
+- PageCountIndicator, DocumentImportModal and RevisionCompareDialog reset
+  their local state during render through `useSyncedState`, keyed on the
+  preview URL, the parse result and the dialog phase, instead of in an
+  effect after the first paint. The revision dialog keeps its
+  two-most-recent default once per open and re-arms it on close.
+- ShareLinkDialog and GunnyBotSettings derive the EDMS lock and the saved
+  proxy URL from `useHydrated`, so the first client render already shows
+  the locked state. The GunnyBot mount effect now holds only the store
+  side effects (provider, model, key presence) and no local state.
+- SignaturePlacementModal is a wrapper plus a body. The body is remounted
+  by key on every open and whenever the last letter page changes while
+  open, so page, boxes and selection start fresh without an effect. The
+  preview object URL is created once per blob in the wrapper and revoked
+  when the blob changes or the modal unmounts.
+
+### Added
+
+- Component tests for all six dialogs and indicators above
+  (`tests/components/*-dialog.test.tsx`, `page-count-indicator`,
+  `signature-placement-modal`) plus an EDMS case for GunnyBotSettings.
+
 ## [0.4.0] - 2026-09-05
 
 Phase B.1 of `docs/HARDENING_PLAN_2026-09.md`: the letterhead seals leave

@@ -12,7 +12,9 @@
  * detail beyond what the caller returns.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import {
   Dialog,
   DialogContent,
@@ -46,15 +48,17 @@ interface ShareLinkDialogProps {
 }
 
 export function ShareLinkDialog({ open, onOpenChange, onCreate }: ShareLinkDialogProps) {
-  // EDMS mode: encrypted links only. Read after mount, not during render.
-  const [edmsLocked, setEdmsLocked] = useState(false);
+  // EDMS mode: encrypted links only. sessionStorage is absent during the
+  // static-export prerender, so the flag derives from the hydration state:
+  // false on the server and first client render, then read once.
+  const hydrated = useHydrated();
+  const [edmsLocked] = useSyncedState(hydrated, h => h && isEdmsMode());
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [noPassword, setNoPassword] = useState(false);
   const [expiresDays, setExpiresDays] = useState<string>('none');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { if (isEdmsMode()) { setEdmsLocked(true); setNoPassword(false); } }, []);
 
   const reset = () => {
     setPassword('');
