@@ -25,7 +25,7 @@ import {
   EnclosureRow,
   EnclosureAttachment,
   fileToAttachment,
-} from '@/lib/enclosure-attachments';
+} from '@/lib/enclosure-rows';
 
 interface EnclosuresSectionProps {
   rows: EnclosureRow[];

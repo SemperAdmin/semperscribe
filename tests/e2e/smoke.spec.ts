@@ -20,6 +20,8 @@ import { readFileSync } from 'node:fs';
 import mammoth from 'mammoth';
 import { extractPdfTextLayout } from '../golden/helpers';
 import { getTodaysDate } from '../../src/lib/date-utils';
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 const SUBJECT = 'SMOKE TEST REQUEST FOR RANGE TIME';
 const PARAGRAPH = 'Request approval for additional range time during the third quarter.';
@@ -155,4 +157,27 @@ test('AA Form exports through the official NAVMC 10274 form path', async ({ page
   await expect(page.getByText('Official Form Exported', { exact: true })).toBeVisible();
 
   expect(errors, errors.join('\n')).toEqual([]);
+});
+
+/**
+ * B.4 (HARDENING_PLAN_2026-09): pdf-lib and jszip load with the first
+ * export or batch run, never with the page. Each marker is a string the
+ * minifier keeps (an option name, an error message), checked against the
+ * chunks index.html references on first load. The marker must still be
+ * found in some lazy chunk, so a renamed or removed library fails loudly
+ * instead of passing by absence.
+ */
+test('initial load carries no pdf-lib or jszip code', () => {
+  const out = join(__dirname, '..', '..', 'out');
+  const html = readFileSync(join(out, 'index.html'), 'utf8');
+  const chunksDir = join(out, '_next', 'static', 'chunks');
+  const initial = new Set([...html.matchAll(/_next\/static\/chunks\/([^"'\s]+\.js)/g)].map(m => m[1]));
+  const chunks = readdirSync(chunksDir).filter(f => f.endsWith('.js'))
+    .map(f => ({ name: f, code: readFileSync(join(chunksDir, f), 'utf8'), initial: initial.has(f) }));
+  const markers: Record<string, string> = { 'pdf-lib': 'ignoreEncryption', jszip: 'central directory' };
+  for (const [lib, marker] of Object.entries(markers)) {
+    const carriers = chunks.filter(c => c.code.includes(marker));
+    expect(carriers.map(c => c.name), `${lib} marker "${marker}" must exist in a lazy chunk`).not.toEqual([]);
+    expect(carriers.filter(c => c.initial).map(c => c.name), `${lib} must not be on the initial load`).toEqual([]);
+  }
 });

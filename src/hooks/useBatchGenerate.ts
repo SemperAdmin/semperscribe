@@ -12,7 +12,6 @@ import {
 } from '@/lib/merge-utils';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { getExportFilename } from '@/lib/naval-format-utils';
-import JSZip from 'jszip';
 import { clearedForExport } from '@/lib/export-gate';
 
 export type BatchStatus = 'idle' | 'generating' | 'done' | 'error';
@@ -97,6 +96,9 @@ export function useBatchGenerate() {
     setStatus('generating');
     setProgress({ current: 0, total: rows.length, currentLabel: 'Starting...', errors: [] });
 
+    // jszip (and its pako inflater) load with the first batch run, not
+    // with the page (B.4, HARDENING_PLAN_2026-09).
+    const { default: JSZip } = await import('jszip');
     const zip = new JSZip();
     const errors: { row: number; label: string; error: string }[] = [];
 

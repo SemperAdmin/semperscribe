@@ -5,6 +5,25 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.4.4] - 2026-09-05
+
+Phase B.4 of `docs/HARDENING_PLAN_2026-09.md`: pdf-lib out of the
+initial load. No user-visible change. First-load JavaScript drops from
+3,139,817 B to 2,655,337 B.
+
+### Changed
+
+- The enclosure row model, the file reader and the merge schedule live
+  in `src/lib/enclosure-rows.ts`, which has no pdf-lib dependency. The
+  page and the Enclosures section import that module; the pdf-lib merge
+  in `enclosure-attachments.ts` is loaded on demand at export time, as
+  it already was at its three call sites.
+- jszip loads with the first batch run instead of with the page.
+- Deploy's initial-load budget lowered to 2,920,000 B (measured plus
+  ten percent). The total budget is unchanged.
+- The smoke test asserts that no chunk referenced by `index.html`
+  carries pdf-lib or jszip, and that both still exist in a lazy chunk.
+
 ## [0.4.3] - 2026-09-05
 
 Phases A.5 and A.6 of `docs/HARDENING_PLAN_2026-09.md`: the dependency

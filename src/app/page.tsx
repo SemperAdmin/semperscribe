@@ -35,7 +35,7 @@ import { FindReplaceDialog } from '@/components/FindReplaceDialog';
 import { GuidanceDialog } from '@/components/GuidanceDialog';
 import { FindReplaceResult } from '@/lib/find-replace';
 import { useUndoHistory } from '@/hooks/useUndoHistory';
-import { EnclosureAttachment, EnclosureRow, newRow, reconcileRows } from '@/lib/enclosure-attachments';
+import { EnclosureAttachment, EnclosureRow, newRow, reconcileRows } from '@/lib/enclosure-rows';
 import { useAutosave } from '@/hooks/useAutosave';
 import { RecoveryDialog } from '@/components/RecoveryDialog';
 import type { WorkingCopy } from '@/lib/autosave';
