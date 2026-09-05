@@ -5,6 +5,29 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.4.5] - 2026-09-05
+
+Phases B.5 and B.6 of `docs/HARDENING_PLAN_2026-09.md`: the military
+dictionary on demand, and the bundle budgets re-measured. No
+user-visible change beyond timing. First-load JavaScript drops from
+2,655,337 B to 2,553,227 B.
+
+### Changed
+
+- `validateAcronyms` takes the military dictionary as an optional
+  argument instead of importing the 148 KB table. Detection is
+  unchanged without it; the dictionary only adds the suggested
+  expansion to each warning. `runLetterValidators` accepts it through
+  a new options argument.
+- The page fetches the dictionary once there is body text to scan,
+  through `useMilitaryDictionary(enabled)`, and the compliance issues
+  re-derive when it arrives. The proofread report and the export gate
+  run without it and list the same acronyms, unsuggested.
+- Deploy's initial-load budget lowered to 2,810,000 B. The total budget
+  stays at 7,490,000 B against 6,887,587 B measured.
+- The smoke test's first-load marker check now covers the dictionary
+  alongside pdf-lib and jszip.
+
 ## [0.4.4] - 2026-09-05
 
 Phase B.4 of `docs/HARDENING_PLAN_2026-09.md`: pdf-lib out of the

@@ -11,6 +11,7 @@ import { FormData, ParagraphData } from '@/types';
 import { validateClassification } from '@/lib/classification';
 import { validateSignature } from '@/lib/signature-validators';
 import { validateAcronyms } from '@/lib/acronym-validators';
+import type { DictionaryEntry } from '@/lib/military-dictionary';
 import { runNavmc10922Validators } from '@/lib/navmc10922-validators';
 import { runNavmc10132Validators } from '@/lib/navmc10132-validators';
 import {
@@ -782,11 +783,21 @@ export function secnavPageCapIssue(
   };
 }
 
+export interface LetterValidatorOptions {
+  /**
+   * The military dictionary, when the caller has loaded it. Optional:
+   * it only enriches acronym warnings with a suggested expansion. The
+   * table is loaded on demand (B.5) so the validators never import it.
+   */
+  dictionary?: readonly DictionaryEntry[];
+}
+
 export function runLetterValidators(
   formData: FormData,
   vias: string[],
   references: string[],
   paragraphs: ParagraphData[],
+  options: LetterValidatorOptions = {},
 ): ValidationIssue[] {
   return [
     ...validateReferences(references, paragraphs),
@@ -803,7 +814,7 @@ export function runLetterValidators(
     ...validateRevisionSuffix(formData),
     ...validateClassification(formData, paragraphs),
     ...validateSignature(formData),
-    ...validateAcronyms(paragraphs),
+    ...validateAcronyms(paragraphs, options.dictionary),
     // NAVMC 10922 dependency-application rules - no-op for every other
     // documentType (docs/NAVMC_10922_SPEC.md section 9).
     ...runNavmc10922Validators(formData),

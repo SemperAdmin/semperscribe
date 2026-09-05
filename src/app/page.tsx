@@ -56,6 +56,7 @@ import { GunnyBotRuntime } from '@/components/gunnybot/GunnyBotRuntime';
 import { ExportScanGate } from '@/components/ExportScanGate';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useLivePreview } from '@/hooks/useLivePreview';
+import { useMilitaryDictionary } from '@/hooks/useReferenceData';
 import { useDocumentExport } from '@/hooks/useDocumentExport';
 import { useSignatureWorkflow } from '@/hooks/useSignatureWorkflow';
 import { useShareLinkLoader } from '@/hooks/useShareLinkLoader';
@@ -852,10 +853,15 @@ function NavalLetterGeneratorInner() {
     },
   });
 
-  // Phase 2: inline compliance issues for the live preview banner.
+  // Phase 2: inline compliance issues for the live preview banner. The
+  // military dictionary only adds suggested expansions to acronym
+  // warnings, so it is fetched once there is body text to scan (B.5);
+  // the issues re-derive when it arrives.
+  const hasBodyText = paragraphs.some(p => p.content.trim() !== '');
+  const { dictionary } = useMilitaryDictionary(hasBodyText);
   const validationIssues = useMemo(
-    () => runLetterValidators(formData, vias, references, paragraphs),
-    [formData, vias, references, paragraphs],
+    () => runLetterValidators(formData, vias, references, paragraphs, { dictionary }),
+    [formData, vias, references, paragraphs, dictionary],
   );
 
   return (

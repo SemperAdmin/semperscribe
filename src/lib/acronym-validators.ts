@@ -19,7 +19,7 @@
 
 import { ParagraphData } from '@/types';
 import type { ValidationIssue } from '@/lib/letter-validators';
-import { militaryDictionary } from '@/lib/military-dictionary';
+import type { DictionaryEntry } from '@/lib/military-dictionary';
 
 /**
  * Tokens that are all-caps but need no definition: roman numerals,
@@ -41,21 +41,27 @@ const STOPLIST = new Set([
 
 const ACRONYM = /\b[A-Z]{2,6}\b/g;
 
-/** acronym -> expansions, inverted from the dictionary (meaning = abbrev). */
-let expansionIndex: Map<string, string[]> | null = null;
+/**
+ * acronym -> expansions, inverted from the dictionary (meaning = abbrev).
+ * Built once per dictionary array and cached by identity, so a caller
+ * which holds the loaded table pays for the index one time.
+ */
+const expansionIndexes = new WeakMap<readonly DictionaryEntry[], Map<string, string[]>>();
 
-function getExpansions(acronym: string): string[] {
-  if (!expansionIndex) {
-    expansionIndex = new Map();
-    for (const entry of militaryDictionary) {
+function expansionIndexFor(dictionary: readonly DictionaryEntry[]): Map<string, string[]> {
+  let index = expansionIndexes.get(dictionary);
+  if (!index) {
+    index = new Map();
+    for (const entry of dictionary) {
       const abbrev = entry.meaning.trim();
       if (!/^[A-Z]{2,8}$/.test(abbrev)) continue;
-      const list = expansionIndex.get(abbrev) ?? [];
+      const list = index.get(abbrev) ?? [];
       if (!list.includes(entry.term)) list.push(entry.term);
-      expansionIndex.set(abbrev, list);
+      index.set(abbrev, list);
     }
+    expansionIndexes.set(dictionary, index);
   }
-  return expansionIndex.get(acronym) ?? [];
+  return index;
 }
 
 /**
@@ -71,8 +77,18 @@ function definedBefore(text: string, acronym: string, index: number): boolean {
   return false;
 }
 
-export function validateAcronyms(paragraphs: ParagraphData[]): ValidationIssue[] {
+/**
+ * Flags acronyms used before they are spelled out. Detection needs no
+ * data; the optional `dictionary` (the lazily loaded military table,
+ * B.5 of HARDENING_PLAN_2026-09) only adds the suggested expansion to
+ * the detail text. Without it the same issues are reported, unsuggested.
+ */
+export function validateAcronyms(
+  paragraphs: ParagraphData[],
+  dictionary: readonly DictionaryEntry[] = [],
+): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
+  const expansionIndex = dictionary.length > 0 ? expansionIndexFor(dictionary) : null;
   // Content only, joined in document order, so "first use" is real.
   const text = paragraphs.map((p) => p.content).join('\n');
   if (!text.trim()) return issues;
@@ -91,7 +107,7 @@ export function validateAcronyms(paragraphs: ParagraphData[]): ValidationIssue[]
     if (isParenthesized) continue;
     if (definedBefore(text, acronym, m.index)) continue;
 
-    const expansions = getExpansions(acronym);
+    const expansions = expansionIndex?.get(acronym) ?? [];
     const suggestion =
       expansions.length === 1
         ? ` The dictionary reads it as "${expansions[0]}".`

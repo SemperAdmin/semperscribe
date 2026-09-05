@@ -66,12 +66,13 @@ jobs:
       # paint); total counts every chunk including lazy ones. Baseline
       # measured 2026-09-05: initial 3,138,673 B, total 10,654,516 B; total
       # re-measured after B.1 (seals out of JS) at 6,809,010 B; initial
-      # re-measured after B.4 (pdf-lib and jszip lazy) at 2,655,337 B.
+      # re-measured after B.4 (pdf-lib and jszip lazy) at 2,655,337 B and
+      # after B.5 (dictionary on demand) at 2,553,227 B.
       # Budgets are baseline plus ~10%. Lower them in the PR which
       # achieves a reduction; raise them only in a PR which justifies the
       # growth, so bundle changes are a review conversation.
       - name: Bundle-size budgets
-        run: node scripts/bundle-report.mjs --initial-budget=2920000 --total-budget=7490000
+        run: node scripts/bundle-report.mjs --initial-budget=2810000 --total-budget=7490000
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
