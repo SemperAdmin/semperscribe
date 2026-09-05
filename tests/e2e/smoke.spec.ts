@@ -57,14 +57,30 @@ async function enterApp(page: Page) {
   await expect(page.getByRole('button', { name: /Standard Naval Letter/ })).toBeVisible();
 }
 
-async function exportVia(page: Page, itemName: string | RegExp) {
-  const download = page.waitForEvent('download');
+/**
+ * Export through the header menu and return the download with the
+ * expected extension. Matched by extension, not "next download": on a
+ * slow runner the previous export's download event has been observed
+ * arriving after the next export's wait was armed, which handed a PDF
+ * to the DOCX assertions.
+ */
+async function exportVia(page: Page, itemName: string | RegExp, ext: 'pdf' | 'docx') {
+  const download = page.waitForEvent('download', {
+    predicate: d => d.suggestedFilename().toLowerCase().endsWith(`.${ext}`),
+  });
   await page.getByRole('button', { name: 'Export' }).click();
   await page.getByRole('menuitem', { name: itemName }).click();
   const file = await download;
   const path = await file.path();
   expect(path, 'download must land on disk').toBeTruthy();
   return { bytes: readFileSync(path as string), name: file.suggestedFilename() };
+}
+
+/** Every download the page emits, for the failure message. */
+function collectDownloads(page: Page): string[] {
+  const names: string[] = [];
+  page.on('download', d => names.push(d.suggestedFilename()));
+  return names;
 }
 
 function pdfTextOf(items: Awaited<ReturnType<typeof extractPdfTextLayout>>): string {
@@ -83,6 +99,7 @@ test('app loads from the static export with no console errors', async ({ page })
 
 test('basic letter exports to PDF and DOCX with the typed subject', async ({ page }) => {
   const errors = collectErrors(page);
+  const downloads = collectDownloads(page);
   await enterApp(page);
 
   await page.getByRole('button', { name: /Standard Naval Letter/ }).click();
@@ -96,18 +113,16 @@ test('basic letter exports to PDF and DOCX with the typed subject', async ({ pag
   await page.getByLabel(/^Subject\b/).first().click();
 
   // PDF: real bytes, one page, subject present in the text layer.
-  const pdf = await exportVia(page, 'PDF Document (.pdf)');
-  expect(pdf.name).toMatch(/\.pdf$/);
-  expect(pdf.bytes.subarray(0, 5).toString()).toBe('%PDF-');
+  const pdf = await exportVia(page, 'PDF Document (.pdf)', 'pdf');
+  expect(pdf.bytes.subarray(0, 5).toString(), `downloads: ${downloads.join(', ')}`).toBe('%PDF-');
   const layout = await extractPdfTextLayout(new Blob([new Uint8Array(pdf.bytes)]));
   expect(Math.max(...layout.map(i => i.page))).toBe(1);
   expect(pdfTextOf(layout)).toContain(SUBJECT);
   expect(pdfTextOf(layout)).toContain('range time');
 
   // DOCX: a zip Word can open, with the subject in the body text.
-  const docx = await exportVia(page, 'Word Document (.docx)');
-  expect(docx.name).toMatch(/\.docx$/);
-  expect(docx.bytes.subarray(0, 2).toString()).toBe('PK');
+  const docx = await exportVia(page, 'Word Document (.docx)', 'docx');
+  expect(docx.bytes.subarray(0, 2).toString(), `downloads: ${downloads.join(', ')}`).toBe('PK');
   const { value: text } = await mammoth.extractRawText({ buffer: docx.bytes });
   expect(text).toContain(SUBJECT);
   expect(text).toContain('range time');
@@ -123,7 +138,7 @@ test('AA Form exports through the official NAVMC 10274 form path', async ({ page
   await page.getByRole('button', { name: 'Forms' }).click();
   await page.getByRole('button', { name: 'AA Form (NAVMC 10274)' }).click();
 
-  const pdf = await exportVia(page, 'PDF Document (.pdf)');
+  const pdf = await exportVia(page, 'PDF Document (.pdf)', 'pdf');
   expect(pdf.bytes.subarray(0, 5).toString()).toBe('%PDF-');
   // The official-form branch returns the fillable NAVMC itself, which
   // carries an AcroForm dictionary. The flattened redraw does not.
