@@ -64,3 +64,8 @@ CLAUDE.md
 # it cannot unlink; neither directory belongs in the repository.
 _scratch/
 _to_delete/
+
+# Test artifacts
+test-results/
+playwright-report/
+coverage/

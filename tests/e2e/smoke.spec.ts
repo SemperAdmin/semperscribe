@@ -1,0 +1,135 @@
+/**
+ * Browser smoke test against the BUILT static export.
+ *
+ * Phase 0.1 of docs/HARDENING_PLAN_2026-09.md. Unit tests import modules
+ * directly and never exercise dynamic import() boundaries, chunk loading,
+ * or the service worker. Every bundle change can pass the unit suite and
+ * still fail in the browser; this is the guard for that class of break.
+ *
+ * Three paths, each ending in a real download read back off disk:
+ *   1. App loads with zero console errors and the disclaimer flow works.
+ *   2. Basic letter typed through the UI, exported as PDF and DOCX, and
+ *      the subject text found in both files.
+ *   3. AA Form (NAVMC 10274) exported through the official-form XFA
+ *      branch, the path most likely to break under a chunk split.
+ *
+ * Run: `npm run build && npm run test:e2e`.
+ */
+import { test, expect, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import mammoth from 'mammoth';
+import { extractPdfTextLayout } from '../golden/helpers';
+
+const SUBJECT = 'SMOKE TEST REQUEST FOR RANGE TIME';
+const PARAGRAPH = 'Request approval for additional range time during the third quarter.';
+
+/** Console noise the app is known to emit and which is not a defect. */
+const IGNORED_CONSOLE = [
+  /Download the React DevTools/,
+  /TT: undefined function/,
+  /TT: ENDF bad stack/,
+  /FormatError: Could not fix indexToLocFormat/,
+  /Warning: .*fontkit/,
+];
+
+function collectErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on('pageerror', err => errors.push(`pageerror: ${err.message}`));
+  // A 4xx or 5xx on our own origin is a missing or mis-prefixed asset.
+  page.on('response', res => {
+    if (res.status() >= 400 && res.url().startsWith('http://127.0.0.1')) {
+      errors.push(`http ${res.status()}: ${res.url()}`);
+    }
+  });
+  page.on('console', msg => {
+    if (msg.type() !== 'error') return;
+    const text = msg.text();
+    if (IGNORED_CONSOLE.some(re => re.test(text))) return;
+    errors.push(`console.error: ${text}`);
+  });
+  return errors;
+}
+
+/** Load the app and clear the first-visit disclaimer. */
+async function enterApp(page: Page) {
+  await page.goto('.');
+  await page.getByRole('button', { name: 'I Understand' }).click();
+  await expect(page.getByRole('button', { name: /Standard Naval Letter/ })).toBeVisible();
+}
+
+async function exportVia(page: Page, itemName: string | RegExp) {
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export' }).click();
+  await page.getByRole('menuitem', { name: itemName }).click();
+  const file = await download;
+  const path = await file.path();
+  expect(path, 'download must land on disk').toBeTruthy();
+  return { bytes: readFileSync(path as string), name: file.suggestedFilename() };
+}
+
+function pdfTextOf(items: Awaited<ReturnType<typeof extractPdfTextLayout>>): string {
+  return items.map(i => i.text).join(' ').replace(/\s+/g, ' ');
+}
+
+test('app loads from the static export with no console errors', async ({ page }) => {
+  const errors = collectErrors(page);
+  await enterApp(page);
+  // The disclaimer must not come back on reload once acknowledged.
+  await page.reload();
+  await expect(page.getByRole('button', { name: /Standard Naval Letter/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'I Understand' })).toHaveCount(0);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('basic letter exports to PDF and DOCX with the typed subject', async ({ page }) => {
+  const errors = collectErrors(page);
+  await enterApp(page);
+
+  await page.getByRole('button', { name: /Standard Naval Letter/ }).click();
+  await page.getByLabel(/^From\b/).first().fill('Commanding Officer, 1st Battalion, 6th Marines');
+  await page.getByLabel(/^To\b/).first().fill('Commanding General, 2d Marine Division');
+  await page.getByLabel(/^Subject\b/).first().fill(SUBJECT);
+  // Paragraphs render as click-to-edit blocks; the textarea mounts on click.
+  await page.getByText('Enter paragraph content...').first().click();
+  await page.getByPlaceholder('Enter paragraph content...').first().fill(PARAGRAPH);
+  // Blur commits the local draft back to document state.
+  await page.getByLabel(/^Subject\b/).first().click();
+
+  // PDF: real bytes, one page, subject present in the text layer.
+  const pdf = await exportVia(page, 'PDF Document (.pdf)');
+  expect(pdf.name).toMatch(/\.pdf$/);
+  expect(pdf.bytes.subarray(0, 5).toString()).toBe('%PDF-');
+  const layout = await extractPdfTextLayout(new Blob([new Uint8Array(pdf.bytes)]));
+  expect(Math.max(...layout.map(i => i.page))).toBe(1);
+  expect(pdfTextOf(layout)).toContain(SUBJECT);
+  expect(pdfTextOf(layout)).toContain('range time');
+
+  // DOCX: a zip Word can open, with the subject in the body text.
+  const docx = await exportVia(page, 'Word Document (.docx)');
+  expect(docx.name).toMatch(/\.docx$/);
+  expect(docx.bytes.subarray(0, 2).toString()).toBe('PK');
+  const { value: text } = await mammoth.extractRawText({ buffer: docx.bytes });
+  expect(text).toContain(SUBJECT);
+  expect(text).toContain('range time');
+
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('AA Form exports through the official NAVMC 10274 form path', async ({ page }) => {
+  const errors = collectErrors(page);
+  await enterApp(page);
+
+  // The form types sit in a collapsed sidebar group.
+  await page.getByRole('button', { name: 'Forms' }).click();
+  await page.getByRole('button', { name: 'AA Form (NAVMC 10274)' }).click();
+
+  const pdf = await exportVia(page, 'PDF Document (.pdf)');
+  expect(pdf.bytes.subarray(0, 5).toString()).toBe('%PDF-');
+  // The official-form branch returns the fillable NAVMC itself, which
+  // carries an AcroForm dictionary. The flattened redraw does not.
+  expect(pdf.bytes.toString('latin1')).toContain('/AcroForm');
+  // exact: the toast also renders an aria-live copy prefixed "Notification".
+  await expect(page.getByText('Official Form Exported', { exact: true })).toBeVisible();
+
+  expect(errors, errors.join('\n')).toEqual([]);
+});
