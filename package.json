@@ -1,11 +1,12 @@
 {
   "name": "semperscribe",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "private": true,
   "license": "MIT",
   "//": [
     "Exact pins: pdfjs-dist matches react-pdf's exact dependency so the lockfile dedupes to a single copy (two pdfjs versions = two worker bundles).",
-    "mammoth is exact-pinned defensively against .docx import-parsing regressions; bump deliberately and re-run tests/services/import before releasing."
+    "mammoth is exact-pinned defensively against .docx import-parsing regressions; bump deliberately and re-run tests/services/import before releasing.",
+    "zod is held at 4.4.3: 4.5.x adds a schema compiler to the classic import path, +83 KB of initial-load JS for no app feature (docs/audits/2026-09-05/bundle-attribution.md). Revisit with a zod/mini migration or a slimmer release."
   ],
   "scripts": {
     "dev": "next dev",
@@ -70,7 +71,7 @@
     "react-hook-form": "^7.87.0",
     "react-pdf": "^9.1.0",
     "tailwind-merge": "^3.3.1",
-    "zod": "^4.5.4",
+    "zod": "4.4.3",
     "zustand": "^5.0.15"
   },
   "overrides": {

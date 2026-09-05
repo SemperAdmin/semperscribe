@@ -5,6 +5,29 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.5.7] - 2026-09-05
+
+Hold zod at 4.4.3. The weekly dependency group (#49) raised the
+initial-load JavaScript from 2,556,529 B to 2,666,990 B. A source-map
+attribution of the eighteen initial chunks before and after the merge
+puts 83,410 B of the 105,465 B package delta on zod 4.4.3 to 4.5.4,
+which added a schema-compilation engine to the classic import path the
+app uses in every schema. Nothing in the app asked for it, and the
+hardening program spent five PRs removing less. The report is at
+`docs/audits/2026-09-05/bundle-attribution.md`.
+
+### Changed
+
+- `zod` is an exact pin at 4.4.3 with the reason recorded in
+  `package.json`, and Dependabot ignores it, the same treatment as
+  `pdfjs-dist` and `mammoth`. The other thirty-two updates in the group
+  stay. Every consumer in the tree (`@hookform/resolvers`, the MCP SDK,
+  the eslint react-hooks plugin) accepts 4.4.x, so the lockfile dedupes
+  to one copy.
+- Lifting the hold means either a `zod/mini` migration of the schemas,
+  which does not pull the compiler, or a later zod release which makes
+  it opt-in. Recorded under "Later" in the UX and policy plan.
+
 ## [0.5.6] - 2026-09-05
 
 Phase D.4 of the 2026-09-05 UX and policy plan: messages that teach the
