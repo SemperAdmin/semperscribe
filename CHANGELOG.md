@@ -5,6 +5,32 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.4.0] - 2026-09-05
+
+Phase B.1 of `docs/HARDENING_PLAN_2026-09.md`: the letterhead seals leave
+the JavaScript bundle. Same pixels, same PDF and DOCX output.
+
+### Changed
+
+- The DoD and Navy seals are static files under `public/seals/`,
+  byte-identical to the base64 data they replace, fetched on first use and
+  cached (`src/lib/seal-assets.ts`). The PDF path still receives a data
+  URL and the DOCX path an ArrayBuffer, both from one shared byte load per
+  seal. The service worker serves them under its network-first stable-asset
+  rule, so offline export keeps working after the first load.
+- Total JavaScript shipped: 10,654,691 B to 6,809,010 B. Initial load is
+  unchanged at 3,138,848 B. The seal transfer itself shrinks from 3.85 MB
+  of base64 text to 2.9 MB of PNG, decoded once by the browser.
+- Deploy's total-JS budget lowered to 7,490,000 B (measured plus ten
+  percent). The initial-load budget is unchanged.
+- The smoke test now asserts the exported letter carries an image
+  XObject, so a broken seal fetch fails CI as a missing image and as a
+  same-origin 4xx.
+
+### Removed
+
+- `src/lib/dod-seal-data.ts`, the 3.85 MB base64 module.
+
 ## [0.3.4] - 2026-09-05
 
 Phase B.3 of `docs/HARDENING_PLAN_2026-09.md`: dependency hygiene. No
