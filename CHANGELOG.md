@@ -5,6 +5,29 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.6.1] - 2026-09-05
+
+A template for the same-page endorsement 0.6.0 added. The library's
+endorsement entry ships the new-page form only, so a drafter who wants
+the 9-1 form has to open that template, change the placement and take
+the 9-2.1.a omission by hand, three steps for the form the manual
+says to use whenever the endorsement fits.
+
+### Added
+
+- "Same-Page Endorsement" in the template library, listed next to
+  "New-Page Endorsement" under the endorsement type. It opens with the
+  same-page placement set, the 9-2.1.a omission taken, a FIRST
+  endorsement line, and a two-paragraph body, the first "Forwarded,
+  recommending approval." It adds no references or enclosures of its
+  own. The subject and the basic letter reference stay filled, because
+  the block does not print them but the fallback to a new page does.
+- `tests/template-same-page-endorsement.test.ts`. Reads the shipped
+  file, merges it over a form the way the loader does, and checks the
+  placement fields survive, the schema accepts the result, and the
+  rendered block composes onto a short letter's signature page without
+  adding a page.
+
 ## [0.6.0] - 2026-09-05
 
 Phase E.1 of the 2026-09-05 UX and policy plan: the same-page

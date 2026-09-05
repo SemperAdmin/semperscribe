@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "packageId": "nldp_1788000000000_same_page_endorsement",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-09-05T12:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "Same-Page Endorsement",
+      "description": "A short endorsement placed on the signature page of the letter it forwards when it fits there (SECNAV M-5216.5 9-1). SSIC, subject and basic letter identification omitted (9-2.1.a).",
+      "subject": "ENDORSEMENT TEMPLATE",
+      "documentType": "endorsement",
+      "tags": [
+        "template",
+        "standard",
+        "same-page"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "endorsement",
+      "endorsementPlacement": "same-page",
+      "samePageOmitsIdentification": true,
+      "endorsementLevel": "FIRST",
+      "basicLetterReference": "C 400",
+      "basicLetterSsic": "1000",
+      "ssic": "1000",
+      "originatorCode": "CODE",
+      "date": "10 Feb 26",
+      "from": "Commanding Officer, Endorsing Unit",
+      "to": "Commanding Officer, Destination Unit",
+      "subj": "ENDORSEMENT TEMPLATE",
+      "sig": "I. M. MARINE",
+      "delegationText": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "",
+      "startingEnclosureNumber": "",
+      "startingPageNumber": 2,
+      "previousPackagePageCount": 1,
+      "headerType": "USMC",
+      "bodyFont": "times",
+      "accentColor": "black"
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "Forwarded, recommending approval.",
+        "isMandatory": true
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "Keep any comment short. An endorsement that no longer fits on the signature page exports on a new page of its own."
+      }
+    ]
+  }
+}
