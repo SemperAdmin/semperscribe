@@ -5,6 +5,55 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.5.1] - 2026-09-05
+
+Standard-letter output correctness in the PDF. The DOCX emitter is not
+touched and its golden file is unchanged.
+
+### Fixed
+
+- "Copy to:" lands on the second line below the signature line in the
+  PDF. SECNAV M-5216.5 7-2.15.b reads "Type 'Copy to:' at the left
+  margin on the second line below the signature line." The PDF put the
+  label on the first line below, so the on-screen preview and the PDF
+  export disagreed with the DOCX export, which has always pushed the
+  blank line. Measured on the golden fixture letter, whose signature
+  block ends with a "By direction" delegation line at y 201.4 pt: the
+  label moved from y 187.6 to y 173.8, a gap of 13.8 pt before and
+  27.6 pt after, which is two 12 point line heights. The two copy-to
+  addressees moved with it, from y 173.8 and y 160.0 to y 160.0 and
+  y 146.2. A first endorsement measures the same, 491.2 pt to 463.6 pt.
+  In Courier the gap is 27.4 pt, one 13.6 pt text line plus one 13.8 pt
+  spacer. A letter with no copy-to addressees is unchanged, and so is
+  every line above the signature block in a letter with them.
+
+### Changed
+
+- The Courier paragraph branch and the Times branch which serves the
+  formats carrying no indent spec declare `orphans={2} widows={2}`, the
+  two-line floor the correspondence branch already declared. SECNAV
+  M-5216.5 Fig 7-1 para 3.a: "Do not start a paragraph at the bottom of
+  the page unless at least two lines of text will remain on that page
+  and at least two lines of text will carry over to the next page." The
+  Courier branch serves every Courier letter and every USMC directive.
+  In `@react-pdf/renderer` 4.5.1 the layout engine falls back to two
+  when the props are absent, so today's output does not move. The engine
+  does read them: raising both to four moves the same split from nine
+  lines and two lines to seven lines and four lines. Declaring the value
+  states the rule where the branch renders and holds it if the engine
+  default ever changes.
+
+### Tests
+
+- `tests/copy-to-spacing.test.ts` measures the copy-to gap in the PDF
+  for the basic letter in Times and in Courier, for a first endorsement,
+  for an MCO directive, and for a letter with no copy-to addressees. It
+  also walks a page break one line at a time across the long final
+  paragraph of a Courier letter and holds at least two lines on each
+  side of every split.
+- The basic-letter PDF golden file records the three moved lines and
+  nothing else.
+
 ## [0.5.0] - 2026-09-05
 
 Companion, part 2 of 2: the headless process. SemperScribe now runs
