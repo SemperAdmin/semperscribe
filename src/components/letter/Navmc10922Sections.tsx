@@ -18,6 +18,7 @@
  */
 
 import React from 'react';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -436,10 +437,10 @@ function DependentsSection({ formData, setFormData }: {
   // space: populated rows plus any blank rows the user added, capped at
   // the form's capacity. Template loads can raise the active count
   // after mount - the effect keeps the view in sync.
-  const [visible, setVisible] = React.useState(() => Math.max(1, lastActive + 1));
-  React.useEffect(() => {
-    setVisible((v) => Math.max(v, lastActive + 1, 1));
-  }, [lastActive]);
+  // Populated rows plus any the user opened, never fewer than one. Grows
+  // in the same render a template load raises lastActive; derived in
+  // render, not in an effect.
+  const [visible, setVisible] = useSyncedState<number, number>(lastActive, (last, prev) => Math.max(prev ?? 1, last + 1, 1));
 
   const updateRow = (index: number, patch: Partial<Navmc10922Dependent>) => {
     setFormData((prev) => {
@@ -661,10 +662,10 @@ function DissolutionSection({ formData, setFormData }: {
   // Same collapse-and-add pattern as Section 2: populated rows plus
   // any blanks the user added, capped at the form's 4 rows. The effect
   // follows template loads (this component is not formKey-keyed).
-  const [visible, setVisible] = React.useState(() => Math.max(1, lastActive + 1));
-  React.useEffect(() => {
-    setVisible((v) => Math.max(v, lastActive + 1, 1));
-  }, [lastActive]);
+  // Populated rows plus any the user opened, never fewer than one. Grows
+  // in the same render a template load raises lastActive; derived in
+  // render, not in an effect.
+  const [visible, setVisible] = useSyncedState<number, number>(lastActive, (last, prev) => Math.max(prev ?? 1, last + 1, 1));
 
   const updateRow = (index: number, patch: Partial<Navmc10922Dissolution>) => {
     setFormData((prev) => {

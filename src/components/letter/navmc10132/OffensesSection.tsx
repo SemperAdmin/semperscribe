@@ -25,6 +25,7 @@
  */
 
 import React from 'react';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -78,10 +79,10 @@ export function OffensesSection({ formData, setFormData, SectionCard }: SectionP
     (acc, offense, index) => (isOffenseActive(offense) ? index : acc),
     -1,
   );
-  const [visible, setVisible] = React.useState(() => Math.max(1, lastActive + 1));
-  React.useEffect(() => {
-    setVisible((v) => Math.max(v, lastActive + 1, 1));
-  }, [lastActive]);
+  // Populated rows plus any the user opened, never fewer than one. Grows
+  // in the same render a template load raises lastActive; derived in
+  // render, not in an effect.
+  const [visible, setVisible] = useSyncedState<number, number>(lastActive, (last, prev) => Math.max(prev ?? 1, last + 1, 1));
 
   const updateOffense = (index: number, patch: Partial<Navmc10132Offense>) => {
     setFormData((prev) => {

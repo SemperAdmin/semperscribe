@@ -43,6 +43,12 @@ First catch by the smoke test: the header seal requested `/logo.png` at the orig
 
 Two things the local run cannot show. The `e2e` job has not yet run on GitHub's runner, and the coverage figure will read slightly higher there because the LibreOffice half of the parity test runs. Exit criterion "three consecutive green e2e runs on CI" is open until the PR's CI history shows it.
 
+## Phase A.1 status, 2026-09-05: landed (v0.3.1)
+
+Ten set-state-in-effect warnings removed, baseline 51 to 41. Every site turned out to be user-overridable (the radio handlers set the flag and mutate the list in the same click), so none was a pure mirror and all ten took the previous-value pattern, packaged as `src/hooks/useSyncedState.ts`. The hook puts the source first in its reconcile callback because TypeScript infers the state type from the callback's return only in that order; with `prev` first every boolean site inferred `unknown`.
+
+Two behaviours differ from the effect version, both improvements with no visible change: the derived value is present on the first render instead of one commit later, and a source change re-derives in the same render. Stateful tests added in `tests/components/list-sections-stateful.test.tsx` pin the interplay the static tests could not: Yes on the page default opens one empty input, clearing the only typed entry collapses, a template load opens, a form clear closes even after a manual Yes.
+
 ## Phase 0: safety net (one PR, blocks everything after it)
 
 ### 0.1 Browser smoke test on the built export

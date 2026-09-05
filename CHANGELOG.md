@@ -5,6 +5,29 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.3.1] - 2026-09-05
+
+Phase A.1 of `docs/HARDENING_PLAN_2026-09.md`: derived state mirrored from
+props. No user-visible change. Lint warnings 51 to 41.
+
+### Changed
+
+- New `useSyncedState` hook (`src/hooks/useSyncedState.ts`): local state
+  which re-derives from a source value whenever the source changes
+  identity, done during render rather than in a post-commit effect. Same
+  observable behaviour as the `useEffect(() => setFlag(derive(source)))`
+  pattern it replaces, minus the extra render and the first-paint flash.
+- Ten effects replaced with it: the show/hide flag in ReferencesSection,
+  ViaSection, CopyToSection, EnclosuresSection, ManualDistributionSection
+  and ClosingBlockSection, and the visible-row count in the NAVMC 10922
+  dependent and dissolution sections and the NAVMC 10132 offense and
+  victim sections.
+- Stateful component tests (`tests/components/list-sections-stateful.test.tsx`)
+  pin the radio-and-list interplay in a parent holding real state, so the
+  quirks of the old behaviour (clearing the only typed entry collapses the
+  section, a form clear collapses a manually opened one) are kept on
+  purpose.
+
 ## [0.3.0] - 2026-09-05
 
 Phase 0 of `docs/HARDENING_PLAN_2026-09.md`: the safety net every later
