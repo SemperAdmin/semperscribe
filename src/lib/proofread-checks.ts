@@ -8,6 +8,7 @@
 
 import { FormData, ParagraphData } from '@/types';
 import { runLetterValidators } from './letter-validators';
+import { PDF_MARGINS } from './pdf-settings';
 
 export type CheckStatus = 'pass' | 'fail' | 'warn' | 'manual' | 'info';
 export type CheckCategory = 'format' | 'framework' | 'typography' | 'content';
@@ -23,6 +24,57 @@ export interface ProofreadCheck {
   isAutomatic: boolean;     // true = checked by code; false = user must confirm
 }
 
+
+/**
+ * Short Letter mode widens the side margins to 2 inches, matching the
+ * allowance at M-5216.5 12-4.2.b for a memorandum of fewer than 11
+ * lines. The value mirrors the one NavalLetterPDF applies to the page.
+ */
+const SHORT_LETTER_SIDE_MARGIN_PT = 144;
+
+/** A point measurement written the way the checklist asks about it. */
+function inches(points: number): string {
+  const value = points / 72;
+  const rounded = Math.round(value * 100) / 100;
+  return `${rounded} inch${rounded === 1 ? '' : 'es'} (${points} pt)`;
+}
+
+/**
+ * The paragraph ladder behind check b.(6). A document opens at level 1
+ * and never drops more than one level at a time, so a level 3 directly
+ * under a level 1 has no parent to letter against.
+ */
+function checkParagraphLadder(
+  paragraphs: ParagraphData[],
+): { problem: boolean; detail: string } {
+  const used = paragraphs.filter((p) => p.content.trim() || p.title);
+  if (used.length === 0) {
+    return { problem: false, detail: 'No paragraphs to number yet.' };
+  }
+  if (used[0].level !== 1) {
+    return {
+      problem: true,
+      detail: `The first paragraph is at level ${used[0].level}. A letter opens at level 1, which the app numbers "1.".`,
+    };
+  }
+  for (let i = 1; i < used.length; i++) {
+    if (used[i].level > used[i - 1].level + 1) {
+      return {
+        problem: true,
+        detail:
+          `Paragraph ${used[i].id} jumps from level ${used[i - 1].level} to level ${used[i].level}. `
+          + 'A subparagraph sits one level under the paragraph above it (figure 7-8).',
+      };
+    }
+  }
+  return {
+    problem: false,
+    detail:
+      `${used.length} paragraph(s) form an unbroken ladder from level 1, and the designators `
+      + '(1., a., (1)) are generated from those levels. Indentation is item b.(5).',
+  };
+}
+
 /**
  * Run all proofreading checks against current document state.
  */
@@ -31,16 +83,18 @@ export function runProofreadChecks(
   paragraphs: ParagraphData[],
   enclosures: string[],
   references: string[],
+  vias: string[] = [],
   spellIssueCount?: number,
 ): ProofreadCheck[] {
   const checks: ProofreadCheck[] = [];
   const docType = formData.documentType;
 
   // Phase 2 conditional-logic validators (letter-validators.ts).
-  // Severity map: block/fail -> fail, warn -> warn. Vias are not in
-  // this signature; window-envelope via blocking runs at the export
-  // gate (getExportBlockers), which does receive them.
-  for (const issue of runLetterValidators(formData, [], references, paragraphs, { enclosures })) {
+  // Severity map: block/fail -> fail, warn -> warn. The vias come from
+  // the panel's caller: passing [] here left every via-dependent rule
+  // silently inert in this surface, so a window-envelope letter with a
+  // Via addressee proofread clean and then refused at the export gate.
+  for (const issue of runLetterValidators(formData, vias, references, paragraphs, { enclosures })) {
     checks.push({
       id: issue.id,
       category: 'framework',
@@ -95,28 +149,49 @@ export function runProofreadChecks(
     });
   }
 
-  // b.(2) Margins — always auto-pass
+  // b.(2) Margins: measured from the generator's own constants.
+  //
+  // This check used to read `status: 'pass'` with the detail "Margins
+  // are controlled by the PDF generator (1\" all sides)", which was
+  // false in two directions: the top margin is 44 pt (0.61 in) by the
+  // recorded 2026-06-10 ruling in pdf-settings.ts, and Short Letter
+  // mode widens the sides to 2 inches. The figures below are the ones
+  // the generator uses, so the drafter reads the real page.
+  const sideMarginPt = formData.isShortLetter ? SHORT_LETTER_SIDE_MARGIN_PT : PDF_MARGINS.left;
   checks.push({
     id: 'margins',
     category: 'framework',
     reference: 'b.(2)',
-    label: 'Margins are 1 inch',
+    label: 'Margins',
     description: 'Are the margins 1 inch?',
-    status: 'pass',
-    detail: 'Margins are controlled by the PDF generator (1" all sides).',
+    status: 'info',
+    detail:
+      `Measured from the generator: top ${inches(PDF_MARGINS.top)}, bottom ${inches(PDF_MARGINS.bottom)}, `
+      + `left and right ${inches(sideMarginPt)}. `
+      + (formData.isShortLetter
+          ? 'Short Letter mode widens the side margins to 2 inches, which is the allowance at 12-4.2.b for a memorandum of fewer than 11 lines. '
+          : '')
+      + '7-2.1 asks for 1 inch on every side. The top departs by a recorded 2026-06-10 ruling, '
+      + 'which sets it so the letterhead lands where Word puts it.',
     isAutomatic: true,
   });
 
-  // b.(3) Page numbers
+  // b.(3) Page numbers: not checked automatically.
+  //
+  // The footer geometry lives in the PDF component, not in the inputs
+  // this module receives, and the page count is unknown until the
+  // document renders. The old hardcoded pass asserted both.
   checks.push({
     id: 'page-numbers',
     category: 'framework',
     reference: 'b.(3)',
     label: 'Page numbers centered',
     description: 'Are page numbers centered 1/2 inch from the bottom?',
-    status: 'pass',
-    detail: 'Page numbering is auto-generated and positioned correctly.',
-    isAutomatic: true,
+    status: 'manual',
+    detail:
+      'Not checked automatically. On the preview, confirm the second and later pages carry a centred number '
+      + 'about half an inch above the bottom edge, and page 1 carries none (7-2.17).',
+    isAutomatic: false,
   });
 
   // b.(4) Date
@@ -138,7 +213,11 @@ export function runProofreadChecks(
     });
   }
 
-  // b.(5) Paragraph alignment — auto-pass
+  // b.(5) Paragraph alignment: not checked automatically.
+  //
+  // Indent positions are measured at render time by the relative
+  // indent engine against the chosen font, so nothing in this module
+  // sees where a designator lands on the page.
   if (!isForm) {
     checks.push({
       id: 'paragraph-alignment',
@@ -146,22 +225,30 @@ export function runProofreadChecks(
       reference: 'b.(5)',
       label: 'Paragraphs aligned properly',
       description: 'Are paragraphs aligned/indented properly?',
-      status: 'pass',
-      detail: 'Paragraph indentation is controlled by the formatter.',
-      isAutomatic: true,
+      status: 'manual',
+      detail:
+        'Not checked automatically. Against figure 7-8, each designator sits under the first letter of the '
+        + 'parent\'s text and a runover line returns to the left margin.',
+      isAutomatic: false,
     });
   }
 
-  // b.(6) Paragraph numbering — auto-pass
+  // b.(6) Paragraph numbering: measured from the paragraph levels.
+  //
+  // The designators themselves are generated, so the question worth
+  // asking is whether the LADDER is sound: a document which opens at a
+  // subparagraph level, or which drops two levels at once, gets
+  // designators the manual has no reading for.
   if (!isForm) {
+    const ladder = checkParagraphLadder(paragraphs);
     checks.push({
       id: 'paragraph-numbering',
       category: 'framework',
       reference: 'b.(6)',
       label: 'Paragraphs sequentially numbered',
       description: 'Are paragraphs sequentially numbered/lettered?',
-      status: 'pass',
-      detail: 'Citation numbering (1., a., (1), etc.) is auto-generated.',
+      status: ladder.problem ? 'warn' : 'pass',
+      detail: ladder.detail,
       isAutomatic: true,
     });
   }
@@ -250,28 +337,32 @@ export function runProofreadChecks(
     });
   }
 
-  // b.(10) Header margin — auto-pass
+  // b.(10) Header margin: the same measured figure as b.(2).
   checks.push({
     id: 'header-margin',
     category: 'framework',
     reference: 'b.(10)',
-    label: 'Header margin 1 inch',
+    label: 'Header margin',
     description: 'Is the header margin 1 inch from the top of the page?',
-    status: 'pass',
-    detail: 'Header margins are controlled by the PDF generator.',
+    status: 'info',
+    detail:
+      `Measured from the generator: ${inches(PDF_MARGINS.top)} to the first line of the letterhead, `
+      + 'against the 1 inch at 7-2.1. The difference is the recorded 2026-06-10 ruling.',
     isAutomatic: true,
   });
 
-  // b.(11) Footer margin — auto-pass
+  // b.(11) Footer margin: not checked automatically.
   checks.push({
     id: 'footer-margin',
     category: 'framework',
     reference: 'b.(11)',
     label: 'Footer margin 1/2 inch',
     description: 'Is the footer margin 1/2 inch from the bottom of the page?',
-    status: 'pass',
-    detail: 'Footer margins are controlled by the PDF generator.',
-    isAutomatic: true,
+    status: 'manual',
+    detail:
+      'Not checked automatically. The footer position is set in the PDF component rather than in the values '
+      + 'this checklist reads. Confirm the spacing on the preview.',
+    isAutomatic: false,
   });
 
   // ─── c. Typography / Grammar ─────────────────────────────────────────

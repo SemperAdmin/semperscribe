@@ -14,7 +14,10 @@ import {
   validateDirectiveSchema, validateBulletinCancellation,
   validateEndorsementContinuation,
   runLetterValidators,
-  validateRevisionSuffix } from '@/lib/letter-validators';
+  validateRevisionSuffix,
+  validateSubjectLine,
+  validateEnclosureOrder } from '@/lib/letter-validators';
+import { validateSignature } from '@/lib/signature-validators';
 import type { ParagraphData, FormData } from '@/types';
 
 const p = (id: number, level: number, content: string): ParagraphData => ({ id, level, content });
@@ -479,5 +482,151 @@ describe('P4.4 revision suffix rules (MCO 5215.1K, audit line 151)', () => {
 
   it('never fires for correspondence', () => {
     expect(validateRevisionSuffix({ documentType: 'basic', ssic: '5215.1Q' } as never)).toHaveLength(0);
+  });
+});
+
+describe('subject line (M-5216.5 7-2.9.a and 12-3.2.c(4), Fig 7-1)', () => {
+  // Only a token the dictionary carries as an abbreviation reports.
+  const DICTIONARY = [
+    { term: 'TEMPORARY ADDITIONAL DUTY', meaning: 'TAD' },
+    { term: 'STANDING OPERATING PROCEDURE', meaning: 'SOP' },
+  ];
+
+  it('flags an acronym the dictionary knows', () => {
+    const issues = validateSubjectLine(
+      fd({ subj: 'REQUEST FOR TAD FUNDING' }),
+      DICTIONARY,
+    );
+    const acronym = issues.find((i) => i.id === 'subject-acronym');
+    expect(acronym?.severity).toBe('warn');
+    expect(acronym?.citation).toBe('SECNAV M-5216.5 7-2.9.a and 12-3.2.c(4)');
+    expect(acronym?.detail).toContain('TEMPORARY ADDITIONAL DUTY');
+    expect(acronym?.field).toBe('subj');
+  });
+
+  // The whole subject is upper case by format, so a rule which flagged
+  // every all-caps word would flag every subject line ever written.
+  it('leaves an all-caps subject of ordinary words alone', () => {
+    const issues = validateSubjectLine(
+      fd({ subj: 'REQUEST FOR RANGE TIME AT CAMP PENDLETON' }),
+      DICTIONARY,
+    );
+    expect(issues.map((i) => i.id)).not.toContain('subject-acronym');
+  });
+
+  it('reports nothing without the dictionary, rather than guessing', () => {
+    const issues = validateSubjectLine(fd({ subj: 'REQUEST FOR TAD FUNDING' }));
+    expect(issues.map((i) => i.id)).not.toContain('subject-acronym');
+  });
+
+  it('flags terminal punctuation (Fig 7-1: no punctuation)', () => {
+    const issues = validateSubjectLine(fd({ subj: 'REQUEST FOR RANGE TIME.' }));
+    const punctuation = issues.find((i) => i.id === 'subject-terminal-punctuation');
+    expect(punctuation?.severity).toBe('warn');
+    expect(punctuation?.citation).toBe('SECNAV M-5216.5 7-2.9.a, Fig 7-1');
+  });
+
+  it('leaves punctuation inside the subject alone', () => {
+    const issues = validateSubjectLine(fd({ subj: 'REQUEST FOR RANGE TIME, BUILDING 1-A' }));
+    expect(issues.map((i) => i.id)).not.toContain('subject-terminal-punctuation');
+  });
+
+  it('is silent on an empty subject and on a document type it does not govern', () => {
+    expect(validateSubjectLine(fd({ subj: '' }), DICTIONARY)).toEqual([]);
+    expect(validateSubjectLine(
+      fd({ documentType: 'business-letter', subj: 'REQUEST FOR TAD FUNDING.' }),
+      DICTIONARY,
+    )).toEqual([]);
+  });
+});
+
+describe('enclosure order (M-5216.5 7-2.11.a)', () => {
+  const ENCLS = ['Range request', 'Safety brief'];
+
+  it('flags a list which is not in first-citation order', () => {
+    const issues = validateEnclosureOrder(
+      fd(),
+      ENCLS,
+      [p(1, 1, 'See encl (2), then encl (1).')],
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].id).toBe('encl-citation-order');
+    expect(issues[0].citation).toBe('SECNAV M-5216.5 7-2.11.a');
+  });
+
+  // Same severity as the reference-order rule it mirrors.
+  it('carries the reference-order rule\'s severity', () => {
+    const encl = validateEnclosureOrder(fd(), ENCLS, [p(1, 1, 'See encl (2) and encl (1).')]);
+    const ref = validateReferences(
+      ['MCO 1500.1', 'MCO 1600.2'],
+      [p(1, 1, 'Per ref (b) and ref (a).')],
+    ).filter((i) => i.id === 'ref-citation-order');
+    expect(encl[0].severity).toBe(ref[0].severity);
+  });
+
+  it('accepts a list which matches the text order', () => {
+    expect(validateEnclosureOrder(fd(), ENCLS, [p(1, 1, 'See encl (1), then encl (2).')])).toEqual([]);
+  });
+
+  it('reads an endorsement against its continued numbering (9-2.4)', () => {
+    const endorsement = fd({ documentType: 'endorsement', startingEnclosureNumber: '3' });
+    // Cited in list order for THIS endorsement: (3) then (4).
+    expect(validateEnclosureOrder(endorsement, ENCLS, [p(1, 1, 'See encl (3) and encl (4).')])).toEqual([]);
+    expect(validateEnclosureOrder(endorsement, ENCLS, [p(1, 1, 'See encl (4) and encl (3).')])).toHaveLength(1);
+  });
+
+  it('is silent on a single enclosure and on an uncited list', () => {
+    expect(validateEnclosureOrder(fd(), ['Only one'], [p(1, 1, 'See encl (1).')])).toEqual([]);
+    expect(validateEnclosureOrder(fd(), ENCLS, [p(1, 1, 'Nothing cited here.')])).toEqual([]);
+  });
+});
+
+describe('rank on a naval signature line (M-5216.5 7-2.14.b)', () => {
+  const sigIssues = (sig: string, documentType = 'basic') =>
+    validateSignature({ documentType, sig } as FormData).map((i) => i.id);
+
+  it('flags a Marine rank abbreviation from the app rank table', () => {
+    expect(sigIssues('GySgt J. A. SMITH')).toContain('signature-rank');
+    expect(sigIssues('LtCol J. A. SMITH')).toContain('signature-rank');
+  });
+
+  it('flags another service\'s abbreviation and a pay grade', () => {
+    expect(sigIssues('MAJ J. SMITH')).toContain('signature-rank');
+    expect(sigIssues('LCDR J. SMITH')).toContain('signature-rank');
+    expect(sigIssues('J. SMITH E-7')).toContain('signature-rank');
+  });
+
+  it('flags a spelled-out rank', () => {
+    expect(sigIssues('Lieutenant Colonel J. A. SMITH')).toContain('signature-rank');
+  });
+
+  it('leaves the four forms 7-2.14.b lists alone', () => {
+    expect(sigIssues('J. A. SMITH')).not.toContain('signature-rank');
+    expect(sigIssues('SMITH, J. A.')).not.toContain('signature-rank');
+    expect(sigIssues('J. A. SMITH SR')).not.toContain('signature-rank');
+    expect(sigIssues('de la CRUZ')).not.toContain('signature-rank');
+  });
+
+  it('is advisory, not a refusal', () => {
+    const issues = validateSignature({ documentType: 'basic', sig: 'MAJ J. SMITH' } as FormData);
+    expect(issues.every((i) => i.severity === 'warn')).toBe(true);
+  });
+});
+
+describe('vias reach the rules which read them', () => {
+  // audit, cross-cutting: the proofread panel passed [] for vias, so
+  // every via-dependent rule was inert in that surface.
+  const WINDOW = fd({ isWindowEnvelope: true, to: 'Commanding Officer\nUnit 1\nFPO AP 96000' });
+
+  it('runLetterValidators blocks a window-envelope letter with a Via', () => {
+    const ids = runLetterValidators(WINDOW, ['Commander, Group'], [], [p(1, 1, 'Body.')])
+      .filter((i) => i.severity === 'block')
+      .map((i) => i.id);
+    expect(ids).toContain('window-via');
+  });
+
+  it('and reports nothing on the same letter with no Via', () => {
+    const ids = runLetterValidators(WINDOW, [], [], [p(1, 1, 'Body.')]).map((i) => i.id);
+    expect(ids).not.toContain('window-via');
   });
 });

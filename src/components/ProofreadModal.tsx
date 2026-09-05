@@ -39,6 +39,8 @@ interface ProofreadModalProps {
   paragraphs: ParagraphData[];
   enclosures: string[];
   references: string[];
+  /** Via addressees. The window-envelope rules read them (7-2.8, Fig 7-3). */
+  vias: string[];
   spellIssueCount?: number;
 }
 
@@ -64,6 +66,7 @@ export function ProofreadModal({
   paragraphs,
   enclosures,
   references,
+  vias,
   spellIssueCount,
 }: ProofreadModalProps) {
   const [confirmedManual, setConfirmedManual] = useState<Set<string>>(new Set());
@@ -72,8 +75,8 @@ export function ProofreadModal({
   );
 
   const checks = useMemo(
-    () => runProofreadChecks(formData, paragraphs, enclosures, references, spellIssueCount),
-    [formData, paragraphs, enclosures, references, spellIssueCount]
+    () => runProofreadChecks(formData, paragraphs, enclosures, references, vias, spellIssueCount),
+    [formData, paragraphs, enclosures, references, vias, spellIssueCount]
   );
 
   const summary = useMemo(() => getProofreadSummary(checks), [checks]);

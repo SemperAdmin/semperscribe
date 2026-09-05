@@ -391,11 +391,43 @@ describe('validator messages a drafter can act on', () => {
   // Found in the browser pass 2026-08-16: an ABSENT field made Zod
   // report a type error, so the panel read "Recipient Name: Invalid
   // input: expected string, received undefined".
+  //
+  // D.4 moved the message on again. The rule now states the
+  // REQUIREMENT and cites the paragraph it comes from, so the detail
+  // names the field's state and then says what the manual asks for.
   it('an absent required field reads as a plain requirement', () => {
     const ids = runLetterValidators({ documentType: 'business-letter' } as any, [], [], PARAGRAPHS);
     const recipient = ids.find(i => i.id === 'schema-business-letter-recipientName');
-    expect(recipient?.detail).toBe('Recipient Name: Recipient Name is required');
+    expect(recipient?.detail).toContain('Recipient Name is empty.');
+    expect(recipient?.rule).toBe('The inside address names the person or the business written to');
+    expect(recipient?.citation).toBe('SECNAV M-5216.5 11-2.2.a');
     expect(ids.map(i => i.detail).join(' ')).not.toContain('expected string');
+  });
+
+  // UX audit finding 3: "SSIC fails its document schema", cited to
+  // "Basic Letter schema (src/lib/schemas.ts)". A source path in a
+  // citation field gives a reviewing officer nothing to check.
+  it('no validator message cites a source path', () => {
+    const issues = runLetterValidators({ documentType: 'basic' } as any, [], [], PARAGRAPHS);
+    expect(issues.length).toBeGreaterThan(0);
+    for (const issue of issues) {
+      expect(issue.citation).not.toContain('src/lib');
+      expect(issue.citation).not.toContain('.ts');
+      expect(issue.rule).not.toContain('document schema');
+    }
+  });
+
+  it('the required header fields cite the paragraph which requires them', () => {
+    const issues = runLetterValidators({ documentType: 'basic' } as any, [], [], PARAGRAPHS);
+    const byId = new Map(issues.map(i => [i.id, i]));
+    expect(byId.get('schema-basic-ssic')?.rule).toBe('An SSIC is required on every naval letter');
+    expect(byId.get('schema-basic-ssic')?.citation).toBe('SECNAV M-5216.5 7-2.3.a(1)');
+    expect(byId.get('schema-basic-from')?.citation).toBe('SECNAV M-5216.5 7-2.6.a');
+    expect(byId.get('schema-basic-to')?.citation).toBe('SECNAV M-5216.5 7-2.7.a');
+    expect(byId.get('schema-basic-date')?.citation).toBe('SECNAV M-5216.5 7-2.3.a(3) and 2-16.a');
+    // The field name travels with the issue, so the compliance dialog
+    // jumps to it.
+    expect(byId.get('schema-basic-ssic')?.field).toBe('ssic');
   });
 
   // M-5216.5 11-2.9 keeps references out of BOTH emitters, so the

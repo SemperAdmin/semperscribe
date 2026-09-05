@@ -15,7 +15,7 @@
  */
 
 import { FormData, ParagraphData } from '@/types';
-import { indexToRefLetter } from '@/lib/letter-validators';
+import { refLetterAt, startingRefLetterFor } from '@/lib/reference-letters';
 import { looksLikeInitial } from '@/lib/signature-validators';
 
 export interface DocumentSlices {
@@ -77,7 +77,17 @@ export function fixReferenceOrder(slices: DocumentSlices): DocumentSlices {
   const refs = slices.references.filter((r) => r.trim());
   if (refs.length < 2) return slices;
 
-  const listedLetters = refs.map((_, i) => indexToRefLetter(i + 1));
+  // The fixer letters the list from the same place the validator reads
+  // it. An endorsement continues the basic letter's sequence (9-2.3),
+  // so a list which runs (c) and (d) is reordered as (c) and (d), and
+  // the in-text citations are remapped inside that same range. Before
+  // D.3 this walked from (a) and quietly relettered a correct
+  // endorsement into a wrong one.
+  const startLetter = startingRefLetterFor(
+    slices.formData.documentType,
+    slices.formData.startingReferenceLevel,
+  );
+  const listedLetters = refs.map((_, i) => refLetterAt(startLetter, i));
   const allText = slices.paragraphs.map((p) => `${p.title ?? ''} ${p.content}`).join(' ');
 
   // First-citation order, restricted to letters that actually exist.
@@ -101,7 +111,7 @@ export function fixReferenceOrder(slices: DocumentSlices): DocumentSlices {
   // old letter -> new letter
   const remap = new Map<string, string>();
   newOrder.forEach((oldLetter, newIndex) => {
-    remap.set(oldLetter, indexToRefLetter(newIndex + 1));
+    remap.set(oldLetter, refLetterAt(startLetter, newIndex));
   });
 
   const newReferences = newOrder.map((letter) => refs[listedLetters.indexOf(letter)]);

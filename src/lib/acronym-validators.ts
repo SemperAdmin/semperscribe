@@ -26,7 +26,7 @@ import type { DictionaryEntry } from '@/lib/military-dictionary';
  * emphasis words, and organizations a naval reader knows cold.
  * Deliberately tight - anything arguable stays flaggable.
  */
-const STOPLIST = new Set([
+export const ACRONYM_STOPLIST = new Set([
   // Roman numerals
   'II', 'III', 'IV', 'VI', 'VII', 'VIII', 'IX', 'XI', 'XII',
   // Emphasis / plain words that appear capitalized in running text
@@ -44,11 +44,13 @@ const ACRONYM = /\b[A-Z]{2,6}\b/g;
 /**
  * acronym -> expansions, inverted from the dictionary (meaning = abbrev).
  * Built once per dictionary array and cached by identity, so a caller
- * which holds the loaded table pays for the index one time.
+ * which holds the loaded table pays for the index one time. The
+ * subject-line rule in letter-validators.ts reads the same index, so
+ * the two rules agree on what counts as a known acronym.
  */
 const expansionIndexes = new WeakMap<readonly DictionaryEntry[], Map<string, string[]>>();
 
-function expansionIndexFor(dictionary: readonly DictionaryEntry[]): Map<string, string[]> {
+export function expansionIndexFor(dictionary: readonly DictionaryEntry[]): Map<string, string[]> {
   let index = expansionIndexes.get(dictionary);
   if (!index) {
     index = new Map();
@@ -99,7 +101,7 @@ export function validateAcronyms(
 
   while ((m = pattern.exec(text)) !== null) {
     const acronym = m[0];
-    if (seen.has(acronym) || STOPLIST.has(acronym)) continue;
+    if (seen.has(acronym) || ACRONYM_STOPLIST.has(acronym)) continue;
     seen.add(acronym);
 
     // A parenthesized first occurrence IS the definition.
