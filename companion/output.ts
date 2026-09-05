@@ -12,13 +12,15 @@
  *   3. The parent directory of the target is resolved through realpath
  *      and must still sit inside the base. A symlinked subdirectory
  *      pointing out of the base fails here.
- *   4. An existing target is inspected with lstat and refused when it is
- *      a symlink, so a planted link is never followed by the write.
+ *   4. The file is opened with O_NOFOLLOW, so a planted symbolic link at
+ *      the target fails at the open itself rather than in a check the
+ *      link could be swapped in after. A directory fails the same way.
  *
  * Absolute paths and traversal both fail rule 2 or rule 3. Directories
  * are never created: the caller writes into a directory it prepared.
  */
-import { lstat, realpath, writeFile } from 'node:fs/promises';
+import { constants as fsConstants } from 'node:fs';
+import { open, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { CompanionError } from './errors';
 
@@ -96,19 +98,24 @@ export async function writeOutput(
   }
 
   const finalPath = path.join(parentReal, path.basename(target));
+  // One open decides everything about the target: O_NOFOLLOW refuses a
+  // symbolic link (ELOOP), a directory refuses O_WRONLY (EISDIR), and a
+  // regular file is created or truncated. There is no check-then-write
+  // window for a link to be swapped into.
+  const { O_WRONLY, O_CREAT, O_TRUNC, O_NOFOLLOW } = fsConstants;
+  let handle;
   try {
-    const existing = await lstat(finalPath);
-    if (existing.isSymbolicLink()) {
-      reject('Output path is a symbolic link', { outDir: base });
-    }
-    if (existing.isDirectory()) {
-      reject('Output path is a directory', { outDir: base });
-    }
+    handle = await open(finalPath, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW, 0o644);
   } catch (error) {
-    // ENOENT is the ordinary case: the file does not exist yet.
-    if (error instanceof CompanionError) throw error;
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ELOOP') reject('Output path is a symbolic link', { outDir: base });
+    if (code === 'EISDIR') reject('Output path is a directory', { outDir: base });
+    throw error;
   }
-
-  await writeFile(finalPath, bytes);
+  try {
+    await handle.writeFile(bytes);
+  } finally {
+    await handle.close();
+  }
   return finalPath;
 }

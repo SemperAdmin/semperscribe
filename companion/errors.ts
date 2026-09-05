@@ -53,9 +53,13 @@ export function errorPayload(error: unknown): {
   if (error instanceof CompanionError) {
     return { error: error.code, message: error.message, details: error.details };
   }
+  // Anything else is a defect, not a caller mistake. Its message and
+  // stack go to the companion's own log; the caller gets a fixed line,
+  // so an internal path or a library's wording never leaves the process.
+  console.error('[companion] internal error', error);
   return {
     error: 'internal_error',
-    message: error instanceof Error ? error.message : String(error),
+    message: 'The companion hit an internal error. See its log for the cause.',
     details: {},
   };
 }
