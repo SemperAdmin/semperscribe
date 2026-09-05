@@ -73,14 +73,21 @@ fit and falls back to a new page, the identification is restored
 whatever the checkbox said, because every new-page endorsement carries
 it (Figure 9-1, second endorsement).
 
-Exporting a same-page endorsement on its own, as a PDF or a DOCX from
-the editor, produces the block alone: no letterhead, no seal, no page
-number. There is no signature page present to measure against, so the
-compliance panel reports that and cites 9-1 rather than refusing. The
-block is the right file to hand a drafter who will add it to a page
-that has already been signed. The Word export is the same block, so a
-Word user pastes it onto the signature page of the document being
-endorsed.
+A same-page endorsement carries the letter it is added to. Under
+Endorsement Details, attach the signed letter as a PDF or pick a letter
+from the library. The preview and the PDF export are then the letter
+with the endorsement on it: composed onto the signature page when the
+block fits, and appended as a new-page endorsement numbered after the
+letter's pages when it does not, with the identification restored. The
+details card and the export toast say which happened.
+
+Without a letter attached, exporting a same-page endorsement produces
+the block alone: no letterhead, no seal, no page number, because the
+page it lands on carries all of those (Figure 9-1). There is no
+signature page present to measure against, so the compliance panel
+reports that and cites 9-1 rather than refusing. The Word export is
+always the block, so a Word user pastes it onto the signature page of
+the document being endorsed.
 
 Figure 9-1 draws a horizontal rule between the basic letter and the
 first endorsement. The text of 9-2 prescribes no rule, so none is

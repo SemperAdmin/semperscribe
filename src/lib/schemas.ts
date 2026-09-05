@@ -357,6 +357,15 @@ export const EndorsementSchema = BasicLetterSchema.extend({
    * Figure 9-1.
    */
   samePageOmitsIdentification: z.boolean().optional(),
+  /**
+   * E.3 (M-5216.5 9-1, Figure 9-1). The letter the same-page
+   * endorsement is added to. Optional: without it the endorsement is
+   * the block alone.
+   */
+  samePageHost: z.union([
+    z.object({ kind: z.literal('file'), fileId: z.string(), fileName: z.string() }),
+    z.object({ kind: z.literal('draft'), letterId: z.string(), title: z.string() }),
+  ]).optional(),
 });
 
 export const EndorsementDefinition: DocumentTypeDefinition = {

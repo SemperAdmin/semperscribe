@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
-import { ParagraphData, SavedLetter, ValidationState, FormData, ReportData } from '@/types';
+import { ParagraphData, SavedLetter, ValidationState, FormData, ReportData, SamePageHost } from '@/types';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { EXAMPLE_DOCUMENT_URL } from '@/components/layout/LandingPage';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
@@ -21,6 +21,8 @@ import type { ValidationIssue } from '@/lib/letter-validators';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
 import { resolvePickerType } from '@/lib/document-type-options';
+import { resolveHostBytes } from '@/lib/same-page-host';
+import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { AMHSPreview } from '@/components/amhs/AMHSPreview';
 import { useToast } from '@/hooks/use-toast';
 import { SignatureCeremonyPanel } from '@/components/signature/SignatureCeremonyPanel';
@@ -283,11 +285,86 @@ function NavalLetterGeneratorInner() {
   // Document state slices shared by preview, export, and signature
   const documentData = { formData, vias, references, enclosures, copyTos, paragraphs, distList };
 
+  // E.3 (M-5216.5 9-1, Figure 9-1): the letter a same-page endorsement
+  // is added to. An attached PDF's bytes are kept here for the session
+  // and written through to the file store, keyed by fileId, the way
+  // enclosure files are; a library letter is rendered on demand. The
+  // resolver hands the preview and the export the same bytes.
+  const [samePageHostBytes, setSamePageHostBytes] = useState<ReadonlyMap<string, ArrayBuffer>>(new Map());
+  const samePageHost = formData.samePageHost as SamePageHost | undefined;
+  const resolveSamePageHost = useCallback(async (): Promise<Uint8Array | null> => {
+    if (!samePageHost) return null;
+    return resolveHostBytes(samePageHost, {
+      savedLetters,
+      loadFile: async (fileId) => samePageHostBytes.get(fileId) ?? (await fileGet(fileId))?.bytes ?? null,
+      renderLetter: (letter) => generatePdfForDocType({
+        formData: letter,
+        vias: letter.vias ?? [],
+        references: letter.references ?? [],
+        enclosures: letter.enclosures ?? [],
+        copyTos: letter.copyTos ?? [],
+        paragraphs: letter.paragraphs ?? [],
+        distList: letter.distList ?? [],
+      }),
+    });
+  }, [samePageHost, savedLetters, samePageHostBytes]);
+
+  const clearSamePageHostFile = (host: SamePageHost | undefined) => {
+    if (host?.kind !== 'file') return;
+    setSamePageHostBytes(prev => { const next = new Map(prev); next.delete(host.fileId); return next; });
+    fileDeleteIfOwnedBy(host.fileId, WORKING_COPY_DOC_ID).catch((error) => console.error('Endorsed letter file delete failed', error));
+  };
+
+  const handleAttachSamePageHostFile = async (file: File) => {
+    const bytes = await file.arrayBuffer();
+    const head = new TextDecoder('latin1').decode(new Uint8Array(bytes.slice(0, 5)));
+    if (head !== '%PDF-') {
+      toast({ title: 'Not a PDF', description: `"${file.name}" is not a PDF. Attach the signed letter as a PDF.`, variant: 'destructive' });
+      return;
+    }
+    const fileId = crypto.randomUUID();
+    clearSamePageHostFile(samePageHost);
+    setSamePageHostBytes(prev => new Map(prev).set(fileId, bytes));
+    setFormData(prev => ({ ...prev, samePageHost: { kind: 'file', fileId, fileName: file.name } }));
+    filePut({
+      fileId,
+      docId: WORKING_COPY_DOC_ID,
+      fileName: file.name,
+      title: file.name,
+      mimeType: 'application/pdf',
+      bytes,
+      byteLength: bytes.byteLength,
+    }).catch((error) => {
+      console.error('Endorsed letter persist failed', error);
+      toast({
+        title: 'File Not Saved to Browser Storage',
+        description: `"${file.name}" is attached for this session and will export, but will not survive a reload. Storage may be full.`,
+        variant: 'destructive',
+      });
+    });
+  };
+
+  const handleSelectSamePageHostDraft = (letterId: string) => {
+    const letter = savedLetters.find(l => l.id === letterId);
+    if (!letter) return;
+    clearSamePageHostFile(samePageHost);
+    setFormData(prev => ({
+      ...prev,
+      samePageHost: { kind: 'draft', letterId, title: letter.name || letter.subj || 'Saved letter' },
+    }));
+  };
+
+  const handleClearSamePageHost = () => {
+    clearSamePageHostFile(samePageHost);
+    setFormData(prev => ({ ...prev, samePageHost: undefined }));
+  };
+
   // Live preview (debounced PDF regeneration) via hook. ENC: the
   // preview merges bound enclosure files, so it shows the full package.
-  const { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields } = useLivePreview(
+  const { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus } = useLivePreview(
     documentData,
     { enclosureRows, enclosureFiles, attachmentCoverPages },
+    resolveSamePageHost,
   );
 
   // Export orchestration (gate, SECNAV cap, download) via hook
@@ -302,6 +379,7 @@ function NavalLetterGeneratorInner() {
     enclosureRows,
     enclosureFiles,
     attachmentCoverPages,
+    resolveSamePageHost,
     toast,
     onBlocked: (blockers) => {
       setExportBlockers(blockers);
@@ -532,7 +610,13 @@ function NavalLetterGeneratorInner() {
     setFormData(prev => ({
       ...prev,
       documentType: newType as FormData['documentType'],
-      endorsementLevel: newType === 'basic' ? '' : prev.endorsementLevel,
+      // E.3: an endorsement opens as a FIRST endorsement unless the
+      // drafter has chosen a level; the line is missing until one is set.
+      endorsementLevel: newType === 'endorsement'
+        ? (prev.endorsementLevel || 'FIRST')
+        : newType === 'basic' ? '' : prev.endorsementLevel,
+      // E.3: the letter being endorsed belongs to an endorsement only.
+      samePageHost: newType === 'endorsement' ? prev.samePageHost : undefined,
       basicLetterReference: newType === 'basic' ? '' : prev.basicLetterReference,
       referenceWho: newType === 'basic' ? '' : prev.referenceWho,
       referenceType: newType === 'basic' ? '' : prev.referenceType,
@@ -607,6 +691,9 @@ function NavalLetterGeneratorInner() {
         // ENC: ownership follows the latest save - bound files re-point
         // to this document so its cascade delete governs them.
         const boundIds = enclosureRows.map(r => r.fileId).filter((id): id is string => Boolean(id));
+        // E.3: the attached letter being endorsed is owned the same way.
+        const host = newLetter.samePageHost as SamePageHost | undefined;
+        if (host?.kind === 'file') boundIds.push(host.fileId);
         fileReparentByIds(boundIds, newLetter.id).catch((error) => console.error('Enclosure file re-parent failed', error));
         // P1.3: mirror to the backup folder when auto backup is on.
         backupDocument(newLetter).catch((error) => {
@@ -1077,6 +1164,11 @@ function NavalLetterGeneratorInner() {
         handleDynamicFormSubmit={handleDynamicFormSubmit}
         onDocumentTypeChange={handleDocumentTypeChange}
         onLoadExample={handleLoadExample}
+        savedLetters={savedLetters}
+        samePageStatus={samePageStatus}
+        onAttachSamePageHostFile={handleAttachSamePageHostFile}
+        onSelectSamePageHostDraft={handleSelectSamePageHostDraft}
+        onClearSamePageHost={handleClearSamePageHost}
         enclosureRows={enclosureRows}
         enclosureFiles={enclosureFiles}
         onAddEnclosureRow={handleAddEnclosureRow}

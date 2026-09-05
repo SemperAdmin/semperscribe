@@ -5,6 +5,52 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.7.0] - 2026-09-05
+
+Phase E.3: the letter being endorsed. SECNAV M-5216.5 9-1 puts a
+same-page endorsement on the signature page of the basic letter or the
+preceding endorsement, and Figure 9-1 draws it there: below the
+signature, under that page's own letterhead and seal. The endorsement
+adds no letterhead of its own. Until now the app could only show the
+block alone, floating at the top of a blank page, because it had no
+letter to put it on. Now the drafter attaches the letter and the
+preview and the export show the page Figure 9-1 shows.
+
+### Added
+
+- "Letter being endorsed" under Endorsement Details for a same-page
+  endorsement. Attach the signed letter as a PDF, or pick a letter from
+  the library. An attached PDF is kept in the browser's file store the
+  way enclosure files are, follows the document when it is saved, and
+  is offered again when the draft is reopened. A library letter is
+  rendered through its own export pipeline when the endorsement is
+  previewed or exported.
+- The endorsed document. With the letter attached, the preview and the
+  PDF export are the letter with the endorsement on it: composed onto
+  the signature page two lines below its last line when 9-1's fit test
+  passes, and, when it does not, appended as a new-page endorsement
+  numbered after the letter's pages with the SSIC, the subject and the
+  "on ..." clause restored, which is the assembly Figure 9-1 shows for
+  its second endorsement. The details card and the export toast say
+  which happened and on which page.
+- `src/lib/same-page-host.ts`, the resolver and the renderer, pure
+  over bytes and callbacks like the composer under it, with tests that
+  measure both branches against rendered geometry.
+- An endorsement opens as a FIRST endorsement unless a level is
+  already set, so the endorsement line is present from the first
+  render.
+
+### Changed
+
+- The placement radio is gone from Endorsement Details. Placement is
+  chosen in the document-type picker since 0.6.2, and one control for
+  one setting is enough. The 9-2.1.a omission checkbox stays.
+- The same-page export warning fires only when no letter is attached,
+  and now says how to attach one.
+- Signature fields are drawn on the block's own page coordinates, so a
+  composed same-page endorsement does not carry them onto the letter's
+  page. The block alone still takes them.
+
 ## [0.6.2] - 2026-09-05
 
 The same-page endorsement as its own option. 0.6.0 put the two

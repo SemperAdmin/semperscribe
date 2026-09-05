@@ -16,8 +16,21 @@ export type FormData = {
    * Undefined reads as true, which is what Figure 9-1 draws.
    */
   samePageOmitsIdentification?: boolean;
+  /**
+   * E.3 (M-5216.5 9-1, Figure 9-1). The letter a same-page endorsement
+   * is added to: a PDF the drafter attached (bytes in the file store,
+   * keyed by fileId) or a letter from the library, rendered when the
+   * endorsement is previewed or exported. Absent means the endorsement
+   * previews and exports as the block alone.
+   */
+  samePageHost?: SamePageHost;
   [key: string]: any;
 };
+
+/** E.3: where the letter being endorsed comes from. */
+export type SamePageHost =
+  | { kind: 'file'; fileId: string; fileName: string }
+  | { kind: 'draft'; letterId: string; title: string };
 
 /**
  * Shared type definitions for the Naval Letter Formatter application

@@ -1,28 +1,42 @@
 'use client';
 
-import { FormData } from '@/types';
+import { FormData, SamePageHost, SavedLetter } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileSignature } from 'lucide-react';
 import { StructuredReferenceInput } from '@/components/letter/StructuredReferenceInput';
-import { endorsementLineText, omitsIdentification } from '@/lib/same-page-endorsement';
+import { endorsementLineText, omitsIdentification, isSamePageEndorsement } from '@/lib/same-page-endorsement';
+import { hostLabel, describePlacement, type SamePageStatus } from '@/lib/same-page-host';
 
 interface EndorsementDetailsSectionProps {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
+  /** E.3: library letters offered as the letter being endorsed. */
+  savedLetters?: SavedLetter[];
+  /** E.3: where the endorsement landed on the last preview render. */
+  samePageStatus?: SamePageStatus | null;
+  onAttachHostFile?: (file: File) => void;
+  onSelectHostDraft?: (letterId: string) => void;
+  onClearHost?: () => void;
 }
 
-export function EndorsementDetailsSection({ formData, setFormData }: EndorsementDetailsSectionProps) {
-  // E.1 (M-5216.5 9-1). Undefined placement reads as a new-page
-  // endorsement, so a document saved before this control existed keeps
-  // the placement it was written with.
-  const placement = formData.endorsementPlacement === 'same-page' ? 'same-page' : 'new-page';
-  const samePage = placement === 'same-page';
+export function EndorsementDetailsSection({
+  formData, setFormData, savedLetters = [], samePageStatus, onAttachHostFile, onSelectHostDraft, onClearHost,
+}: EndorsementDetailsSectionProps) {
+  // E.1 (M-5216.5 9-1). Placement is chosen in the document-type
+  // picker ("Endorsement" is a new-page endorsement, "Same-Page
+  // Endorsement" a same-page one); undefined reads as new page, so a
+  // document saved before the field existed keeps its placement.
+  const samePage = isSamePageEndorsement(formData);
   const omits = omitsIdentification(formData);
+  const host = formData.samePageHost as SamePageHost | undefined;
+  // A same-page endorsement cannot be added to another same-page
+  // endorsement's block alone, so the library offers every other letter.
+  const hostCandidates = savedLetters.filter((l) => !isSamePageEndorsement(l));
 
   return (
     <Card className="border-primary/20 shadow-md overflow-hidden mb-6">
@@ -57,42 +71,65 @@ export function EndorsementDetailsSection({ formData, setFormData }: Endorsement
           </Select>
         </div>
 
-        {/* Placement (M-5216.5 9-1) */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Placement</Label>
-          <RadioGroup
-            value={placement}
-            onValueChange={(val) => setFormData(prev => ({
-              ...prev,
-              endorsementPlacement: val as 'new-page' | 'same-page',
-              // 9-2.1.a is the manual's own default for a same-page
-              // endorsement, so choosing same-page turns the omission
-              // on unless the drafter has already turned it off.
-              samePageOmitsIdentification: val === 'same-page'
-                ? prev.samePageOmitsIdentification !== false
-                : prev.samePageOmitsIdentification,
-            }))}
-            className="gap-3"
-          >
-            <div className="flex items-start gap-2">
-              <RadioGroupItem value="new-page" id="placement-new-page" className="mt-0.5" />
-              <Label htmlFor="placement-new-page" className="text-sm font-normal leading-snug">
-                New page
-              </Label>
-            </div>
-            <div className="flex items-start gap-2">
-              <RadioGroupItem value="same-page" id="placement-same-page" className="mt-0.5" />
-              <Label htmlFor="placement-same-page" className="text-sm font-normal leading-snug">
-                Same page (added to the signature page of the document it endorses, when it fits)
-              </Label>
-            </div>
-          </RadioGroup>
-          <p className="text-xs text-muted-foreground italic">
-            Paragraph 9-1: if the endorsement fits on the signature page of the basic letter or the
-            preceding endorsement, it goes on that page. If not, it goes on a new page. The fit is
-            measured when the package is assembled.
-          </p>
-        </div>
+        {/* E.3: the letter being endorsed (M-5216.5 9-1, Figure 9-1) */}
+        {samePage && (
+          <div className="space-y-3 p-3 bg-secondary/5 rounded-lg border border-secondary/10">
+            <Label className="text-sm font-medium">Letter being endorsed</Label>
+            <p className="text-xs text-muted-foreground italic">
+              Paragraph 9-1 and Figure 9-1: a same-page endorsement is added to the signature page of
+              the basic letter or the preceding endorsement, below its signature. That page keeps its
+              own letterhead and seal; the endorsement adds none. Attach the letter to see the
+              endorsement on that page and have the fit measured.
+            </p>
+            {host ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="font-medium truncate" data-testid="same-page-host-label">{hostLabel(host)}</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={onClearHost}>Remove</Button>
+                </div>
+                {samePageStatus && samePageStatus.status !== 'no-host' && (
+                  <p className="text-xs text-muted-foreground" data-testid="same-page-host-status">
+                    {describePlacement(samePageStatus)}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="same-page-host-file" className="text-xs text-muted-foreground">Attach the signed letter as a PDF</Label>
+                  <Input
+                    id="same-page-host-file"
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) onAttachHostFile?.(file);
+                      e.target.value = '';
+                    }}
+                  />
+                </div>
+                {hostCandidates.length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Or pick a letter from your library</Label>
+                    <Select onValueChange={(id) => onSelectHostDraft?.(id)}>
+                      <SelectTrigger aria-label="Letter from library">
+                        <SelectValue placeholder="Select a saved letter..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {hostCandidates.map((l) => (
+                          <SelectItem key={l.id} value={l.id}>{l.name || l.subj || l.id}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground italic">
+                  Without it the preview and the export show the endorsement block alone.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {samePage && (
           <div className="flex items-start gap-2 p-3 bg-secondary/5 rounded-lg border border-secondary/10">

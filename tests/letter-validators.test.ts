@@ -648,6 +648,11 @@ describe('same-page endorsement exported alone (E.1, M-5216.5 9-1)', () => {
 
   it('says nothing about a new-page endorsement or any other type', () => {
     expect(validateSamePageEndorsementExport(fd({ documentType: 'endorsement' }))).toEqual([]);
+    // E.3: with the letter being endorsed attached the fit is measured on
+    // every preview and export, so there is nothing to warn about.
+    expect(validateSamePageEndorsementExport({
+      ...SAME_PAGE, samePageHost: { kind: 'file', fileId: 'f1', fileName: 'ltr.pdf' },
+    })).toEqual([]);
     expect(validateSamePageEndorsementExport(fd({ documentType: 'basic', endorsementPlacement: 'same-page' }))).toEqual([]);
   });
 
