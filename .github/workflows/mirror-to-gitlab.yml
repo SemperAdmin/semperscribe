@@ -30,6 +30,10 @@ permissions:
 
 jobs:
   mirror:
+    # Dependabot-triggered runs receive no repository secrets, so the
+    # push step has no token and fails on every Dependabot branch. Those
+    # branches reach GitLab when they merge to main. Skip them here.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
