@@ -6,7 +6,8 @@ import type { ValidationIssue } from '@/lib/letter-validators';
 import { getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { downloadDocument } from '@/services/export/index';
-import type { DocumentDataSlices } from './useLivePreview';
+import type { DocumentDataSlices, SamePageHostResolver } from './useLivePreview';
+import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
 import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-rows';
 import { getClassification, bannerText } from '@/lib/classification';
 import { getEdmsContext, edmsBaseFilename } from '@/lib/edms-mode';
@@ -20,6 +21,8 @@ interface UseDocumentExportArgs {
   enclosureRows?: EnclosureRow[];
   enclosureFiles?: ReadonlyMap<string, EnclosureAttachment>;
   attachmentCoverPages?: boolean;
+  /** E.3: the letter a same-page endorsement is added to, when attached. */
+  resolveSamePageHost?: SamePageHostResolver;
   /** XFA: surfaces the Adobe-only note when the official form exports. */
   toast?: (opts: { title: string; description: string }) => void;
   /**
@@ -36,7 +39,7 @@ interface UseDocumentExportArgs {
  * Document export orchestration: the hard export gate, the SECNAV
  * page-cap check, format routing (PDF/DOCX/I-Type), and the download.
  */
-export function useDocumentExport({ data, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages, toast, onBlocked }: UseDocumentExportArgs) {
+export function useDocumentExport({ data, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages, resolveSamePageHost, toast, onBlocked }: UseDocumentExportArgs) {
   const { formData, vias, references, enclosures, copyTos, paragraphs, distList } = data;
 
   /**
@@ -164,9 +167,27 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
       let blob: Blob;
 
       if (format === 'pdf') {
-        blob = await applySignatureFields(
-          secnavCountedBlob ?? await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
-        );
+        // E.3 (M-5216.5 9-1): a same-page endorsement with the letter
+        // attached exports as that letter with the endorsement placed,
+        // the same render the preview showed.
+        const hostBytes = isSamePageEndorsement(formData) && resolveSamePageHost ? await resolveSamePageHost() : null;
+        if (hostBytes) {
+          const { renderSamePageWithHost, describePlacement } = await import('@/lib/same-page-host');
+          const endorsed = await renderSamePageWithHost(
+            { formData, vias, references, enclosures, copyTos, paragraphs, distList },
+            generatePdfForDocType,
+            hostBytes,
+          );
+          blob = new Blob([new Uint8Array(endorsed.bytes)], { type: 'application/pdf' });
+          toast?.({
+            title: endorsed.placement.status === 'fits' ? 'Same-page endorsement placed' : 'Exported as a new-page endorsement',
+            description: describePlacement(endorsed.placement),
+          });
+        } else {
+          blob = await applySignatureFields(
+            secnavCountedBlob ?? await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
+          );
+        }
       } else {
         const features = DOCUMENT_TYPES[formData.documentType]?.features;
         const paragraphsToRender = features?.isDirective

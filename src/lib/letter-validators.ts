@@ -855,13 +855,17 @@ export function validateEndorsementContinuation(
  */
 export function validateSamePageEndorsementExport(formData: FormData): ValidationIssue[] {
   if (!isSamePageEndorsement(formData)) return [];
+  // E.3: with the letter being endorsed attached, the fit is measured
+  // and the block placed on every preview and export, so there is
+  // nothing to report.
+  if (formData.samePageHost) return [];
   return [{
     id: 'same-page-endorsement-alone',
     severity: 'warn',
     rule: 'Same-page placement is decided against the page below it',
     citation: 'M-5216.5 9-1',
-    detail: 'Same-page placement is decided at package export against the basic letter; exported alone, this is the block only. Assemble the package to have the fit measured and the block placed.',
-    field: 'endorsementPlacement',
+    detail: 'Same-page placement is decided against the signature page of the letter being endorsed; exported alone, this is the block only. Attach the letter being endorsed under Endorsement Details, or assemble the package, to have the fit measured and the block placed.',
+    field: 'samePageHost',
   }];
 }
 

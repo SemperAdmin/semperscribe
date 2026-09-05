@@ -1,6 +1,7 @@
 'use client';
 
-import { ParagraphData, FormData } from '@/types';
+import { ParagraphData, FormData, SavedLetter } from '@/types';
+import type { SamePageStatus } from '@/lib/same-page-host';
 import { DocumentFeatures, DOCUMENT_TYPES } from '@/lib/schemas';
 import { pickerDefinitionFor } from '@/lib/document-type-options';
 import { DynamicForm } from '@/components/ui/DynamicForm';
@@ -31,6 +32,12 @@ import { CoordinationPageForm } from '@/components/letter/CoordinationPageForm';
 import { ITypeFormSections } from '@/components/itype/ITypeFormSections';
 
 interface DocumentLayoutProps {
+  /** E.3: the letter a same-page endorsement is added to. */
+  savedLetters?: SavedLetter[];
+  samePageStatus?: SamePageStatus | null;
+  onAttachSamePageHostFile?: (file: File) => void;
+  onSelectSamePageHostDraft?: (letterId: string) => void;
+  onClearSamePageHost?: () => void;
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   formKey: number;
@@ -148,6 +155,11 @@ export function DocumentLayout({
   commentAuthor,
   handleDynamicFormSubmit,
   onLoadExample,
+  savedLetters,
+  samePageStatus,
+  onAttachSamePageHostFile,
+  onSelectSamePageHostDraft,
+  onClearSamePageHost,
 }: DocumentLayoutProps) {
   // Show landing page when no document type is selected
   if (!formData.documentType) {
@@ -213,7 +225,15 @@ export function DocumentLayout({
           )}
 
           {features.showEndorsementDetails && (
-            <EndorsementDetailsSection formData={formData} setFormData={setFormData} />
+            <EndorsementDetailsSection
+              formData={formData}
+              setFormData={setFormData}
+              savedLetters={savedLetters}
+              samePageStatus={samePageStatus}
+              onAttachHostFile={onAttachSamePageHostFile}
+              onSelectHostDraft={onSelectSamePageHostDraft}
+              onClearHost={onClearSamePageHost}
+            />
           )}
 
           {/* NAVMC 10922: four narrow DynamicForm instances interleaved

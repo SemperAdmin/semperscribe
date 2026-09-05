@@ -5,6 +5,11 @@ import { FormData, ParagraphData, SignaturePosition } from '@/types';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { getClassification, bannerText } from '@/lib/classification';
 import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-rows';
+import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
+import type { SamePageStatus } from '@/lib/same-page-host';
+
+/** E.3: the bytes of the letter a same-page endorsement is added to, or null. */
+export type SamePageHostResolver = () => Promise<Uint8Array | null>;
 
 /** The document state slices every PDF surface renders from. */
 export interface DocumentDataSlices {
@@ -30,12 +35,19 @@ export interface PreviewEnclosureArgs {
  * Live PDF preview: debounced regeneration on document changes, blob
  * URL lifecycle, and the signature-field overlay shared with export.
  */
-export function useLivePreview(data: DocumentDataSlices, enclosureArgs: PreviewEnclosureArgs = {}) {
+export function useLivePreview(
+  data: DocumentDataSlices,
+  enclosureArgs: PreviewEnclosureArgs = {},
+  resolveSamePageHost?: SamePageHostResolver,
+) {
   const { formData, vias, references, enclosures, copyTos, paragraphs, distList } = data;
   const { enclosureRows, enclosureFiles, attachmentCoverPages } = enclosureArgs;
 
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  // E.3: where the same-page endorsement landed on the last render.
+  // Null for every other document.
+  const [samePageStatus, setSamePageStatus] = useState<SamePageStatus | null>(null);
 
   // S2f: configured signature fields ride EVERY PDF surface — preview,
   // export, and the ceremony save all show the same boxes (Stephen's
@@ -59,9 +71,25 @@ export function useLivePreview(data: DocumentDataSlices, enclosureArgs: PreviewE
     try {
       // Eager preview: render on any change, no subject-or-from gate
       // (Stephen 2026-08: the preview should appear as soon as any field is set).
-      let blob = await applySignatureFields(
-        await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
-      );
+      const ctx = { formData, vias, references, enclosures, copyTos, paragraphs, distList };
+      let blob: Blob;
+      let status: SamePageStatus | null = null;
+      // E.3 (M-5216.5 9-1, Figure 9-1): a same-page endorsement with the
+      // letter attached previews as that letter with the endorsement on
+      // its signature page, or appended as a new-page endorsement when
+      // it does not fit. Signature fields are placed on the block's own
+      // page coordinates, so they are not carried onto the composed
+      // page; the block alone still takes them.
+      const hostBytes = isSamePageEndorsement(formData) && resolveSamePageHost ? await resolveSamePageHost() : null;
+      if (hostBytes) {
+        const { renderSamePageWithHost } = await import('@/lib/same-page-host');
+        const endorsed = await renderSamePageWithHost(ctx, generatePdfForDocType, hostBytes);
+        blob = new Blob([new Uint8Array(endorsed.bytes)], { type: 'application/pdf' });
+        status = endorsed.placement;
+      } else {
+        blob = await applySignatureFields(await generatePdfForDocType(ctx));
+        if (isSamePageEndorsement(formData)) status = { status: 'no-host' };
+      }
 
       // ENC: merge bound enclosure files behind the letter - the SAME
       // order and options as export (signature fields first, merge
@@ -85,12 +113,13 @@ export function useLivePreview(data: DocumentDataSlices, enclosureArgs: PreviewE
         if (prev) URL.revokeObjectURL(prev);
         return url;
       });
+      setSamePageStatus(status);
     } catch (e) {
       console.error("Preview generation failed", e);
     } finally {
       setIsGeneratingPreview(false);
     }
-  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages]);
+  }, [formData, vias, references, enclosures, copyTos, paragraphs, distList, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages, resolveSamePageHost]);
 
   // Auto-refresh preview when form data changes (debounced)
   useEffect(() => {
@@ -100,5 +129,5 @@ export function useLivePreview(data: DocumentDataSlices, enclosureArgs: PreviewE
     return () => clearTimeout(timer);
   }, [updatePreview]);
 
-  return { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields };
+  return { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus };
 }
