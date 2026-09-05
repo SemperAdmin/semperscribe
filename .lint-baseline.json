@@ -1,8 +1,7 @@
 {
-  "total": 24,
+  "total": 14,
   "rules": {
-    "react-hooks/exhaustive-deps": 10,
-    "react-hooks/preserve-manual-memoization": 5,
-    "react-hooks/set-state-in-effect": 9
+    "react-hooks/exhaustive-deps": 9,
+    "react-hooks/preserve-manual-memoization": 5
   }
 }

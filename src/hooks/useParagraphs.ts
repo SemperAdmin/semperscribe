@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useSyncedUpdate } from '@/hooks/useSyncedState';
 import { ParagraphData } from '@/types';
 
 /**
@@ -17,29 +18,29 @@ function numberToLetter(num: number): string {
 }
 
 /**
+ * Legacy data migration: level 0 paragraphs become level 1. Returns the
+ * same array when nothing needs changing, so identity is preserved.
+ */
+function normalizeLevels(list: ParagraphData[]): ParagraphData[] {
+  return list.some(p => p.level === 0) ? list.map(p => (p.level === 0 ? { ...p, level: 1 } : p)) : list;
+}
+
+/**
  * Hook for paragraph state management and CRUD operations.
  * Encapsulates add, remove, move, update, citation generation, and validation.
  */
 export function useParagraphs(initialParagraphs?: ParagraphData[]) {
   const [paragraphs, setParagraphs] = useState<ParagraphData[]>(
-    initialParagraphs || [{ id: 1, level: 1, content: '', acronymError: '' }]
+    () => normalizeLevels(initialParagraphs || [{ id: 1, level: 1, content: '', acronymError: '' }])
   );
 
-  // Auto-correct level 0 to level 1 (legacy data migration)
-  useEffect(() => {
-    let hasChanges = false;
-    const newParagraphs = paragraphs.map(p => {
-      if (p.level === 0) {
-        hasChanges = true;
-        return { ...p, level: 1 };
-      }
-      return p;
-    });
-
-    if (hasChanges) {
-      setParagraphs(newParagraphs);
-    }
-  }, [paragraphs]);
+  // A legacy level 0 arriving through setParagraphs (an import, a
+  // restored draft) is corrected in the same render, before anything
+  // downstream sees it. Previously an effect fixed it one commit later.
+  useSyncedUpdate(paragraphs, (list) => {
+    const fixed = normalizeLevels(list);
+    if (fixed !== list) setParagraphs(fixed);
+  });
 
   const addParagraph = useCallback((type: 'main' | 'sub' | 'same' | 'up', afterId: number) => {
     setParagraphs(prev => {

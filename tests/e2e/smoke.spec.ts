@@ -19,6 +19,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import mammoth from 'mammoth';
 import { extractPdfTextLayout } from '../golden/helpers';
+import { getTodaysDate } from '../../src/lib/date-utils';
 
 const SUBJECT = 'SMOKE TEST REQUEST FOR RANGE TIME';
 const PARAGRAPH = 'Request approval for additional range time during the third quarter.';
@@ -119,6 +120,9 @@ test('basic letter exports to PDF and DOCX with the typed subject', async ({ pag
   expect(Math.max(...layout.map(i => i.page))).toBe(1);
   expect(pdfTextOf(layout)).toContain(SUBJECT);
   expect(pdfTextOf(layout)).toContain('range time');
+  // Today's date is applied on the first client render (A.4), not baked
+  // in at build time: the export must carry the run date, navy format.
+  expect(pdfTextOf(layout)).toContain(getTodaysDate());
   // The letterhead seal is an image XObject. Its bytes come from
   // public/seals/ at runtime (B.1), so a broken seal fetch shows up here
   // as a missing image, and above as a same-origin 4xx.

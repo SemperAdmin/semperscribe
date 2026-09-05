@@ -6,7 +6,6 @@ import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
 import { getLoadedUnits, loadUnits } from '@/lib/reference-data';
 import { resolveUnit } from '@/hooks/useUserProfile';
-import { isEdmsMode, getEdmsContext, type EdmsContext } from '@/lib/edms-mode';
 import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename } from '@/lib/naval-format-utils';
 import { loadSavedLetters, clearSavedLetters } from '@/lib/storage-utils';
@@ -60,6 +59,8 @@ import { useLivePreview } from '@/hooks/useLivePreview';
 import { useDocumentExport } from '@/hooks/useDocumentExport';
 import { useSignatureWorkflow } from '@/hooks/useSignatureWorkflow';
 import { useShareLinkLoader } from '@/hooks/useShareLinkLoader';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useSyncedUpdate } from '@/hooks/useSyncedState';
 import { ITypePreview } from '@/components/itype/ITypePreview';
 import { useITypeStore } from '@/store/iTypeStore';
 
@@ -353,10 +354,14 @@ function NavalLetterGeneratorInner() {
     dismissRecovery();
   };
 
-  // Set today's date
-  useEffect(() => {
-    setFormData(prev => ({ ...prev, date: getTodaysDate() }));
-  }, []);
+  // Today's date, applied on the first client render. Not part of the
+  // initial state: the static export is prerendered at build time, and a
+  // build-date value in the markup would mismatch the client's on
+  // hydration. useHydrated is false for that render and true after it.
+  const hydrated = useHydrated();
+  useSyncedUpdate(hydrated, (isClient) => {
+    if (isClient) setFormData(prev => ({ ...prev, date: getTodaysDate() }));
+  });
 
   // Re-apply profile when settings change (e.g. user edits profile mid-session)
   // (Declared before the effect below that calls it - declaration-order
@@ -392,15 +397,14 @@ function NavalLetterGeneratorInner() {
     setFormKey(prev => prev + 1);
   }, [getFormDefaults, profile.unitRuc]);
 
-  // Apply user profile defaults on initial load
-  useEffect(() => {
-    if (profileLoaded) {
-      applyProfileToForm();
-    }
-    // Mount-gated by profileLoaded only - re-application on later profile
-    // edits happens explicitly on Settings close (pre-existing contract).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileLoaded]);
+  // Apply user profile defaults once the profile has loaded. Keyed on
+  // the loaded flag only: re-application on later profile edits happens
+  // explicitly on Settings close (pre-existing contract). Every write in
+  // applyProfileToForm is this component's own state, so it runs in the
+  // render where the flag flips rather than one commit later.
+  useSyncedUpdate(profileLoaded, (loaded) => {
+    if (loaded) applyProfileToForm();
+  });
 
   // Handle Cancellation Contingency for MCBul
   useEffect(() => {
@@ -423,36 +427,41 @@ function NavalLetterGeneratorInner() {
     }
   }, [formData.documentType, formData.cancellationType, paragraphs]);
 
-  // Sync Reports to Admin Subsections
-  useEffect(() => {
-    if (DOCUMENT_TYPES[formData.documentType]?.features?.showReports) {
-      let content = 'None.';
-      const validReports = (formData.reports as ReportData[] | undefined)?.filter(r => r.title) || [];
+  // Sync Reports to Admin Subsections. Re-derived when the reports list
+  // or the document type changes identity, same triggers as the effect
+  // this replaces, and written back only when the text differs.
+  const reportsSource = useMemo(
+    () => ({ reports: formData.reports as ReportData[] | undefined, documentType: formData.documentType }),
+    [formData.reports, formData.documentType],
+  );
+  useSyncedUpdate(reportsSource, ({ reports, documentType }) => {
+    if (!DOCUMENT_TYPES[documentType]?.features?.showReports) return;
+    let content = 'None.';
+    const validReports = reports?.filter(r => r.title) || [];
 
-      if (validReports.length > 0) {
-        const reportTexts = validReports.map(r => {
-          if (r.exempt) {
-            return `${r.title} is exempt from reports control.`;
-          }
-          return `${r.title} (Report Control Symbol ${r.controlSymbol || 'TBD'})`;
-        });
-        content = reportTexts.join(' ');
-      }
-
-      if (formData.adminSubsections?.reportsRequired?.content !== content) {
-         setFormData(prev => ({
-            ...prev,
-            adminSubsections: {
-                ...prev.adminSubsections!,
-                reportsRequired: {
-                    ...prev.adminSubsections!.reportsRequired,
-                    content
-                }
-            }
-         }));
-      }
+    if (validReports.length > 0) {
+      const reportTexts = validReports.map(r => {
+        if (r.exempt) {
+          return `${r.title} is exempt from reports control.`;
+        }
+        return `${r.title} (Report Control Symbol ${r.controlSymbol || 'TBD'})`;
+      });
+      content = reportTexts.join(' ');
     }
-  }, [formData.reports, formData.documentType]);
+
+    if (formData.adminSubsections?.reportsRequired?.content !== content) {
+      setFormData(prev => ({
+        ...prev,
+        adminSubsections: {
+          ...prev.adminSubsections!,
+          reportsRequired: {
+            ...prev.adminSubsections!.reportsRequired,
+            content
+          }
+        }
+      }));
+    }
+  });
 
   // Sync I-Type form data to store for real-time preview
   useEffect(() => {
@@ -804,12 +813,6 @@ function NavalLetterGeneratorInner() {
   const handleToggleComment = (id: string) => setComments((prev) => toggleResolved(prev, id));
   const handleRemoveComment = (id: string) => setComments((prev) => removeComment(prev, id));
 
-  // EDMS mode drives the Save to EDMS menu item. Read after mount, never
-  // during render: sessionStorage does not exist in the static-export
-  // prerender, so a render-body read hydrates to a different tree.
-  const [, setEdmsCtx] = useState<EdmsContext | null>(null);
-  useEffect(() => { if (isEdmsMode()) setEdmsCtx(getEdmsContext()); }, []);
-
   // Share-link intake (?share= legacy, #es= encrypted) and S2 routing slip
   const {
     routingRequest, setRoutingRequest,
@@ -821,7 +824,6 @@ function NavalLetterGeneratorInner() {
     // EDMS handoff. Scalars only: no subject, no names, no body. See
     // lib/edms-handoff.ts for why the payload is deliberately narrow.
     onEdmsPrefill: (p) => {
-      setEdmsCtx(getEdmsContext());
       setFormData(prev => ({
         ...prev,
         documentType: p.docType || prev.documentType,

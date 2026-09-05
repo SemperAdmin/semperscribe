@@ -41,3 +41,27 @@ export function useSyncedState<T, S>(
 export function anyNonBlank(items: readonly string[]): boolean {
   return items.some(item => item.trim() !== '');
 }
+
+/**
+ * Runs `apply(source, prev)` during the render in which `source` changes
+ * identity, and once on the first render with `prev` undefined.
+ *
+ * Replaces the pattern
+ *
+ *   useEffect(() => { if (loaded) setOther(derive()); }, [loaded]);
+ *
+ * where the state being written belongs to the same component but is
+ * not the state `useSyncedState` would own (several setters, or a shared
+ * form object). `apply` may only call this component's own state
+ * setters and pure reads: React re-runs the component immediately after
+ * a render-phase update, so nothing else is safe there. Side effects
+ * which touch the outside world (storage, the URL, timers) stay in a
+ * `useEffect`.
+ */
+export function useSyncedUpdate<T>(source: T, apply: (source: T, prev: T | undefined) => void): void {
+  const [prev, setPrev] = useState<{ value: T } | null>(null);
+  if (prev === null || prev.value !== source) {
+    setPrev({ value: source });
+    apply(source, prev === null ? undefined : prev.value);
+  }
+}

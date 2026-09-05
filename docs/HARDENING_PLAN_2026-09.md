@@ -71,6 +71,10 @@ Seals moved to `public/seals/` byte-identical; `dod-seal-data.ts` deleted. Total
 
 Seven reset-on-input effects gone, lint 31 to 24. PageCountIndicator, DocumentImportModal and RevisionCompareDialog re-derive through `useSyncedState` keyed on the URL, the parse result and the dialog phase. ShareLinkDialog and GunnyBotSettings derive the EDMS lock and the saved proxy URL from `useHydrated`; the GunnyBot effect keeps only the store side effects. SignaturePlacementModal is split into a wrapper and a body remounted by key on each open, with the object URL memoised in the wrapper and revoked in a cleanup-only effect. Twenty component tests added across six files, one file per dialog. Bundle unchanged (initial 3,139,086 B, total 6,823,625 B).
 
+## Phase A.4 status, 2026-09-05: landed (v0.4.2)
+
+The last nine `set-state-in-effect` warnings are gone, lint 24 to 14; the rule now sits at zero. New `useSyncedUpdate` (same file as `useSyncedState`) runs a callback during the render in which a source changes, for the cases where the written state is not the hook's own: today's date and the profile defaults in page.tsx, the reports-to-admin-subsection sync, and the level 0 migration in useParagraphs. useShareLinkLoader reads the inbound link once through `useHydrated` and keeps a consuming effect for the EDMS latch and hash clear. useSpellCheck derives the cleared state; useVoiceInput creates its recogniser on the first mic press through refs; Page11RemarksSection loads its template list from the button which opens the picker. A dead EDMS context state in page.tsx (setter only, value never read) was deleted. Twenty tests across six files, plus a run-date assertion in the smoke test. Bundle unchanged (initial 3,139,589 B, total 6,824,128 B).
+
 ## Phase 0: safety net (one PR, blocks everything after it)
 
 ### 0.1 Browser smoke test on the built export
