@@ -119,6 +119,10 @@ test('basic letter exports to PDF and DOCX with the typed subject', async ({ pag
   expect(Math.max(...layout.map(i => i.page))).toBe(1);
   expect(pdfTextOf(layout)).toContain(SUBJECT);
   expect(pdfTextOf(layout)).toContain('range time');
+  // The letterhead seal is an image XObject. Its bytes come from
+  // public/seals/ at runtime (B.1), so a broken seal fetch shows up here
+  // as a missing image, and above as a same-origin 4xx.
+  expect(pdf.bytes.toString('latin1')).toMatch(/\/Subtype\s*\/Image/);
 
   // DOCX: a zip Word can open, with the subject in the body text.
   const docx = await exportVia(page, 'Word Document (.docx)', 'docx');
