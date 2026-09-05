@@ -21,6 +21,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { pickerTypeFor, SAME_PAGE_ENDORSEMENT_OPTION } from '@/lib/document-type-options';
 
 interface SidebarProps {
   className?: string;
@@ -183,6 +184,14 @@ function scrollToResult(result: SearchResult, query: string) {
 export function Sidebar({ className, documentType, onDocumentTypeChange, paragraphs = [], formData, onItemSelect }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
+  // E.2: the endorsement's two placements (M-5216.5 9-1) are two
+  // options here. The form still carries one document type, so the
+  // selected option is read from the type and the placement together.
+  const pickerType = pickerTypeFor({
+    documentType,
+    endorsementPlacement: formData?.endorsementPlacement,
+  });
+
   // Wrap the document-type handler so the mobile drawer auto-closes on selection.
   // When onItemSelect is undefined (desktop), behavior is identical to a direct call.
   const handleSelect = (type: string) => {
@@ -251,9 +260,14 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                     label="Multiple-Address Letter"
                   />
                   <DocumentTypeButton
-                    active={documentType === 'endorsement'}
+                    active={pickerType === 'endorsement'}
                     onClick={() => handleSelect('endorsement')}
                     label="Endorsement"
+                  />
+                  <DocumentTypeButton
+                    active={pickerType === SAME_PAGE_ENDORSEMENT_OPTION}
+                    onClick={() => handleSelect(SAME_PAGE_ENDORSEMENT_OPTION)}
+                    label="Same-Page Endorsement"
                   />
                 </div>
               </AccordionContent>
@@ -554,7 +568,9 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
 function DocumentTypeButton({ active, onClick, label, isSpecial }: { active: boolean, onClick: () => void, label: string, isSpecial?: boolean }) {
   return (
     <button
+      type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         "w-full text-left flex items-center px-2 py-1.5 text-sm font-medium rounded-md group transition-colors",
         active

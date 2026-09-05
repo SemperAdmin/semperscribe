@@ -20,6 +20,7 @@ import { runLetterValidators } from '@/lib/letter-validators';
 import type { ValidationIssue } from '@/lib/letter-validators';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
+import { resolvePickerType } from '@/lib/document-type-options';
 import { AMHSPreview } from '@/components/amhs/AMHSPreview';
 import { useToast } from '@/hooks/use-toast';
 import { SignatureCeremonyPanel } from '@/components/signature/SignatureCeremonyPanel';
@@ -496,7 +497,12 @@ function NavalLetterGeneratorInner() {
     }
   }, [formData, setITypeFormData]);
 
-  const handleDocumentTypeChange = (newType: string) => {
+  const handleDocumentTypeChange = (pickedType: string) => {
+    // E.2: the picker offers the same-page endorsement as its own
+    // option; it resolves to the endorsement type with same-page
+    // placement (M-5216.5 9-1). Every other option is a document type
+    // and resolves to itself with new-page placement.
+    const { documentType: newType, endorsementPlacement } = resolvePickerType(pickedType);
     const newFeatures = DOCUMENT_TYPES[newType]?.features;
     const oldFeatures = DOCUMENT_TYPES[formData.documentType]?.features;
 
@@ -534,7 +540,7 @@ function NavalLetterGeneratorInner() {
       to: newFeatures?.isDirective ? 'Distribution List' : prev.to,
       startingReferenceLevel: 'a',
       startingEnclosureNumber: '1',
-      endorsementPlacement: 'new-page',
+      endorsementPlacement,
       samePageOmitsIdentification: true,
       startingPageNumber: 1,
       previousPackagePageCount: 0,

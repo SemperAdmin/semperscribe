@@ -5,6 +5,41 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.6.2] - 2026-09-05
+
+The same-page endorsement as its own option. 0.6.0 put the two
+placements of M-5216.5 9-1 behind a radio inside the endorsement's
+details, so a drafter picked "Endorsement" and then found the
+placement further down the form. The picker now offers the two forms
+side by side. The document type underneath is unchanged: the schema,
+the emitters, the validators and every saved document still carry one
+endorsement type with a placement field, so nothing written before
+this release reads differently.
+
+### Added
+
+- "Same-Page Endorsement" in the sidebar, the command palette and the
+  header above the form, listed directly after "Endorsement". Picking
+  it sets the endorsement type with same-page placement and the
+  9-2.1.a omission; picking "Endorsement" sets new-page placement. The
+  selected option follows the form, so a document loaded with
+  same-page placement highlights the same-page option, and the
+  placement radio in the endorsement details stays in step with the
+  sidebar.
+- `src/lib/document-type-options.ts`, the one mapping between picker
+  ids and form fields, with tests in both directions.
+- The sidebar's type buttons carry `aria-pressed`, so a screen reader
+  announces which type is selected.
+
+### Changed
+
+- The endorsement type's description now reads "on a page of its own",
+  since the same-page form has its own entry.
+- The "New-Page Endorsement" template's sample body no longer ships a
+  subdivision with one member. Its sub-paragraph (a) had no (b) and its
+  (1) had no (2), so the template opened with the compliance banner red
+  on the rule it is meant to illustrate.
+
 ## [0.6.1] - 2026-09-05
 
 A template for the same-page endorsement 0.6.0 added. The library's
