@@ -10,6 +10,7 @@ import { ParagraphData, SavedLetter, FormData } from '@/types';
 import { getExportFilename } from '@/lib/naval-format-utils';
 import { FEEDBACK_URL } from '@/lib/app-links';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { useCommandPaletteHint } from '@/hooks/useCommandPaletteHint';
 
 interface ModernAppShellProps {
   children: React.ReactNode;
@@ -27,11 +28,13 @@ interface ModernAppShellProps {
   onImport: (data: any) => void;
   onImportDocument?: (file: File) => void;
   isImportingDocument?: boolean;
+  /** R11 (D.7): opens the import review modal on its paste step. */
+  onPasteImport?: () => void;
   onClearForm: () => void;
   savedLetters: SavedLetter[];
   /** P1.2: opens the document library dialog */
   onOpenLibrary?: () => void;
-  onLoadTemplateUrl: (url: string) => void;
+  onLoadTemplateUrl: (url: string, templateDocumentType?: string) => void;
   currentUnitCode?: string;
   currentUnitName?: string;
   onExportNldp: () => void;
@@ -63,6 +66,8 @@ interface ModernAppShellProps {
   onSettings?: () => void;
   isDirty?: boolean;
   lastSavedAt?: Date | null;
+  /** D.7: opens the Ctrl+K command palette from the header hint. */
+  onOpenCommandPalette?: () => void;
 }
 
 export function ModernAppShell({
@@ -80,6 +85,7 @@ export function ModernAppShell({
   onImport,
   onImportDocument,
   isImportingDocument,
+  onPasteImport,
   onClearForm,
   savedLetters,
   onOpenLibrary,
@@ -108,6 +114,7 @@ export function ModernAppShell({
   onSettings,
   isDirty,
   lastSavedAt,
+  onOpenCommandPalette,
 }: ModernAppShellProps) {
   const [showPreview, setShowPreview] = React.useState(true);
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
@@ -118,6 +125,7 @@ export function ModernAppShell({
   // which 404s on GitHub Pages before the effect corrected it (caught by
   // the e2e smoke test's zero-console-error assertion).
   const logoSrc = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/logo.png`;
+  const paletteShortcut = useCommandPaletteHint();
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-sans overflow-hidden">
@@ -200,6 +208,36 @@ export function ModernAppShell({
               </>
             )}
           </div>
+
+          {/* D.7: the palette hint. R8 shipped Ctrl+K with nothing on
+              screen naming it, so the audit's admin corporal never found
+              it. The kbd is the advertisement, and the button around it
+              is the way in for a pointer or a touch screen. */}
+          <div className="hidden lg:flex items-center ml-3">
+            {onOpenCommandPalette ? (
+              <button
+                type="button"
+                onClick={onOpenCommandPalette}
+                title={`Command palette (${paletteShortcut})`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-primary-foreground/20 px-2 py-1 text-primary-foreground/70 hover:text-primary-foreground hover:border-primary-foreground/40 transition-colors"
+              >
+                <span className="text-[11px]">Commands</span>
+                <kbd className="font-sans text-[10px] font-medium tracking-wide rounded bg-primary-foreground/10 px-1.5 py-0.5">
+                  {paletteShortcut}
+                </kbd>
+              </button>
+            ) : (
+              <span
+                title={`Command palette (${paletteShortcut})`}
+                className="inline-flex items-center gap-1.5 text-primary-foreground/70"
+              >
+                <span className="text-[11px]">Commands</span>
+                <kbd className="font-sans text-[10px] font-medium tracking-wide rounded bg-primary-foreground/10 px-1.5 py-0.5">
+                  {paletteShortcut}
+                </kbd>
+              </span>
+            )}
+          </div>
         </div>
 
         <HeaderActions
@@ -210,6 +248,7 @@ export function ModernAppShell({
             onImport={onImport}
             onImportDocument={onImportDocument}
             isImportingDocument={isImportingDocument}
+            onPasteImport={onPasteImport}
             onExportDocx={onExportDocx}
             onGeneratePdf={onGeneratePdf}
             onClearForm={onClearForm}

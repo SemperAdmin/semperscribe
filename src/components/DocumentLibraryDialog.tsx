@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FolderOpen, Search, Pencil, Copy, Trash2, Check, X } from 'lucide-react';
+import { FolderOpen, Search, Pencil, Copy, Trash2, Check, X, Save } from 'lucide-react';
 import { SavedLetter } from '@/types';
 
 type SortMode = 'recent' | 'alpha';
@@ -31,6 +31,10 @@ interface DocumentLibraryDialogProps {
   onRename: (id: string, name: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
+  /** D.7: Save Draft for the document on screen, from the empty state. */
+  onSaveCurrent?: () => void;
+  /** True when the document on screen holds something worth saving. */
+  canSaveCurrent?: boolean;
 }
 
 function displayName(letter: SavedLetter): string {
@@ -58,6 +62,8 @@ export function DocumentLibraryDialog({
   onRename,
   onDuplicate,
   onDelete,
+  onSaveCurrent,
+  canSaveCurrent,
 }: DocumentLibraryDialogProps) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortMode>('recent');
@@ -128,8 +134,19 @@ export function DocumentLibraryDialog({
 
         <div className="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 native-scroll">
           {visible.length === 0 ? (
-            <div className="text-center py-10 text-sm text-muted-foreground">
-              {letters.length === 0 ? 'No saved documents yet. Use File, Save Draft.' : 'No documents match your search.'}
+            <div className="text-center py-10 text-sm text-muted-foreground space-y-3">
+              <p>
+                {letters.length === 0 ? 'No saved documents yet. Use File, Save Draft.' : 'No documents match your search.'}
+              </p>
+              {/* D.7: the empty state offers the action it names. It is
+                  held back on an untouched document, where saving would
+                  file an empty draft under "Untitled". */}
+              {letters.length === 0 && onSaveCurrent && canSaveCurrent && (
+                <Button size="sm" onClick={onSaveCurrent}>
+                  <Save className="w-3.5 h-3.5 mr-2" />
+                  Save this document now
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-1">
