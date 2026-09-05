@@ -21,6 +21,13 @@
     "url": "/templates/global/endorsement.nldp"
   },
   {
+    "id": "same-page-endorsement",
+    "title": "Same-Page Endorsement",
+    "description": "A short endorsement placed on the signature page of the letter it forwards when it fits there. SSIC, subject and basic letter identification omitted.",
+    "documentType": "endorsement",
+    "url": "/templates/global/same-page-endorsement.nldp"
+  },
+  {
     "id": "memorandum-for-record",
     "title": "Memorandum for the Record",
     "description": "Internal document used to record events, decisions, or conversations.",
@@ -453,8 +460,7 @@
     "description": "GAIN of spouse by proxy marriage - CO cannot approve, routes to CMC (MFP-1). Sample data - replace before use.",
     "documentType": "navmc10922",
     "url": "/templates/global/navmc10922-marriage-proxy.nldp"
-  }
-,
+  },
   {
     "id": "navmc10132-simple-ua",
     "title": "NAVMC 10132 - Simple UA, Accepted NJP",
