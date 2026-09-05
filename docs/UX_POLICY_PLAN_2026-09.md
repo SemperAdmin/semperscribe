@@ -4,6 +4,43 @@ Three audits ran on 2026-09-05 against v0.4.8 on main: a policy audit of every r
 
 The owner's standard for this program: every function traces to policy, and the measure of a phase is whether it stops a kickback or removes a step from a drafter's day.
 
+## Status, 2026-09-05 overnight run
+
+All eight phases landed between v0.5.1 and v0.5.9, one PR each, with the companion (C.2, v0.5.0) and a dependency hold (v0.5.7) in the same run. Every PR merged on a green head: typecheck, lint at zero warnings, the unit suite, the Playwright paths, CodeQL, the bundle budgets, and the Amazon Q review.
+
+| Phase | Version | PR | What landed |
+|---|---|---|---|
+| C.2 companion | 0.5.0 | #51 | `companion/` HTTP and MCP servers over the export pipelines, 60 tests, golden parity, CodeQL findings on path confinement and error text fixed in review |
+| D.1 | 0.5.1 | #52 | "Copy to:" on the second line below the signature in the PDF, two-line floor declared on every paragraph branch, this plan and the three audits committed |
+| D.2 | 0.5.2 | #53 | keyboard-reachable body, compliance banner at every width, live save state, smoke test waits on committed document state |
+| D.3 | 0.5.3 | #54 | endorsement reference lettering honoured by the validator, one letter walk for all three emitters, DOCX scoping matched to the PDF |
+| D.5 | 0.5.4 | #55 | business and executive letters follow chapters 11 and 12: ID block left, capitals, half-inch indent, close and name offsets, numbered enclosures |
+| D.6 | 0.5.5 | #56 | English spelling to the browser, the bar keeps the acronym rule only |
+| D.4 | 0.5.6 | #57 | rules cite the manual, six hardcoded proofread passes replaced, subject and enclosure-order and rank rules, export gate on every download path, jump-to-field, guidance chapter citations corrected |
+| zod hold | 0.5.7 | #58 | zod held at 4.4.3, 91 KB of initial load recovered, attribution report under `audits/` |
+| D.7 | 0.5.8 | #60 | every template reachable with a type chip, save from the empty library, Ctrl+K hint, paste-to-import |
+| D.8 | 0.5.9 | #61 | short consent, filled example, preview empty state, real headings, combobox ARIA, 44 px touch targets, axe pass in the e2e suite |
+
+Bundle: initial-load JS 2,554,445 B at v0.4.8, 2,601,947 B at v0.5.9. The weekly dependency group added about 110 KB, of which the zod hold took back 91 KB; the phases themselves added about 47 KB, most of it the D.4 citation map and rank table, which run on every keystroke and cannot be deferred.
+
+What the builders found wrong in this plan, recorded so the next audit starts from the corrected facts:
+
+- D.1: the two-line floor was already the react-pdf default, so the declaration pins the rule rather than changing pagination. The signature reference line is the last line of the block (the "By direction" line on the fixture), not the name.
+- D.4: the manual numbers From as 7-2.6, To as 7-2.7 and Via as 7-2.8, and "SSIC 2-6" does not exist. The proofread panel had six hardcoded passes, not four.
+- D.5: the audit's "PDF right, DOCX left" claim for the business ID block was wrong; both emitters were right on page 1. DLA excludes itself from every touched block by its own gates.
+- D.6: the military word set carries no correction data, so no "military term" branch is possible. The old hook produced fifteen false positives on the audit's paragraph, not six.
+- D.7: the import modal has no file picker; the file input is hidden in the header. Loading a template never ran the document-type change path, so MCO and staffing-paper templates opened with a basic letter's single paragraph.
+- D.8: the six required fields are SSIC, originator's code, date, From, To and Subject. The shipped example was itself non-compliant. The F6 contrast measurement used the wrong ground colour.
+
+Open after this run, each its own PR:
+
+- Header and footer contrast (3.14:1 title, 3.26:1 menu triggers, 4.49:1 footer) and the sidebar heading order, excluded from the axe gate until fixed.
+- `loadMilitaryWordSet` has no production caller after D.6.
+- `ParagraphData.acronymError` is read and persisted but never written.
+- The XFA fill still applies `startingReferenceLevel` unconditionally where the PDF and DOCX scope it to endorsements.
+- The acronym table's multi-word and digit-led keys ("I MEF", "1stSgt") are unreachable by the tokenizer.
+- The renderer bump to 4.9.x (#59) stays open until its flate streams read under Node.
+
 ## What the audits agreed on
 
 - The rendered output is right for the standard naval letter body, continuation pages, signature offsets, directive ladders, endorsement page numbering, and every directive paragraph rule. Those are pinned by tests and stay untouched.
