@@ -12,6 +12,13 @@
  * - startingEnclosureNumber: enclosures number continuously (1, 2, 3...),
  *   same rule.
  *
+ * E.1 adds one exception to the page arithmetic. A same-page
+ * endorsement (M-5216.5 9-1) is drawn on the signature page of the
+ * member before it, so when it fits it adds no page and the member
+ * after it continues from the host's count. Whether it fits is a
+ * measurement made by lib/same-page-endorsement.ts and handed in here,
+ * never a preference read off the form.
+ *
  * Every function here is PURE. Page counts come from the caller (the
  * PDF engine is the only honest source), so this library never renders.
  */
@@ -39,6 +46,37 @@ export interface PackageMember {
   enclosureCount: number;
   /** Rendered page count. Supplied by the caller; 0 when unknown. */
   pageCount: number;
+  /**
+   * E.1 (M-5216.5 9-1). Placement the drafter chose. Undefined reads
+   * as 'new-page'.
+   */
+  endorsementPlacement?: 'new-page' | 'same-page';
+  /**
+   * E.1. Whether the same-page block was measured to fit on the
+   * signature page of the member before it. Undefined means the
+   * package has not been measured, so nothing is known yet; the fit is
+   * a measurement, never a preference.
+   */
+  samePageFits?: boolean;
+}
+
+/**
+ * A same-page endorsement which was measured and fits. It is drawn on
+ * the previous member's signature page, so it adds no page of its own
+ * and the member after it continues from the host's page count (9-1).
+ */
+export function fitsOnSignaturePage(member: PackageMember): boolean {
+  return member.endorsementPlacement === 'same-page' && member.samePageFits === true;
+}
+
+/**
+ * A same-page endorsement which was measured and does NOT fit falls
+ * back to the new-page form, and 9-2.1.a's omission goes with it:
+ * Figure 9-1's second endorsement repeats the SSIC, identifies the
+ * basic letter in the endorsement line and uses its subject.
+ */
+export function asNewPageFallback(letter: SavedLetter): SavedLetter {
+  return { ...letter, endorsementPlacement: 'new-page', samePageOmitsIdentification: false };
 }
 
 export interface ComputedSequence {
@@ -62,7 +100,7 @@ export interface PackageIssue {
 }
 
 /** Converts a member into the SavedLetter fields the renderer reads. */
-export function toMember(letter: SavedLetter, pageCount = 0): PackageMember {
+export function toMember(letter: SavedLetter, pageCount = 0, samePageFits?: boolean): PackageMember {
   return {
     id: letter.id,
     name: letter.name || letter.subj || 'Untitled',
@@ -71,6 +109,8 @@ export function toMember(letter: SavedLetter, pageCount = 0): PackageMember {
     referenceCount: (letter.references ?? []).filter((r) => r.trim()).length,
     enclosureCount: (letter.enclosures ?? []).filter((e) => e.trim()).length,
     pageCount,
+    endorsementPlacement: letter.endorsementPlacement,
+    samePageFits,
   };
 }
 
@@ -86,15 +126,19 @@ export function computeSequences(members: PackageMember[]): ComputedSequence[] {
   let enclsSoFar = 0;
 
   return members.map((member, index) => {
+    // E.1 (9-1): a same-page endorsement which fits lands ON the
+    // previous member's last page, so it starts on that page rather
+    // than the one after it, and it adds nothing to the running count.
+    const onHostPage = index > 0 && fitsOnSignaturePage(member);
     const sequence: ComputedSequence = {
       id: member.id,
       position: index + 1,
-      startingPageNumber: pagesSoFar + 1,
+      startingPageNumber: onHostPage ? Math.max(1, pagesSoFar) : pagesSoFar + 1,
       startingReferenceLevel: indexToRefLetter(refsSoFar + 1),
       startingEnclosureNumber: enclsSoFar + 1,
-      previousPackagePageCount: pagesSoFar,
+      previousPackagePageCount: onHostPage ? Math.max(0, pagesSoFar - 1) : pagesSoFar,
     };
-    pagesSoFar += member.pageCount;
+    if (!onHostPage) pagesSoFar += member.pageCount;
     refsSoFar += member.referenceCount;
     enclsSoFar += member.enclosureCount;
     return sequence;
@@ -158,8 +202,37 @@ export function validatePackage(members: PackageMember[]): PackageIssue[] {
     }
   });
 
-  // 4. Page counts must be known for the math to be trustworthy.
-  const unknown = members.filter((m) => m.pageCount <= 0);
+  // 4. E.1 (9-1): the basic letter cannot be a same-page endorsement.
+  //    There is no signature page before it to add it to.
+  if (first.endorsementPlacement === 'same-page') {
+    issues.push({
+      id: 'package-first-member-same-page',
+      severity: 'fail',
+      rule: 'A same-page endorsement needs a document to sit on',
+      detail: `"${first.name}" is set to same-page placement but is the first member, so there is no signature page under it. Paragraph 9-1 places a same-page endorsement on the signature page of the basic letter or the preceding endorsement.`,
+    });
+  }
+
+  // 5. E.1: the fit is a measurement, so an unmeasured same-page
+  //    member is a question the package cannot answer yet.
+  const unmeasured = members.filter(
+    (m, i) => i > 0 && m.endorsementPlacement === 'same-page' && m.samePageFits === undefined,
+  );
+  if (unmeasured.length > 0) {
+    issues.push({
+      id: 'package-same-page-unmeasured',
+      severity: 'warn',
+      rule: 'Same-page placement is decided by measurement',
+      detail: `${unmeasured.length} same-page endorsement(s) have not been measured against the page they would sit on. Measure the package to check fit.`,
+    });
+  }
+
+  // 6. Page counts must be known for the math to be trustworthy. A
+  //    same-page member which was measured and fits reports zero pages
+  //    on purpose, so it is not counted as unknown.
+  const unknown = members.filter(
+    (m) => m.pageCount <= 0 && !(m.endorsementPlacement === 'same-page' && m.samePageFits !== undefined),
+  );
   if (unknown.length > 0) {
     issues.push({
       id: 'package-unknown-page-counts',

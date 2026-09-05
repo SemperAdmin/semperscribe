@@ -90,6 +90,11 @@ function NavalLetterGeneratorInner() {
     referenceDate: '',
     startingReferenceLevel: 'a',
     startingEnclosureNumber: '1',
+    // E.1 (M-5216.5 9-1, 9-2.1.a). New page is the placement that
+    // always works; the omission is the manual's own default once
+    // same-page is chosen.
+    endorsementPlacement: 'new-page',
+    samePageOmitsIdentification: true,
     line1: '', line1b: '', line2: '', line3: '', ssic: '', originatorCode: '', date: '', from: '', to: '', subj: '', sig: '', delegationText: '',
     startingPageNumber: 1,
     previousPackagePageCount: 0,
@@ -529,6 +534,8 @@ function NavalLetterGeneratorInner() {
       to: newFeatures?.isDirective ? 'Distribution List' : prev.to,
       startingReferenceLevel: 'a',
       startingEnclosureNumber: '1',
+      endorsementPlacement: 'new-page',
+      samePageOmitsIdentification: true,
       startingPageNumber: 1,
       previousPackagePageCount: 0,
     }));
@@ -652,6 +659,8 @@ function NavalLetterGeneratorInner() {
             referenceDate: '',
             startingReferenceLevel: 'a',
             startingEnclosureNumber: '1',
+            endorsementPlacement: 'new-page',
+            samePageOmitsIdentification: true,
             line1: defaults.line1, line1b: defaults.line1b, line2: defaults.line2, line3: defaults.line3,
             ssic: '', originatorCode: defaults.originatorCode, date: getTodaysDate(),
             from: defaults.from, to: '', subj: '', sig: defaults.sig, delegationText: '',
@@ -1160,6 +1169,7 @@ function NavalLetterGeneratorInner() {
         sequences={pkg.sequences}
         issues={pkg.issues}
         busy={pkg.busy}
+        fits={pkg.fits}
         onAdd={pkg.add}
         onRemove={pkg.remove}
         onMove={pkg.move}

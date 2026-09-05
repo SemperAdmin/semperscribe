@@ -4,6 +4,18 @@
 // throughout the codebase as a loose bag of optional properties.
 export type FormData = {
   documentType: string;
+  /**
+   * E.1 (M-5216.5 9-1). Endorsement placement. Undefined reads as
+   * 'new-page', so a document saved before the field existed keeps
+   * the placement it was written with.
+   */
+  endorsementPlacement?: 'new-page' | 'same-page';
+  /**
+   * E.1 (M-5216.5 9-2.1.a). Omit the SSIC, the subject and the basic
+   * letter's identification symbols on a same-page endorsement.
+   * Undefined reads as true, which is what Figure 9-1 draws.
+   */
+  samePageOmitsIdentification?: boolean;
   [key: string]: any;
 };
 

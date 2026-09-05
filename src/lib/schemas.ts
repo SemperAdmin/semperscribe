@@ -343,12 +343,26 @@ export const EndorsementSchema = BasicLetterSchema.extend({
   startingEnclosureNumber: z.string().optional(),
   startingPageNumber: z.number().optional(),
   previousPackagePageCount: z.number().optional(),
+  /**
+   * E.1 (M-5216.5 9-1). Where the endorsement is placed. Undefined
+   * reads as 'new-page', so every document saved before this field
+   * existed keeps the placement it was written with.
+   */
+  endorsementPlacement: z.enum(['new-page', 'same-page']).optional(),
+  /**
+   * E.1 (M-5216.5 9-2.1.a). A same-page endorsement omits the SSIC,
+   * the subject and the basic letter's identification symbols as long
+   * as the entire page is photocopied. Undefined reads as true for a
+   * same-page endorsement, which is the manual's own default in
+   * Figure 9-1.
+   */
+  samePageOmitsIdentification: z.boolean().optional(),
 });
 
 export const EndorsementDefinition: DocumentTypeDefinition = {
   id: 'endorsement',
-  name: 'New-Page Endorsement',
-  description: 'Forwards correspondence on a new page.',
+  name: 'Endorsement',
+  description: 'Forwards correspondence on the signature page when it fits, or on a new page.',
   icon: '📝',
   schema: EndorsementSchema,
   features: { ...STANDARD_LETTER_FEATURES, showEndorsementDetails: true },

@@ -131,8 +131,8 @@ export function DocumentTypeSection({
             <DocumentTypeCard
               type="endorsement"
               icon={<FileSignature className="w-10 h-10" />}
-              title="New-Page Endorsement"
-              description="Forwards correspondence on a new page. Use for longer comments and formal endorsements."
+              title="Endorsement"
+              description="Forwards correspondence on the signature page when it fits, or on a new page."
               note="→ For forwarding documents"
               isActive={formData.documentType === 'endorsement'}
               onClick={() => setFormData(prev => ({ ...prev, documentType: 'endorsement' }))}

@@ -61,7 +61,7 @@ export function UnitInfoSection({
   };
 
   // Optional letterhead sub-name line (Line 2) applies only to the standard
-  // letter family: Basic Letter, Multiple-Address Letter, New-Page Endorsement.
+  // letter family: Basic Letter, Multiple-Address Letter, Endorsement.
   const showSubName = ['basic', 'multiple-address', 'endorsement'].includes(
     formData.documentType || ''
   );

@@ -273,6 +273,19 @@ render reads `public/` from disk and nothing else.
 - **No enclosure file merging and no signature fields.** Both depend on
   binaries the editor holds in browser storage. A PDF from the companion
   is the letter itself.
+- **No same-page composition.** A document whose `endorsementPlacement`
+  is `same-page` renders to the endorsement BLOCK alone: no letterhead,
+  no seal, no page number, no continuation header, and no subject when
+  the 9-2.1.a omission is taken. SECNAV M-5216.5 9-1 settles placement
+  against the signature page of the document being endorsed, and one
+  request carries one document, so the page to measure against is not
+  present. The validator report the companion returns carries the
+  9-1 warning saying exactly that. The block is the file to hand a
+  drafter who will add it to a page already signed; to have the fit
+  measured and the block drawn onto the page, assemble the package in
+  the editor. The composer itself, `src/lib/same-page-endorsement.ts`,
+  is pure over PDF bytes and runs under plain Node, so a future
+  two-document route would use the same code.
 - **No editing.** There is no store, no session, and no document library.
   Every request is a whole document in and a whole document out.
 - **No batch route.** One document per request. A caller which needs fifty
