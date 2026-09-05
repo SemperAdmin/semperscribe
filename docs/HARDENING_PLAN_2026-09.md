@@ -59,6 +59,10 @@ Sixteen tests added across six files: hook semantics for `useHydrated` and `useI
 
 Four image warnings removed, baseline 35 to 31. Two documented per-line disables for `<img>` under `images.unoptimized`, and a scoped `jsx-a11y/alt-text` override for `src/components/pdf/**` where the rule matched @react-pdf's `Image` by name. Comments and config only; no runtime change.
 
+## Phase B.3 status, 2026-09-05: landed (v0.3.4)
+
+recharts, file-saver, @types/file-saver, and embla-carousel-react removed; autoprefixer, postcss, tailwindcss, and tailwindcss-animate moved to devDependencies. Production SBOM 340 to 232 components, audit clean, lockfile regenerated and verified with `npm ci`. Bundle bytes unchanged, as predicted: the bundler had already tree-shaken the unused packages.
+
 ## Phase 0: safety net (one PR, blocks everything after it)
 
 ### 0.1 Browser smoke test on the built export

@@ -5,6 +5,24 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.3.4] - 2026-09-05
+
+Phase B.3 of `docs/HARDENING_PLAN_2026-09.md`: dependency hygiene. No
+runtime change; the bundler already tree-shook the removed packages.
+
+### Removed
+
+- `recharts`, `file-saver` (and `@types/file-saver`), and
+  `embla-carousel-react` from the dependency tree. Nothing under `src/`
+  imported them; the carousel component which used embla went in 0.3.2.
+
+### Changed
+
+- `autoprefixer`, `postcss`, `tailwindcss`, and `tailwindcss-animate` moved
+  to devDependencies. They run at build time only. The production SBOM
+  now lists 232 components instead of 340, so the supply-chain surface
+  reported to reviewers matches what the app ships.
+
 ## [0.3.3] - 2026-09-05
 
 Phase A.7 of `docs/HARDENING_PLAN_2026-09.md`: the four image lint
