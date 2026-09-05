@@ -9,6 +9,7 @@ import type { DocumentDataSlices } from './useLivePreview';
 import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-attachments';
 import { getClassification, bannerText } from '@/lib/classification';
 import { getEdmsContext, edmsBaseFilename } from '@/lib/edms-mode';
+import { clearedForExport } from '@/lib/export-gate';
 
 interface UseDocumentExportArgs {
   data: DocumentDataSlices;
@@ -54,6 +55,14 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
 
   const generateDocument = async (format: 'docx' | 'pdf') => {
     try {
+      // Pre-export sensitive-data check. Sits above every branch below
+      // (I-Type, SECNAV cap, official XFA form, standard pipeline) so no
+      // download path skips it. A hit prompts, it does not block.
+      const cleared = await clearedForExport({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+      if (!cleared) {
+        return;
+      }
+
       // Route I-Type documents through unified export
       if (formData.documentType === 'i-type') {
         await downloadDocument(formData.documentType, formData, format);
