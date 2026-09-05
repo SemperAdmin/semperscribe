@@ -1,10 +1,10 @@
 {
-  "total": 51,
+  "total": 41,
   "rules": {
     "@next/next/no-img-element": 2,
     "jsx-a11y/alt-text": 2,
     "react-hooks/exhaustive-deps": 10,
     "react-hooks/preserve-manual-memoization": 5,
-    "react-hooks/set-state-in-effect": 32
+    "react-hooks/set-state-in-effect": 22
   }
 }

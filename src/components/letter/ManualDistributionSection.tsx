@@ -4,7 +4,8 @@
  * Behaves identically to CopyToSection but for "Distribution"
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
+import { useSyncedState, anyNonBlank } from '@/hooks/useSyncedState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,11 +19,9 @@ interface ManualDistributionSectionProps {
 }
 
 export function ManualDistributionSection({ distList, setDistList }: ManualDistributionSectionProps) {
-  const [showDist, setShowDist] = useState(false);
-
-  useEffect(() => {
-    setShowDist(distList.some(c => c.trim() !== ''));
-  }, [distList]);
+  // Follows the source whenever it changes identity, and may be set
+  // directly in between. Derived in render, not in an effect.
+  const [showDist, setShowDist] = useSyncedState(distList, list => anyNonBlank(list));
 
   const addItem = useCallback(() => setDistList([...distList, '']), [distList, setDistList]);
   const removeItem = useCallback((index: number) => setDistList(distList.filter((_, i) => i !== index)), [distList, setDistList]);

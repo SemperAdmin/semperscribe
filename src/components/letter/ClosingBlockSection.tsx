@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import { FormData } from '@/types';
 import { autoUppercase } from '@/lib/string-utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +29,9 @@ export function ClosingBlockSection({
   distList,
   setDistList,
 }: ClosingBlockSectionProps) {
-  const [showDelegation, setShowDelegation] = useState(false);
+  // Follows the source whenever it changes identity, and may be set
+  // directly in between. Derived in render, not in an effect.
+  const [showDelegation, setShowDelegation] = useSyncedState(formData.delegationText, text => Boolean(text));
   const isAAForm = formData.documentType === 'aa-form';
   const isMfr = formData.documentType === 'mfr';
   const isDirective = formData.documentType === 'mco' || formData.documentType === 'bulletin';
@@ -41,10 +44,6 @@ export function ClosingBlockSection({
       return true;
   };
   const showDistOption = getShowDistributionOption();
-
-  useEffect(() => {
-    setShowDelegation(!!formData.delegationText);
-  }, [formData.delegationText]);
 
   const updateDelegationType = (type: string) => {
     let text = '';

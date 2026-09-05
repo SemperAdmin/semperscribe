@@ -3,7 +3,8 @@
  * Manages the list of via addressees with dynamic add/remove functionality
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
+import { useSyncedState, anyNonBlank } from '@/hooks/useSyncedState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,11 +18,9 @@ interface ViaSectionProps {
 }
 
 export function ViaSection({ vias, setVias }: ViaSectionProps) {
-  const [showVia, setShowVia] = useState(false);
-
-  useEffect(() => {
-    setShowVia(vias.some(v => v.trim() !== ''));
-  }, [vias]);
+  // Follows the list whenever it changes identity, and the radio may set
+  // it directly in between. Derived in render, not in an effect.
+  const [showVia, setShowVia] = useSyncedState(vias, list => anyNonBlank(list));
 
   const addItem = useCallback(() => setVias([...vias, '']), [vias, setVias]);
   const removeItem = useCallback((index: number) => setVias(vias.filter((_, i) => i !== index)), [vias, setVias]);

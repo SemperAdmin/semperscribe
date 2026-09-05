@@ -3,7 +3,8 @@
  * Manages the list of copy-to addressees with dynamic add/remove functionality
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
+import { useSyncedState, anyNonBlank } from '@/hooks/useSyncedState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,11 +18,9 @@ interface CopyToSectionProps {
 }
 
 export function CopyToSection({ copyTos, setCopyTos }: CopyToSectionProps) {
-  const [showCopy, setShowCopy] = useState(false);
-
-  useEffect(() => {
-    setShowCopy(copyTos.some(c => c.trim() !== ''));
-  }, [copyTos]);
+  // Follows the source whenever it changes identity, and may be set
+  // directly in between. Derived in render, not in an effect.
+  const [showCopy, setShowCopy] = useSyncedState(copyTos, list => anyNonBlank(list));
 
   const addItem = useCallback(() => setCopyTos([...copyTos, '']), [copyTos, setCopyTos]);
   const removeItem = useCallback((index: number) => setCopyTos(copyTos.filter((_, i) => i !== index)), [copyTos, setCopyTos]);
