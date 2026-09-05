@@ -152,6 +152,7 @@ export function ModernAppShell({
           </button>
           <div className="flex items-center gap-3">
             <div className="relative h-10 w-10 overflow-hidden rounded-full border-2 border-primary/50 shadow-sm bg-white/10">
+              {/* eslint-disable-next-line @next/next/no-img-element -- static export with images.unoptimized; next/image would render the same <img> with no optimisation */}
               <img
                 src={logoSrc}
                 alt="USMC Seal"
