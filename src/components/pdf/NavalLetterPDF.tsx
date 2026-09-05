@@ -405,13 +405,20 @@ function ParagraphItem({
 
   if (documentType === 'business-letter' || documentType === 'executive-correspondence') {
      if (level === 1) {
-        // Main Paragraph: First line indent 0.25" (18pt) to match Word/policy "8 spaces"
+        // Main paragraph first-line indent, half an inch (36pt).
+        // M-5216.5 11-2.6: "Indent main paragraphs four spaces (or set
+        // margin at half inch)". 12-3.2.c(2): "Each paragraph must be
+        // indented 1/2 inch." The old 18pt cited the "eight spaces" of
+        // Fig 11-1, which governs SUBDIVISIONS, not main paragraphs.
+        // textIndent has to sit on the Text node: react-pdf reads it
+        // there and ignores it on the enclosing View, so the indent
+        // measured 0pt on every business and executive letter.
         // Short Letter rule: If isShortLetter is true, indent is 1 inch (72pt)
-        const indent = isShortLetter ? 72 : 18; 
-        
+        const indent = isShortLetter ? 72 : 36;
+
         return (
-          <View style={{ marginLeft: 0, marginBottom: isLast ? 0 : PDF_SPACING.paragraph, textIndent: indent }}>
-             <Text style={isShortLetter ? { lineHeight: 2.0 } : {}}>
+          <View style={{ marginLeft: 0, marginBottom: isLast ? 0 : PDF_SPACING.paragraph }}>
+             <Text style={{ textIndent: indent, ...(isShortLetter ? { lineHeight: 2.0 } : {}) }}>
                 {paragraph.title && (
                     <Text style={{ fontWeight: shouldBoldTitle ? 'bold' : 'normal' }}>
                         {titleText}{paragraph.content ? '.' : ''}{paragraph.content ? '\u00A0\u00A0' : ''}
@@ -647,6 +654,8 @@ export function NavalLetterPDF({
   const isDLAMemo = formData.documentType === 'dla-memorandum';
   const isDLABusinessLetter = formData.documentType === 'dla-business-letter';
   const isCivilianStyle = isBusinessLetter || isExecLetter || isDLAType;
+  /** M-5216.5 11-2.1: business-letter identification symbols upper left. */
+  const idBlockLeft = isBusinessLetter && !formData.isWindowEnvelope;
 
   const sealDataUrl = getPDFSealDataUrl(formData.headerType as 'USMC' | 'DON' | 'DLA');
   const formattedDate = isCivilianStyle
@@ -980,9 +989,17 @@ export function NavalLetterPDF({
         )}
 
         {/* SSIC Block - Hide for MFR, FromToMemo, Staffing Papers, DLA types */}
-        {/* New Layout: Flush Right Container, Left Aligned Text Content */}
+        {/* Naval letters and directives keep the flush-right container with
+            left-aligned text. The business letter blocks its three
+            identification symbols at the upper LEFT (M-5216.5 11-2.1,
+            Fig 11-2). The window-envelope variant keeps the right block:
+            Fig 11-4 sets those symbols on line 10 to the right of centre
+            so they clear the address window, and 11-2.1 does not govern
+            it. Chapter 12 states no placement for executive
+            correspondence, and Fig 12-2 shows the date to the right, so
+            the executive letter is left where it is. */}
         {!isFromToMemo && !isMfr && !isMoaOrMou && !isStaffingPaper && !isDLAType && (
-          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: PDF_SPACING.sectionGap }}>
+          <View style={{ flexDirection: 'row', justifyContent: idBlockLeft ? 'flex-start' : 'flex-end', marginBottom: PDF_SPACING.sectionGap }}>
              <View style={{ alignItems: 'flex-start' }}>
                 <Text style={styles.addressLine}>
                   {/* P3.4: designation = abbreviation + SSIC (audit line 138) */}
@@ -1781,34 +1798,46 @@ export function NavalLetterPDF({
             // across a page break (M-5216.5 7-2.16 discipline applied
             // to the business closing; user-reported split 2026-06-10).
             <View wrap={false}>
-                {/* Complimentary Close (Centered) */}
+                {/* Complimentary close, second line below the text
+                    (M-5216.5 11-2.8 and 12-3.4). The body section already
+                    carries one blank line below the last paragraph, so
+                    the close takes the next line. The extra blank line
+                    which used to sit here put the close on the third. */}
                 <View style={{ marginBottom: PDF_SPACING.sectionGap * 3, marginLeft: PDF_INDENTS.signature }}>
-                    <View style={styles.emptyLine} />
                     <Text style={styles.addressLine}>
                         {getComplimentaryClose(formData)}
                     </Text>
                 </View>
 
-                {/* Signature Block (Centered) - may be omitted for exec correspondence */}
+                {/* Signer's name, fourth line below the close (11-2.9.a
+                    and 12-3.2.e(3)(a)). The three blank lines are the close
+                    block's marginBottom above. The two blank lines which
+                    used to lead this block put the name on the sixth.
+                    The name is typed in capitals (11-2.9.a(1)), which
+                    the DOCX and the naval branch already did. */}
                 {!formData.omitSignatureBlock && (
                   <View style={{ marginBottom: PDF_SPACING.sectionGap, marginLeft: PDF_INDENTS.signature }}>
-                       <View style={styles.emptyLine} />
-                       <View style={styles.emptyLine} />
-                       {formData.sig && <Text style={styles.addressLine}>{formData.sig}</Text>}
+                       {formData.sig && <Text style={styles.addressLine}>{formData.sig.toUpperCase()}</Text>}
                        {isBusinessLetter && formData.signerRank && <Text style={styles.addressLine}>{formData.signerRank}</Text>}
                        {formData.signerTitle && <Text style={styles.addressLine}>{formData.signerTitle}</Text>}
                        {formData.delegationText && <Text style={styles.addressLine}>{formData.delegationText}</Text>}
                   </View>
                 )}
 
-                {/* Enclosures (Flush Left) */}
+                {/* Enclosures (Flush Left). M-5216.5 11-2.10.a has the
+                    business letter "number and describe them briefly",
+                    so the entries carry (1), (2) and so on. Chapter 12
+                    states no enclosure-line form, so the executive
+                    letter keeps its plain list. */}
                 {enclsWithContent.length > 0 && (
                     <View style={{ marginBottom: PDF_SPACING.sectionGap, marginLeft: 0 }}>
                         <Text style={styles.addressLine}>
                             {enclsWithContent.length > 1 ? 'Enclosures' : 'Enclosure'}
                         </Text>
                         {enclsWithContent.map((encl, i) => (
-                            <Text key={i} style={styles.addressLine}>{encl}</Text>
+                            <Text key={i} style={styles.addressLine}>
+                                {isBusinessLetter ? `(${i + 1}) ${encl}` : encl}
+                            </Text>
                         ))}
                     </View>
                 )}
