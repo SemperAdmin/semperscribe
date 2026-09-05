@@ -62,7 +62,7 @@ export function ReferenceManager({ references, onChange, narrative = '', onNarra
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between py-4">
-        <CardTitle className="text-lg">References (REF/NARR)</CardTitle>
+        <CardTitle as="h3" className="text-lg">References (REF/NARR)</CardTitle>
         <Button onClick={addReference} size="sm" variant="outline" className="gap-2">
           <Plus className="h-4 w-4" /> Add Reference
         </Button>

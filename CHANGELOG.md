@@ -5,6 +5,91 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.5.9] - 2026-09-05
+
+Phase D.8 of the 2026-09-05 UX and policy plan: first run and the
+accessibility close-out. The app opened on a scrollable catalogue of
+every warning it emits, then on a blank preview rectangle under a red
+compliance strip, and the required SSIC field took no keyboard
+input at all. This phase is the brand-new join's first ten
+minutes and the assistive-technology surface underneath it.
+
+### Changed
+
+- First run is a short consent modal. What the drafter acknowledges
+  stays on screen and stays word for word: the responsibility statement
+  and the no-warranty terms are the same strings as before, unedited.
+  The four sections of contextual warnings move behind "Read the full
+  guidance", an expander which carries them in the same words.
+- The nine form section headers are heading elements. Unit Information,
+  Header Information, Via, References, Enclosures, Body Paragraphs,
+  Closing Block, Distribution and Copy To were plain divs, so a
+  screen-reader user had no way to move through the editor by heading.
+  Every form section card in the editor now renders an h3, one level
+  under the document-type h2 above the form, and the visual style is
+  unchanged. `CardTitle` takes an `as` prop to make that possible.
+- The SSIC picker and the dictionary auto-suggest are WAI-ARIA
+  comboboxes. Both were plain div lists selecting on `onPointerDown`
+  alone, with no role, no expanded state and no keyboard path to an
+  option. Each input now carries role combobox, `aria-expanded`,
+  `aria-controls` and `aria-activedescendant` over a listbox of options;
+  arrow keys move with wrap at both ends, Enter selects, Escape closes,
+  and a click selects as well as a pointer down. SSIC is required on
+  every naval letter and the picker is the only lookup, so this was the
+  required field no keyboard-only drafter reached.
+- Five visible form controls gained an accessible name. The Header Type,
+  Body Font and Header Color selects carried labels with no association,
+  so a screen reader announced three buttons with no name; each label
+  now points at an id on its trigger. The sidebar search and the SSIC
+  search were named by their placeholder, which disappears the moment
+  anything is typed.
+- The icon buttons in the editor chrome are 44 px on a phone. The audit
+  counted 49 targets under 44 px tall at 390 px, Undo and Redo among
+  them at 32 by 32. A minimum height and width below the sm breakpoint
+  raises the header actions, the mobile menu button, the paragraph
+  controls, the unit info controls and the sidebar clear-search button,
+  and leaves desktop density where it was.
+- The two aside landmarks carry names, "Document types and search" and
+  "Live preview", so a screen reader tells them apart.
+- The shipped example package moves to `public/examples/` so the app
+  serves it, and its data was corrected until the validators pass it
+  clean: the SSIC is the training code 1500 rather than 0000, the
+  originator's code is filled, the signature line drops the rank per
+  7-2.14, both references are cited in the text per 7-2.10, and the
+  undefined PT acronym is spelled out.
+
+### Added
+
+- A "Start from a filled example" card on the landing page. It loads the
+  shipped example package through the same fetch, parse and import path
+  the File menu uses for a .nldp off disk, and lands in the editor with
+  the compliance banner clear. The first run taught the warning system
+  and never showed a letter.
+- An empty state in the preview. A chosen type with nothing typed showed
+  a blank grey rectangle; it now names the required fields of that type,
+  read out of the same document-type definition the schema validators
+  run against, with the pre-filled date marked done and a line about the
+  body paragraph and the signature name. On a basic letter the six are
+  SSIC, Originator Code, Date, From, To and Subject.
+- An axe pass in the e2e suite. `@axe-core/playwright` scans the landing
+  page and a basic-letter editor at 1280 and 390 px and fails on any
+  serious or critical violation. It found three unnamed buttons and one
+  landmark collision, all fixed above, plus eight contrast failures in
+  the persistent header and footer which belong to the theme rather than
+  to this phase. Those eight are recorded with their measured ratios in
+  `docs/SECTION_508_FINDINGS.md` and the header and footer are excluded
+  from the gate until the palette decision is made.
+- Component tests for the consent modal, the example card and the
+  example's compliance, the preview empty state, the heading structure
+  queried by role, and the keyboard behaviour of both comboboxes.
+
+### Removed
+
+- `src/components/ModernParagraphEditor.tsx` and
+  `src/components/ui/SimpleCombobox.tsx`, orphaned with zero referencing
+  modules. Neither was ever mounted, and the bundle is unchanged by
+  their deletion.
+
 ## [0.5.8] - 2026-09-05
 
 Phase D.7 of the 2026-09-05 UX and policy plan: reuse for the daily

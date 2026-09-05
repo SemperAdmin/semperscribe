@@ -81,7 +81,7 @@ export function SectionCard({
   return (
     <Card className="shadow-sm border-border mb-6">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="flex items-center text-lg font-semibold">
+        <CardTitle as="h3" className="flex items-center text-lg font-semibold">
           {icon}
           {title}
         </CardTitle>

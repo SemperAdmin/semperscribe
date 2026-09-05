@@ -77,7 +77,7 @@ export function UnitInfoSection({
   return (
     <Card className="border-border shadow-sm border-l-4 border-l-primary">
       <CardHeader className="pb-3 border-b border-border bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="text-sm font-semibold flex items-center uppercase tracking-wider font-headline">
+        <CardTitle as="h3" className="text-sm font-semibold flex items-center uppercase tracking-wider font-headline">
           <Building className="w-4 h-4 mr-2 text-primary-foreground" />
           Unit Information
         </CardTitle>
@@ -173,7 +173,7 @@ export function UnitInfoSection({
                <Button 
                  variant="ghost" 
                  size="sm" 
-                 className="h-6 w-6 p-0 hover:bg-primary/10 hover:text-primary"
+                 className="h-6 w-6 p-0 max-sm:min-h-11 max-sm:min-w-11 hover:bg-primary/10 hover:text-primary"
                  onClick={() => setIsEditing(false)}
                  title="Done"
                >

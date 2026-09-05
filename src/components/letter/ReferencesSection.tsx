@@ -56,7 +56,7 @@ export function ReferencesSection({ references, setReferences, formData, setForm
   return (
     <Card className="shadow-sm border-border mb-6 border-l-4 border-l-primary">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="flex items-center text-lg font-semibold font-headline tracking-wide">
+        <CardTitle as="h3" className="flex items-center text-lg font-semibold font-headline tracking-wide">
           <Book className="mr-2 h-5 w-5 text-primary-foreground" />
           References
         </CardTitle>

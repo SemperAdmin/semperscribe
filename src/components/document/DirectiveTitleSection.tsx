@@ -14,7 +14,7 @@ export function DirectiveTitleSection({ formData, setFormData }: DirectiveTitleS
   return (
     <Card className="shadow-sm border-border mb-6 border-l-4 border-l-amber-500">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="text-lg font-semibold font-headline tracking-wide">
+        <CardTitle as="h3" className="text-lg font-semibold font-headline tracking-wide">
           Directive Title
         </CardTitle>
       </CardHeader>

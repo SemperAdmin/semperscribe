@@ -49,4 +49,97 @@ STATUS: Fixed 2026-09-05 (phase D.2) - the read view is a control with tabIndex 
 
 F2, F3, F4, F5, F8: fixed in code. F6: measured, compliant, no changes. F1: mitigated in the UI; the PDF-tagging strategy decision belongs in the Track A app.gov conversation. F7: documented decision, no change.
 
-Remaining for the accessibility close-out: an assistive-technology pass (NVDA or JAWS) and an axe scan on a live build - static analysis cannot substitute for either.
+Remaining for the accessibility close-out: an assistive-technology pass (NVDA or JAWS). The axe scan on a live build shipped in D.8 and is recorded below.
+
+## D.8 accessibility close-out (2026-09-05)
+
+Phase D.8 of docs/UX_POLICY_PLAN_2026-09.md. This is the pass the note
+at the top of this file said was owed: an automated axe scan on a live
+build, run from the e2e suite. The assistive-technology pass with NVDA
+or JAWS is still owed and is not something an automated run replaces.
+
+### What the axe pass is
+
+`tests/e2e/axe.spec.ts` runs `@axe-core/playwright` against the built
+static export on four surfaces: the landing page and a basic-letter
+editor, each at 1280x800 and at 390x844. The narrow pass matters
+because the audit found surfaces which exist only below the xl
+breakpoint and nothing had ever checked them. Tags scanned: wcag2a,
+wcag2aa, wcag21a, wcag21aa and best-practice. The gate is serious and
+critical violations; moderate and minor findings are recorded here.
+
+The persistent header and footer are excluded from the gate. Both carry
+theme-token contrast failures which predate this phase, listed under
+"Open, outside D.8" below.
+
+### Fixed in D.8
+
+- **F9 (H) - three form controls with no accessible name.** The audit
+  counted 5 of 13 visible form controls unnamed. axe reported the three
+  buttons as `button-name` [critical]: the Header Type, Body Font and
+  Header Color selects in `HeaderSettingsSection`. Each carried a
+  `<label>` with no `htmlFor` and a Radix `SelectTrigger` with no id, so
+  a screen reader announced a button with no name at all. Each label now
+  points at an id on its trigger. The two placeholder-named inputs were
+  the sidebar search, which now carries `aria-label="Find in document"`,
+  and the SSIC search, which now takes the id the visible FormLabel
+  points at. The sidebar's clear-search button gained a name too.
+- **F10 (H) - two custom comboboxes with no ARIA.** The SSIC picker in
+  `DynamicForm` and `AutoSuggestInput` were plain div lists selecting on
+  `onPointerDown` alone. Both are now WAI-ARIA comboboxes: `role`
+  combobox on the input with `aria-expanded`, `aria-controls` and
+  `aria-activedescendant`, a `role="listbox"` of `role="option"` items,
+  arrow keys to move with wrap at both ends, Enter to select, Escape to
+  close, and selection on click as well as on pointer down. The shared
+  keyboard half is `src/hooks/useListboxNavigation.ts`. SSIC is required
+  on every naval letter and this picker is the only lookup, so this was
+  the required field no keyboard-only drafter reached.
+- **F11 (M) - form section headings were not headings.** The audit
+  measured 0 of 9. `CardTitle` takes an `as` prop and every form section
+  card in the editor renders `h3`, one level under the document-type
+  `h2` the editor puts above the form. Pinned by
+  `tests/components/editor-headings.test.tsx`, which queries by role.
+- **F12 (M) - touch targets under 44 px.** The audit counted 49 under 44
+  px tall at 390x844, Undo and Redo among them at 32x32. The icon
+  buttons in the editor chrome carry `max-sm:min-h-11 max-sm:min-w-11`,
+  which is 44 px below the sm breakpoint and leaves desktop density
+  untouched: the header action buttons including Undo and Redo, the
+  mobile menu button, the paragraph move and level controls, the unit
+  info controls and the sidebar clear-search button.
+- **F13 (M) - landmarks were not distinguishable.** axe reported
+  `landmark-unique` [moderate] on the two `aside` landmarks. The sidebar
+  is now labelled "Document types and search" and the preview pane
+  "Live preview".
+- **Preview empty state.** Not a 508 finding as such, but the blank
+  preview rectangle now names the required fields of the chosen type,
+  read from the same document-type definition the schema validators run
+  against.
+
+### Open, outside D.8
+
+Recorded with rule id, element and the ratio axe measured. All are
+theme-token decisions rather than anything a D.8 file owns, and none is
+fixable without changing the palette.
+
+- `color-contrast` [serious], `header h1` "Semper Scribe": 3.14:1.
+  Foreground #886616 (the gold `primary`) on #1a1c33 (the navy
+  `secondary`). Needs 4.5:1 at 18px bold.
+- `color-contrast` [serious], two header menu triggers (the settings
+  dialog trigger and the overflow menu): 3.26:1. Foreground #6d6d78
+  (`muted-foreground`) on #1a1c33.
+- `color-contrast` [serious], five footer items (the proof-of-concept
+  line, the privacy link, the security disclosure link, the licence link
+  and the feedback link): 4.49:1. Foreground #6d6d78 on #f0f0f4 at 12px.
+  This is the F6 measurement missing its real background: F6 measured
+  `muted-foreground` on `background` at 4.84:1, and the footer sits on
+  `bg-muted/40`, which is a different pair.
+- `heading-order` [moderate], the sidebar `h3` "Document Type". The
+  sidebar's group headings follow the header `h1` with no `h2` between
+  them. Not gated, and the sidebar is outside the D.8 file set.
+
+### Method note on F6
+
+F6 recorded every measured pair as passing. Three of its pairs were
+measured against the wrong background, which the axe run caught. The
+lesson stands for the next pass: measure the computed pair on the built
+page, not the token pair in the theme file.

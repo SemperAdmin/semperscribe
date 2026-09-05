@@ -13,7 +13,11 @@
       "description": "Contains correspondence data for September 2024 training schedule announcement with endorsement references",
       "subject": "TRAINING SCHEDULE FOR SEPTEMBER 2024",
       "documentType": "basic",
-      "tags": ["training", "schedule", "2024"]
+      "tags": [
+        "training",
+        "schedule",
+        "2024"
+      ]
     },
     "checksums": {
       "dataHash": "abc123def456789012345678901234567890123456789012345678901234567890",
@@ -33,13 +37,13 @@
       "line1": "TRAINING DEMO COMMAND",
       "line2": "SAMPLE INSTALLATION, ST 00000-0000",
       "line3": "",
-      "ssic": "0000",
-      "originatorCode": "",
+      "ssic": "1500",
+      "originatorCode": "G-3",
       "date": "30 Aug 24",
       "from": "Commanding Officer, Training Demo Command",
       "to": "All Subordinate Commands",
       "subj": "SAMPLE TRAINING SCHEDULE - NOT FOR OFFICIAL USE",
-      "sig": "J. SAMPLE\nSSgt, USMC\nSample NCO",
+      "sig": "J. SAMPLE",
       "delegationText": "",
       "startingPageNumber": 1,
       "previousPackagePageCount": 0
@@ -61,7 +65,7 @@
       {
         "id": 1,
         "level": 1,
-        "content": "The September 2024 training schedule has been finalized and is provided in enclosure (1). All unit commanders are directed to review the schedule and ensure their Marines are properly prepared for assigned training events.",
+        "content": "Per references (a) and (b), the September 2024 training schedule has been finalized and is provided in enclosure (1). All unit commanders are directed to review the schedule and ensure their Marines are properly prepared for assigned training events.",
         "acronymError": ""
       },
       {
@@ -74,12 +78,12 @@
         "id": 3,
         "level": 2,
         "content": "Combat Skills Training (CST) - 5-9 September 2024 at Range Complex Alpha",
-        "acronymError": "Acronym 'CST' used without being defined first. Please define it as 'Combat Skills Training (CST)'."
+        "acronymError": ""
       },
       {
         "id": 4,
         "level": 2,
-        "content": "Physical Fitness Test (PFT) - 12-16 September 2024 at Main PT Field",
+        "content": "Physical Fitness Test (PFT) - 12-16 September 2024 at the main physical training field",
         "acronymError": ""
       },
       {

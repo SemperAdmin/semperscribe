@@ -57,7 +57,7 @@ export function CoordinationPageForm({ formData, setFormData }: CoordinationPage
   return (
     <Card className="mb-8 border-border shadow-sm">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="text-lg font-semibold">Coordinating Offices</CardTitle>
+        <CardTitle as="h3" className="text-lg font-semibold">Coordinating Offices</CardTitle>
         <p className="text-sm opacity-80 mt-1">
           List all internal and external agencies/commands per MCO 5216.20B.
         </p>

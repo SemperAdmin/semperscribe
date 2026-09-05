@@ -220,7 +220,7 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
   }, [searchQuery, paragraphs, formData]);
 
   return (
-    <aside className={cn("w-64 bg-card border-r border-border hidden md:flex flex-col h-full", className)}>
+    <aside aria-label="Document types and search" className={cn("w-64 bg-card border-r border-border hidden md:flex flex-col h-full", className)}>
       <div className="flex-1 min-h-0 overflow-y-auto native-scroll">
         {/* Document Type Selector */}
         <div className="p-4 border-b border-border">
@@ -488,17 +488,23 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Find in Document</h3>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            {/* D.8: the audit counted this input among the five visible
+                controls with no accessible name - a placeholder is not
+                one, and it disappears the moment anything is typed. */}
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search..."
+              aria-label="Find in document"
               className="w-full pl-8 pr-8 py-1.5 text-sm rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center max-sm:min-h-11 max-sm:min-w-11 text-muted-foreground hover:text-foreground"
               >
                 <X className="w-3.5 h-3.5" />
               </button>

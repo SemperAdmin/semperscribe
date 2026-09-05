@@ -8,6 +8,7 @@ import { PreviewModal } from './PreviewModal';
 import { ComplianceBanner, type PreviewIssue } from './ComplianceBanner';
 import { ParagraphData, SavedLetter, FormData } from '@/types';
 import { getExportFilename } from '@/lib/naval-format-utils';
+import { requiredFieldStatus, isDocumentUnstarted } from '@/lib/required-fields';
 import { FEEDBACK_URL } from '@/lib/app-links';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useCommandPaletteHint } from '@/hooks/useCommandPaletteHint';
@@ -127,6 +128,15 @@ export function ModernAppShell({
   const logoSrc = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/logo.png`;
   const paletteShortcut = useCommandPaletteHint();
 
+  // D.8 (UX audit finding 9): a chosen type with nothing typed gets a
+  // list of what the preview is waiting for rather than a blank page.
+  // Null once anything has been entered.
+  const emptyStateFields = React.useMemo(() => {
+    if (!documentType || !formData) return null;
+    const fields = requiredFieldStatus(documentType, formData as Record<string, unknown>);
+    return isDocumentUnstarted(fields, paragraphs) ? fields : null;
+  }, [documentType, formData, paragraphs]);
+
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-sans overflow-hidden">
       {/* F3 (SECTION_508_FINDINGS): skip link - first focusable element */}
@@ -154,7 +164,7 @@ export function ModernAppShell({
           <button
             type="button"
             onClick={() => setShowMobileSidebar(true)}
-            className="md:hidden inline-flex items-center justify-center h-10 w-10 -ml-2 rounded-md text-primary-foreground hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="md:hidden inline-flex items-center justify-center h-10 w-10 max-sm:min-h-11 max-sm:min-w-11 -ml-2 rounded-md text-primary-foreground hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-primary/50"
             aria-label="Open document menu"
           >
             <Menu className="h-5 w-5" />
@@ -328,7 +338,7 @@ export function ModernAppShell({
         {/* Right Pane: Live Preview or Custom Panel */}
         {showPreview && documentType && (
           customRightPanel ? (
-            <aside className="w-[45%] max-w-[900px] min-w-[500px] bg-muted/20 border-l border-border hidden xl:flex flex-col h-full overflow-hidden">
+            <aside aria-label="Live preview" className="w-[45%] max-w-[900px] min-w-[500px] bg-muted/20 border-l border-border hidden xl:flex flex-col h-full overflow-hidden">
               <div className="h-12 bg-card border-b border-border flex items-center justify-between px-4 shrink-0">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Live Preview</h3>
               </div>
@@ -344,6 +354,7 @@ export function ModernAppShell({
               documentType={documentType}
               downloadFileName={formData ? getExportFilename(formData, 'pdf') : undefined}
               onDownloadExport={onGeneratePdf}
+              emptyStateFields={emptyStateFields}
             />
           )
         )}
@@ -382,6 +393,7 @@ export function ModernAppShell({
         isLoading={isGeneratingPreview}
         onUpdatePreview={onUpdatePreview}
         issues={validationIssues}
+        emptyStateFields={emptyStateFields}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 {
   "name": "semperscribe",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "private": true,
   "license": "MIT",
   "//": [
@@ -83,6 +83,7 @@
     }
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@cyclonedx/cyclonedx-npm": "^5.0.0",
     "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^6.9.1",

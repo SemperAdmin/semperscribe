@@ -296,7 +296,7 @@ export function ParagraphItem({
                 variant="ghost"
                 size="sm"
                 onClick={() => onMoveUp(paragraph.id)}
-                className="h-8 w-8 p-0 hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                className="h-8 w-8 p-0 max-sm:min-h-11 max-sm:min-w-11 hover:bg-primary/10 text-muted-foreground hover:text-primary"
                 title="Move Up"
                 >
                 <ChevronUp className="h-4 w-4" />
@@ -307,7 +307,7 @@ export function ParagraphItem({
               size="sm"
               onClick={() => onMoveDown(paragraph.id)}
               disabled={index === totalParagraphs - 1}
-              className="h-8 w-8 p-0 hover:bg-primary/10 text-muted-foreground hover:text-primary"
+              className="h-8 w-8 p-0 max-sm:min-h-11 max-sm:min-w-11 hover:bg-primary/10 text-muted-foreground hover:text-primary"
               title="Move Down"
               >
               <ChevronDown className="h-4 w-4" />
@@ -324,7 +324,7 @@ export function ParagraphItem({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                className="h-6 w-6 p-0 max-sm:min-h-11 max-sm:min-w-11 hover:bg-primary/10 text-muted-foreground hover:text-primary"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => applyFormat('bold')}
                 title="Bold (**text**)"
@@ -334,7 +334,7 @@ export function ParagraphItem({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                className="h-6 w-6 p-0 max-sm:min-h-11 max-sm:min-w-11 hover:bg-primary/10 text-muted-foreground hover:text-primary"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => applyFormat('italic')}
                 title="Italic (*text*)"
@@ -344,7 +344,7 @@ export function ParagraphItem({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                className="h-6 w-6 p-0 max-sm:min-h-11 max-sm:min-w-11 hover:bg-primary/10 text-muted-foreground hover:text-primary"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => applyFormat('underline')}
                 title="Underline (<u>text</u>)"

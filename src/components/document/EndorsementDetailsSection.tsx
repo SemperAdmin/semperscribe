@@ -18,7 +18,7 @@ export function EndorsementDetailsSection({ formData, setFormData }: Endorsement
     <Card className="border-primary/20 shadow-md overflow-hidden mb-6">
       <CardHeader className="bg-secondary text-secondary-foreground border-b border-secondary/10 p-4 flex flex-row items-center gap-2">
         <FileSignature className="w-5 h-5" />
-        <CardTitle className="text-lg font-bold font-headline tracking-wide">Endorsement Details</CardTitle>
+        <CardTitle as="h3" className="text-lg font-bold font-headline tracking-wide">Endorsement Details</CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-6 pt-6">
