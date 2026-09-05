@@ -40,7 +40,7 @@ export function runProofreadChecks(
   // Severity map: block/fail -> fail, warn -> warn. Vias are not in
   // this signature; window-envelope via blocking runs at the export
   // gate (getExportBlockers), which does receive them.
-  for (const issue of runLetterValidators(formData, [], references, paragraphs)) {
+  for (const issue of runLetterValidators(formData, [], references, paragraphs, { enclosures })) {
     checks.push({
       id: issue.id,
       category: 'framework',

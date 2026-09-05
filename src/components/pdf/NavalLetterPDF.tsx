@@ -41,6 +41,7 @@ import { getClassification, bannerText, needsCuiBlock, cuiBlockLines, portionPre
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from '@/lib/font-policy';
 import type { ParagraphIndentSpec } from '@/lib/indent-engine';
 import { generateDisplayCitation } from '@/lib/citation';
+import { refLetterAt, startingRefLetterFor, startingEnclosureNumberFor } from '@/lib/reference-letters';
 
 interface NavalLetterPDFProps {
   formData: FormData;
@@ -743,14 +744,28 @@ export function NavalLetterPDF({
   const isEndorsement = formData.documentType === 'endorsement';
   const startPage = isEndorsement ? (formData.startingPageNumber || 1) : 1;
 
-  // Calculate starting indices for refs/encls
-  const startRefChar = isEndorsement && formData.startingReferenceLevel 
-    ? formData.startingReferenceLevel.charCodeAt(0) 
-    : 'a'.charCodeAt(0);
-    
-  const startEnclNum = isEndorsement && formData.startingEnclosureNumber
-    ? parseInt(formData.startingEnclosureNumber, 10)
-    : 1;
+  // Starting reference letter and enclosure number for refs/encls.
+  // Only an endorsement continues the basic letter's sequences
+  // (M-5216.5 9-2.3 and 9-2.4), and the letter walk lives in
+  // src/lib/reference-letters.ts so the DOCX and the validator letter
+  // the same list the same way past (z).
+  const startRefLetter = startingRefLetterFor(
+    formData.documentType,
+    formData.startingReferenceLevel,
+  );
+
+  const startEnclNum = startingEnclosureNumberFor(
+    formData.documentType,
+    formData.startingEnclosureNumber,
+  );
+
+  // The "(a)" column is a fixed width, and a two-letter reference past
+  // (z) overruns it: react-pdf wrapped "(aa)" to "(-" plus "aa)". The
+  // column grows by one character width per extra letter, so a list of
+  // 26 or fewer keeps the 18pt column it has always had.
+  const longestRefLetter = references.filter((r) => r.trim())
+    .reduce((longest, _, i) => Math.max(longest, refLetterAt(startRefLetter, i).length), 1);
+  const refLetterColumnWidth = 12 + 6 * longestRefLetter;
 
   const fontFamily = getPDFBodyFont(formData.bodyFont || 'times');
 
@@ -1411,7 +1426,7 @@ export function NavalLetterPDF({
         {(!isCivilianStyle || isDLAType) && refsWithContent.length > 0 && (
           <View style={styles.refEnclSection}>
             {refsWithContent.map((ref, i) => {
-              const refLetter = String.fromCharCode(startRefChar + i);
+              const refLetter = refLetterAt(startRefLetter, i);
               if (formData.bodyFont === 'courier') {
                 const prefix = i === 0
                   ? `Ref:\u00A0\u00A0\u00A0(${refLetter})\u00A0`
@@ -1421,7 +1436,7 @@ export function NavalLetterPDF({
               return (
                 <View key={i} style={styles.refEnclLine}>
                   <Text style={styles.refEnclLabel}>{i === 0 ? 'Ref:' : ''}</Text>
-                  <Text style={{ width: 18 }}>({refLetter})</Text>
+                  <Text style={{ width: refLetterColumnWidth }}>({refLetter})</Text>
                   <Text style={{ flex: 1 }}>{ref}</Text>
                 </View>
               );
