@@ -19,5 +19,6 @@ Then open [http://localhost:3000](http://localhost:3000).
 - Accessibility findings: [`SECTION_508_FINDINGS.md`](SECTION_508_FINDINGS.md).
 - Export pipelines: [`EXPORT_GUIDE.md`](EXPORT_GUIDE.md).
 - Portable document packages: [`NLDP_FEATURE_GUIDE.md`](NLDP_FEATURE_GUIDE.md).
+- Headless HTTP and MCP companion for EDMS and agent integration: [`COMPANION.md`](COMPANION.md).
 - Benchmark comparison against DonDocs: [`DONDOCS_COMPARISON_2026-09-05.md`](DONDOCS_COMPARISON_2026-09-05.md) (first audit, v0.1.0) and [`DONDOCS_COMPARISON_2026-09-05-R2.md`](DONDOCS_COMPARISON_2026-09-05-R2.md) (second audit after the hardening program, v0.4.7).
 - Source excerpts of SECNAV M-5216.5 used for rule citations: [`SecNav5216/`](SecNav5216/).

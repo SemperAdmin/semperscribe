@@ -5,6 +5,66 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.5.0] - 2026-09-05
+
+Companion, part 2 of 2: the headless process. SemperScribe now runs
+without a browser. A `companion/` directory at the repository root holds
+an HTTP server and an MCP stdio server over one set of operations: list
+the document types, describe the fields a type takes, validate an NLDP
+package, and render it to PDF or DOCX. It is built for EDMS integration
+and for agent callers, and the PDF it produces is byte-for-byte the
+layout the browser pipeline produces, which a parity test against the
+committed golden snapshot proves. Nothing in the directory reaches the
+web application: it sits outside `src/`, so `next build` never bundles
+it, and the initial-load JS is unchanged.
+
+### Added
+
+- `companion/handler.ts` holds the four operations as pure functions.
+  `renderDocument` runs the same sequence the editor runs before a
+  download: NLDP structure and integrity, the letter validators, the
+  export sensitive-data gate, the SECNAV five page cap, and the same
+  pipeline selection, official NAVMC form fills and the I-Type route
+  included. Sensitive-data findings refuse the render with a 422 naming
+  them until the caller sets `acknowledgeSensitive`, which is the
+  headless form of the dialog the browser shows. A document type is
+  rendered only in a format it declares in its own features.
+- `companion/server.ts` serves `GET /health`, `GET /document-types`,
+  `POST /validate`, and `POST /render` on `127.0.0.1:7719`. A render
+  returns the file as the response body with its export filename in
+  Content-Disposition, or a JSON path when `out` was given. Errors are
+  one JSON shape with the status the failure warrants: 400, 413, 415,
+  422, 504. No CORS headers are sent.
+- `companion/mcp.ts` exposes `list_document_types`,
+  `get_document_schema`, `validate_document`, and `render_document` over
+  stdio with `@modelcontextprotocol/sdk`, tool inputs described in zod.
+  A render answers with the written path when `out` was given, otherwise
+  base64 with a warning once the file passes 256 KB.
+- `companion/limits.ts` caps request bodies at two megabytes
+  (`COMPANION_MAX_BODY`) and bounds each operation with a real forty five
+  second timer race (`COMPANION_TIMEOUT_MS`).
+- `companion/output.ts` writes a rendered file only under
+  `COMPANION_OUT_DIR` and only where realpath puts it inside that
+  directory. Traversal, absolute paths, planted symlinks, and symlinked
+  subdirectories are refused. With the variable unset there are no writes.
+- `companion/assets.ts` points the C.1 asset seam at `public/` on disk,
+  so fonts, seals, and the official form blanks are read from the
+  checkout rather than fetched from an origin the process does not have.
+- Scripts `companion` and `companion:mcp`, both run with `tsx`.
+- `docs/COMPANION.md`: every route with request and response examples,
+  the MCP client configuration, the environment variables, the security
+  posture, and the list of what the companion does not do.
+- Sixty tests in six files under `tests/companion/`, all under the plain Node
+  environment: the handler operations, the limits, output confinement,
+  the HTTP routes against a real listener on an ephemeral port, the MCP
+  server spawned over stdio with the SDK's own client, and the golden
+  parity check.
+
+### Changed
+
+- `@modelcontextprotocol/sdk` added as a production dependency and `tsx`
+  as a development dependency. Audit is clean in both trees.
+
 ## [0.4.8] - 2026-09-05
 
 Companion, part 1 of 2: the asset seam. Every file the export pipelines

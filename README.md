@@ -210,6 +210,25 @@ Static output is written to the `out/` directory, ready for deployment to any st
 
 The repository includes a GitHub Actions workflow ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)) that automatically builds and deploys to GitHub Pages on pushes to `main`. Manual deployment is also available via `workflow_dispatch`.
 
+## Headless companion
+
+SemperScribe also runs without a browser. The `companion/` directory holds
+an HTTP server and an MCP stdio server which share one set of operations:
+list the document types, describe the fields a type takes, validate an
+NLDP package, and render it to PDF or DOCX. It is meant for an EDMS, a
+script, or an agent, and it renders the same file the editor downloads.
+
+```bash
+npm run companion          # HTTP on http://127.0.0.1:7719
+npm run companion:mcp      # MCP over stdio
+```
+
+The HTTP server binds loopback and carries no authentication. The export
+sensitive-data gate is mirrored: findings refuse the render until the
+caller acknowledges them. Routes, request and response examples, the MCP
+client configuration, and the full security posture are in
+[`docs/COMPANION.md`](docs/COMPANION.md).
+
 ## Project Structure
 
 <details>
