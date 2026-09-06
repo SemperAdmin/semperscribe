@@ -23,9 +23,16 @@
   {
     "id": "same-page-endorsement",
     "title": "Same-Page Endorsement",
-    "description": "Figure 9-1 of SECNAV M-5216.5 as one document: the basic letter signed by its writer, and the first endorsement added to its signature page, signed by the endorser.",
+    "description": "An appointment letter from the commanding officer to a Marine, acknowledged by the Marine in a first endorsement on the same page: two signers, no Via.",
     "documentType": "same-page-endorsement",
     "url": "/templates/global/same-page-endorsement.nldp"
+  },
+  {
+    "id": "same-page-figure-9-1",
+    "title": "Same-Page Endorsement, Figure 9-1 (manual example)",
+    "description": "Figure 9-1 of SECNAV M-5216.5 as one document: the NAS Meridian letter signed by its writer, and the first endorsement added to its signature page by the first Via addressee.",
+    "documentType": "same-page-endorsement",
+    "url": "/templates/global/same-page-figure-9-1.nldp"
   },
   {
     "id": "memorandum-for-record",

@@ -55,6 +55,13 @@ async function exportVia(page: Page, itemName: string | RegExp, ext: 'pdf' | 'do
   });
   await page.getByRole('button', { name: 'Export' }).click();
   await page.getByRole('menuitem', { name: itemName }).click();
+  // The appointment letter addresses the Marine with an EDIPI, so the
+  // sensitive-data scan asks before exporting. Confirm it, as a drafter
+  // exporting a letter they wrote would.
+  const exportAnyway = page.getByRole('button', { name: 'Export anyway' });
+  if (await exportAnyway.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await exportAnyway.click();
+  }
   const file = await download;
   const path = await file.path();
   expect(path, 'download must land on disk').toBeTruthy();
@@ -106,12 +113,14 @@ test.describe('same-page endorsement', () => {
     await dialog.getByText('Same-Page Endorsement', { exact: true }).click();
     await expect(dialog).toBeHidden();
 
-    // E.5: Figure 9-1 as one document. The main sections are the
-    // letter, signed by its writer; the endorsement card is the second
-    // half, addressed per 9-2.2 and signed by the endorser.
-    await expect(page.getByLabel(/^From\b/).first()).toHaveValue('Commanding Officer, Naval Air Station, Meridian');
-    await expect(page.locator('#same-page-from')).toHaveValue('Commander, Sea Based Anti-Submarine Warfare Wing, Atlantic');
-    await expect(page.locator('#same-page-sig')).toHaveValue('R. L. GABEL');
+    // E.5: the appointment letter as one document. The main sections
+    // are the letter from the commander, signed by the commander; the
+    // endorsement card is the Marine's acknowledgement back to the
+    // commander, the reversal the no-Via case derives, signed by the Marine.
+    await expect(page.getByLabel(/^From\b/).first()).toHaveValue('Commanding Officer, (Unit)');
+    await expect(page.locator('#same-page-from')).toHaveValue('Staff Sergeant John T. Smith 1234567890/0111 USMC');
+    await expect(page.locator('#same-page-to')).toHaveValue('Commanding Officer, (Unit)');
+    await expect(page.locator('#same-page-sig')).toHaveValue('J. T. SMITH');
     // Two body editors: the letter's and the endorsement's.
     await expect(page.getByRole('button', { name: 'Paragraph 1 body' })).toHaveCount(2);
     await expect(page.getByTestId('same-page-composite-status')).toContainText('Fits on the signature page', { timeout: 40_000 });
@@ -122,12 +131,12 @@ test.describe('same-page endorsement', () => {
     const items = await extractPdfTextLayout(new Blob([new Uint8Array(composed.bytes)]));
     expect(new Set(items.map(i => i.page)).size, 'a fitting endorsement adds no page').toBe(1);
     const text = items.map(i => i.text).join(' ');
-    expect(text).toContain('HOW TO PREPARE AN ENDORSEMENT');
-    expect(text).toContain('An endorsement may be added to the bottom of a basic letter');
+    expect(text).toContain('APPOINTMENT AS COMMAND DESIGNATED DIRECTIVES MANAGER');
+    expect(text).toContain('you are appointed as the Command Designated Directives Manager');
     expect(text).toContain('FIRST ENDORSEMENT');
     expect(text).not.toContain('FIRST ENDORSEMENT on');
-    expect(text).toContain('R. L. GABEL');
-    const letterSig = items.find(i => i.text.includes('SLAUGHTER'));
+    expect(text).toContain('J. T. SMITH');
+    const letterSig = items.find(i => i.text.includes('I. M. COMMANDER'));
     const endorsementLine = items.find(i => i.text.includes('FIRST ENDORSEMENT'));
     expect(letterSig && endorsementLine && endorsementLine.y < letterSig.y, 'the endorsement sits below the letter\'s signature').toBe(true);
 
@@ -142,8 +151,8 @@ test.describe('same-page endorsement', () => {
     const attached = await exportVia(page, /PDF/i, 'pdf');
     const attachedText = (await extractPdfTextLayout(new Blob([new Uint8Array(attached.bytes)]))).map(i => i.text).join(' ');
     expect(attachedText).toContain('Request approval of the action described in enclosure (1).');
-    expect(attachedText).not.toContain('An endorsement may be added to the bottom');
-    expect(attachedText).toContain('R. L. GABEL');
+    expect(attachedText).not.toContain('you are appointed as the Command Designated Directives Manager');
+    expect(attachedText).toContain('J. T. SMITH');
 
     expect(errors, errors.join('\n')).toEqual([]);
   });
