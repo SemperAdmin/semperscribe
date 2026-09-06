@@ -368,6 +368,22 @@ export const EndorsementSchema = BasicLetterSchema.extend({
   ]).optional(),
   /** E.4: render-time flag, see FormData.samePageRenderAsBlock. */
   samePageRenderAsBlock: z.boolean().optional(),
+  /** E.5: the endorsement half of a same-page endorsement written from scratch. */
+  samePageEndorsement: z.object({
+    from: z.string(),
+    to: z.string(),
+    vias: z.array(z.string()),
+    originatorCode: z.string(),
+    date: z.string(),
+    paragraphs: z.array(z.object({ id: z.number(), level: z.number(), content: z.string() }).passthrough()),
+    sig: z.string(),
+    delegationText: z.string(),
+    copyTos: z.array(z.string()),
+    references: z.array(z.string()),
+    enclosures: z.array(z.string()),
+    addressingEdited: z.boolean().optional(),
+    basicLetterReference: z.string().optional(),
+  }).optional(),
 });
 
 export const EndorsementDefinition: DocumentTypeDefinition = {

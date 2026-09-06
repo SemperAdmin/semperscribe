@@ -11,6 +11,27 @@ import type { SamePageStatus } from '@/lib/same-page-host';
 /** E.3: the bytes of the letter a same-page endorsement is added to, or null. */
 export type SamePageHostResolver = () => Promise<Uint8Array | null>;
 
+/**
+ * E.3 and E.5: what a same-page endorsement composes onto, and the
+ * context its block renders from. An attached PDF is the letter when
+ * one is attached; otherwise, with the two-half model, the letter is
+ * the main sections rendered as a basic letter and the block is the
+ * endorsement part. Neither: no host, so the page renders on its own.
+ */
+export async function resolveSamePageRender(
+  ctx: DocumentDataSlices,
+  resolveHost?: SamePageHostResolver,
+): Promise<{ hostBytes: Uint8Array | null; blockCtx: DocumentDataSlices }> {
+  if (!isSamePageEndorsement(ctx.formData)) return { hostBytes: null, blockCtx: ctx };
+  const attached = resolveHost ? await resolveHost() : null;
+  if (!ctx.formData.samePageEndorsement) return { hostBytes: attached, blockCtx: ctx };
+  const { letterContext, endorsementContext } = await import('@/lib/same-page-composite');
+  const blockCtx = endorsementContext(ctx);
+  if (attached) return { hostBytes: attached, blockCtx };
+  const letter = await generatePdfForDocType(letterContext(ctx));
+  return { hostBytes: new Uint8Array(await letter.arrayBuffer()), blockCtx };
+}
+
 /** The document state slices every PDF surface renders from. */
 export interface DocumentDataSlices {
   formData: FormData;
@@ -80,10 +101,10 @@ export function useLivePreview(
       // it does not fit. Signature fields are placed on the block's own
       // page coordinates, so they are not carried onto the composed
       // page; the block alone still takes them.
-      const hostBytes = isSamePageEndorsement(formData) && resolveSamePageHost ? await resolveSamePageHost() : null;
+      const { hostBytes, blockCtx } = await resolveSamePageRender(ctx, resolveSamePageHost);
       if (hostBytes) {
         const { renderSamePageWithHost } = await import('@/lib/same-page-host');
-        const endorsed = await renderSamePageWithHost(ctx, generatePdfForDocType, hostBytes);
+        const endorsed = await renderSamePageWithHost(blockCtx, generatePdfForDocType, hostBytes);
         blob = new Blob([new Uint8Array(endorsed.bytes)], { type: 'application/pdf' });
         status = endorsed.placement;
       } else {

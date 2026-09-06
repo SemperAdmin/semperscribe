@@ -33,8 +33,40 @@ export type FormData = {
    * with the letterhead and seal, the 9-2.1.a omission still taken.
    */
   samePageRenderAsBlock?: boolean;
+  /**
+   * E.5: the second half of a same-page endorsement written from
+   * scratch: the endorsement's own addressing, identification, body,
+   * signer and lists. Shape in src/lib/same-page-composite.ts. Absent on
+   * a same-page endorsement saved before E.5, which is migrated on load.
+   */
+  samePageEndorsement?: SamePageEndorsementPart;
   [key: string]: any;
 };
+
+/**
+ * E.5: the endorsement half of a same-page endorsement written from
+ * scratch. Kept inline; types/ does not import lib/.
+ */
+export interface SamePageEndorsementPart {
+  from: string;
+  to: string;
+  vias: string[];
+  /** Ser line of the endorsing command (9-2.1.a: Ser and date alone). */
+  originatorCode: string;
+  date: string;
+  paragraphs: ParagraphData[];
+  sig: string;
+  delegationText: string;
+  copyTos: string[];
+  /** References the endorsement adds, lettered after the letter's (9-2.3). */
+  references: string[];
+  /** Enclosures the endorsement adds, numbered after the letter's (9-2.4). */
+  enclosures: string[];
+  /** True once the drafter has edited From, To or Via by hand. */
+  addressingEdited?: boolean;
+  /** The letter in reference style, for the new-page fallback's "on" line. */
+  basicLetterReference?: string;
+}
 
 /** E.3: where the letter being endorsed comes from. */
 export type SamePageHost =

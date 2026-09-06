@@ -5,6 +5,57 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.10.0] - 2026-09-06
+
+Phase E.5: the same-page endorsement written from scratch. The
+owner's model, stated 2026-09-06: one document, two halves, two
+signers. The top half is the letter, signed by its writer. The bottom
+half is the endorsement, from the person the letter went to, signed by
+the endorser. Figure 9-1 of SECNAV M-5216.5 is that page.
+
+### Added
+
+- The same-page option is now the two-half document. The main sections
+  are the letter: unit, identification, From, To, Via, subject,
+  references, enclosures, body and signer 1. A new card, "Endorsement
+  (second half)", holds the endorsement's level line, From and To,
+  remaining Vias, Ser line and date, its own body, signer 2 with a
+  delegation line, Copy to, and any references and enclosures it adds,
+  lettered and numbered after the letter's (9-2.3, 9-2.4).
+- Addressing follows 9-2.2 and the figure until edited. With a Via
+  chain, the first Via endorses: From is the first Via, To stays the
+  letter's addressee, the remaining Vias carry forward. With no Via,
+  the addressee endorses back to the writer. A button derives again
+  after an edit. Endorsing back to the writer carries a warning citing
+  9-1, since that paragraph says not to reply to a routine letter by
+  endorsement; approving a request this way is common practice, so it
+  is not blocked.
+- The render draws the letter, draws the endorsement as the block, and
+  composes the two with the Figure 9-1 rule between them, in the
+  preview, the export, the companion and package assembly. When the
+  endorsement does not fit, it goes to a new page with the SSIC, the
+  subject and the "on ..." line restored, the letter in reference
+  style derived from the top half. The fit line sits in the
+  endorsement card.
+- A received letter still attaches as a PDF. Then it is the top half,
+  the letter sections hide, and the endorsement card is the whole form.
+- The "Same-Page Endorsement" template is Figure 9-1 as one document:
+  the NAS Meridian letter of 22 Apr 15 signed G. L. SLAUGHTER, JR, and
+  the first endorsement of 23 Apr 15 signed R. L. GABEL.
+- Documents saved before this release kept the endorsement in the main
+  fields. They migrate on load: the endorsement moves into its card and
+  the letter sections open empty for the letter.
+- `src/lib/same-page-composite.ts` and its tests: the derivation, the
+  two render contexts, the migration, the rules, and the render of
+  Figure 9-1 measured with both signers on one page and the fallback
+  on two.
+
+### Changed
+
+- Word export is not offered for the two-half document, since Word
+  takes no PDF host and the DOCX emitter renders one document. The
+  export says so.
+
 ## [0.9.2] - 2026-09-06
 
 ### Fixed

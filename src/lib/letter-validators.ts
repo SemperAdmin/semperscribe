@@ -15,6 +15,7 @@ import type { DictionaryEntry } from '@/lib/military-dictionary';
 import { runNavmc10922Validators } from '@/lib/navmc10922-validators';
 import { runNavmc10132Validators } from '@/lib/navmc10132-validators';
 import { runDd368Validators } from '@/lib/dd368-validators';
+import { validateSamePageComposite } from '@/lib/same-page-composite';
 import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
 import {
   validateSchemaFields,
@@ -858,8 +859,8 @@ export function validateSamePageEndorsementExport(formData: FormData): Validatio
   if (!isSamePageEndorsement(formData)) return [];
   // E.3: with the letter being endorsed attached, the fit is measured
   // and the block placed on every preview and export, so there is
-  // nothing to report.
-  if (formData.samePageHost) return [];
+  // nothing to report. E.5: the two-half document carries its letter.
+  if (formData.samePageHost || formData.samePageEndorsement) return [];
   return [{
     id: 'same-page-endorsement-alone',
     severity: 'warn',
@@ -1064,6 +1065,7 @@ export function runLetterValidators(
     ...validateSubjectLine(formData, options.dictionary),
     ...validateEnclosureOrder(formData, options.enclosures ?? [], paragraphs),
     ...validateSamePageEndorsementExport(formData),
+    ...validateSamePageComposite(formData),
     // NAVMC 10922 dependency-application rules - no-op for every other
     // documentType (docs/NAVMC_10922_SPEC.md section 9).
     ...runNavmc10922Validators(formData),

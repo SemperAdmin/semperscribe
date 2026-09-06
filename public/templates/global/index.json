@@ -23,7 +23,7 @@
   {
     "id": "same-page-endorsement",
     "title": "Same-Page Endorsement",
-    "description": "Figure 9-1 of SECNAV M-5216.5, the first endorsement: added to the signature page of the basic letter when it fits, with the SSIC, subject and basic letter identification omitted.",
+    "description": "Figure 9-1 of SECNAV M-5216.5 as one document: the basic letter signed by its writer, and the first endorsement added to its signature page, signed by the endorser.",
     "documentType": "same-page-endorsement",
     "url": "/templates/global/same-page-endorsement.nldp"
   },

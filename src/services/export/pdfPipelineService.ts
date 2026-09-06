@@ -59,6 +59,25 @@ function buildNavmc11811Data(ctx: PdfBuildContext): Navmc11811Data {
 }
 
 async function generateStandardPdf(ctx: PdfBuildContext): Promise<Blob> {
+  // E.5: a same-page endorsement written from scratch is two halves.
+  // Rendered as the block (the flag set by a composer), it is the
+  // endorsement part alone; rendered whole, it is the letter with the
+  // endorsement composed onto its signature page, or appended as a
+  // new-page endorsement when it does not fit. Callers that need the
+  // placement (the preview, the export) compose through
+  // renderSamePageWithHost themselves; this branch serves every other
+  // caller, the companion and package assembly among them.
+  const { isSamePageEndorsement, isSamePageBlockRender } = await import('@/lib/same-page-endorsement');
+  if (isSamePageEndorsement(ctx.formData) && ctx.formData.samePageEndorsement) {
+    const { letterContext, endorsementContext } = await import('@/lib/same-page-composite');
+    if (isSamePageBlockRender(ctx.formData)) {
+      return generateStandardPdf(endorsementContext(ctx));
+    }
+    const { renderSamePageWithHost } = await import('@/lib/same-page-host');
+    const host = await generateStandardPdf(letterContext(ctx));
+    const endorsed = await renderSamePageWithHost(endorsementContext(ctx), generateStandardPdf, new Uint8Array(await host.arrayBuffer()));
+    return new Blob([new Uint8Array(endorsed.bytes)], { type: 'application/pdf' });
+  }
   const { generateBasePDFBlob } = await import('@/lib/pdf-generator');
   const paragraphsToRender = mergeAdminSubsections(ctx.paragraphs, ctx.formData.adminSubsections);
   return generateBasePDFBlob(

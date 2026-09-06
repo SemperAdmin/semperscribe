@@ -26,6 +26,8 @@ import { SignaturePlacementModal } from '@/components/SignaturePlacementModal';
 import { HeaderSettingsSection } from './HeaderSettingsSection';
 import { FontSelectorSection } from './FontSelectorSection';
 import { EndorsementDetailsSection } from './EndorsementDetailsSection';
+import { SamePageEndorsementSection } from './SamePageEndorsementSection';
+import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
 import { SignatureFieldSection } from './SignatureFieldSection';
 import { DecisionGridSection } from '@/components/letter/DecisionGridSection';
 import { CoordinationPageForm } from '@/components/letter/CoordinationPageForm';
@@ -167,7 +169,15 @@ export function DocumentLayout({
   }
 
   const docTypeDef = DOCUMENT_TYPES[formData.documentType] || DOCUMENT_TYPES['basic'];
-  const features: DocumentFeatures = docTypeDef.features;
+  // E.5: a same-page endorsement written from scratch is the letter (the
+  // main sections) plus the endorsement card. With a received PDF
+  // attached as the letter, the letter sections have nothing to say and
+  // stay hidden; the endorsement card is the whole form.
+  const samePageComposite = isSamePageEndorsement(formData) && !!formData.samePageEndorsement;
+  const letterHidden = samePageComposite && !!formData.samePageHost;
+  const features: DocumentFeatures = letterHidden
+    ? { ...docTypeDef.features, showVia: false, showReferences: false, showEnclosures: false, showParagraphs: false, showClosingBlock: false, showUnitInfo: false }
+    : docTypeDef.features;
   // E.2: the header names the option the drafter picked. A same-page
   // endorsement is the endorsement type with its placement set, and the
   // header says so rather than repeating the type's name.
@@ -387,6 +397,18 @@ export function DocumentLayout({
               setCopyTos={setCopyTos}
               distList={distList}
               setDistList={setDistList}
+            />
+          )}
+
+          {samePageComposite && (
+            <SamePageEndorsementSection
+              key={`same-page-endorsement-${formKey}`}
+              formData={formData}
+              setFormData={setFormData}
+              vias={vias}
+              references={references}
+              enclosures={enclosureRows.map(r => r.title)}
+              samePageStatus={samePageStatus}
             />
           )}
 

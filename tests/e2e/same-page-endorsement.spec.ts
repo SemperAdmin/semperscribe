@@ -90,7 +90,7 @@ async function writeHostLetter(dir: string): Promise<string> {
 }
 
 test.describe('same-page endorsement', () => {
-  test('template loads under its own option, the letter attaches, and the export is the composed page', async ({ page }, testInfo) => {
+  test('the template is one page with two signers, and a received PDF becomes the top half', async ({ page }, testInfo) => {
     const errors = collectErrors(page);
     await enterApp(page);
 
@@ -106,28 +106,44 @@ test.describe('same-page endorsement', () => {
     await dialog.getByText('Same-Page Endorsement', { exact: true }).click();
     await expect(dialog).toBeHidden();
 
-    // Figure 9-1's first endorsement is on the form.
-    await expect(page.getByLabel(/^From\b/).first()).toHaveValue('Commander, Sea Based Anti-Submarine Warfare Wing, Atlantic');
+    // E.5: Figure 9-1 as one document. The main sections are the
+    // letter, signed by its writer; the endorsement card is the second
+    // half, addressed per 9-2.2 and signed by the endorser.
+    await expect(page.getByLabel(/^From\b/).first()).toHaveValue('Commanding Officer, Naval Air Station, Meridian');
+    await expect(page.locator('#same-page-from')).toHaveValue('Commander, Sea Based Anti-Submarine Warfare Wing, Atlantic');
+    await expect(page.locator('#same-page-sig')).toHaveValue('R. L. GABEL');
+    // Two body editors: the letter's and the endorsement's.
+    await expect(page.getByRole('button', { name: 'Paragraph 1 body' })).toHaveCount(2);
+    await expect(page.getByTestId('same-page-composite-status')).toContainText('Fits on the signature page', { timeout: 40_000 });
 
-    // E.3: attach the letter being endorsed and read where the block landed.
+    // The export is the letter with the endorsement composed below its
+    // signature: one page, two signers, the rule between them.
+    const composed = await exportVia(page, /PDF/i, 'pdf');
+    const items = await extractPdfTextLayout(new Blob([new Uint8Array(composed.bytes)]));
+    expect(new Set(items.map(i => i.page)).size, 'a fitting endorsement adds no page').toBe(1);
+    const text = items.map(i => i.text).join(' ');
+    expect(text).toContain('HOW TO PREPARE AN ENDORSEMENT');
+    expect(text).toContain('An endorsement may be added to the bottom of a basic letter');
+    expect(text).toContain('FIRST ENDORSEMENT');
+    expect(text).not.toContain('FIRST ENDORSEMENT on');
+    expect(text).toContain('R. L. GABEL');
+    const letterSig = items.find(i => i.text.includes('SLAUGHTER'));
+    const endorsementLine = items.find(i => i.text.includes('FIRST ENDORSEMENT'));
+    expect(letterSig && endorsementLine && endorsementLine.y < letterSig.y, 'the endorsement sits below the letter\'s signature').toBe(true);
+
+    // E.3 still: a letter that arrived as a PDF becomes the top half,
+    // and the letter sections hide.
     const hostPath = await writeHostLetter(testInfo.outputDir);
     await page.locator('#same-page-host-file').setInputFiles(hostPath);
     await expect(page.getByTestId('same-page-host-label')).toHaveText('host-letter.pdf');
     await expect(page.getByTestId('same-page-host-status')).toContainText('Fits on the signature page', { timeout: 40_000 });
-
-    // The export is the letter with the endorsement on it: one page,
-    // the letter's own lines above, the endorsement line below.
-    const pdf = await exportVia(page, /PDF/i, 'pdf');
-    const items = await extractPdfTextLayout(new Blob([new Uint8Array(pdf.bytes)]));
-    const pages = new Set(items.map(i => i.page));
-    expect(pages.size, 'a fitting endorsement adds no page').toBe(1);
-    const text = items.map(i => i.text).join(' ');
-    expect(text).toContain('HOW TO PREPARE AN ENDORSEMENT');
-    expect(text).toContain('FIRST ENDORSEMENT');
-    expect(text).toContain('R. L. GABEL');
-    const hostSig = items.find(i => i.text.includes('SLAUGHTER'));
-    const endorsementLine = items.find(i => i.text.includes('FIRST ENDORSEMENT'));
-    expect(hostSig && endorsementLine && endorsementLine.y < hostSig.y, 'the endorsement sits below the letter\'s signature').toBe(true);
+    // The letter sections hide; the endorsement's editor is the one left.
+    await expect(page.getByRole('button', { name: 'Paragraph 1 body' })).toHaveCount(1);
+    const attached = await exportVia(page, /PDF/i, 'pdf');
+    const attachedText = (await extractPdfTextLayout(new Blob([new Uint8Array(attached.bytes)]))).map(i => i.text).join(' ');
+    expect(attachedText).toContain('Request approval of the action described in enclosure (1).');
+    expect(attachedText).not.toContain('An endorsement may be added to the bottom');
+    expect(attachedText).toContain('R. L. GABEL');
 
     expect(errors, errors.join('\n')).toEqual([]);
   });

@@ -37,6 +37,9 @@ export function EndorsementDetailsSection({
   // A same-page endorsement cannot be added to another same-page
   // endorsement's block alone, so the library offers every other letter.
   const hostCandidates = savedLetters.filter((l) => !isSamePageEndorsement(l));
+  // E.5: with the two-half model the letter is written in the sections
+  // above, and its reference-style form is derived in the endorsement card.
+  const composite = samePage && !!formData.samePageEndorsement;
 
   return (
     <Card className="border-primary/20 shadow-md overflow-hidden mb-6">
@@ -74,12 +77,11 @@ export function EndorsementDetailsSection({
         {/* E.3: the letter being endorsed (M-5216.5 9-1, Figure 9-1) */}
         {samePage && (
           <div className="space-y-3 p-3 bg-secondary/5 rounded-lg border border-secondary/10">
-            <Label className="text-sm font-medium">Letter being endorsed</Label>
+            <Label className="text-sm font-medium">{composite ? 'Letter received as a PDF (optional)' : 'Letter being endorsed'}</Label>
             <p className="text-xs text-muted-foreground italic">
-              Paragraph 9-1 and Figure 9-1: a same-page endorsement is added to the signature page of
-              the basic letter or the preceding endorsement, below its signature. That page keeps its
-              own letterhead and seal; the endorsement adds none. Attach the letter to see the
-              endorsement on that page and have the fit measured.
+              {composite
+                ? 'The sections above are the letter, written here and signed by its writer. If the letter arrived signed as a PDF instead, attach it: it becomes the top half, the letter sections hide, and the endorsement card below is the whole form.'
+                : 'Paragraph 9-1 and Figure 9-1: a same-page endorsement is added to the signature page of the basic letter or the preceding endorsement, below its signature. That page keeps its own letterhead and seal; the endorsement adds none. Attach the letter to see the endorsement on that page and have the fit measured.'}
             </p>
             {host ? (
               <div className="space-y-2">
@@ -140,9 +142,11 @@ export function EndorsementDetailsSection({
                     </Select>
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground italic">
-                  Without it the preview and the export show the endorsement block alone.
-                </p>
+                {!composite && (
+                  <p className="text-xs text-muted-foreground italic">
+                    Without it the preview and the export show the endorsement block alone.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -175,7 +179,7 @@ export function EndorsementDetailsSection({
         {/* Basic Letter Reference Builder */}
         {formData.endorsementLevel && (
           <div className="space-y-4">
-            <StructuredReferenceInput formData={formData} setFormData={setFormData} />
+            {!composite && <StructuredReferenceInput formData={formData} setFormData={setFormData} />}
 
             <div className="p-4 bg-secondary/5 border border-secondary/10 rounded-lg text-sm font-mono text-muted-foreground flex items-center gap-2">
               <span className="font-bold text-primary">Preview:</span>
