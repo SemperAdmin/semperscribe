@@ -92,6 +92,18 @@ export function EndorsementDetailsSection({
                     {describePlacement(samePageStatus)}
                   </p>
                 )}
+                {samePageStatus?.status === 'no-host' && (
+                  // The form names a letter the preview could not read: a
+                  // PDF missing from this browser's store (another browser,
+                  // cleared storage, an imported .nldp or a share link) or a
+                  // library letter since deleted. Say so, or the page alone
+                  // passes for the endorsed document.
+                  <p className="text-xs text-destructive" role="alert" data-testid="same-page-host-missing">
+                    {host.kind === 'file'
+                      ? `"${host.fileName}" was not found in this browser. Remove it and attach the PDF again; until then the preview and the export show the endorsement on a page of its own.`
+                      : `"${host.title}" is no longer in the library. Remove it and pick another letter; until then the preview and the export show the endorsement on a page of its own.`}
+                  </p>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
