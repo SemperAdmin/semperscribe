@@ -126,6 +126,28 @@ describe('letter being endorsed (E.3)', () => {
     expect(onClearHost).toHaveBeenCalled();
   });
 
+  it('warns when the attached letter cannot be read, so the page alone does not pass for the endorsed document', () => {
+    render(
+      <Harness
+        initial={{ endorsementPlacement: 'same-page', samePageHost: { kind: 'file', fileId: 'gone', fileName: 'lost.pdf' } }}
+        samePageStatus={{ status: 'no-host' }}
+      />,
+    );
+    expect(screen.getByTestId('same-page-host-missing').textContent).toContain('"lost.pdf" was not found in this browser');
+    expect(screen.queryByTestId('same-page-host-status')).toBeNull();
+    expect(screen.getByText('Remove')).toBeTruthy();
+  });
+
+  it('names a deleted library letter the same way', () => {
+    render(
+      <Harness
+        initial={{ endorsementPlacement: 'same-page', samePageHost: { kind: 'draft', letterId: 'L9', title: 'Old request' } }}
+        samePageStatus={{ status: 'no-host' }}
+      />,
+    );
+    expect(screen.getByTestId('same-page-host-missing').textContent).toContain('"Old request" is no longer in the library');
+  });
+
   it('reports the new-page fallback when the block does not fit', () => {
     render(
       <Harness
