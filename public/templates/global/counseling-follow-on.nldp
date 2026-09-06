@@ -83,7 +83,13 @@
       "counselingMarineComments": "Agreed. I want the savings plan done before the holidays.",
       "counselingSeniorSignedDate": "6 Sep 26",
       "counselingMarineSignedDate": "6 Sep 26",
-      "counselingDismissed": []
+      "counselingDismissed": [],
+      "counselingPriorBenchmark": { "character": "2.5", "mos": "2.5", "leadership": "2.5", "date": "8 Jun 26" },
+      "counselingBenchmark": {
+        "character": { "mark": "2.8", "justification": "", "commendatory": false, "adverseReason": "" },
+        "mos": { "mark": "3.2", "justification": "Carried the section through the SNCOIC gap in July; met the five-day correspondence turnaround on 90 percent of items.", "commendatory": false, "adverseReason": "" },
+        "leadership": { "mark": "2.6", "justification": "", "commendatory": false, "adverseReason": "" }
+      }
     },
     "vias": [],
     "references": [],

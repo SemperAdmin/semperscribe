@@ -21,6 +21,8 @@ import {
   AREA_CITATION, COUNSELING_AREAS, COUNSELING_LIFE_EVENTS, HANDLING_STATEMENT, ICS_OBJECTIVES, PRIVACY_MARKING, STANDARD_KINDS,
   counselingArea, counselingAreaEntries, counselingField, counselingIcsObjectives, counselingLifeEvents, counselingOccasion,
   counselingPriorTargets, counselingSubjects, counselingTargets, rankAbbreviation, targetSentence,
+  JEPES_ADVERSE_REASONS, JEPES_ATTRIBUTES, JEPES_CITATION, benchmarkHasMarks, counselingBenchmark, counselingPriorBenchmark,
+  isJepesGrade, jepesBand,
   type CounselingAreaEntry, type CounselingPriorTarget, type CounselingSubject, type CounselingTarget,
 } from '@/lib/counseling';
 
@@ -46,7 +48,44 @@ export interface CounselingFormModel {
   priorTargets: CounselingPriorTarget[];
   targets: CounselingTarget[];
   marineCommentsIncluded: boolean;
+  /**
+   * Section VI-A. Present only when the grade on the worksheet is E-1
+   * to E-4 AND at least one mark was entered: a blank benchmark prints
+   * nothing, so a worksheet without one looks as it did before.
+   */
+  benchmark: BenchmarkRow[] | null;
   handling: string;
+}
+
+export interface BenchmarkRow {
+  attribute: string;
+  prior: string;
+  mark: string;
+  band: string;
+  /** Justification, with the adverse reason and commendatory note folded in. */
+  justification: string;
+}
+
+function benchmarkRows(formData: FormData): BenchmarkRow[] | null {
+  if (!isJepesGrade(counselingField(formData, 'counselingMarineGrade'))) return null;
+  const benchmark = counselingBenchmark(formData);
+  if (!benchmarkHasMarks(benchmark)) return null;
+  const prior = counselingPriorBenchmark(formData);
+  return JEPES_ATTRIBUTES.map((a) => {
+    const m = benchmark[a.id];
+    const band = jepesBand(m.mark);
+    const parts: string[] = [];
+    if (band?.id === 'adverse' && m.adverseReason) parts.push(JEPES_ADVERSE_REASONS.find((r) => r.value === m.adverseReason)?.label ?? m.adverseReason);
+    if (m.justification.trim()) parts.push(m.justification.trim());
+    if (band?.id === 'exceptional') parts.push(m.commendatory ? 'Formal commendatory material on file.' : 'Formal commendatory material not confirmed.');
+    return {
+      attribute: a.title,
+      prior: prior[a.id].trim(),
+      mark: band ? m.mark.trim() : '',
+      band: band?.label ?? '',
+      justification: parts.join(' '),
+    };
+  });
 }
 
 function gradeText(value: string): string {
@@ -133,6 +172,7 @@ export function counselingFormModel(formData: FormData): CounselingFormModel {
     priorTargets: counselingPriorTargets(formData).filter((t) => t.text.trim()),
     targets: counselingTargets(formData),
     marineCommentsIncluded: (formData as Record<string, unknown>).counselingIncludeMarineComments === true || !!get('counselingMarineComments'),
+    benchmark: benchmarkRows(formData),
     handling: HANDLING_STATEMENT,
   };
 }
@@ -548,6 +588,30 @@ export async function generateCounseling(formData: FormData): Promise<Uint8Array
   s.section('SECTION VI. PERFORMANCE THIS PERIOD');
   s.row([cell(22, WIDTH, { minLines: 2 })]);
   s.row([cell(23, WIDTH / 2, { minLines: 2 }), cell(24, WIDTH / 2, { minLines: 2 })]);
+
+  // Section VI-A. The provisional JEPES benchmark, only when marked.
+  if (model.benchmark) {
+    s.section(`SECTION VI-A. JEPES BENCHMARK (provisional, not the mark of record; ${JEPES_CITATION})`);
+    const priorDate = counselingPriorBenchmark(formData).date.trim();
+    const benchCols = [150, 50, 50, 110, WIDTH - 150 - 50 - 50 - 110];
+    s.table(
+      [
+        { w: benchCols[0], value: 'ATTRIBUTE', bold: true, size: LABEL + 0.5 },
+        { w: benchCols[1], value: priorDate ? `PRIOR (${priorDate})` : 'PRIOR', bold: true, size: LABEL + 0.5 },
+        { w: benchCols[2], value: 'THIS SESSION', bold: true, size: LABEL + 0.5 },
+        { w: benchCols[3], value: 'BAND', bold: true, size: LABEL + 0.5 },
+        { w: benchCols[4], value: 'JUSTIFICATION', bold: true, size: LABEL + 0.5 },
+      ],
+      model.benchmark.map((r) => [
+        { w: benchCols[0], value: r.attribute },
+        { w: benchCols[1], value: r.prior },
+        { w: benchCols[2], value: r.mark },
+        { w: benchCols[3], value: r.band },
+        { w: benchCols[4], value: r.justification },
+      ]),
+      'The senior\'s mark at this session, entered on the counseling worksheet. The mark of record is entered in JEPES by the reporting chain at period end. Working Toward and Below Expectations are not adverse and do not by themselves NOT REC (MCO 1616.1 encl (1) para 3.a(4), 3.a(5)).',
+    );
+  }
 
   // Section VII. Review of targets from last session.
   s.section('SECTION VII. REVIEW OF TARGETS FROM LAST SESSION (follow-on only, NAVMC 2795 para 2001.2.b)');
