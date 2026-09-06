@@ -12,7 +12,7 @@ import {
   computedNextSessionDate, counselingSuggestions, emptyTarget, isLcplOrBelow, nextSessionInterval, parseNavalDate,
   runCounselingValidators, targetIsWellFormed, targetSentence, toNavalDate,
 } from '@/lib/counseling';
-import { counselingRecordLines, generateCounseling } from '@/services/pdf/counselingGenerator';
+import { counselingFormModel, generateCounseling } from '@/services/pdf/counselingGenerator';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { runLetterValidators } from '@/lib/letter-validators';
 import { DOCUMENT_TYPES, CounselingSchema } from '@/lib/schemas';
@@ -221,23 +221,35 @@ describe('the record', () => {
     expect(getExportFilename(form(), 'pdf')).toBe('Counseling - SAMPLE - 6 Sep 26.pdf');
   });
 
-  it('prints the four minimums, the six areas, the targets and the handling statement', () => {
+  it('models the form by item number: the four minimums, the areas, the targets, the handling block', () => {
     const fd = form({
       counselingSubjects: [{ text: 'Unit mission', area: 'duties' }],
       counselingAreas: [{ area: 'fitness', status: 'discussed', notes: 'PFT first class' }],
       counselingTargets: [{ ...emptyTarget(), action: 'To pass', object: 'the PFT', standard: 'first class', dueDate: '1 Dec 26', area: 'fitness', standardKinds: ['quality'] }],
+      counselingLifeEvents: ['birth-of-child'],
       counselingIncludeMarineComments: true,
       counselingMarineComments: 'Agreed.',
     });
-    const text = counselingRecordLines(fd).map((l) => l.text).join('\n');
-    expect(text).toContain('Date of session: 6 Sep 26');
-    expect(text).toContain('Name: Sgt SAMPLE, MARINE');
-    expect(text).toContain('• Unit mission [Duties]');
-    expect(text).toContain('Fitness: Discussed. PFT first class');
-    expect(text).toContain('Fidelity: Not answered');
-    expect(text).toContain('1. To pass the PFT, first class by 1 Dec 26. (Standard: Quality; Area: Fitness)');
-    expect(text).toContain("MARINE'S COMMENTS");
-    expect(text).toContain(HANDLING_STATEMENT);
+    const model = counselingFormModel(fd);
+    const item = (n: number) => model.items.find((i) => i.n === n)!;
+    expect(model.items.map((i) => i.n)).toEqual(Array.from({ length: 32 }, (_, i) => i + 1));
+    expect(item(1).checks!.find((c) => c.label === 'Initial (ICS)')!.on).toBe(true);
+    expect(item(2).value).toBe('6 Sep 26');
+    expect(item(6).checks!.find((c) => c.label === 'Birth of a child')!.on).toBe(true);
+    expect(item(7).value).toBe('SAMPLE, MARINE');
+    expect(item(8).value).toBe('Sgt E-5');
+    expect(item(14).checks).toEqual([{ label: 'AC', on: true }, { label: 'RC', on: false }]);
+    expect(model.agenda).toBe('ics');
+    expect(item(19).checks).toHaveLength(7);
+    expect(model.areas.find((a) => a.area === 'fitness')).toEqual({ area: 'fitness', status: 'discussed', notes: 'PFT first class' });
+    expect(model.subjects).toEqual([{ text: 'Unit mission', area: 'duties' }]);
+    expect(model.targets[0].object).toBe('the PFT');
+    expect(model.marineCommentsIncluded).toBe(true);
+    expect(item(29).value).toBe('GySgt LEADER');
+    expect(item(31).value).toBe('Sgt SAMPLE, MARINE');
+    expect(model.handling).toBe(HANDLING_STATEMENT);
+    expect(counselingFormModel(form({ counselingOccasion: 'follow-on' })).agenda).toBe('review');
+    expect(counselingFormModel(form({ counselingOccasion: 'event-related', counselingEventDescription: 'Range incident' })).items.find((i) => i.n === 19)!.value).toBe('Range incident');
   });
 
   it('renders through the pipeline with the marking on the page', async () => {
@@ -246,8 +258,12 @@ describe('the record', () => {
     const text = items.map((i) => i.text).join(' ');
     expect(text).toContain('COUNSELING WORKSHEET');
     expect(text).toContain(PRIVACY_MARKING);
-    expect(text).toContain('Sgt SAMPLE, MARINE');
-    expect(text).toContain('FUNCTIONAL AREAS OF LEADER DEVELOPMENT');
+    expect(text).toContain('7. NAME (Last, First, MI)');
+    expect(text).toContain('SAMPLE, MARINE');
+    expect(text).toContain('SECTION V. FUNCTIONAL AREAS OF LEADER DEVELOPMENT');
+    expect(text).toContain('TARGET (action, object, standard)');
+    expect(text).toContain('HANDLING.');
+    expect(text).toContain('Page 1 of');
   });
 
   it('flows a long record onto a second page', async () => {

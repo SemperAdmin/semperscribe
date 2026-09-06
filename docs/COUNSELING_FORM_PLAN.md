@@ -23,7 +23,7 @@ Section 5 is rewritten on that basis.
 | Vocabulary, dates, intervals, targets, the suggestion engine | `src/lib/counseling.ts` |
 | Schema, definition, category `counseling-worksheets`, pipeline `counseling` | `src/lib/schemas.ts` (`CounselingSchema`, `CounselingDefinition`) |
 | The guided seven-step editor | `src/components/counseling/CounselingSections.tsx` |
-| Render | `src/services/pdf/counselingGenerator.ts` |
+| Render, mock-up A as a boxed numbered form (0.11.1) | `src/services/pdf/counselingGenerator.ts` (`counselingFormModel`, `generateCounseling`) |
 | Sidebar group "Counseling Worksheets" | `src/components/layout/Sidebar.tsx` |
 | Templates | `public/templates/global/counseling-initial.nldp`, `counseling-thirty-day.nldp`, `counseling-follow-on.nldp` |
 | Tests | `tests/counseling.test.ts`, `tests/template-counseling.test.ts`, `tests/components/counseling-sections.test.tsx`, `tests/components/sidebar-counseling.test.tsx` |
@@ -390,12 +390,20 @@ oversight.
 - **Pipeline.** New `counseling` entry in `PIPELINE_MAP`, drawn with
   pdf-lib the way `dd368Generator.ts` is, with no artwork behind it. One
   page in the normal case, overflow to a second page for long sections.
-- **Layout.** Portrait letter. Title "COUNSELING WORKSHEET" and the
-  occasion on the first line. Two boxed columns for Sections 2 and 3.
-  Section 1 dates as a single row. Sections 4 to 9 as ruled boxes with
-  headings. Section 8 as a table: number, target sentence, standard
-  kind, due date, area. Section 10 as two signature lines with dates,
-  then the handling statement in 8-point type.
+- **Layout (0.11.1, mock-up A).** Portrait letter, boxed and numbered
+  the way DD and NAVMC forms read. Title block with a one-line
+  statement of what the form is and is not. Ten sections in session
+  order: I Session (items 1 to 6), II Marine counseled (7 to 14), III
+  Senior (15 to 18), IV Agenda (19, by occasion), V the six areas as a
+  table with discussed, not-this-session and target-set columns (20)
+  plus subjects discussed (21), VI Performance (22 to 24), VII Review
+  of last session's targets (25), VIII Targets as a five-row table with
+  standard-kind codes (26), IX Comments (27, 28), X Certification (29
+  to 32) with signature cells, then the handling paragraph. Check
+  boxes for every closed choice. Section bars and tables keep together
+  across page breaks; page numbers print. No form identifier (owner
+  decision: a record kept by two people and destroyed at relationship
+  end has no edition to track).
 - **No letterhead, no seal, no SSIC, no classification block.** This is
   a working record, not correspondence. The unit form has none.
 - **Marking.** "PRIVACY SENSITIVE" at the top and bottom of every page,
