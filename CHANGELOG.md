@@ -5,6 +5,37 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.8.1] - 2026-09-06
+
+Audit of the same-page endorsement chain (0.6.1 to 0.8.0) and the
+analysis for the next form option.
+
+### Added
+
+- A browser test for the chain against the built export:
+  `tests/e2e/same-page-endorsement.spec.ts` picks the same-page option,
+  loads Figure 9-1's first endorsement from the templates picker
+  filtered to that option, attaches a short letter built in the test,
+  reads the fit line, exports the PDF and reads the composed page back
+  off disk: one page, the letter's own lines above, the endorsement
+  line below the letter's signature, zero console errors. It runs in
+  the e2e job with the smoke and axe suites.
+- `docs/INTERSERVICE_TRANSFER_DD368_SPEC.md`: analysis of DD Form 368
+  and MCO 1001.65 enclosure (4), the item-by-item data model and value
+  rules of the form, what the order adds for an officer transferring
+  into the Marine Corps, a design for a "Conditional Release (DD 368)"
+  option with an endorsement recommendation grade and three inbound
+  templates, the four decisions the build needs, and the phases.
+
+### Fixed
+
+- The endorsement details card now says when the attached letter cannot
+  be read: a PDF missing from this browser's store (another browser,
+  cleared storage, an imported .nldp or a share link) or a library
+  letter since deleted. Before, the card showed the file name with no
+  status while the preview and the export quietly fell back to the
+  endorsement on a page of its own.
+
 ## [0.8.0] - 2026-09-05
 
 Phase E.4: the same-page endorsement on its own page, and the two
