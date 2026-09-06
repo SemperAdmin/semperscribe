@@ -204,3 +204,15 @@ Download completed successfully
 ```
 
 The functionality is working correctly - it was a UI understanding issue, not a technical problem!
+## Counseling Worksheet
+
+Not a form: MCO 1500.61 para 5.b(1) prescribes none. The export is the
+app's own layout (`src/services/pdf/counselingGenerator.ts`), PDF only,
+PRIVACY SENSITIVE top and bottom of every page, with the handling
+statement of NAVMC 2795 para 3005.1.i under the two signature lines.
+Nothing blocks the export. The suggestions still open show on the close
+step and in the compliance panel as warnings, and the sensitive-data
+dialog fires on the EDIPI fields the way it does for every type. The
+file is named for the Marine counseled and the session date:
+`Counseling - LASTNAME - D MMM YY.pdf`. Full design in
+`docs/COUNSELING_FORM_PLAN.md`.

@@ -502,5 +502,26 @@
     "description": "DD Form 368 with Section I filled for a Marine sergeant requesting release to the Navy Reserve. Sample data - replace before use.",
     "documentType": "dd368",
     "url": "/templates/global/dd368-sample.nldp"
+  },
+  {
+    "id": "counseling-initial",
+    "title": "Initial Counseling Session (Cpl and above)",
+    "description": "A sergeant's initial counseling session about 30 days into a new senior/junior relationship: the seven ICS objectives covered, six functional areas answered, three well-formed targets, next session 90 days out (NAVMC 2795 para 2001.1, 4002). Sample data - replace before use.",
+    "documentType": "counseling",
+    "url": "/templates/global/counseling-initial.nldp"
+  },
+  {
+    "id": "counseling-thirty-day",
+    "title": "30-Day Counseling (LCpl and below)",
+    "description": "A lance corporal's 30-day session: brief, the para 2001.3.e topics as subjects, four targets, next session 30 days out. Sample data - replace before use.",
+    "documentType": "counseling",
+    "url": "/templates/global/counseling-thirty-day.nldp"
+  },
+  {
+    "id": "counseling-follow-on",
+    "title": "Follow-On Session",
+    "description": "A corporal's follow-on session: last session's targets reviewed and marked, one carried forward, three targets set, next session six months out (NAVMC 2795 para 2001.2). Sample data - replace before use.",
+    "documentType": "counseling",
+    "url": "/templates/global/counseling-follow-on.nldp"
   }
 ]

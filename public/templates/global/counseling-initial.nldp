@@ -1,0 +1,90 @@
+{
+  "metadata": {
+    "packageId": "nldp_1788000000002_counseling_initial",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-09-06T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "Initial Counseling Session (Cpl and above)",
+      "description": "A sergeant's initial counseling session about 30 days into a new senior/junior relationship. Sample data - replace before use.",
+      "subject": "",
+      "documentType": "counseling",
+      "tags": [
+        "template",
+        "counseling",
+        "initial"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "counseling",
+      "date": "6 Sep 26",
+      "counselingOccasion": "initial",
+      "counselingLifeEvents": ["promotion-reenlistment"],
+      "counselingLifeEventsOther": "",
+      "counselingEventDescription": "",
+      "counselingIcsDate": "",
+      "counselingLastSessionDate": "",
+      "counselingNextSessionDate": "5 Dec 26",
+      "counselingMarineLastName": "SAMPLE",
+      "counselingMarineFirstName": "MARINE",
+      "counselingMarineMiddleInitial": "A",
+      "counselingMarineGrade": "E-5",
+      "counselingMarineComponent": "active",
+      "counselingMarineEdipi": "1234567890",
+      "counselingMarineDor": "1 Mar 25",
+      "counselingMarinePmos": "0111",
+      "counselingMarineBilletMos": "0111",
+      "counselingBilletTitle": "Administrative Chief, S-1",
+      "counselingBilletDescription": "Supervises three Marines. Owns the unit diary, awards and correspondence.",
+      "counselingSeniorLastName": "LEADER",
+      "counselingSeniorFirstName": "SAMPLE",
+      "counselingSeniorMiddleInitial": "B",
+      "counselingSeniorGrade": "E-7",
+      "counselingSeniorEdipi": "",
+      "counselingSeniorBillet": "Administrative Chief",
+      "counselingIcsObjectives": ["expectations", "understanding", "targets", "interest", "style", "motivation", "mission"],
+      "counselingPriorTargets": [],
+      "counselingSubjects": [
+        { "text": "Unit mission and status; primary and collateral duties as Administrative Chief, S-1", "area": "duties" },
+        { "text": "Expectations: unit diary accuracy, correspondence turnaround, supervision of the section", "area": "duties" },
+        { "text": "Promotion or reenlistment timeline and requirements", "area": "future" }
+      ],
+      "counselingAreas": [
+        { "area": "fidelity", "status": "discussed", "notes": "No conduct concerns. Sets the example for the section." },
+        { "area": "fighter", "status": "target-set", "notes": "Career Course seat requested. Rifle qual expert." },
+        { "area": "fitness", "status": "discussed", "notes": "PFT first class. CFT due in November." },
+        { "area": "family", "status": "discussed", "notes": "Married, one child, base housing." },
+        { "area": "finances", "status": "not-this-session", "notes": "" },
+        { "area": "future", "status": "target-set", "notes": "Wants to reenlist and screen for drill instructor duty." }
+      ],
+      "counselingAccomplishments": "Took over the section on arrival. Cleared the unit diary backlog in the first three weeks.",
+      "counselingStrengths": "Organised, thorough, and direct with the Marines in the section.",
+      "counselingDeficiencies": "Correspondence turnaround runs past five working days when the section is short.",
+      "counselingTargets": [
+        { "action": "To complete", "object": "the Career Course seat request and the command endorsement", "standardKinds": ["timeliness"], "standard": "", "dueDate": "1 Oct 26", "area": "fighter" },
+        { "action": "To achieve", "object": "a five-working-day turnaround on routine correspondence", "standardKinds": ["timeliness", "quantity"], "standard": "on 90 percent of items", "dueDate": "5 Dec 26", "area": "fighter" },
+        { "action": "To submit", "object": "the reenlistment request with the drill instructor screening package", "standardKinds": ["timeliness"], "standard": "", "dueDate": "15 Nov 26", "area": "future" }
+      ],
+      "counselingSeniorComments": "A strong start. The targets above are the measure for the follow-on session in December.",
+      "counselingIncludeMarineComments": true,
+      "counselingMarineComments": "I understand the expectations and agree with the targets. I added the reenlistment target myself.",
+      "counselingSeniorSignedDate": "6 Sep 26",
+      "counselingMarineSignedDate": "6 Sep 26",
+      "counselingDismissed": []
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}

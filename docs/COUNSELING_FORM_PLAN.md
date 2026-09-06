@@ -16,6 +16,26 @@ says becomes a suggestion keyed to the situation of the session, shown
 with its cite and applied in one click where the app has enough to act.
 Section 5 is rewritten on that basis.
 
+**Implementation status 2026-09-06.** Phase 1 shipped in 0.11.0.
+
+| Artifact | Location |
+|---|---|
+| Vocabulary, dates, intervals, targets, the suggestion engine | `src/lib/counseling.ts` |
+| Schema, definition, category `counseling-worksheets`, pipeline `counseling` | `src/lib/schemas.ts` (`CounselingSchema`, `CounselingDefinition`) |
+| The guided seven-step editor | `src/components/counseling/CounselingSections.tsx` |
+| Render | `src/services/pdf/counselingGenerator.ts` |
+| Sidebar group "Counseling Worksheets" | `src/components/layout/Sidebar.tsx` |
+| Templates | `public/templates/global/counseling-initial.nldp`, `counseling-thirty-day.nldp`, `counseling-follow-on.nldp` |
+| Tests | `tests/counseling.test.ts`, `tests/template-counseling.test.ts`, `tests/components/counseling-sections.test.tsx`, `tests/components/sidebar-counseling.test.tsx` |
+| Not built | Phases 2 and 3 (section 8): the per-Marine link, follow-on from a saved session, cross-session area coverage, DOCX, printable blank |
+
+Owner decisions 2026-09-06, all applied: category "Counseling
+Worksheets" (nothing else belongs in a Leader Development group yet);
+guided flow; no hard requirements; EDIPI for both Marines; the new
+section titles; PRIVACY SENSITIVE marking; the Marine's comments as an
+option; warrant officers on the corporal-through-colonel interval; the
+five life events plus a unit-specific entry.
+
 ## 1. What was supplied, and what each document settles
 
 | Source | Date | What it governs |

@@ -12,6 +12,7 @@ import {
   FileInput,
   Type,
   Building2,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ParagraphData } from '@/types';
@@ -462,6 +463,27 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                     active={documentType === 'dd368'}
                     onClick={() => handleSelect('dd368')}
                     label="Conditional Release (DD 368)"
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Counseling Worksheets Group. Not a form: MCO 1500.61 para
+                5.b(1) prescribes none, so the entry is a guided session
+                with a record at the end (docs/COUNSELING_FORM_PLAN.md). */}
+            <AccordionItem value="counseling-worksheets" className="border-none">
+              <AccordionTrigger className="py-2 text-sm font-semibold text-foreground hover:no-underline">
+                <span className="flex items-center">
+                  <Users className="w-4 h-4 mr-2 text-primary" />
+                  Counseling Worksheets
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-2">
+                <div className="space-y-1 pl-2">
+                  <DocumentTypeButton
+                    active={documentType === 'counseling'}
+                    onClick={() => handleSelect('counseling')}
+                    label="Counseling Worksheet"
                   />
                 </div>
               </AccordionContent>

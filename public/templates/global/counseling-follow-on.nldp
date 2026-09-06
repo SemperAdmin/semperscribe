@@ -1,0 +1,94 @@
+{
+  "metadata": {
+    "packageId": "nldp_1788000000004_counseling_follow_on",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-09-06T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "Follow-On Session",
+      "description": "A corporal's follow-on session: last session's targets reviewed and marked, one carried forward. Sample data - replace before use.",
+      "subject": "",
+      "documentType": "counseling",
+      "tags": [
+        "template",
+        "counseling",
+        "follow-on"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "counseling",
+      "date": "6 Sep 26",
+      "counselingOccasion": "follow-on",
+      "counselingLifeEvents": [],
+      "counselingLifeEventsOther": "Return from deployment",
+      "counselingEventDescription": "",
+      "counselingIcsDate": "8 Mar 26",
+      "counselingLastSessionDate": "8 Jun 26",
+      "counselingNextSessionDate": "6 Mar 27",
+      "counselingMarineLastName": "SAMPLE",
+      "counselingMarineFirstName": "MARINE",
+      "counselingMarineMiddleInitial": "E",
+      "counselingMarineGrade": "E-4",
+      "counselingMarineComponent": "active",
+      "counselingMarineEdipi": "1234567892",
+      "counselingMarineDor": "1 Jan 26",
+      "counselingMarinePmos": "3531",
+      "counselingMarineBilletMos": "3531",
+      "counselingBilletTitle": "Motor Transport Operator, Dispatcher",
+      "counselingBilletDescription": "",
+      "counselingSeniorLastName": "LEADER",
+      "counselingSeniorFirstName": "SAMPLE",
+      "counselingSeniorMiddleInitial": "F",
+      "counselingSeniorGrade": "E-6",
+      "counselingSeniorEdipi": "",
+      "counselingSeniorBillet": "Motor Transport Chief",
+      "counselingIcsObjectives": [],
+      "counselingPriorTargets": [
+        { "text": "To complete the Corporals Course", "status": "met" },
+        { "text": "To achieve zero late dispatches for the quarter", "status": "not-met" },
+        { "text": "To pass the HMMWV licensing road test", "status": "met" }
+      ],
+      "counselingSubjects": [
+        { "text": "Progress on last session's targets", "area": "duties" },
+        { "text": "Late dispatches: the cause was the maintenance backlog, not the dispatcher", "area": "duties" },
+        { "text": "Return from deployment: leave, family, finances", "area": "family" }
+      ],
+      "counselingAreas": [
+        { "area": "fidelity", "status": "discussed", "notes": "No concerns." },
+        { "area": "fighter", "status": "discussed", "notes": "Corporals Course complete. Licensed on the HMMWV." },
+        { "area": "fitness", "status": "not-this-session", "notes": "" },
+        { "area": "family", "status": "discussed", "notes": "Back from deployment. Two weeks leave taken." },
+        { "area": "finances", "status": "target-set", "notes": "Deployment savings. Wants a plan for it." },
+        { "area": "future", "status": "discussed", "notes": "Sergeant board next year." }
+      ],
+      "counselingAccomplishments": "Completed the Corporals Course. Ran the dispatch desk through the deployment without a safety incident.",
+      "counselingStrengths": "Calm under pressure. Keeps the dispatch log exact.",
+      "counselingDeficiencies": "Late dispatches this quarter, though the cause sat in maintenance.",
+      "counselingTargets": [
+        { "action": "To achieve", "object": "zero late dispatches for the quarter, with maintenance holds logged as such", "standardKinds": ["quantity", "manner"], "standard": "zero", "dueDate": "31 Dec 26", "area": "fighter" },
+        { "action": "To complete", "object": "a savings plan with the command financial counselor", "standardKinds": ["timeliness"], "standard": "", "dueDate": "15 Oct 26", "area": "finances" },
+        { "action": "To start", "object": "Sergeants Course distance education", "standardKinds": ["timeliness"], "standard": "", "dueDate": "1 Nov 26", "area": "future" }
+      ],
+      "counselingSeniorComments": "Two of three met. The dispatch target carries forward with the maintenance holds separated out.",
+      "counselingIncludeMarineComments": true,
+      "counselingMarineComments": "Agreed. I want the savings plan done before the holidays.",
+      "counselingSeniorSignedDate": "6 Sep 26",
+      "counselingMarineSignedDate": "6 Sep 26",
+      "counselingDismissed": []
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}

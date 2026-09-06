@@ -1,0 +1,98 @@
+{
+  "metadata": {
+    "packageId": "nldp_1788000000003_counseling_thirty_day",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-09-06T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "30-Day Counseling (LCpl and below)",
+      "description": "A lance corporal's 30-day session, brief, with the para 2001.3.e topics as subjects. Sample data - replace before use.",
+      "subject": "",
+      "documentType": "counseling",
+      "tags": [
+        "template",
+        "counseling",
+        "thirty-day"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "counseling",
+      "date": "6 Sep 26",
+      "counselingOccasion": "thirty-day",
+      "counselingLifeEvents": ["first-purchase"],
+      "counselingLifeEventsOther": "",
+      "counselingEventDescription": "",
+      "counselingIcsDate": "8 Jun 26",
+      "counselingLastSessionDate": "7 Aug 26",
+      "counselingNextSessionDate": "6 Oct 26",
+      "counselingMarineLastName": "SAMPLE",
+      "counselingMarineFirstName": "MARINE",
+      "counselingMarineMiddleInitial": "C",
+      "counselingMarineGrade": "E-3",
+      "counselingMarineComponent": "active",
+      "counselingMarineEdipi": "1234567891",
+      "counselingMarineDor": "1 Jun 26",
+      "counselingMarinePmos": "0311",
+      "counselingMarineBilletMos": "0311",
+      "counselingBilletTitle": "Rifleman, 1st Fire Team, 2d Squad",
+      "counselingBilletDescription": "",
+      "counselingSeniorLastName": "LEADER",
+      "counselingSeniorFirstName": "SAMPLE",
+      "counselingSeniorMiddleInitial": "D",
+      "counselingSeniorGrade": "E-4",
+      "counselingSeniorEdipi": "",
+      "counselingSeniorBillet": "Fire Team Leader",
+      "counselingIcsObjectives": [],
+      "counselingPriorTargets": [
+        { "text": "To pass the CFT with a first-class score by 31 Aug 26", "status": "met" },
+        { "text": "To complete MCI Leading Marines by 1 Sep 26", "status": "partly-met" }
+      ],
+      "counselingSubjects": [
+        { "text": "Strengths and weaknesses, and how to improve", "area": "duties" },
+        { "text": "Pay and the Leave and Earnings Statement", "area": "finances" },
+        { "text": "Family", "area": "family" },
+        { "text": "Off-duty education and PME", "area": "fighter" },
+        { "text": "Personal goals", "area": "future" },
+        { "text": "Upcoming events affecting personal life", "area": "family" },
+        { "text": "First car: the loan terms and a command financial counselor referral", "area": "finances" }
+      ],
+      "counselingAreas": [
+        { "area": "fidelity", "status": "discussed", "notes": "Squared away. On time, in the right uniform, every day." },
+        { "area": "fighter", "status": "target-set", "notes": "Leading Marines half done." },
+        { "area": "fitness", "status": "discussed", "notes": "CFT first class." },
+        { "area": "family", "status": "discussed", "notes": "Single. Parents in Texas. Leave over the holidays planned." },
+        { "area": "finances", "status": "target-set", "notes": "Looking at a first car. Loan quote at 19 percent." },
+        { "area": "future", "status": "discussed", "notes": "Wants Cpl on the next board." }
+      ],
+      "counselingAccomplishments": "First-class CFT. Squad's top shooter on the range this month.",
+      "counselingStrengths": "Reliable and fit. Helps the new joins without being told.",
+      "counselingDeficiencies": "PME behind schedule.",
+      "counselingTargets": [
+        { "action": "To complete", "object": "MCI Leading Marines", "standardKinds": ["timeliness"], "standard": "", "dueDate": "30 Sep 26", "area": "fighter" },
+        { "action": "To attend", "object": "the command financial counselor before signing any car loan", "standardKinds": ["manner", "timeliness"], "standard": "", "dueDate": "20 Sep 26", "area": "finances" },
+        { "action": "To maintain", "object": "a first-class PFT and CFT", "standardKinds": ["quality"], "standard": "first class", "dueDate": "6 Oct 26", "area": "fitness" },
+        { "action": "To start", "object": "a Corporals Course study plan with the squad leader", "standardKinds": ["timeliness"], "standard": "", "dueDate": "1 Oct 26", "area": "future" }
+      ],
+      "counselingSeniorComments": "Good month. Finish Leading Marines and see the financial counselor before the car.",
+      "counselingIncludeMarineComments": false,
+      "counselingMarineComments": "",
+      "counselingSeniorSignedDate": "6 Sep 26",
+      "counselingMarineSignedDate": "6 Sep 26",
+      "counselingDismissed": []
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}

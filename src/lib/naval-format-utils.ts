@@ -378,6 +378,14 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
     return `DD 368 - ${name}.${extension}`;
   }
 
+  // Counseling Worksheet. The Marine counseled and the session date
+  // identify the record.
+  if (formData.documentType === 'counseling') {
+    const name = sanitize(formData.counselingMarineLastName ?? '') || 'Marine';
+    const date = sanitize(formData.date ?? '');
+    return `Counseling - ${name}${date ? ` - ${date}` : ''}.${extension}`;
+  }
+
   // AMHS
   if (formData.documentType === 'amhs') {
     return `AMHS - ${subject}.${extension}`;

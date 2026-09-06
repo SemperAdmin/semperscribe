@@ -15,6 +15,7 @@ import type { DictionaryEntry } from '@/lib/military-dictionary';
 import { runNavmc10922Validators } from '@/lib/navmc10922-validators';
 import { runNavmc10132Validators } from '@/lib/navmc10132-validators';
 import { runDd368Validators } from '@/lib/dd368-validators';
+import { runCounselingValidators } from '@/lib/counseling';
 import { validateSamePageComposite } from '@/lib/same-page-composite';
 import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
 import {
@@ -1074,6 +1075,10 @@ export function runLetterValidators(
     ...runNavmc10132Validators(formData),
     // DD Form 368 rules, a no-op for every other documentType.
     ...runDd368Validators(formData),
+    // Counseling Worksheet: suggestions only, every one a warning, a
+    // no-op for every other documentType (docs/COUNSELING_FORM_PLAN.md
+    // section 5).
+    ...runCounselingValidators(formData),
     // Salutation presence, then the generic schema pass. Order matters
     // only for reading: the cited rule precedes the schema echo, and
     // the schema pass suppresses the salutation path to avoid a
