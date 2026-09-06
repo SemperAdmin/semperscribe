@@ -62,7 +62,7 @@ not be checked against anything and the gates around it duplicated
 validation the ingest side already performs.
 
 Exporting a data package does not change what may be typed into the app.
-The CUI warning still governs.
+The CUI statement in the README still governs.
 
 ## Headless Companion Surface
 
@@ -110,4 +110,4 @@ Vulnerability handling for this repository follows.
 
 - A formal coordinated disclosure process. Add one if and when the PoC moves to a sponsoring DoD Component.
 - An ATO, RMF artifacts, or DoD-side accreditation. The PoC is currently outside RMF scope per the compliance plan's analysis.
-- That this project is or ever will be safe for processing real CUI or operational correspondence. PII a user enters stays in the browser and is scanned before export, but the project makes no accreditation claim for it. The PoC is a format demonstration only.
+- That this project is authorized for CUI. All processing is in the browser, so CUI authorization attaches to the system and the authorizing official's approval of this application on it (DoDI 5200.48 paragraphs 3.3.c and 3.10.b), never to the project. PII a user enters stays in the browser and is scanned before export, but the project makes no accreditation claim for it. The PoC is a format demonstration only.

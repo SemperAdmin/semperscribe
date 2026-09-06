@@ -226,7 +226,7 @@ export function LandingPage({ onSelectType, onLoadExample }: LandingPageProps) {
           <AlertTriangle className="h-4 w-4" /> Important Disclaimers
         </h2>
         <div className="mt-2 space-y-1.5 text-xs leading-relaxed text-amber-800/90 dark:text-amber-200/90">
-          <p><strong>UNCLASSIFIED USE ONLY:</strong> This tool is strictly for processing UNCLASSIFIED information. Do not input, process, or store Classified or CUI data. PII such as EDIPI is entered at your discretion and risk, stays in your browser, and is scanned before export.</p>
+          <p><strong>UNCLASSIFIED USE ONLY:</strong> Never input classified data. CUI is permitted only on a DoD system authorized for it and only once your authorizing official has approved this application for that use (DoDI 5200.48 para 3.3.c, 3.10.b). This project holds no such approval of its own. PII such as EDIPI is entered at your discretion and risk, stays in your browser, and is scanned before export.</p>
           <p><strong>VERIFICATION REQUIRED:</strong> While Semper Scribe automates formatting, the final content is the responsibility of the originator. Always verify references and administrative details against current directives.</p>
           <p><strong>BROWSER COMPATIBILITY:</strong> Optimized for modern browsers. Some legacy systems may experience rendering issues.</p>
         </div>

@@ -30,7 +30,7 @@ export default function PrivacyAndSecurityNoticePage() {
         <section>
           <h2 className="text-lg font-semibold mb-2">1. Status of This Application</h2>
           <p>
-            SemperScribe is a non-official Proof of Concept (PoC) maintained on a personal basis. It is not official USMC, DON, or DoD software. It does not carry an Authority to Operate (ATO). Use is at the user's discretion and risk.
+            SemperScribe is a non-official Proof of Concept (PoC) maintained on a personal basis. It is not official USMC, DON, or DoD software. It does not carry an Authority to Operate (ATO) and holds no CUI authorization of its own. Use is at the user's discretion and risk.
           </p>
         </section>
 
@@ -48,7 +48,7 @@ export default function PrivacyAndSecurityNoticePage() {
           </p>
           <ul className="list-disc list-inside space-y-1 pl-2">
             <li>The formatter does not collect, store, or transmit Personally Identifiable Information (PII).</li>
-            <li>The formatter does not collect, process, or transmit Controlled Unclassified Information (CUI).</li>
+            <li>The formatter does not collect or transmit Controlled Unclassified Information (CUI). Any CUI a user enters is processed in the user's browser only, on the user's own system.</li>
             <li>The application emits no telemetry, no analytics, and no usage beacons to any third-party host at runtime.</li>
             <li>The formatter calls no backend, database, or external API at runtime. GunnyBot, when the user enables it, calls the user's chosen provider directly, per Section 5A.</li>
             <li>The application sets no third-party cookies. Local browser storage is used only for the user's own draft persistence. The GunnyBot API key is held in session memory, not local storage, and clears when the tab closes.</li>
@@ -58,7 +58,7 @@ export default function PrivacyAndSecurityNoticePage() {
         <section>
           <h2 className="text-lg font-semibold mb-2">4. User Responsibilities</h2>
           <p>
-            The application has no technical mechanism to reject sensitive input. Users must not enter CUI or classified material into the form fields. Personally Identifiable Information (PII) such as names and EDIPI, and Protected Health Information (PHI), may be entered at the user's discretion and risk: the formatter never transmits it, and every export is scanned for SSN and EDIPI patterns and PHI keyword clusters before the file is written (Section 5B). The user bears sole responsibility for the content they enter, for any Privacy Act obligation it creates (Section 7), and for the use they make of generated output.
+            The application has no technical mechanism to reject sensitive input. Classified material is never permitted. CUI is governed by the system, not by this application: DoDI 5200.48 paragraph 3.3.c requires CUI to be processed on a DoD information system at the moderate confidentiality level, and paragraph 3.10.b bars non-DoD information systems for official business involving CUI unless approved. Whether this application, served from a non-DoD host and run in a browser on your system, is permitted for CUI is your authorizing official's decision. Until your command has granted that approval, do not enter CUI. Personally Identifiable Information (PII) such as names and EDIPI, and Protected Health Information (PHI), may be entered at the user's discretion and risk: the formatter never transmits it, and every export is scanned for SSN and EDIPI patterns and PHI keyword clusters before the file is written (Section 5B). The user bears sole responsibility for the content they enter, for any Privacy Act obligation it creates (Section 7), and for the use they make of generated output.
           </p>
         </section>
 
