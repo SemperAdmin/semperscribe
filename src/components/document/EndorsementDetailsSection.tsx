@@ -87,9 +87,14 @@ export function EndorsementDetailsSection({
                   <span className="font-medium truncate" data-testid="same-page-host-label">{hostLabel(host)}</span>
                   <Button type="button" variant="ghost" size="sm" onClick={onClearHost}>Remove</Button>
                 </div>
-                {samePageStatus && samePageStatus.status !== 'no-host' && (
+                {samePageStatus && samePageStatus.status !== 'no-host' && samePageStatus.status !== 'error' && (
                   <p className="text-xs text-muted-foreground" data-testid="same-page-host-status">
                     {describePlacement(samePageStatus)}
+                  </p>
+                )}
+                {samePageStatus?.status === 'error' && (
+                  <p className="text-xs text-destructive" role="alert" data-testid="same-page-host-error">
+                    {describePlacement(samePageStatus)} The preview shows the last render that succeeded. Remove the letter and attach it again, or try another browser.
                   </p>
                 )}
                 {samePageStatus?.status === 'no-host' && (

@@ -171,6 +171,7 @@ describe('describePlacement', () => {
     expect(describePlacement({ status: 'no-host' })).toContain('block alone');
     expect(describePlacement({ status: 'fits', page: 1, pages: 1 })).toContain('page 1 of 1');
     expect(describePlacement({ status: 'new-page', reason: 'r', startsOnPage: 2, pages: 3 })).toContain('starting on page 2 of 3');
+    expect(describePlacement({ status: 'error', message: 'worker failed' })).toContain('could not be placed on the letter: worker failed');
     expect(describePlacement(null)).toBe('');
   });
 });
