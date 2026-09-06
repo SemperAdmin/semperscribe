@@ -73,7 +73,7 @@ const FEATURES = [
 ];
 
 const WORKFLOW = [
-  { step: '1', title: 'Pick a type', body: '25 document types from the sidebar - letters, directives, staffing papers, forms, messages.' },
+  { step: '1', title: 'Pick a type', body: '26 document types from the sidebar - letters, directives, staffing papers, forms, messages.' },
   { step: '2', title: 'Fill guided sections', body: 'Unit lookup, profile auto-fill, reference suggestions, clause inserts.' },
   { step: '3', title: 'Validate live', body: 'The preview and compliance banner update as you type. Fix issues before anyone kicks it back.' },
   { step: '4', title: 'Export or share', body: 'Formatted PDF or DOCX, merged enclosures, batch runs, or an encrypted share link.' },
@@ -99,7 +99,7 @@ export function LandingPage({ onSelectType, onLoadExample }: LandingPageProps) {
             You bring the content - the formatting, citations, and compliance checks are handled.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-            {['25 document types', 'SECNAV M-5216.5 aligned', 'Live compliance checks', '100% on-device - no server'].map((chip) => (
+            {['26 document types', 'SECNAV M-5216.5 aligned', 'Live compliance checks', '100% on-device - no server'].map((chip) => (
               <span
                 key={chip}
                 className="rounded-full border border-secondary-foreground/20 bg-secondary-foreground/10 px-3 py-1 text-xs font-medium text-secondary-foreground/90"

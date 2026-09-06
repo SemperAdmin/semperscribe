@@ -155,6 +155,12 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
   // NAVMC 10132 fills the official AcroForm blank. The live preview consumes
   // this map on a timer, so a failure must degrade to the placeholder notice
   // page rather than throw and take the preview pane down with it.
+  // DD Form 368: the form's own artwork with the values placed by item.
+  dd368: async (ctx) => {
+    const { generateDd368 } = await import('@/services/pdf/dd368Generator');
+    const bytes = await generateDd368(ctx.formData);
+    return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+  },
   navmc10132: async (ctx) => {
     try {
       const { exportNavmc10132Form } = await import('@/lib/navmc10132-export');

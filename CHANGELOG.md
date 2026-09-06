@@ -5,6 +5,45 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.9.0] - 2026-09-06
+
+Phase 1 of docs/INTERSERVICE_TRANSFER_DD368_SPEC.md: DD Form 368,
+Request for Conditional Release, as a form option.
+
+### Added
+
+- "Conditional Release (DD 368)" under Forms. Five sections follow the
+  form's own: Section I item 1 (the member), items 2 to 4 (recruiter
+  and acknowledgement), Section II (approval or disapproval), Section
+  III (notification of enlistment or appointment) and Section IV
+  (remarks). The pay grade in 1.b decides whether the officer's tender
+  of resignation (3.b) or the enlisted discharge acknowledgement (3.c)
+  applies, so the 3.b blanks print for an officer only. The empty
+  state names the six member-side required fields.
+- The render: the form's two faces from its own artwork (AUG 2011
+  edition updated 20241126) with the values placed at the printed
+  labels, an X in the item 5 box marked, and the remarks on the
+  reverse above the Privacy Act statement. The supplied edition has no
+  fillable fields, so this is the preview and the export until the
+  fillable blank is available; then the official-form export fills it
+  by field name and this stays the preview and the fallback, the NAVMC
+  10922 arrangement.
+- Validators from the form's instructions, each cited: dates in YYMMDD
+  (block), names in Last, First, Middle Initial order (warn), Service
+  and component from the twelve short titles (block), a ten-digit
+  EDIPI (block), a classifiable pay grade (block), ZIP codes (warn), an
+  approval's valid-until date (block), a disapproval's reason in
+  Section IV referencing item 5.b (block), a valid-until date without
+  an approval (warn), the officer's resigned-from component against
+  item 1.d (warn), and a release into the member's own component
+  (block, item 3.a).
+- A sample template, "Conditional Release (DD 368), sample", with
+  Section I filled for a Marine sergeant requesting release to the
+  Navy Reserve. Sample data, replace before use.
+- `tests/dd368.test.ts`: the vocabulary, every validator, the
+  registration, the printed-value rules and the render measured by
+  item position.
+
 ## [0.8.1] - 2026-09-06
 
 Audit of the same-page endorsement chain (0.6.1 to 0.8.0) and the

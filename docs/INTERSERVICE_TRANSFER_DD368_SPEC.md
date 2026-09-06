@@ -1,7 +1,20 @@
 # Interservice Transfer and Conditional Release (DD Form 368)
 
 Analysis of the two documents supplied on 2026-09-06 and a design for a
-new form option. Status: analysis and design only. No code written.
+new form option.
+
+**Implementation status 2026-09-06.** Phase 1 shipped in 0.9.0.
+
+| Artifact | Location |
+|---|---|
+| Form artwork, both faces | `public/forms/dd368-front.png`, `public/forms/dd368-back.png` |
+| Vocabulary and value rules | `src/lib/dd368.ts` |
+| Schema, definition, sections | `src/lib/schemas.ts` (`Dd368Schema`, `Dd368Definition`) |
+| Validators (section 2) | `src/lib/dd368-validators.ts` |
+| Render | `src/services/pdf/dd368Generator.ts`, pipeline `dd368` |
+| Sample template | `public/templates/global/dd368-sample.nldp` |
+| Tests | `tests/dd368.test.ts` |
+| Not built | Phases 2 to 4 below, pending the decisions in section 5 |
 
 ## 1. What was supplied, and what it does and does not cover
 

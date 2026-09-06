@@ -458,6 +458,11 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                     onClick={() => handleSelect('navmc10132')}
                     label="Unit Punishment Book (NAVMC 10132)"
                   />
+                  <DocumentTypeButton
+                    active={documentType === 'dd368'}
+                    onClick={() => handleSelect('dd368')}
+                    label="Conditional Release (DD 368)"
+                  />
                 </div>
               </AccordionContent>
             </AccordionItem>
