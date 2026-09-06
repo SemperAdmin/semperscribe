@@ -21,7 +21,7 @@ beforeAll(() => {
   registerNodeAssets();
 });
 
-const TEMPLATE = JSON.parse(readFileSync(join(__dirname, '..', 'public', 'templates', 'global', 'same-page-endorsement.nldp'), 'utf-8'));
+const TEMPLATE = JSON.parse(readFileSync(join(__dirname, '..', 'public', 'templates', 'global', 'same-page-figure-9-1.nldp'), 'utf-8'));
 
 /** Figure 9-1 as the template ships it, with a letterhead for the render. */
 function figure(): RenderContext {

@@ -5,6 +5,18 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.10.1] - 2026-09-06
+
+### Changed
+
+- The "Same-Page Endorsement" template is an appointment letter from
+  the commanding officer to a Marine, no Via, acknowledged by the
+  Marine in a first endorsement on the same page: two signers, the
+  From and To reversed as the no-Via case derives them (owner's
+  request, 2026-09-06). Figure 9-1 of the manual stays as a second
+  entry under the same option, "Same-Page Endorsement, Figure 9-1
+  (manual example)".
+
 ## [0.10.0] - 2026-09-06
 
 Phase E.5: the same-page endorsement written from scratch. The

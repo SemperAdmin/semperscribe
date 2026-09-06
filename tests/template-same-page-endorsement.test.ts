@@ -61,30 +61,34 @@ describe('Same-Page Endorsement template (library entry)', () => {
     expect(templateFormData.endorsementLevel).toBe('FIRST');
   });
 
-  it('is Figure 9-1 as one document: the letter and its first endorsement', () => {
-    // The letter, signer 1.
-    expect(templateFormData.from).toBe('Commanding Officer, Naval Air Station, Meridian');
-    expect(templateFormData.to).toBe('Commander, Fleet Forces Command');
-    expect(templateFormData.ssic).toBe('5216');
-    expect(templateFormData.originatorCode).toBe('Ser 11/273');
-    expect(templateFormData.date).toBe('22 Apr 15');
-    expect(templateFormData.subj).toBe('HOW TO PREPARE AN ENDORSEMENT');
-    expect(templateFormData.sig).toBe('G. L. SLAUGHTER, JR');
-    expect(nldp.data.vias).toEqual(['Commander, Sea Based Anti-Submarine Warfare Wing, Atlantic', 'Commander, Naval Air Force, U.S. Atlantic Fleet']);
-    expect(nldp.data.enclosures).toEqual(['Example of New-Page Endorsement']);
-    expect(templateParagraphs[0].content).toMatch(/^An endorsement may be added to the bottom of a basic letter/);
-    // The endorsement, signer 2, addressed per 9-2.2.
+  it('is an appointment letter from the commander to a Marine, acknowledged on the same page', () => {
+    // The letter, signer 1, no Via.
+    expect(templateFormData.from).toBe('Commanding Officer, (Unit)');
+    expect(templateFormData.to).toBe('Staff Sergeant John T. Smith 1234567890/0111 USMC');
+    expect(templateFormData.subj).toBe('APPOINTMENT AS COMMAND DESIGNATED DIRECTIVES MANAGER (CDDM)');
+    expect(templateFormData.sig).toBe('I. M. COMMANDER');
+    expect(nldp.data.vias).toEqual([]);
+    expect(nldp.data.references).toEqual(['MCO 5215.1K w/Admin CH-3', 'The Directives Review Process (DRP) Guide']);
+    expect(templateParagraphs[0].content).toMatch(/^Per references \(a\) and \(b\), you are appointed/);
+    // The endorsement, signer 2: the Marine back to the commander, the
+    // reversal the no-Via case derives (9-2.2 has no Via to hand it to).
     const part = templateFormData.samePageEndorsement!;
-    expect(part.from).toBe('Commander, Sea Based Anti-Submarine Warfare Wing, Atlantic');
-    expect(part.to).toBe('Commander, Fleet Forces Command');
-    expect(part.vias).toEqual(['Commander, Naval Air Force, U.S. Atlantic Fleet']);
-    expect(part.originatorCode).toBe('Ser 019/870');
-    expect(part.date).toBe('23 Apr 15');
-    expect(part.sig).toBe('R. L. GABEL');
-    expect(part.copyTos).toEqual(['NAS Meridian (Code 11)']);
-    expect(part.paragraphs[0].content).toMatch(/^A same-page endorsement may omit the SSIC/);
+    expect(part.from).toBe(templateFormData.to);
+    expect(part.to).toBe(templateFormData.from);
+    expect(part.vias).toEqual([]);
+    expect(part.sig).toBe('J. T. SMITH');
+    expect(part.paragraphs[0].content).toMatch(/^I acknowledge this appointment/);
     expect(deriveEndorsementAddressing({ from: templateFormData.from!, to: templateFormData.to!, vias: nldp.data.vias }))
-      .toMatchObject({ from: part.from, to: part.to, vias: part.vias });
+      .toMatchObject({ from: part.from, to: part.to, vias: [], replies: true });
+  });
+
+  it('keeps the manual\'s own example as a second entry under the same option', () => {
+    const figure = index.find((e) => e.id === 'same-page-figure-9-1')!;
+    expect(figure).toBeDefined();
+    expect(figure.documentType).toBe(SAME_PAGE_ENDORSEMENT_OPTION);
+    const fd = JSON.parse(readFileSync(join(GLOBAL_DIR, 'same-page-figure-9-1.nldp'), 'utf-8')).data.formData;
+    expect(fd.sig).toBe('G. L. SLAUGHTER, JR');
+    expect(fd.samePageEndorsement.sig).toBe('R. L. GABEL');
   });
 
   it('survives the import merge and reads as a two-half same-page endorsement', () => {
@@ -103,8 +107,9 @@ describe('Same-Page Endorsement template (library entry)', () => {
     const items = await extractPdfTextLayout(blob);
     expect(Math.max(...items.map((i) => i.page))).toBe(1);
     const page = items.map((i) => i.text).join(' ');
-    expect(page).toContain('G. L. SLAUGHTER, JR');
+    expect(page).toContain('I. M. COMMANDER');
     expect(page).toContain('FIRST ENDORSEMENT');
-    expect(page).toContain('R. L. GABEL');
+    expect(page).toContain('J. T. SMITH');
+    expect(page).toContain('I acknowledge this appointment');
   }, 90_000);
 });
