@@ -5,6 +5,22 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.9.1] - 2026-09-06
+
+### Added
+
+- Figure 9-1's rule. The figure draws a horizontal rule between the
+  basic letter's last line and the first endorsement's identification
+  block, the full width of the text. The text of 9-2 does not mention
+  it; the app's owner ruled on 2026-09-06 that the figure governs. The
+  composer now draws the rule on every composed page, one line below
+  the letter's last line and one line above the endorsement's first,
+  across the text width at three quarters of a point. That covers the
+  attached-letter preview and export and package assembly, which share
+  the composer. A same-page endorsement on a page of its own carries no
+  rule, since there is no letter above it. The measured E.1 test reads
+  the stroke back off the composed page.
+
 ## [0.9.0] - 2026-09-06
 
 Phase 1 of docs/INTERSERVICE_TRANSFER_DD368_SPEC.md: DD Form 368,
