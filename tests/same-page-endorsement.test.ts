@@ -14,7 +14,7 @@ import { registerNodeAssets } from './node-assets';
 import { generateBasePDFBlob } from '@/lib/pdf-generator';
 import { generateDocxBlob } from '@/lib/docx-generator';
 import { extractPdfTextLayout } from './golden/helpers';
-import { LINE_HEIGHT_12PT } from '@/lib/pdf-settings';
+import { LINE_HEIGHT_12PT, PDF_MARGINS } from '@/lib/pdf-settings';
 import {
   composeSamePage,
   measureBlockExtent,
@@ -23,6 +23,7 @@ import {
   omitsIdentification,
   isSamePageEndorsement,
   SAME_PAGE_GAP_LINES,
+  SAME_PAGE_RULE_LINES_BELOW,
   CONTENT_FLOOR,
 } from '@/lib/same-page-endorsement';
 import type { FormData, ParagraphData } from '@/types';
@@ -180,6 +181,27 @@ describe('a short endorsement added to the signature page (9-1)', () => {
 
     // And the whole block clears the bottom margin.
     expect(result.blockLastBaseline).toBeGreaterThanOrEqual(CONTENT_FLOOR);
+
+    // Figure 9-1's rule: one horizontal stroke across the text width,
+    // one line below the letter's last baseline, inside the gap.
+    expect(result.ruleY).toBeCloseTo(result.hostLastBaseline - SAME_PAGE_RULE_LINES_BELOW * LINE_HEIGHT_12PT, 1);
+    expect(result.ruleY).toBeGreaterThan(result.blockFirstBaseline);
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(result.bytes), isEvalSupported: false }).promise;
+    const page = await doc.getPage(hostPages);
+    const ops = await page.getOperatorList();
+    const rules: Array<{ x0: number; x1: number; y: number }> = [];
+    ops.fnArray.forEach((fn: number, i: number) => {
+      if (fn !== pdfjs.OPS.constructPath) return;
+      const [, , minMax] = ops.argsArray[i];
+      const [x0, y0, x1, y1] = minMax as number[];
+      if (Math.abs(y1 - y0) < 0.01 && x1 - x0 > 400) rules.push({ x0, x1, y: y0 });
+    });
+    await doc.destroy();
+    const rule = rules.find((r) => Math.abs(r.y - result.ruleY) < 1);
+    expect(rule, `one full-width rule at ${result.ruleY.toFixed(1)} pt; found ${JSON.stringify(rules)}`).toBeDefined();
+    expect(rule!.x0).toBeCloseTo(PDF_MARGINS.left, 0);
+    expect(rule!.x1).toBeCloseTo(612 - PDF_MARGINS.right, 0);
 
     // The endorsement line reached the composed page.
     const lastPage = composed.filter((i) => i.page === hostPages);

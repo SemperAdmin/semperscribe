@@ -91,10 +91,14 @@ is rendered when a letter is attached or a package is assembled, and
 drawn onto that letter's signature page (Figure 9-1). The Word export
 is always the page, since Word takes no PDF host.
 
-Figure 9-1 draws a horizontal rule between the basic letter and the
-first endorsement. The text of 9-2 prescribes no rule, so none is
-drawn: the figure's rule separates two documents printed on one
-illustrated page.
+Figure 9-1 draws a horizontal rule between the basic letter's last
+line and the first endorsement's identification block, the full width
+of the text. The text of 9-2 does not mention it; the app's owner
+ruled on 2026-09-06 that the figure governs. The composer draws the
+rule on every composed page, one line below the letter's last line,
+across the text width, at three quarters of a point. A same-page
+endorsement on a page of its own carries no rule, since there is no
+letter above it.
 
 ## Official NAVMC Form Exports (XFA)
 

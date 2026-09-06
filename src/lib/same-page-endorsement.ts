@@ -15,14 +15,25 @@
  * engines load through dynamic imports so this module stays out of the
  * first-load bundle.
  *
- * Figure 9-1 draws a horizontal rule between the basic letter and the
- * first endorsement. The text of 9-2 prescribes no such rule, and the
- * figure's rule reads as a separator between two documents printed on
- * one illustrated page. Nothing is drawn here.
+ * Figure 9-1 draws a horizontal rule between the basic letter's last
+ * line and the first endorsement's identification block, the full
+ * width of the text. The text of 9-2 does not mention it, and the
+ * app's owner ruled on 2026-09-06 that the figure governs: the rule is
+ * drawn on every composed page, in the gap between the two, one line
+ * below the letter's last line. A same-page endorsement rendered on a
+ * page of its own carries no rule, since there is no letter above it.
  */
 
 import { PDF_MARGINS, LINE_HEIGHT_12PT } from '@/lib/pdf-settings';
 import type { FormData } from '@/types';
+
+/**
+ * Figure 9-1's rule: stroke weight in points, and where it sits in the
+ * gap, measured in lines below the host's last baseline. Exported so
+ * the tests measure the drawn line against the same numbers.
+ */
+export const SAME_PAGE_RULE_WEIGHT = 0.75;
+export const SAME_PAGE_RULE_LINES_BELOW = 1;
 
 /** Blank lines between the host's last line and the block's first. */
 export const SAME_PAGE_GAP_LINES = 2;
@@ -201,6 +212,8 @@ export interface ComposeFits {
   blockFirstBaseline: number;
   /** Baseline the block's last line was placed on. */
   blockLastBaseline: number;
+  /** Where Figure 9-1's rule was drawn, between the two. */
+  ruleY: number;
   /** Pages in the composed document. Unchanged from the host. */
   pages: number;
 }
@@ -284,7 +297,17 @@ export async function composeSamePage(
   // A source point s lands at drawY plus (s minus cropBottom), so
   // placing the top baseline on blockFirstBaseline fixes drawY.
   const drawY = blockFirstBaseline - extent.top + cropBottom;
-  host.getPage(hostPageIndex).drawPage(embedded, { x: 0, y: drawY });
+  const hostPage = host.getPage(hostPageIndex);
+  hostPage.drawPage(embedded, { x: 0, y: drawY });
+
+  // Figure 9-1's rule, between the letter and the endorsement.
+  const ruleY = hostLastBaseline - SAME_PAGE_RULE_LINES_BELOW * LINE_HEIGHT_12PT;
+  const { width: hostWidth } = hostPage.getSize();
+  hostPage.drawLine({
+    start: { x: PDF_MARGINS.left, y: ruleY },
+    end: { x: hostWidth - PDF_MARGINS.right, y: ruleY },
+    thickness: SAME_PAGE_RULE_WEIGHT,
+  });
 
   const bytes = await host.save();
   return {
@@ -293,6 +316,7 @@ export async function composeSamePage(
     hostLastBaseline,
     blockFirstBaseline,
     blockLastBaseline: blockFirstBaseline - extent.height,
+    ruleY,
     pages: host.getPageCount(),
   };
 }
