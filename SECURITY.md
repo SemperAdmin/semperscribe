@@ -110,4 +110,4 @@ Vulnerability handling for this repository follows.
 
 - A formal coordinated disclosure process. Add one if and when the PoC moves to a sponsoring DoD Component.
 - An ATO, RMF artifacts, or DoD-side accreditation. The PoC is currently outside RMF scope per the compliance plan's analysis.
-- That this project is or ever will be safe for processing real CUI, PII, or operational correspondence. The PoC is a format demonstration only.
+- That this project is or ever will be safe for processing real CUI or operational correspondence. PII a user enters stays in the browser and is scanned before export, but the project makes no accreditation claim for it. The PoC is a format demonstration only.

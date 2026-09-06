@@ -17,7 +17,7 @@
 </div>
 
 > [!WARNING]
-> **Not Official USMC Software.** Semper Scribe is a non-official Proof of Concept maintained on a personal basis. It is not USMC, DON, or DoD software and carries no Authority to Operate. Use is at the user's discretion and risk. **Do not enter CUI, PII, or sensitive information.** See the [Privacy and Security Notice](https://semperadmin.github.io/semperscribe/privacy) and [SECURITY.md](SECURITY.md) for full details.
+> **Not Official USMC Software.** Semper Scribe is a non-official Proof of Concept maintained on a personal basis. It is not USMC, DON, or DoD software and carries no Authority to Operate. Use is at the user's discretion and risk. **Do not enter CUI or classified information.** PII such as names and EDIPI is accepted at the user's discretion and risk: the formatter never transmits it, and every export is scanned for SSN and EDIPI patterns before the file is written. See the [Privacy and Security Notice](https://semperadmin.github.io/semperscribe/privacy) and [SECURITY.md](SECURITY.md) for full details.
 
 A professional-grade, local-first web application for creating, formatting, and exporting USMC correspondence and administrative documents. Built with Next.js, Semper Scribe helps users produce properly formatted documents aligned with **SECNAV M-5216.5** and **MCO 5215.1K** — entirely in the browser, with no server-side processing.
 
@@ -277,7 +277,7 @@ src/
 ## Security & Privacy
 
 > [!IMPORTANT]
-> This tool is strictly for processing **UNCLASSIFIED** information. Do not input, process, or store Classified, CUI, or PII data.
+> This tool is strictly for processing **UNCLASSIFIED** information. Do not input, process, or store Classified or CUI data. PII (names, EDIPI, similar identifiers) is entered at the user's discretion and risk. The formatter never transmits it, and every export is scanned before the file is written.
 
 - **Local-First Architecture** — All document formatting, import, and export happens entirely in the browser. The formatter transmits nothing to any server.
 - **GunnyBot Is the One Egress Path** — The optional GunnyBot assistant stays off until you supply a personal provider API key. When you use it, the text you submit goes directly from your browser to the provider you chose (Google Gemini or GenAI.mil) under your key. A pre-send scan prompts on SSN and EDIPI patterns. See [`SECURITY.md`](SECURITY.md) for the full data-flow statement.
@@ -296,7 +296,7 @@ Semper Scribe undergoes voluntary alignment with DoD adoption-readiness standard
 - **Software Supply Chain (SCRM)** — SBOM generated on every deploy via CycloneDX, and the deploy waits on it. `npm audit` at high severity over the production tree gates every CI run, so a new high or critical advisory fails the build rather than shipping. Maps to Executive Order 14028 SBOM requirements and the DoD CIO SWFT Initiative memo.
 - **Secure Software Development Framework (SSDF)** — Aligned with NIST SP 800-218 practices PO.3.3 (toolchain configuration), PW.4.1 and PW.4.4 (third-party component management), PW.7 (review and analyze code), and PS.1 (source protection). CodeQL static analysis runs on every push and weekly.
 - **Open Source Software** — Project license is MIT. Dual-license elections documented in [`LICENSES.md`](LICENSES.md). All transitive licenses are approved per DoD CIO OSS Guidance dated 24 January 2022, Attachment 2 paragraph 3G.
-- **Privacy** — No PII collection, no telemetry, no backend at runtime. The opt-in GunnyBot data flow is the documented exception. User responsibility framing applied throughout the UI. See the in-app Privacy and Security Notice and [`SECURITY.md`](SECURITY.md).
+- **Privacy** — No PII collection by the project, no telemetry, no backend at runtime. PII a user types stays in that user's browser and is scanned before export; any Privacy Act obligation for it is the user's. The opt-in GunnyBot data flow is the documented exception. User responsibility framing applied throughout the UI. See the in-app Privacy and Security Notice and [`SECURITY.md`](SECURITY.md).
 - **Records Management** — Tool outputs become Federal records under 44 USC 3301 when used in official business. Routing through a Command Designated Records Manager per MCO 5210.11F is the user's responsibility, not the application's.
 
 </details>
@@ -306,7 +306,7 @@ Semper Scribe undergoes voluntary alignment with DoD adoption-readiness standard
 
 - This is not under the Risk Management Framework. DoDI 8510.01 does not apply to a personal PoC.
 - This is not registered as an Electronic Information System under MCO 5210.11F. Tool outputs are records; the tool itself is not an EIS.
-- This is not authorized for CUI processing. Users must not enter CUI, PII, PHI, or sensitive information.
+- This is not authorized for CUI processing. Users must not enter CUI or classified material. PII and PHI are accepted at the user's discretion and risk, with the user carrying any Privacy Act or HIPAA obligation that follows.
 
 </details>
 

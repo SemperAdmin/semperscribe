@@ -58,7 +58,7 @@ export default function PrivacyAndSecurityNoticePage() {
         <section>
           <h2 className="text-lg font-semibold mb-2">4. User Responsibilities</h2>
           <p>
-            The application has no technical mechanism to recognize or reject sensitive input. Users must not enter CUI, PII, Protected Health Information (PHI), classified material, or any other sensitive data into the form fields. The user bears sole responsibility for the content they enter and the use they make of generated output.
+            The application has no technical mechanism to reject sensitive input. Users must not enter CUI or classified material into the form fields. Personally Identifiable Information (PII) such as names and EDIPI, and Protected Health Information (PHI), may be entered at the user's discretion and risk: the formatter never transmits it, and every export is scanned for SSN and EDIPI patterns and PHI keyword clusters before the file is written (Section 5B). The user bears sole responsibility for the content they enter, for any Privacy Act obligation it creates (Section 7), and for the use they make of generated output.
           </p>
         </section>
 
@@ -79,6 +79,16 @@ export default function PrivacyAndSecurityNoticePage() {
           </p>
           <p className="mt-2">
             Before any GunnyBot feature sends text, the application scans it in the browser for two high-confidence structured identifiers, the Social Security number digit pattern and the ten-digit EDIPI. A match opens a consent prompt naming the finding, and the send proceeds only if the user acknowledges it. This scan runs on all four GunnyBot paths and never leaves the browser. It is a narrow tripwire, not a certification: it does not detect CUI, PHI, classification markings, or any identifier outside those two patterns, and it produces occasional false matches on unrelated ten-digit numbers. GunnyBot applies no attestation prompt beyond this. The user remains solely responsible for not submitting CUI, PII, PHI, or classified text to GunnyBot.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold mb-2">5B. The Pre-Export Scan</h2>
+          <p>
+            Before any PDF, DOCX, official-form, or batch ZIP download, the application scans the document in the browser for the Social Security number digit pattern, the ten-digit EDIPI, and clusters of medical keywords. A match opens a dialog naming the finding, and the file is written only if the user acknowledges it. The scan never leaves the browser and records nothing.
+          </p>
+          <p className="mt-2">
+            This scan is the control behind Section 4. Several document types exist to carry identifiers, among them the NAVMC 10132 Unit Punishment Book, the NAVMC 118(11) Page 11, the NAVMC 10274 Administrative Action form, and the Counseling Worksheet, each of which asks for a Marine&apos;s EDIPI. The scan does not block those exports. It makes the user say, at the moment of export, that a file carrying a personal identifier is leaving the browser and is now subject to their command&apos;s handling rules. It is a tripwire, not a certification: it does not detect CUI, classification markings, or any identifier outside those patterns, and it produces occasional false matches on unrelated ten-digit numbers.
           </p>
         </section>
 

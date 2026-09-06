@@ -160,7 +160,7 @@ export function ModernAppShell({
         className="bg-yellow-400 text-black border-b-2 border-yellow-600 px-4 py-1.5 text-xs sm:text-sm shrink-0 z-30 text-center"
       >
         <strong className="font-bold uppercase mr-2">Warning</strong>
-        Non-official Proof of Concept. Do not enter CUI, PII, or other sensitive information. Outputs constitute Federal records under 44 USC 3301 when used in official business. Route through your CDRM.
+        Non-official Proof of Concept. Do not enter CUI or classified information. PII is at your discretion and risk and is scanned before export. Outputs constitute Federal records under 44 USC 3301 when used in official business. Route through your CDRM.
         <Link href="/privacy" className="ml-2 underline font-semibold hover:no-underline">Privacy and Security Notice</Link>
       </div>
       {/* Top Header / Toolbar */}
