@@ -30,7 +30,7 @@ export default function PrivacyAndSecurityNoticePage() {
         <section>
           <h2 className="text-lg font-semibold mb-2">1. Status of This Application</h2>
           <p>
-            SemperScribe is a non-official Proof of Concept (PoC) maintained on a personal basis. It is not official USMC, DON, or DoD software. It does not carry an Authority to Operate (ATO). Use is at the user's discretion and risk.
+            SemperScribe is a non-official Proof of Concept (PoC) maintained on a personal basis. It is not official USMC, DON, or DoD software. It does not carry an Authority to Operate (ATO) and holds no CUI authorization of its own. Use is at the user's discretion and risk.
           </p>
         </section>
 
@@ -81,6 +81,9 @@ export default function PrivacyAndSecurityNoticePage() {
             The application has no technical mechanism to recognize or reject sensitive input, and does not attempt one. The user decides what to enter, on a computer approved for it, and bears sole responsibility for the content they enter and the use they make of generated output.
           </p>
           <p>
+            Classified material is never permitted. CUI is governed by the system, not by this application: DoDI 5200.48 paragraph 3.3.c requires CUI to be processed on a DoD information system at the moderate confidentiality level, and paragraph 3.10.b bars non-DoD information systems for official business involving CUI unless approved. Whether this application, served from a non-DoD host and run in a browser on your system, is permitted for CUI is your authorizing official's decision. Until your command has granted that approval, do not enter CUI. Personally Identifiable Information (PII) such as names and EDIPI, and Protected Health Information (PHI), may be entered at the user's discretion and risk: the formatter never transmits it, and every export is scanned for SSN and EDIPI patterns and PHI keyword clusters before the file is written (Section 5B). The user bears sole responsibility for the content they enter, for any Privacy Act obligation it creates (Section 7), and for the use they make of generated output.
+          </p>
+          <p>
             Two features move a document off the computer, and each warns where it is used rather than here. GunnyBot sends what the user submits to the provider the user configured, per Section 5A. A share link carries the whole document inside the link itself, so the document travels wherever the link travels.
           </p>
         </section>
@@ -102,6 +105,16 @@ export default function PrivacyAndSecurityNoticePage() {
           </p>
           <p className="mt-2">
             Before any GunnyBot feature sends text, the application scans it in the browser for two high-confidence structured identifiers, the Social Security number digit pattern and the ten-digit EDIPI. A match opens a consent prompt naming the finding, and the send proceeds only if the user acknowledges it. This scan runs on all four GunnyBot paths and never leaves the browser. It is a narrow tripwire, not a certification: it does not detect CUI, PHI, classification markings, or any identifier outside those two patterns, and it produces occasional false matches on unrelated ten-digit numbers. GunnyBot applies no attestation prompt beyond this. The user remains solely responsible for not submitting CUI, PII, PHI, or classified text to GunnyBot.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold mb-2">5B. The Pre-Export Scan</h2>
+          <p>
+            Before any PDF, DOCX, official-form, or batch ZIP download, the application scans the document in the browser for the Social Security number digit pattern, the ten-digit EDIPI, and clusters of medical keywords. A match opens a dialog naming the finding, and the file is written only if the user acknowledges it. The scan never leaves the browser and records nothing.
+          </p>
+          <p className="mt-2">
+            This scan is the control behind Section 4. Several document types exist to carry identifiers, among them the NAVMC 10132 Unit Punishment Book, the NAVMC 118(11) Page 11, the NAVMC 10274 Administrative Action form, and the Counseling Worksheet, each of which asks for a Marine&apos;s EDIPI. The scan does not block those exports. It makes the user say, at the moment of export, that a file carrying a personal identifier is leaving the browser and is now subject to their command&apos;s handling rules. It is a tripwire, not a certification: it does not detect CUI, classification markings, or any identifier outside those patterns, and it produces occasional false matches on unrelated ten-digit numbers.
           </p>
         </section>
 

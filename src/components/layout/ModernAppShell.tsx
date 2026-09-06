@@ -194,7 +194,7 @@ export function ModernAppShell({
             the point a link is made. A caveat crammed in here would be read
             by nobody and would make this sentence hedge instead of state. */}
         <strong className="font-bold uppercase mr-2">Warning</strong>
-        Non-official Proof of Concept. No server and no transmission: your documents are saved in this browser on this computer and stay there until you clear them. Use a computer approved for the information you enter. Outputs constitute Federal records under 44 USC 3301 when used in official business. Route through your CDRM.
+        Non-official Proof of Concept with no CUI authorization of its own. No server and no transmission: your documents are saved in this browser on this computer and stay there until you clear them. Never enter classified information. Enter CUI only if your authorizing official has approved this application for it on your system. PII is at your discretion and risk and is scanned before export. Outputs constitute Federal records under 44 USC 3301 when used in official business. Route through your CDRM.
         <Link href="/privacy" className="ml-2 underline font-semibold hover:no-underline">Privacy and Security Notice</Link>
       </div>
       {/* Top Header / Toolbar */}
