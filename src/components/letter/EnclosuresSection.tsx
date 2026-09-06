@@ -8,7 +8,8 @@
  * Reordering a row moves its file with it.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,7 @@ import {
   EnclosureRow,
   EnclosureAttachment,
   fileToAttachment,
-} from '@/lib/enclosure-attachments';
+} from '@/lib/enclosure-rows';
 
 interface EnclosuresSectionProps {
   rows: EnclosureRow[];
@@ -52,14 +53,12 @@ export function EnclosuresSection({
   formData, setFormData,
 }: EnclosuresSectionProps) {
   const { toast } = useToast();
-  const [showEncl, setShowEncl] = useState(false);
+  // Follows the source whenever it changes identity, and may be set
+  // directly in between. Derived in render, not in an effect.
+  const [showEncl, setShowEncl] = useSyncedState(rows, list => list.some(r => r.title.trim() !== '' || Boolean(r.fileId)));
   const fileInputRef = useRef<HTMLInputElement>(null);
   /** Row awaiting a file from the (single, shared) picker. */
   const pendingRowKey = useRef<string | null>(null);
-
-  useEffect(() => {
-    setShowEncl(rows.some(r => r.title.trim() !== '' || r.fileId));
-  }, [rows]);
 
   const isPositionPaper = formData.documentType === 'position-paper';
   const labelText = isPositionPaper ? 'Tabs' : 'Enclosures';
@@ -122,7 +121,7 @@ export function EnclosuresSection({
   return (
     <Card className="shadow-sm border-border mb-6 border-l-4 border-l-primary">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="flex items-center text-lg font-semibold font-headline tracking-wide">
+        <CardTitle as="h3" className="flex items-center text-lg font-semibold font-headline tracking-wide">
           <Paperclip className="mr-2 h-5 w-5 text-primary-foreground" />
           {labelText}
         </CardTitle>

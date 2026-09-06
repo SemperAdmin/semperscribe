@@ -8,6 +8,7 @@ import { generateFullMessage, validateAMHSMessage } from '@/services/amhs/amhsFo
 import { getBasePath } from '@/lib/path-utils';
 import { findLetterById } from '@/lib/storage-utils';
 import { validateSSIC, validateSubject, validateFromTo } from '@/lib/validation-utils';
+import { migrateLegacySamePage } from '@/lib/same-page-composite';
 import { debugUserAction } from '@/lib/console-utils';
 import { createNLDPFile, generateNLDPFilename } from '@/lib/nldp-utils';
 import type { NLDPLifecycle } from '@/lib/nldp-format';
@@ -97,13 +98,34 @@ export function useImportExport(deps: ImportExportDeps) {
         };
       }
 
+      // E.5: a same-page endorsement saved before the two-half model
+      // kept the endorsement in the main fields. Move them into the
+      // endorsement part so the main sections become the letter.
+      let incomingParagraphs = data.paragraphs as ParagraphData[] | undefined;
+      let incomingVias = data.vias ? toStrings(data.vias)! : undefined;
+      let incomingReferences = data.references ? toStrings(data.references)! : undefined;
+      let incomingEnclosures = data.enclosures ? toStrings(data.enclosures)! : undefined;
+      let incomingCopyTos = data.copyTos ? toStrings(data.copyTos)! : undefined;
+      const migrated = migrateLegacySamePage(formDataToMerge as FormData, {
+        vias: incomingVias ?? [], references: incomingReferences ?? [], enclosures: incomingEnclosures ?? [],
+        copyTos: incomingCopyTos ?? [], paragraphs: incomingParagraphs ?? [],
+      });
+      if (migrated) {
+        formDataToMerge = migrated.formData;
+        incomingParagraphs = migrated.paragraphs;
+        incomingVias = migrated.vias;
+        incomingReferences = migrated.references;
+        incomingEnclosures = migrated.enclosures;
+        incomingCopyTos = migrated.copyTos;
+      }
+
       setFormData(prev => ({ ...prev, ...formDataToMerge }));
 
-      if (data.paragraphs) setParagraphs(data.paragraphs);
-      if (data.vias) setVias(toStrings(data.vias)!);
-      if (data.references) setReferences(toStrings(data.references)!);
-      if (data.enclosures) setEnclosures(toStrings(data.enclosures)!);
-      if (data.copyTos) setCopyTos(toStrings(data.copyTos)!);
+      if (incomingParagraphs) setParagraphs(incomingParagraphs);
+      if (incomingVias) setVias(incomingVias);
+      if (incomingReferences) setReferences(incomingReferences);
+      if (incomingEnclosures) setEnclosures(incomingEnclosures);
+      if (incomingCopyTos) setCopyTos(incomingCopyTos);
       // Canonical exports tuck distList inside formData; the ad-hoc
       // legacy shape carried it at the data level. Accept both.
       const distListIn = data.distList ?? formDataToMerge.distList;

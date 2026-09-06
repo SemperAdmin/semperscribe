@@ -38,6 +38,8 @@ import {
   getCopyToSpacing, 
   getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle, resolveDistributionStatement } from './naval-format-utils';
 import { createFormattedParagraph } from "./paragraph-formatter";
+import { refLetterAt, startingRefLetterFor, startingEnclosureNumberFor } from "./reference-letters";
+import { isSamePageBlockRender, isSamePageEndorsement, omitsIdentification, endorsementLineText } from "./same-page-endorsement";
 import { generateCitation } from "./citation";
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from "./indent-engine";
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from "./font-policy";
@@ -140,6 +142,22 @@ export async function generateDocxBlob(
   const isDLAMemo = formData.documentType === 'dla-memorandum';
   const isDLABusinessLetter = formData.documentType === 'dla-business-letter';
   const isCivilianStyle = isBusinessLetter || isExecLetter || isDLAType;
+  /**
+   * E.1 (M-5216.5 9-1, 9-2.1.a, Figure 9-1). The same-page endorsement
+   * block. Word cannot draw it onto the signature page of another file,
+   * so the DOCX carries the block alone, with no letterhead, no seal
+   * and no page number: the drafter adds it to the signature page of
+   * the document being endorsed, which already carries all three.
+   */
+  // E.4: the DOCX is always a page of its own (Word takes no PDF host),
+  // so the block flag is never set here and a same-page endorsement
+  // carries the letterhead. Kept as a branch so the two emitters read
+  // the same way.
+  const isSamePageBlock = isSamePageBlockRender(formData);
+  if (isSamePageEndorsement(formData) && formData.samePageEndorsement && !isSamePageBlock) {
+    throw new Error('Word export is not available for a same-page endorsement written from scratch: the letter and its endorsement are composed onto one page in the PDF.');
+  }
+  const omitEndorsementIdentification = omitsIdentification(formData);
 
   const moaData = formData.moaData || {
     activityA: '',
@@ -185,7 +203,7 @@ export async function generateDocxBlob(
   // Note: Seal is placed in the Section Header (headers.first), text is in the Body
   const letterheadParagraphs: Paragraph[] = [];
 
-  if (!isFromToMemo && !isMfr && !isStaffingPaper) {
+  if (!isFromToMemo && !isMfr && !isStaffingPaper && !isSamePageBlock) {
       // Department Header Text
       const headerText = formData.headerType === 'USMC'
         ? 'UNITED STATES MARINE CORPS'
@@ -202,7 +220,7 @@ export async function generateDocxBlob(
       // Address Lines. When the selected unit supplies spelled-out heading
       // lines, they replace the abbreviated unitName heading on every document
       // type. Otherwise line1b is an optional sub-name for the standard letter
-      // family: Basic Letter, Multiple-Address Letter, New-Page Endorsement.
+      // family: Basic Letter, Multiple-Address Letter, Endorsement.
       const unitHeadingLines: string[] = Array.isArray(formData.headingLines)
         ? formData.headingLines.filter((l: string) => l)
         : [];
@@ -281,7 +299,10 @@ export async function generateDocxBlob(
         const designation = getDirectiveDesignation(formData);
         if (designation) ssicBlock.push(designation);
       } else {
-        if (formData.ssic) ssicBlock.push(formData.ssic);
+        // E.1 (9-2.1.a): the same-page endorsement omits the SSIC when
+        // the whole page is photocopied. Figure 9-1 shows Ser and date
+        // alone above the endorsement line.
+        if (formData.ssic && !omitEndorsementIdentification) ssicBlock.push(formData.ssic);
       }
 
       if (formData.originatorCode) ssicBlock.push(formData.originatorCode);
@@ -293,9 +314,16 @@ export async function generateDocxBlob(
 
       // SSIC Block: right-aligned table so the longest line's right edge
       // touches the right margin, with all lines left-aligned within the block.
+      // The business letter is the exception: M-5216.5 11-2.1 and Fig 11-2
+      // block its three identification symbols in the upper LEFT corner, so
+      // the table anchors left. The window-envelope variant keeps the right
+      // anchor, which is where Fig 11-4 sets those symbols. Chapter 12 gives
+      // executive correspondence no placement rule and Fig 12-2 shows the
+      // date to the right, so it stays right.
+      const idBlockLeft = isBusinessLetter && !formData.isWindowEnvelope;
       const ssicTable = new Table({
           width: { size: 0, type: WidthType.AUTO },
-          alignment: AlignmentType.RIGHT,
+          alignment: idBlockLeft ? AlignmentType.LEFT : AlignmentType.RIGHT,
           borders: {
               top: { style: BorderStyle.NONE, size: 0, color: "auto" },
               bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
@@ -696,9 +724,15 @@ export async function generateDocxBlob(
   }
 
   // --- Endorsement Identification Line (between date and From) ---
+  // M-5216.5 9-2.1.a puts the line at the left margin on the second
+  // line below the date line, and 9-2.1.b gives its wording. A
+  // same-page endorsement which takes the 9-2.1.a omission has no
+  // basic-letter identification to append, so Figure 9-1 shows the
+  // ordinal and the word alone.
   const endorsementParagraphs: Paragraph[] = [];
-  if (formData.documentType === 'endorsement' && formData.endorsementLevel && formData.basicLetterReference) {
-    const endorsementText = `${formData.endorsementLevel} ENDORSEMENT on ${formData.basicLetterReference}`;
+  if (formData.documentType === 'endorsement' && formData.endorsementLevel
+      && (formData.basicLetterReference || omitEndorsementIdentification)) {
+    const endorsementText = endorsementLineText(formData);
     endorsementParagraphs.push(new Paragraph({
       children: [new TextRun({ text: endorsementText, font, size: FONT_SIZE_BODY })],
       alignment: AlignmentType.LEFT,
@@ -975,7 +1009,9 @@ export async function generateDocxBlob(
   }
 
   // --- Subject ---
-  if (!isMoaOrMou && !isStaffingPaper && !isCivilianStyle) {
+  // E.1 (9-2.1.a): a same-page endorsement omits the subject with the
+  // rest of the identification.
+  if (!isMoaOrMou && !isStaffingPaper && !isCivilianStyle && !omitEndorsementIdentification) {
     addressParagraphs.push(createEmptyLine(font));
     
     const subjLabel = getSubjSpacing(formData.bodyFont);
@@ -1008,6 +1044,13 @@ export async function generateDocxBlob(
     });
 
     addressParagraphs.push(createEmptyLine(font));
+  } else if (omitEndorsementIdentification) {
+    // E.1: the subject is gone but the blank line above it is still
+    // owed. Figure 9-1 starts the body on the second line below the
+    // Via line, and a reference or enclosure list added by the
+    // endorsement takes the place the subject would have held. The
+    // preview inserts the same single blank.
+    addressParagraphs.push(createEmptyLine(font));
   }
 
   // --- References ---
@@ -1022,10 +1065,18 @@ export async function generateDocxBlob(
   // the exclusion below mirrors the preview's gate exactly.
   const civilianNoRefs = isCivilianStyle && !isDLAType;
   if (refs.length > 0 && !isStaffingPaper && !civilianNoRefs) {
-    const startCharCode = (formData.startingReferenceLevel || 'a').charCodeAt(0);
-    
+    // Only an endorsement continues the basic letter's reference
+    // lettering (M-5216.5 9-2.3), which is the scoping rule the preview
+    // applies. The DOCX used to apply a saved startingReferenceLevel to
+    // every document type, so a stale "c" on a basic letter lettered
+    // Word (c) and (d) against a preview reading (a) and (b).
+    const startRefLetter = startingRefLetterFor(
+      formData.documentType,
+      formData.startingReferenceLevel,
+    );
+
     refs.forEach((ref, index) => {
-      const letter = String.fromCharCode(startCharCode + index);
+      const letter = refLetterAt(startRefLetter, index);
       const refLabel = getRefSpacing(letter, index, formData.bodyFont);
       
       let refIndent;
@@ -1082,9 +1133,13 @@ export async function generateDocxBlob(
             spacing: { after: 0 }
         }));
 
-        encls.forEach(encl => {
+        // M-5216.5 11-2.10.a: the business letter numbers its enclosures
+        // and describes them briefly. Chapter 12 states no enclosure-line
+        // form, so the executive letter keeps its plain list.
+        encls.forEach((encl, index) => {
+            const text = isBusinessLetter ? `(${index + 1}) ${encl}` : encl;
             enclParagraphs.push(new Paragraph({
-                children: [new TextRun({ text: encl, font, size: FONT_SIZE_BODY })],
+                children: [new TextRun({ text, font, size: FONT_SIZE_BODY })],
                 alignment: AlignmentType.LEFT,
                 spacing: { after: 0 }
             }));
@@ -1092,7 +1147,11 @@ export async function generateDocxBlob(
         enclParagraphs.push(createEmptyLine(font));
     } else {
         // Standard Naval Enclosures
-        const startNum = parseInt(formData.startingEnclosureNumber || '1', 10);
+        // Enclosure numbering is scoped the same way (9-2.4).
+        const startNum = startingEnclosureNumberFor(
+          formData.documentType,
+          formData.startingEnclosureNumber,
+        );
         
         encls.forEach((encl, index) => {
             const num = startNum + index;
@@ -2134,7 +2193,7 @@ export async function generateDocxBlob(
   // see docs/PHASE1_GOLDEN_DIFFS.md S3.3.
   let firstPageHeader: Header;
 
-  if (sealBuffer && !isFromToMemo && !isMfr && !isStaffingPaper) {
+  if (sealBuffer && !isFromToMemo && !isMfr && !isStaffingPaper && !isSamePageBlock) {
       firstPageHeader = new Header({
           children: [
               ...bannerHeaderParagraphs(),
@@ -2205,8 +2264,12 @@ export async function generateDocxBlob(
   // --- Header for Subsequent Pages (Subject Line) ---
   const subsequentHeaderParagraphs: Paragraph[] = [];
   const subsequentHeaderTables: (Paragraph | Table)[] = [];
-  
-  if (isCivilianStyle) {
+
+  if (isSamePageBlock) {
+      // E.1: the block is added to an existing signature page, so it
+      // carries no continuation header of its own. It also has no
+      // subject to repeat when the 9-2.1.a omission is taken.
+  } else if (isCivilianStyle) {
       // Business/Executive Letter Continuation Header: SSIC, Originator, Date
       if (formData.ssic) {
           subsequentHeaderParagraphs.push(new Paragraph({
@@ -2368,16 +2431,20 @@ export async function generateDocxBlob(
       }));
   }
 
-  footerChildren.push(new Paragraph({
-      children: [
-          new TextRun({
-              children: [PageNumber.CURRENT],
-              font,
-              size: FONT_SIZE_BODY
-          })
-      ],
-      alignment: isDLAType ? AlignmentType.RIGHT : AlignmentType.CENTER  // DLA: right margin per Ch.3-2 Para 13
-  }));
+  // E.1: a same-page endorsement adds no page, so it numbers none. The
+  // signature page it is added to keeps the number the host gave it.
+  if (!isSamePageBlock) {
+    footerChildren.push(new Paragraph({
+        children: [
+            new TextRun({
+                children: [PageNumber.CURRENT],
+                font,
+                size: FONT_SIZE_BODY
+            })
+        ],
+        alignment: isDLAType ? AlignmentType.RIGHT : AlignmentType.CENTER  // DLA: right margin per Ch.3-2 Para 13
+    }));
+  }
 
   if (markingsOn) footerChildren.push(classificationBannerParagraph());
 
@@ -2387,7 +2454,7 @@ export async function generateDocxBlob(
   // Standard letters (start=1): No number on first page
   // Endorsements/Continuations (start>1): Show number on first page
   const startPage = formData.startingPageNumber || 1;
-  const showPageNumberOnFirstPage = startPage > 1;
+  const showPageNumberOnFirstPage = startPage > 1 && !isSamePageBlock;
 
   // --- P4.1: directive structural pages (MCO 5215.1K para 48) ---
   // Locator Sheet, Record of Changes, and Table of Contents as

@@ -63,7 +63,7 @@ export function POCManager({ pocs, onChange }: POCManagerProps) {
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between py-4">
-        <CardTitle className="text-lg">Points of Contact (POC)</CardTitle>
+        <CardTitle as="h3" className="text-lg">Points of Contact (POC)</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         

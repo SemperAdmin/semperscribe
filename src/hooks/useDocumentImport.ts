@@ -7,7 +7,7 @@ import {
   ImportPayload,
   toImportPayload,
 } from '@/services/import/extractionTypes';
-import { parseCorrespondence } from '@/services/import/correspondenceParser';
+import { linesFromText, parseCorrespondence } from '@/services/import/correspondenceParser';
 import { detectDocumentType, DocTypeDetection } from '@/services/import/docTypeDetector';
 import { extractDocumentText, DocumentExtractionError } from '@/services/import/documentTextExtractor';
 import { debugUserAction } from '@/lib/console-utils';
@@ -80,7 +80,7 @@ function replacementWarning(currentDocumentType?: string): string | null {
 }
 
 /**
- * Orchestrates the Word/PDF document import flow:
+ * Orchestrates the document import flow:
  * file → extract text (in-browser) → detect type → parse fields →
  * review modal → apply through the normal import path.
  *
@@ -90,6 +90,11 @@ function replacementWarning(currentDocumentType?: string): string | null {
  * can see none of a form's values. That path merges into the open document
  * rather than replacing it, which is the opposite of what `applyImport`
  * does and the reason it is a separate callback.
+ *
+ * R11 (D.7) adds pasted text as a second source. Extraction was already
+ * separate from file reading, so the paste path skips the extractor and
+ * joins the pipeline at the same detect-and-parse step, landing on the
+ * same review-fields modal.
  */
 export function useDocumentImport({
   applyImport,
@@ -112,6 +117,77 @@ export function useDocumentImport({
     setExtractedText(null);
     setFileName('');
   }, []);
+
+  /**
+   * The half of the pipeline both sources share: detect the type, parse
+   * the fields, and open the review modal on the result. A file has been
+   * through the extractor by this point. Pasted text arrives already in
+   * this shape.
+   */
+  const review = useCallback((text: ExtractedText, label: string) => {
+    const detected = detectDocumentType(text);
+
+    // REFUSED, AND NOTHING IS APPLIED. Detection can decide a document must
+    // not be imported at all rather than imported badly, and today that
+    // is exactly one class: a NAVMC form, whose field values this reader
+    // cannot see and whose import would call resetDocumentState and
+    // destroy whatever the clerk has open. Stopping here means the review
+    // modal never opens, so the destructive confirm button is not
+    // reachable. See the module comment in docTypeDetector.ts. Pasted text
+    // goes through the same gate as a file.
+    if (detected.refuse) {
+      toast({
+        title: `Cannot import ${detected.refuse.label}`,
+        description: detected.refuse.reason,
+        variant: 'destructive',
+      });
+      debugUserAction('Document Import Refused', { label: detected.refuse.label });
+      reset();
+      return;
+    }
+
+    const parsed = parseCorrespondence(text, detected.documentType);
+    parsed.warnings = [...detected.warnings, ...parsed.warnings.filter(w => !detected.warnings.includes(w))];
+
+    // NAMED, NOT GENERIC. "This will replace your document" is true of
+    // every import and reads as boilerplate. Naming the form makes the
+    // cost specific, and it is only shown when the cost is real.
+    const replacing = replacementWarning(currentDocumentType);
+    if (replacing) parsed.warnings = [replacing, ...parsed.warnings];
+    setExtractedText(text);
+    setDetection(detected);
+    setResult(parsed);
+    setFileName(label);
+    setIsOpen(true);
+    debugUserAction('Document Import Extracted', { source: text.sourceFormat });
+  }, [toast, reset, currentDocumentType]);
+
+  /** R11: opens the review modal on its paste step, with no source yet. */
+  const startPasteImport = useCallback(() => {
+    setResult(null);
+    setDetection(null);
+    setExtractedText(null);
+    setFileName('');
+    setIsOpen(true);
+  }, []);
+
+  /**
+   * R11: raw pasted text through the same parse as a file. Normalising
+   * with linesFromText is what the .docx and .pdf extractors do to their
+   * own output, so the parser sees one shape whatever the source was.
+   */
+  const importFromText = useCallback((raw: string) => {
+    const lines = linesFromText(raw);
+    if (lines.length === 0) {
+      toast({
+        title: 'Nothing to import',
+        description: 'Paste the text of a letter, then read it.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    review({ lines, sourceFormat: 'text', warnings: [] }, 'pasted text');
+  }, [review, toast]);
 
   const startImport = useCallback(async (file: File) => {
     setIsProcessing(true);
@@ -152,39 +228,7 @@ export function useDocumentImport({
       }
 
       const text = await extractDocumentText(data, file.name);
-      const detected = detectDocumentType(text);
-
-      // REFUSED, AND NOTHING IS APPLIED. Detection can decide a file must
-      // not be imported at all rather than imported badly, and today that
-      // is exactly one class: a NAVMC form, whose field values this reader
-      // cannot see and whose import would call resetDocumentState and
-      // destroy whatever the clerk has open. Stopping here means the review
-      // modal never opens, so the destructive confirm button is not
-      // reachable. See the module comment in docTypeDetector.ts.
-      if (detected.refuse) {
-        toast({
-          title: `Cannot import ${detected.refuse.label}`,
-          description: detected.refuse.reason,
-          variant: 'destructive',
-        });
-        debugUserAction('Document Import Refused', { label: detected.refuse.label });
-        reset();
-        return;
-      }
-
-      const parsed = parseCorrespondence(text, detected.documentType);
-      parsed.warnings = [...detected.warnings, ...parsed.warnings.filter(w => !detected.warnings.includes(w))];
-
-      // NAMED, NOT GENERIC. "This will replace your document" is true of
-      // every import and reads as boilerplate. Naming the form makes the
-      // cost specific, and it is only shown when the cost is real.
-      const replacing = replacementWarning(currentDocumentType);
-      if (replacing) parsed.warnings = [replacing, ...parsed.warnings];
-      setExtractedText(text);
-      setDetection(detected);
-      setResult(parsed);
-      setIsOpen(true);
-      debugUserAction('Document Import Extracted', { source: text.sourceFormat });
+      review(text, file.name);
     } catch (err) {
       const description =
         err instanceof DocumentExtractionError
@@ -195,7 +239,7 @@ export function useDocumentImport({
     } finally {
       setIsProcessing(false);
     }
-  }, [toast, reset, currentDocumentType, currentFormData, applyNavmc10132]);
+  }, [toast, reset, review, currentFormData, applyNavmc10132]);
 
   /** User overrode the detected type in the modal — re-run the parse. */
   const changeDocumentType = useCallback((documentType: string) => {
@@ -220,6 +264,8 @@ export function useDocumentImport({
     result,
     detection,
     startImport,
+    startPasteImport,
+    importFromText,
     changeDocumentType,
     confirmImport,
     cancelImport: reset,

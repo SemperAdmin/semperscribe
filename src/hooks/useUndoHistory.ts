@@ -84,7 +84,7 @@ export function useUndoHistory({
     }, SNAPSHOT_DEBOUNCE_MS);
     return () => clearTimeout(timer);
     // Serialize-compare inside; deps are the slices themselves.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [formData, paragraphs, vias, references, enclosures, copyTos, distList]);
 
   const applySnapshot = useCallback((snapshot: DocumentSnapshot) => {

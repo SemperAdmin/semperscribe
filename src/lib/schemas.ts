@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { COUNSELING_OCCASIONS } from '@/lib/counseling';
 import { ITypeDefinition } from '@/lib/i-type/definition';
 import {
   NAVMC_10922_RELATIONSHIPS,
@@ -60,7 +61,7 @@ export interface SectionDefinition {
   className?: string; // Optional override for the grid layout (e.g. "grid-cols-1")
 }
 
-export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'amhs' | 'coordination-page';
+export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'dd368' | 'counseling' | 'amhs' | 'coordination-page';
 export type ExportFormat = 'pdf' | 'docx' | 'amhs-text';
 export type DocumentCategory =
   | 'standard-letter'
@@ -70,7 +71,8 @@ export type DocumentCategory =
   | 'staffing-papers'
   | 'external-executive'
   | 'amhs'
-  | 'dla-correspondence';
+  | 'dla-correspondence'
+  | 'counseling-worksheets';
 
 export interface DocumentFeatures {
   // Section visibility
@@ -344,12 +346,53 @@ export const EndorsementSchema = BasicLetterSchema.extend({
   startingEnclosureNumber: z.string().optional(),
   startingPageNumber: z.number().optional(),
   previousPackagePageCount: z.number().optional(),
+  /**
+   * E.1 (M-5216.5 9-1). Where the endorsement is placed. Undefined
+   * reads as 'new-page', so every document saved before this field
+   * existed keeps the placement it was written with.
+   */
+  endorsementPlacement: z.enum(['new-page', 'same-page']).optional(),
+  /**
+   * E.1 (M-5216.5 9-2.1.a). A same-page endorsement omits the SSIC,
+   * the subject and the basic letter's identification symbols as long
+   * as the entire page is photocopied. Undefined reads as true for a
+   * same-page endorsement, which is the manual's own default in
+   * Figure 9-1.
+   */
+  samePageOmitsIdentification: z.boolean().optional(),
+  /**
+   * E.3 (M-5216.5 9-1, Figure 9-1). The letter the same-page
+   * endorsement is added to. Optional: without it the endorsement is
+   * the block alone.
+   */
+  samePageHost: z.union([
+    z.object({ kind: z.literal('file'), fileId: z.string(), fileName: z.string() }),
+    z.object({ kind: z.literal('draft'), letterId: z.string(), title: z.string() }),
+  ]).optional(),
+  /** E.4: render-time flag, see FormData.samePageRenderAsBlock. */
+  samePageRenderAsBlock: z.boolean().optional(),
+  /** E.5: the endorsement half of a same-page endorsement written from scratch. */
+  samePageEndorsement: z.object({
+    from: z.string(),
+    to: z.string(),
+    vias: z.array(z.string()),
+    originatorCode: z.string(),
+    date: z.string(),
+    paragraphs: z.array(z.object({ id: z.number(), level: z.number(), content: z.string() }).passthrough()),
+    sig: z.string(),
+    delegationText: z.string(),
+    copyTos: z.array(z.string()),
+    references: z.array(z.string()),
+    enclosures: z.array(z.string()),
+    addressingEdited: z.boolean().optional(),
+    basicLetterReference: z.string().optional(),
+  }).optional(),
 });
 
 export const EndorsementDefinition: DocumentTypeDefinition = {
   id: 'endorsement',
-  name: 'New-Page Endorsement',
-  description: 'Forwards correspondence on a new page.',
+  name: 'Endorsement',
+  description: 'Forwards correspondence with comments or recommendations on a page of its own.',
   icon: '📝',
   schema: EndorsementSchema,
   features: { ...STANDARD_LETTER_FEATURES, showEndorsementDetails: true },
@@ -3186,6 +3229,277 @@ export type LetterFormData = z.infer<typeof DocumentSchema>;
 export type GenericDocument = z.infer<typeof DocumentSchema>;
 
 // Registry of all document types
+
+// ---------------------------------------------------------------------------
+// DD Form 368, Request for Conditional Release (AUG 2011, updated
+// 20241126). docs/INTERSERVICE_TRANSFER_DD368_SPEC.md. Every field is
+// flat on FormData with a dd368 prefix; the value rules live in
+// src/lib/dd368-validators.ts and cite the form's instructions.
+// ---------------------------------------------------------------------------
+
+const DD368_COMPONENT_OPTIONS = [
+  { value: '', label: '' },
+  ...['USA', 'ARNGUS', 'USAR', 'USN', 'USNR', 'USMC', 'USMCR', 'USAF', 'ANGUS', 'USAFR', 'USCG', 'USCGR']
+    .map((c) => ({ value: c, label: c })),
+];
+
+const dd368Component = () => z.string().optional();
+const dd368Date = () => z.string().optional();
+
+export const Dd368Schema = z.object({
+  documentType: z.literal('dd368'),
+  // Item 1
+  dd368MemberName: z.string().min(1, 'Member name is required (Last, First, Middle Initial)'),
+  dd368PayGrade: z.string().optional(),
+  dd368Edipi: z.string().optional(),
+  dd368ServiceComponent: dd368Component(),
+  dd368CurrentUnit: z.string().optional(),
+  dd368MemberStreet: z.string().optional(),
+  dd368MemberCity: z.string().optional(),
+  dd368MemberState: z.string().optional(),
+  dd368MemberZip: z.string().optional(),
+  // Item 2
+  dd368RecruiterStreet: z.string().optional(),
+  dd368RecruiterCity: z.string().optional(),
+  dd368RecruiterState: z.string().optional(),
+  dd368RecruiterZip: z.string().optional(),
+  // Items 3 and 4
+  dd368CurrentComponent: dd368Component(),
+  dd368GainingComponent: dd368Component(),
+  dd368MemberSignedDate: dd368Date(),
+  dd368RecruiterName: z.string().optional(),
+  dd368RecruiterTitle: z.string().optional(),
+  dd368RecruiterSignedDate: dd368Date(),
+  // Section II
+  dd368Decision: z.enum(['', 'approved', 'disapproved']).optional(),
+  dd368ReleaseValidUntil: dd368Date(),
+  dd368OfficialName: z.string().optional(),
+  dd368OfficialTitle: z.string().optional(),
+  dd368OfficialPhone: z.string().optional(),
+  dd368OfficialStreet: z.string().optional(),
+  dd368OfficialCity: z.string().optional(),
+  dd368OfficialState: z.string().optional(),
+  dd368OfficialZip: z.string().optional(),
+  dd368OfficialSignedDate: dd368Date(),
+  // Section III
+  dd368OathService: dd368Component(),
+  dd368CertifyingName: z.string().optional(),
+  dd368CertifyingTitle: z.string().optional(),
+  dd368CertifyingUnit: z.string().optional(),
+  dd368CertifyingPhone: z.string().optional(),
+  dd368CertifyingStreet: z.string().optional(),
+  dd368CertifyingCity: z.string().optional(),
+  dd368CertifyingState: z.string().optional(),
+  dd368CertifyingZip: z.string().optional(),
+  dd368CertifyingSignedDate: dd368Date(),
+  // Section IV
+  dd368Remarks: z.string().optional(),
+});
+
+const dd368Address = (prefix: string, item: string): FieldDefinition[] => [
+  { name: `${prefix}Street`, label: `Street (${item}(1))`, type: 'text', className: 'md:col-span-2' },
+  { name: `${prefix}City`, label: `City (${item}(2))`, type: 'text' },
+  { name: `${prefix}State`, label: `State (${item}(3))`, type: 'text' },
+  { name: `${prefix}Zip`, label: `ZIP code (${item}(4))`, type: 'text', placeholder: '12345 or 12345-6789' },
+];
+
+export const Dd368Definition: DocumentTypeDefinition = {
+  id: 'dd368',
+  name: 'Conditional Release (DD 368)',
+  description:
+    'DD Form 368, Request for Conditional Release: a member of one Service or component asks to be released to enter another. Sections I to IV, completed by the member and recruiter, the authorizing official, and the enlisting or appointing official.',
+  icon: '🔁',
+  schema: Dd368Schema,
+  features: {
+    ...STANDARD_LETTER_FEATURES,
+    showHeaderSettings: false,
+    showUnitInfo: false,
+    showVia: false,
+    showReferences: false,
+    showEnclosures: false,
+    showParagraphs: false,
+    showClosingBlock: false,
+    showSignature: false,
+    // The form carries its own Privacy Act statement. The app adds no
+    // markings, consistent with the NAVMC forms.
+    showClassification: false,
+    category: 'forms',
+    pdfPipeline: 'dd368',
+    exportFormats: ['pdf'],
+  },
+  sections: [
+    {
+      id: 'dd368-member',
+      title: 'Section I, Item 1: Service Member Data',
+      description: 'Completed by the recruiter and the applicant. Names as Last, First, Middle Initial; Service and component by short title.',
+      fields: [
+        { name: 'dd368MemberName', label: 'Name (1.a)', type: 'text', required: true, placeholder: 'SMITH, JOHN, A.', className: 'md:col-span-2' },
+        { name: 'dd368PayGrade', label: 'Pay grade (1.b)', type: 'text', required: true, placeholder: 'E-5, W-2 or O-3', description: 'Decides whether 3.b (officer) or 3.c (enlisted) applies.' },
+        { name: 'dd368Edipi', label: 'EDIPI (1.c)', type: 'text', required: true, placeholder: '10 digits' },
+        { name: 'dd368ServiceComponent', label: 'Service component (1.d)', type: 'select', required: true, options: DD368_COMPONENT_OPTIONS },
+        { name: 'dd368CurrentUnit', label: 'Current unit or command (1.e)', type: 'textarea', rows: 2, required: true, className: 'md:col-span-2', description: 'Full address. The recruiter sends the form here.' },
+        ...dd368Address('dd368Member', '1.f'),
+      ],
+    },
+    {
+      id: 'dd368-recruiter',
+      title: 'Section I, Items 2 to 4: Recruiter and Acknowledgement',
+      description: 'Item 3 prints the acknowledgement for the member\'s category. The member and the recruiter sign on paper; the app prints the dates.',
+      fields: [
+        ...dd368Address('dd368Recruiter', '2'),
+        { name: 'dd368GainingComponent', label: 'Service or component to be enlisted or appointed into (3.b and 4.a)', type: 'select', required: true, options: DD368_COMPONENT_OPTIONS, className: 'md:col-span-2' },
+        { name: 'dd368CurrentComponent', label: 'Current component resigned from (3.b, officer only)', type: 'select', options: DD368_COMPONENT_OPTIONS, description: 'Defaults to item 1.d when left blank.', condition: (fd: any) => /^[OW]/i.test(String(fd?.dd368PayGrade ?? '').trim()) },
+        { name: 'dd368MemberSignedDate', label: 'Date member signed (3.e)', type: 'text', placeholder: 'YYMMDD' },
+        { name: 'dd368RecruiterName', label: 'Name of recruiter (4.b)', type: 'text', placeholder: 'DOE, JANE, B.', className: 'md:col-span-2' },
+        { name: 'dd368RecruiterTitle', label: 'Title (4.e)', type: 'text' },
+        { name: 'dd368RecruiterSignedDate', label: 'Date recruiter signed (4.d)', type: 'text', placeholder: 'YYMMDD' },
+      ],
+    },
+    {
+      id: 'dd368-approval',
+      title: 'Section II: Approval or Disapproval',
+      description: 'Completed by the authorizing official within 30 days of receipt. An approval carries the date the release is valid until; a disapproval states its reason in Section IV.',
+      fields: [
+        { name: 'dd368Decision', label: 'Item 5', type: 'select', options: [
+          { value: '', label: 'Not yet decided' },
+          { value: 'approved', label: '5.a Approved. Individual is recommended and conditional release is granted' },
+          { value: 'disapproved', label: '5.b Disapproved. Release is not granted' },
+        ], className: 'md:col-span-2' },
+        { name: 'dd368ReleaseValidUntil', label: 'Release valid until (5.a)', type: 'text', placeholder: 'YYMMDD', condition: (fd: any) => fd?.dd368Decision === 'approved' },
+        { name: 'dd368OfficialName', label: 'Authorizing official name (6.a)', type: 'text', placeholder: 'LAST, FIRST, M.', className: 'md:col-span-2' },
+        { name: 'dd368OfficialTitle', label: 'Title (6.b)', type: 'text', className: 'md:col-span-2' },
+        { name: 'dd368OfficialPhone', label: 'Telephone, with area code (6.c)', type: 'text' },
+        { name: 'dd368OfficialSignedDate', label: 'Date signed (6.f)', type: 'text', placeholder: 'YYMMDD' },
+        ...dd368Address('dd368Official', '6.d'),
+      ],
+    },
+    {
+      id: 'dd368-notification',
+      title: 'Section III: Notification of Enlistment or Appointment',
+      description: 'Completed by the enlisting or appointing official within 10 days. This form and a copy of the oath return to the address in item 6.d.',
+      fields: [
+        { name: 'dd368OathService', label: 'Service the oath was administered into (7)', type: 'select', options: DD368_COMPONENT_OPTIONS, className: 'md:col-span-2' },
+        { name: 'dd368CertifyingName', label: 'Certifying official name (8.a)', type: 'text', placeholder: 'LAST, FIRST, M.', className: 'md:col-span-2' },
+        { name: 'dd368CertifyingTitle', label: 'Title (8.b)', type: 'text' },
+        { name: 'dd368CertifyingUnit', label: 'Unit or command (8.c)', type: 'text' },
+        { name: 'dd368CertifyingPhone', label: 'Telephone, with area code (8.d)', type: 'text' },
+        { name: 'dd368CertifyingSignedDate', label: 'Date signed (8.g)', type: 'text', placeholder: 'YYMMDD' },
+        ...dd368Address('dd368Certifying', '8.e'),
+      ],
+    },
+    {
+      id: 'dd368-remarks',
+      title: 'Section IV: Remarks',
+      description: 'Reference each item a remark pertains to, for example "Item 5.b. Disapproved for the following reason: ...".',
+      fields: [
+        { name: 'dd368Remarks', label: 'Remarks', type: 'textarea', rows: 6, className: 'md:col-span-2' },
+      ],
+    },
+  ],
+};
+
+// --- Counseling Worksheet (docs/COUNSELING_FORM_PLAN.md) ---
+//
+// Not a form. MCO 1500.61 para 5.b(1) prescribes none and NAVMC 2795
+// Appendix A calls its worksheets suggested, so the record is the app's
+// own layout around the four documentation minimums of NAVMC 2795 para
+// 3005.1.j. Nothing is required (owner decision, 2026-09-06): the
+// suggestion engine in src/lib/counseling.ts carries every rule, keyed
+// to the situation of the session. The sections below name the scalar
+// fields for the required-field and unstarted checks; the guided editor
+// in src/components/counseling renders the record itself.
+const counselingText = () => z.string().optional();
+
+export const CounselingSchema = z.object({
+  documentType: z.literal('counseling'),
+  date: counselingText(),
+  counselingOccasion: counselingText(),
+  counselingLifeEvents: z.array(z.string()).optional(),
+  counselingLifeEventsOther: counselingText(),
+  counselingEventDescription: counselingText(),
+  counselingIcsDate: counselingText(),
+  counselingLastSessionDate: counselingText(),
+  counselingNextSessionDate: counselingText(),
+  counselingMarineLastName: counselingText(),
+  counselingMarineFirstName: counselingText(),
+  counselingMarineMiddleInitial: counselingText(),
+  counselingMarineGrade: counselingText(),
+  counselingMarineComponent: z.enum(['', 'active', 'reserve']).optional(),
+  counselingMarineEdipi: counselingText(),
+  counselingMarineDor: counselingText(),
+  counselingMarinePmos: counselingText(),
+  counselingMarineBilletMos: counselingText(),
+  counselingBilletTitle: counselingText(),
+  counselingBilletDescription: counselingText(),
+  counselingSeniorLastName: counselingText(),
+  counselingSeniorFirstName: counselingText(),
+  counselingSeniorMiddleInitial: counselingText(),
+  counselingSeniorGrade: counselingText(),
+  counselingSeniorEdipi: counselingText(),
+  counselingSeniorBillet: counselingText(),
+  counselingIcsObjectives: z.array(z.string()).optional(),
+  counselingPriorTargets: z.array(z.object({ text: z.string(), status: z.string() })).optional(),
+  counselingSubjects: z.array(z.object({ text: z.string(), area: z.string() })).optional(),
+  counselingAreas: z.array(z.object({ area: z.string(), status: z.string(), notes: z.string() })).optional(),
+  counselingAccomplishments: counselingText(),
+  counselingStrengths: counselingText(),
+  counselingDeficiencies: counselingText(),
+  counselingTargets: z.array(z.object({
+    action: z.string(), object: z.string(), standardKinds: z.array(z.string()), standard: z.string(), dueDate: z.string(), area: z.string(),
+  })).optional(),
+  counselingSeniorComments: counselingText(),
+  counselingIncludeMarineComments: z.boolean().optional(),
+  counselingMarineComments: counselingText(),
+  counselingSeniorSignedDate: counselingText(),
+  counselingMarineSignedDate: counselingText(),
+  counselingDismissed: z.array(z.string()).optional(),
+});
+
+export const CounselingDefinition: DocumentTypeDefinition = {
+  id: 'counseling',
+  name: 'Counseling Worksheet',
+  description:
+    'A guided counseling session under MCO 1500.61 and NAVMC 2795, recorded for the senior and the Marine counseled: occasion and timing, the six functional areas, targets for the coming period, and a record for two signers.',
+  icon: '🗣️',
+  schema: CounselingSchema,
+  features: {
+    ...STANDARD_LETTER_FEATURES,
+    showHeaderSettings: false,
+    showUnitInfo: false,
+    showVia: false,
+    showReferences: false,
+    showEnclosures: false,
+    showParagraphs: false,
+    showClosingBlock: false,
+    showSignature: false,
+    // The record carries its own PRIVACY SENSITIVE marking and handling
+    // statement (NAVMC 2795 para 3005.1.i; MCO 1500.61 para 5.c).
+    showClassification: false,
+    category: 'counseling-worksheets',
+    pdfPipeline: 'counseling',
+    exportFormats: ['pdf'],
+  },
+  sections: [
+    {
+      id: 'counseling-session',
+      title: 'Step 1. Occasion and timing',
+      fields: [
+        { name: 'counselingOccasion', label: 'Occasion', type: 'select', options: COUNSELING_OCCASIONS.map((o) => ({ value: o.value, label: o.label })) },
+        { name: 'date', label: 'Date of session', type: 'date' },
+        { name: 'counselingNextSessionDate', label: 'Target date for next session', type: 'date' },
+      ],
+    },
+    {
+      id: 'counseling-who',
+      title: 'Step 2. Who',
+      fields: [
+        { name: 'counselingMarineLastName', label: 'Marine counseled, last name', type: 'text' },
+        { name: 'counselingSeniorLastName', label: 'Marine performing counseling, last name', type: 'text' },
+      ],
+    },
+  ],
+};
+
 export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   basic: BasicLetterDefinition,
   'multiple-address': MultipleAddressLetterDefinition,
@@ -3199,6 +3513,8 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   page11: Page11Definition,
   navmc10922: Navmc10922Definition,
   navmc10132: Navmc10132Definition,
+  dd368: Dd368Definition,
+  counseling: CounselingDefinition,
   mfr: MFRDefinition,
   'from-to-memo': FromToMemoDefinition,
   'letterhead-memo': LetterheadMemoDefinition,

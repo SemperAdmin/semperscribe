@@ -59,6 +59,25 @@ function buildNavmc11811Data(ctx: PdfBuildContext): Navmc11811Data {
 }
 
 async function generateStandardPdf(ctx: PdfBuildContext): Promise<Blob> {
+  // E.5: a same-page endorsement written from scratch is two halves.
+  // Rendered as the block (the flag set by a composer), it is the
+  // endorsement part alone; rendered whole, it is the letter with the
+  // endorsement composed onto its signature page, or appended as a
+  // new-page endorsement when it does not fit. Callers that need the
+  // placement (the preview, the export) compose through
+  // renderSamePageWithHost themselves; this branch serves every other
+  // caller, the companion and package assembly among them.
+  const { isSamePageEndorsement, isSamePageBlockRender } = await import('@/lib/same-page-endorsement');
+  if (isSamePageEndorsement(ctx.formData) && ctx.formData.samePageEndorsement) {
+    const { letterContext, endorsementContext } = await import('@/lib/same-page-composite');
+    if (isSamePageBlockRender(ctx.formData)) {
+      return generateStandardPdf(endorsementContext(ctx));
+    }
+    const { renderSamePageWithHost } = await import('@/lib/same-page-host');
+    const host = await generateStandardPdf(letterContext(ctx));
+    const endorsed = await renderSamePageWithHost(endorsementContext(ctx), generateStandardPdf, new Uint8Array(await host.arrayBuffer()));
+    return new Blob([new Uint8Array(endorsed.bytes)], { type: 'application/pdf' });
+  }
   const { generateBasePDFBlob } = await import('@/lib/pdf-generator');
   const paragraphsToRender = mergeAdminSubsections(ctx.paragraphs, ctx.formData.adminSubsections);
   return generateBasePDFBlob(
@@ -155,6 +174,19 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
   // NAVMC 10132 fills the official AcroForm blank. The live preview consumes
   // this map on a timer, so a failure must degrade to the placeholder notice
   // page rather than throw and take the preview pane down with it.
+  // DD Form 368: the form's own artwork with the values placed by item.
+  dd368: async (ctx) => {
+    const { generateDd368 } = await import('@/services/pdf/dd368Generator');
+    const bytes = await generateDd368(ctx.formData);
+    return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+  },
+  // Counseling Worksheet: the app's own layout, no official blank
+  // (docs/COUNSELING_FORM_PLAN.md section 6).
+  counseling: async (ctx) => {
+    const { generateCounseling } = await import('@/services/pdf/counselingGenerator');
+    const bytes = await generateCounseling(ctx.formData);
+    return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+  },
   navmc10132: async (ctx) => {
     try {
       const { exportNavmc10132Form } = await import('@/lib/navmc10132-export');

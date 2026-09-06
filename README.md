@@ -23,11 +23,12 @@ A professional-grade, local-first web application for creating, formatting, and 
 
 ## Highlights
 
-- 📄 **25 document types** across 9 categories — from Basic Letters to Marine Corps Orders, AMHS messages, and technical publications
+- 📄 **27 document types** across 9 categories — from Basic Letters to Marine Corps Orders, AMHS messages, NJP forms, and technical publications
 - 📥 **Word/PDF import** — upload an existing `.docx` or PDF (even a badly formatted one), review the extracted fields, and export it compliant
 - 👀 **Live PDF preview** as you type, with a compliance-issue banner
 - 📦 **Export anywhere** — PDF, DOCX, AMHS plain text, batch mail-merge ZIPs, shareable links
-- 🔒 **Local-first** — no backend, no telemetry, no data leaves the browser
+- 🔒 **Local-first** — no backend, no telemetry. Document formatting never leaves the browser. The one exception is the optional GunnyBot assistant, off until you add your own provider key, which sends only the text you submit to it.
+- 🛡️ **Sensitive-data check before export** — every PDF, DOCX, official-form, and batch download is scanned for SSN and EDIPI patterns and PHI keyword clusters, and asks before the file is written
 
 ## Document Types
 
@@ -183,7 +184,7 @@ A professional-grade, local-first web application for creating, formatting, and 
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+ (the active LTS; Node 20 reached end of life in April 2026)
 - npm
 
 ### Installation
@@ -208,6 +209,25 @@ Static output is written to the `out/` directory, ready for deployment to any st
 ### Deploy to GitHub Pages
 
 The repository includes a GitHub Actions workflow ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)) that automatically builds and deploys to GitHub Pages on pushes to `main`. Manual deployment is also available via `workflow_dispatch`.
+
+## Headless companion
+
+SemperScribe also runs without a browser. The `companion/` directory holds
+an HTTP server and an MCP stdio server which share one set of operations:
+list the document types, describe the fields a type takes, validate an
+NLDP package, and render it to PDF or DOCX. It is meant for an EDMS, a
+script, or an agent, and it renders the same file the editor downloads.
+
+```bash
+npm run companion          # HTTP on http://127.0.0.1:7719
+npm run companion:mcp      # MCP over stdio
+```
+
+The HTTP server binds loopback and carries no authentication. The export
+sensitive-data gate is mirrored: findings refuse the render until the
+caller acknowledges them. Routes, request and response examples, the MCP
+client configuration, and the full security posture are in
+[`docs/COMPANION.md`](docs/COMPANION.md).
 
 ## Project Structure
 
@@ -259,7 +279,9 @@ src/
 > [!IMPORTANT]
 > This tool is strictly for processing **UNCLASSIFIED** information. Do not input, process, or store Classified, CUI, or PII data.
 
-- **Local-First Architecture** — All document processing happens entirely in the browser. No data is transmitted to external servers.
+- **Local-First Architecture** — All document formatting, import, and export happens entirely in the browser. The formatter transmits nothing to any server.
+- **GunnyBot Is the One Egress Path** — The optional GunnyBot assistant stays off until you supply a personal provider API key. When you use it, the text you submit goes directly from your browser to the provider you chose (Google Gemini or GenAI.mil) under your key. A pre-send scan prompts on SSN and EDIPI patterns. See [`SECURITY.md`](SECURITY.md) for the full data-flow statement.
+- **Pre-Export Scan** — Before any PDF, DOCX, official-form, or batch ZIP download, the document is scanned for SSN and EDIPI patterns and PHI keyword clusters. A hit prompts for acknowledgement. It does not certify a document free of CUI, PII, or classified material.
 - **No Backend** — Static site deployment. No server-side code, no database, no API calls.
 - **Local Storage Only** — Drafts and user profiles are stored in browser localStorage.
 - **Verification Required** — While Semper Scribe automates formatting, the final content is the responsibility of the originator. Always verify references and administrative details against current directives.
@@ -271,10 +293,10 @@ Semper Scribe undergoes voluntary alignment with DoD adoption-readiness standard
 <details>
 <summary><strong>What the alignment covers</strong></summary>
 
-- **Software Supply Chain (SCRM)** — SBOM generated on every deploy via CycloneDX. Zero known vulnerabilities in production dependencies as of the last audit pass. Maps to Executive Order 14028 SBOM requirements and the DoD CIO SWFT Initiative memo.
+- **Software Supply Chain (SCRM)** — SBOM generated on every deploy via CycloneDX, and the deploy waits on it. `npm audit` at high severity over the production tree gates every CI run, so a new high or critical advisory fails the build rather than shipping. Maps to Executive Order 14028 SBOM requirements and the DoD CIO SWFT Initiative memo.
 - **Secure Software Development Framework (SSDF)** — Aligned with NIST SP 800-218 practices PO.3.3 (toolchain configuration), PW.4.1 and PW.4.4 (third-party component management), PW.7 (review and analyze code), and PS.1 (source protection). CodeQL static analysis runs on every push and weekly.
 - **Open Source Software** — Project license is MIT. Dual-license elections documented in [`LICENSES.md`](LICENSES.md). All transitive licenses are approved per DoD CIO OSS Guidance dated 24 January 2022, Attachment 2 paragraph 3G.
-- **Privacy** — No PII collection, no telemetry, no backend at runtime. User responsibility framing applied throughout the UI. See the in-app Privacy and Security Notice and [`SECURITY.md`](SECURITY.md).
+- **Privacy** — No PII collection, no telemetry, no backend at runtime. The opt-in GunnyBot data flow is the documented exception. User responsibility framing applied throughout the UI. See the in-app Privacy and Security Notice and [`SECURITY.md`](SECURITY.md).
 - **Records Management** — Tool outputs become Federal records under 44 USC 3301 when used in official business. Routing through a Command Designated Records Manager per MCO 5210.11F is the user's responsibility, not the application's.
 
 </details>

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import dynamic from 'next/dynamic';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle, Info } from 'lucide-react';
@@ -23,14 +24,11 @@ interface PageCountIndicatorProps {
 }
 
 export function PageCountIndicator({ url, documentType }: PageCountIndicatorProps) {
-  const [numPages, setNumPages] = useState<number | null>(null);
+  // Page count is keyed on the URL: a new preview resets it to unknown
+  // during render, before the invisible Document below reloads and reports.
+  const [numPages, setNumPages] = useSyncedState(url, () => null as number | null);
 
   const isPositionPaper = documentType === 'position-paper';
-
-  useEffect(() => {
-    // Reset when URL changes
-    setNumPages(null);
-  }, [url]);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);

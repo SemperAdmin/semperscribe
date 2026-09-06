@@ -4,6 +4,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { validateAcronyms } from '@/lib/acronym-validators';
+import { militaryDictionary } from '@/lib/military-dictionary';
 import type { ParagraphData } from '@/types';
 
 function paras(...contents: string[]): ParagraphData[] {
@@ -59,19 +60,40 @@ describe('noise control', () => {
   });
 });
 
-describe('suggestions', () => {
+describe('suggestions (dictionary supplied by the caller, B.5)', () => {
   it('offers the dictionary expansion when it knows exactly one', () => {
-    const issue = validateAcronyms(paras('He was AWOL.'))[0];
+    const issue = validateAcronyms(paras('He was AWOL.'), militaryDictionary)[0];
     expect(issue.detail).toContain('ABSENT');
   });
 
   it('flags ambiguity when the dictionary knows several', () => {
-    const issue = validateAcronyms(paras('The ADT period applies.'))[0];
+    const issue = validateAcronyms(paras('The ADT period applies.'), militaryDictionary)[0];
     expect(issue.detail).toMatch(/readings|reads it as/);
   });
 
   it('still reports an unknown acronym without a suggestion', () => {
-    const issues = validateAcronyms(paras('The ZZQQ system failed.'));
+    const issues = validateAcronyms(paras('The ZZQQ system failed.'), militaryDictionary);
     expect(issues.some((i) => i.id === 'acronym-undefined-ZZQQ')).toBe(true);
+  });
+
+  it('detects the same acronyms with no dictionary, minus the suggestion', () => {
+    const without = validateAcronyms(paras('He was AWOL.'));
+    const withDict = validateAcronyms(paras('He was AWOL.'), militaryDictionary);
+    expect(without.map((i) => i.id)).toEqual(withDict.map((i) => i.id));
+    expect(without[0].detail).not.toContain('ABSENT');
+    expect(without[0].detail).toContain('(AWOL)');
+  });
+
+  it('builds the expansion index once per dictionary array', () => {
+    const spy: string[] = [];
+    const dict = new Proxy(militaryDictionary.slice(0, 200), {
+      get(target, prop, receiver) {
+        if (prop === Symbol.iterator) spy.push('iterate');
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+    validateAcronyms(paras('He was AWOL.'), dict);
+    validateAcronyms(paras('The ADT period applies.'), dict);
+    expect(spy).toEqual(['iterate']);
   });
 });

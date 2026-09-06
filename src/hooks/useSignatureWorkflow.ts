@@ -8,7 +8,7 @@ import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { getClassification, bannerText } from '@/lib/classification';
 import type { useToast } from '@/hooks/use-toast';
 import type { DocumentDataSlices } from './useLivePreview';
-import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-attachments';
+import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-rows';
 
 interface UseSignatureWorkflowArgs {
   data: DocumentDataSlices;

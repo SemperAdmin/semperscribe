@@ -1,19 +1,27 @@
-import * as React from "react"
+import { useSyncExternalStore } from "react"
 
 const MOBILE_BREAKPOINT = 768
 
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+function subscribe(onChange: () => void): () => void {
+  const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+  mql.addEventListener("change", onChange)
+  return () => mql.removeEventListener("change", onChange)
+}
 
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
-  }, [])
+function getSnapshot(): boolean {
+  return window.innerWidth < MOBILE_BREAKPOINT
+}
 
-  return !!isMobile
+function getServerSnapshot(): boolean {
+  return false
+}
+
+/**
+ * True below the mobile breakpoint. Subscribes to the media query through
+ * useSyncExternalStore, so the value is read during render rather than
+ * set from an effect; the server and hydration renders report false, as
+ * the effect version did before its first run.
+ */
+export function useIsMobile(): boolean {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 }

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
-import { ParagraphData, SavedLetter, ValidationState, FormData, ReportData } from '@/types';
+import { ParagraphData, SavedLetter, ValidationState, FormData, ReportData, SamePageHost } from '@/types';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
+import { EXAMPLE_DOCUMENT_URL } from '@/components/layout/LandingPage';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
 import { getLoadedUnits, loadUnits } from '@/lib/reference-data';
 import { resolveUnit } from '@/hooks/useUserProfile';
-import { isEdmsMode, getEdmsContext, type EdmsContext } from '@/lib/edms-mode';
 import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename } from '@/lib/naval-format-utils';
 import { loadSavedLetters, clearSavedLetters } from '@/lib/storage-utils';
@@ -18,8 +18,13 @@ import {
 import { putNavmc10132Base } from '@/lib/navmc10132-base-file';
 import { backupDocument } from '@/lib/auto-backup';
 import { runLetterValidators } from '@/lib/letter-validators';
+import type { ValidationIssue } from '@/lib/letter-validators';
 import { configureConsole, debugUserAction, debugFormChange } from '@/lib/console-utils';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
+import { resolvePickerType, pickerTypeFor } from '@/lib/document-type-options';
+import { resolveHostBytes } from '@/lib/same-page-host';
+import { emptySamePagePart } from '@/lib/same-page-composite';
+import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { AMHSPreview } from '@/components/amhs/AMHSPreview';
 import { useToast } from '@/hooks/use-toast';
 import { SignatureCeremonyPanel } from '@/components/signature/SignatureCeremonyPanel';
@@ -37,12 +42,14 @@ import { FindReplaceDialog } from '@/components/FindReplaceDialog';
 import { GuidanceDialog } from '@/components/GuidanceDialog';
 import { FindReplaceResult } from '@/lib/find-replace';
 import { useUndoHistory } from '@/hooks/useUndoHistory';
-import { EnclosureAttachment, EnclosureRow, newRow, reconcileRows } from '@/lib/enclosure-attachments';
+import { useSyncedState } from '@/hooks/useSyncedState';
+import { EnclosureAttachment, EnclosureRow, newRow, reconcileRows } from '@/lib/enclosure-rows';
 import { useAutosave } from '@/hooks/useAutosave';
 import { RecoveryDialog } from '@/components/RecoveryDialog';
 import type { WorkingCopy } from '@/lib/autosave';
 import { CommandPalette, useCommandPalette } from '@/components/CommandPalette';
 import { ComplianceDialog } from '@/components/ComplianceDialog';
+import { focusDocumentField } from '@/lib/field-focus';
 import { getFixer, fixAll, DocumentSlices } from '@/lib/autofix';
 import { RevisionCompareDialog } from '@/components/RevisionCompareDialog';
 import { PackageDialog } from '@/components/PackageDialog';
@@ -55,11 +62,15 @@ import { DocumentLibraryDialog } from '@/components/DocumentLibraryDialog';
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { GunnyBotPanel } from '@/components/gunnybot/GunnyBotPanel';
 import { GunnyBotRuntime } from '@/components/gunnybot/GunnyBotRuntime';
+import { ExportScanGate } from '@/components/ExportScanGate';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useLivePreview } from '@/hooks/useLivePreview';
+import { useMilitaryDictionary } from '@/hooks/useReferenceData';
 import { useDocumentExport } from '@/hooks/useDocumentExport';
 import { useSignatureWorkflow } from '@/hooks/useSignatureWorkflow';
 import { useShareLinkLoader } from '@/hooks/useShareLinkLoader';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useSyncedUpdate } from '@/hooks/useSyncedState';
 import { ITypePreview } from '@/components/itype/ITypePreview';
 import { useITypeStore } from '@/store/iTypeStore';
 
@@ -84,6 +95,11 @@ function NavalLetterGeneratorInner() {
     referenceDate: '',
     startingReferenceLevel: 'a',
     startingEnclosureNumber: '1',
+    // E.1 (M-5216.5 9-1, 9-2.1.a). New page is the placement that
+    // always works; the omission is the manual's own default once
+    // same-page is chosen.
+    endorsementPlacement: 'new-page',
+    samePageOmitsIdentification: true,
     line1: '', line1b: '', line2: '', line3: '', ssic: '', originatorCode: '', date: '', from: '', to: '', subj: '', sig: '', delegationText: '',
     startingPageNumber: 1,
     previousPackagePageCount: 0,
@@ -271,15 +287,107 @@ function NavalLetterGeneratorInner() {
   // Document state slices shared by preview, export, and signature
   const documentData = { formData, vias, references, enclosures, copyTos, paragraphs, distList };
 
+  // E.3 (M-5216.5 9-1, Figure 9-1): the letter a same-page endorsement
+  // is added to. An attached PDF's bytes are kept here for the session
+  // and written through to the file store, keyed by fileId, the way
+  // enclosure files are; a library letter is rendered on demand. The
+  // resolver hands the preview and the export the same bytes.
+  const [samePageHostBytes, setSamePageHostBytes] = useState<ReadonlyMap<string, ArrayBuffer>>(new Map());
+  const samePageHost = formData.samePageHost as SamePageHost | undefined;
+  const resolveSamePageHost = useCallback(async (): Promise<Uint8Array | null> => {
+    if (!samePageHost) return null;
+    return resolveHostBytes(samePageHost, {
+      savedLetters,
+      loadFile: async (fileId) => samePageHostBytes.get(fileId) ?? (await fileGet(fileId))?.bytes ?? null,
+      renderLetter: (letter) => generatePdfForDocType({
+        formData: letter,
+        vias: letter.vias ?? [],
+        references: letter.references ?? [],
+        enclosures: letter.enclosures ?? [],
+        copyTos: letter.copyTos ?? [],
+        paragraphs: letter.paragraphs ?? [],
+        distList: letter.distList ?? [],
+      }),
+    });
+  }, [samePageHost, savedLetters, samePageHostBytes]);
+
+  const clearSamePageHostFile = (host: SamePageHost | undefined) => {
+    if (host?.kind !== 'file') return;
+    setSamePageHostBytes(prev => { const next = new Map(prev); next.delete(host.fileId); return next; });
+    fileDeleteIfOwnedBy(host.fileId, WORKING_COPY_DOC_ID).catch((error) => console.error('Endorsed letter file delete failed', error));
+  };
+
+  const handleAttachSamePageHostFile = async (file: File) => {
+    const bytes = await file.arrayBuffer();
+    const head = new TextDecoder('latin1').decode(new Uint8Array(bytes.slice(0, 5)));
+    if (head !== '%PDF-') {
+      toast({ title: 'Not a PDF', description: `"${file.name}" is not a PDF. Attach the signed letter as a PDF.`, variant: 'destructive' });
+      return;
+    }
+    const fileId = crypto.randomUUID();
+    clearSamePageHostFile(samePageHost);
+    setSamePageHostBytes(prev => new Map(prev).set(fileId, bytes));
+    setFormData(prev => ({ ...prev, samePageHost: { kind: 'file', fileId, fileName: file.name } }));
+    filePut({
+      fileId,
+      docId: WORKING_COPY_DOC_ID,
+      fileName: file.name,
+      title: file.name,
+      mimeType: 'application/pdf',
+      bytes,
+      byteLength: bytes.byteLength,
+    }).catch((error) => {
+      console.error('Endorsed letter persist failed', error);
+      toast({
+        title: 'File Not Saved to Browser Storage',
+        description: `"${file.name}" is attached for this session and will export, but will not survive a reload. Storage may be full.`,
+        variant: 'destructive',
+      });
+    });
+  };
+
+  const handleSelectSamePageHostDraft = (letterId: string) => {
+    const letter = savedLetters.find(l => l.id === letterId);
+    if (!letter) return;
+    clearSamePageHostFile(samePageHost);
+    setFormData(prev => ({
+      ...prev,
+      samePageHost: { kind: 'draft', letterId, title: letter.name || letter.subj || 'Saved letter' },
+    }));
+  };
+
+  const handleClearSamePageHost = () => {
+    clearSamePageHostFile(samePageHost);
+    setFormData(prev => ({ ...prev, samePageHost: undefined }));
+  };
+
   // Live preview (debounced PDF regeneration) via hook. ENC: the
   // preview merges bound enclosure files, so it shows the full package.
-  const { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields } = useLivePreview(
+  const { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus } = useLivePreview(
     documentData,
     { enclosureRows, enclosureFiles, attachmentCoverPages },
+    resolveSamePageHost,
   );
 
   // Export orchestration (gate, SECNAV cap, download) via hook
-  const { generateDocument } = useDocumentExport({ data: documentData, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages, toast });
+  // D.4: the export gate refuses a block-severity document, and the
+  // refusal opens the compliance dialog on the blocking issues instead
+  // of the native alert() the hook used to raise. The hook takes a
+  // callback rather than the dialog, so no UI reaches into it.
+  const [exportBlockers, setExportBlockers] = useState<ValidationIssue[] | null>(null);
+  const { generateDocument } = useDocumentExport({
+    data: documentData,
+    applySignatureFields,
+    enclosureRows,
+    enclosureFiles,
+    attachmentCoverPages,
+    resolveSamePageHost,
+    toast,
+    onBlocked: (blockers) => {
+      setExportBlockers(blockers);
+      setShowCompliance(true);
+    },
+  });
 
   // Signature ceremony (placement modal, request links) via hook.
   // ENC: enclosures show in the placement modal (view-only pages) and
@@ -353,10 +461,14 @@ function NavalLetterGeneratorInner() {
     dismissRecovery();
   };
 
-  // Set today's date
-  useEffect(() => {
-    setFormData(prev => ({ ...prev, date: getTodaysDate() }));
-  }, []);
+  // Today's date, applied on the first client render. Not part of the
+  // initial state: the static export is prerendered at build time, and a
+  // build-date value in the markup would mismatch the client's on
+  // hydration. useHydrated is false for that render and true after it.
+  const hydrated = useHydrated();
+  useSyncedUpdate(hydrated, (isClient) => {
+    if (isClient) setFormData(prev => ({ ...prev, date: getTodaysDate() }));
+  });
 
   // Re-apply profile when settings change (e.g. user edits profile mid-session)
   // (Declared before the effect below that calls it - declaration-order
@@ -390,17 +502,16 @@ function NavalLetterGeneratorInner() {
       setCurrentUnitName(profile.manualUnitName.trim().toUpperCase());
     }
     setFormKey(prev => prev + 1);
-  }, [getFormDefaults, profile.unitRuc]);
+  }, [getFormDefaults, profile.unitRuc, profile.manualUnitName]);
 
-  // Apply user profile defaults on initial load
-  useEffect(() => {
-    if (profileLoaded) {
-      applyProfileToForm();
-    }
-    // Mount-gated by profileLoaded only - re-application on later profile
-    // edits happens explicitly on Settings close (pre-existing contract).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileLoaded]);
+  // Apply user profile defaults once the profile has loaded. Keyed on
+  // the loaded flag only: re-application on later profile edits happens
+  // explicitly on Settings close (pre-existing contract). Every write in
+  // applyProfileToForm is this component's own state, so it runs in the
+  // render where the flag flips rather than one commit later.
+  useSyncedUpdate(profileLoaded, (loaded) => {
+    if (loaded) applyProfileToForm();
+  });
 
   // Handle Cancellation Contingency for MCBul
   useEffect(() => {
@@ -421,38 +532,43 @@ function NavalLetterGeneratorInner() {
         setParagraphs(prev => prev.filter(p => p.title !== 'Cancellation Contingency'));
       }
     }
-  }, [formData.documentType, formData.cancellationType, paragraphs]);
+  }, [formData.documentType, formData.cancellationType, paragraphs, setParagraphs]);
 
-  // Sync Reports to Admin Subsections
-  useEffect(() => {
-    if (DOCUMENT_TYPES[formData.documentType]?.features?.showReports) {
-      let content = 'None.';
-      const validReports = (formData.reports as ReportData[] | undefined)?.filter(r => r.title) || [];
+  // Sync Reports to Admin Subsections. Re-derived when the reports list
+  // or the document type changes identity, same triggers as the effect
+  // this replaces, and written back only when the text differs.
+  const reportsSource = useMemo(
+    () => ({ reports: formData.reports as ReportData[] | undefined, documentType: formData.documentType }),
+    [formData.reports, formData.documentType],
+  );
+  useSyncedUpdate(reportsSource, ({ reports, documentType }) => {
+    if (!DOCUMENT_TYPES[documentType]?.features?.showReports) return;
+    let content = 'None.';
+    const validReports = reports?.filter(r => r.title) || [];
 
-      if (validReports.length > 0) {
-        const reportTexts = validReports.map(r => {
-          if (r.exempt) {
-            return `${r.title} is exempt from reports control.`;
-          }
-          return `${r.title} (Report Control Symbol ${r.controlSymbol || 'TBD'})`;
-        });
-        content = reportTexts.join(' ');
-      }
-
-      if (formData.adminSubsections?.reportsRequired?.content !== content) {
-         setFormData(prev => ({
-            ...prev,
-            adminSubsections: {
-                ...prev.adminSubsections!,
-                reportsRequired: {
-                    ...prev.adminSubsections!.reportsRequired,
-                    content
-                }
-            }
-         }));
-      }
+    if (validReports.length > 0) {
+      const reportTexts = validReports.map(r => {
+        if (r.exempt) {
+          return `${r.title} is exempt from reports control.`;
+        }
+        return `${r.title} (Report Control Symbol ${r.controlSymbol || 'TBD'})`;
+      });
+      content = reportTexts.join(' ');
     }
-  }, [formData.reports, formData.documentType]);
+
+    if (formData.adminSubsections?.reportsRequired?.content !== content) {
+      setFormData(prev => ({
+        ...prev,
+        adminSubsections: {
+          ...prev.adminSubsections!,
+          reportsRequired: {
+            ...prev.adminSubsections!.reportsRequired,
+            content
+          }
+        }
+      }));
+    }
+  });
 
   // Sync I-Type form data to store for real-time preview
   useEffect(() => {
@@ -461,7 +577,12 @@ function NavalLetterGeneratorInner() {
     }
   }, [formData, setITypeFormData]);
 
-  const handleDocumentTypeChange = (newType: string) => {
+  const handleDocumentTypeChange = (pickedType: string) => {
+    // E.2: the picker offers the same-page endorsement as its own
+    // option; it resolves to the endorsement type with same-page
+    // placement (M-5216.5 9-1). Every other option is a document type
+    // and resolves to itself with new-page placement.
+    const { documentType: newType, endorsementPlacement } = resolvePickerType(pickedType);
     const newFeatures = DOCUMENT_TYPES[newType]?.features;
     const oldFeatures = DOCUMENT_TYPES[formData.documentType]?.features;
 
@@ -502,7 +623,19 @@ function NavalLetterGeneratorInner() {
       // blockers while the selector displayed "Notification". Preserve an
       // existing value so re-selecting the type never rewinds the stage.
       stage: newType === 'navmc10132' ? ((prev as FormData).stage ?? 1) : (prev as FormData).stage,
-      endorsementLevel: newType === 'basic' ? '' : prev.endorsementLevel,
+      // E.3: an endorsement opens as a FIRST endorsement unless the
+      // drafter has chosen a level; the line is missing until one is set.
+      endorsementLevel: newType === 'endorsement'
+        ? (prev.endorsementLevel || 'FIRST')
+        : newType === 'basic' ? '' : prev.endorsementLevel,
+      // E.3: the letter being endorsed belongs to an endorsement only.
+      samePageHost: newType === 'endorsement' ? prev.samePageHost : undefined,
+      // E.5: the same-page option is the two-half document; the
+      // endorsement half starts empty, dated today, and takes its
+      // addressing from the letter as it is written.
+      samePageEndorsement: endorsementPlacement === 'same-page'
+        ? (prev.samePageEndorsement ?? { ...emptySamePagePart(), date: getTodaysDate() })
+        : undefined,
       basicLetterReference: newType === 'basic' ? '' : prev.basicLetterReference,
       referenceWho: newType === 'basic' ? '' : prev.referenceWho,
       referenceType: newType === 'basic' ? '' : prev.referenceType,
@@ -510,12 +643,34 @@ function NavalLetterGeneratorInner() {
       to: newFeatures?.isDirective ? 'Distribution List' : prev.to,
       startingReferenceLevel: 'a',
       startingEnclosureNumber: '1',
+      endorsementPlacement,
+      samePageOmitsIdentification: true,
       startingPageNumber: 1,
       previousPackagePageCount: 0,
     }));
 
     setParagraphs(newParagraphs);
   };
+
+  // D.2: the header save state. Edits are counted from the moment the
+  // initial load settles, the same gate autosave uses, so the profile
+  // defaults and the date effect never read as a user edit. Save Draft
+  // records the count it wrote, and any edit after it is unsaved work.
+  // The autosaved working copy deliberately does not read as saved,
+  // because the drafter did not choose to keep it.
+  const documentSlices = useMemo(
+    () => ({ formData, paragraphs, vias, references, enclosures, copyTos, distList }),
+    [formData, paragraphs, vias, references, enclosures, copyTos, distList],
+  );
+  const [changeCount] = useSyncedState<typeof documentSlices, number>(
+    documentSlices,
+    (_slices, previousCount) => {
+      if (previousCount === undefined) return 0;
+      return autosaveReady ? previousCount + 1 : 0;
+    },
+  );
+  const [savedMark, setSavedMark] = useState<{ at: Date; changeCount: number } | null>(null);
+  const isDirty = savedMark ? changeCount !== savedMark.changeCount : changeCount > 0;
 
   const saveLetter = () => {
     debugUserAction('Save Letter', {
@@ -543,6 +698,9 @@ function NavalLetterGeneratorInner() {
     // R3: an explicit save supersedes the autosaved working copy.
     clearAutosave();
 
+    // D.2: this is the only place the header reads as saved.
+    setSavedMark({ at: now, changeCount });
+
     // P1.2: IndexedDB is the store of record - no eviction cap. A
     // failed write is reported, never silently dropped.
     setSavedLetters(prev => [newLetter, ...prev]);
@@ -552,6 +710,9 @@ function NavalLetterGeneratorInner() {
         // ENC: ownership follows the latest save - bound files re-point
         // to this document so its cascade delete governs them.
         const boundIds = enclosureRows.map(r => r.fileId).filter((id): id is string => Boolean(id));
+        // E.3: the attached letter being endorsed is owned the same way.
+        const host = newLetter.samePageHost as SamePageHost | undefined;
+        if (host?.kind === 'file') boundIds.push(host.fileId);
         fileReparentByIds(boundIds, newLetter.id).catch((error) => console.error('Enclosure file re-parent failed', error));
         // P1.3: mirror to the backup folder when auto backup is on.
         backupDocument(newLetter).catch((error) => {
@@ -610,6 +771,8 @@ function NavalLetterGeneratorInner() {
             referenceDate: '',
             startingReferenceLevel: 'a',
             startingEnclosureNumber: '1',
+            endorsementPlacement: 'new-page',
+            samePageOmitsIdentification: true,
             line1: defaults.line1, line1b: defaults.line1b, line2: defaults.line2, line3: defaults.line3,
             ssic: '', originatorCode: defaults.originatorCode, date: getTodaysDate(),
             from: defaults.from, to: '', subj: '', sig: defaults.sig, delegationText: '',
@@ -737,6 +900,40 @@ function NavalLetterGeneratorInner() {
     applyNavmc10132: applyNavmc10132Load,
   });
 
+  /**
+   * D.7: whether the document on screen holds work worth protecting.
+   * Body text or any of the four SECNAV M-5216.5 header elements the
+   * drafter types counts. The pre-filled date and the unit lines do not,
+   * because the app puts those there before the user has done anything.
+   */
+  const documentHasContent =
+    paragraphs.some(p => p.content.trim() !== '') ||
+    [formData.ssic, formData.subj, formData.from, formData.to]
+      .some(value => typeof value === 'string' && value.trim() !== '');
+
+  /**
+   * D.7: picking a template of another document type switches the type
+   * first, through the same handleDocumentTypeChange the sidebar uses,
+   * so the paragraph template and the type-dependent header fields are
+   * set the way the app sets them everywhere else. Loading the template
+   * alone left the directive and paper types with a basic letter's
+   * single empty paragraph under their own document type.
+   */
+  const handleTemplatePick = (url: string, templateDocumentType?: string) => {
+    const targetType = templateDocumentType || 'basic';
+    // E.4: templates name the picker option they belong to, so a
+    // same-page template switches to the same-page option.
+    if (targetType !== pickerTypeFor(formData)) {
+      if (documentHasContent && !window.confirm(
+        `This template is a ${targetType} document. Switching document types replaces the paragraphs you have written. Do you want to proceed?`
+      )) {
+        return;
+      }
+      handleDocumentTypeChange(targetType);
+    }
+    handleLoadTemplateUrl(url);
+  };
+
   const handleClearSavedLetters = () => {
     clearSavedLetters();
     libClear().catch((error) => console.error('Library clear failed', error));
@@ -749,6 +946,7 @@ function NavalLetterGeneratorInner() {
     setFormData, setParagraphs, setVias, setReferences, setEnclosures, setCopyTos, setDistList,
     setFormKey,
   });
+
 
   // P3.1: apply a replace-all through the normal setters (one undo step)
   const handleFindReplaceApply = (result: FindReplaceResult) => {
@@ -880,12 +1078,6 @@ function NavalLetterGeneratorInner() {
   const handleToggleComment = (id: string) => setComments((prev) => toggleResolved(prev, id));
   const handleRemoveComment = (id: string) => setComments((prev) => removeComment(prev, id));
 
-  // EDMS mode drives the Save to EDMS menu item. Read after mount, never
-  // during render: sessionStorage does not exist in the static-export
-  // prerender, so a render-body read hydrates to a different tree.
-  const [, setEdmsCtx] = useState<EdmsContext | null>(null);
-  useEffect(() => { if (isEdmsMode()) setEdmsCtx(getEdmsContext()); }, []);
-
   // Share-link intake (?share= legacy, #es= encrypted) and S2 routing slip
   const {
     routingRequest, setRoutingRequest,
@@ -897,7 +1089,6 @@ function NavalLetterGeneratorInner() {
     // EDMS handoff. Scalars only: no subject, no names, no body. See
     // lib/edms-handoff.ts for why the payload is deliberately narrow.
     onEdmsPrefill: (p) => {
-      setEdmsCtx(getEdmsContext());
       setFormData(prev => ({
         ...prev,
         documentType: p.docType || prev.documentType,
@@ -926,15 +1117,30 @@ function NavalLetterGeneratorInner() {
     },
   });
 
-  // Phase 2: inline compliance issues for the live preview banner.
+  // D.8: the landing page's filled example. It routes through
+  // handleLoadTemplateUrl, the same fetch-parse-import path the File
+  // menu uses for a .nldp, so the example loads exactly as a drafter's
+  // own package would.
+  const handleLoadExample = useCallback(() => {
+    handleLoadTemplateUrl(EXAMPLE_DOCUMENT_URL);
+  }, [handleLoadTemplateUrl]);
+
+  // Phase 2: inline compliance issues for the live preview banner. The
+  // military dictionary only adds suggested expansions to acronym
+  // warnings, so it is fetched once there is body text to scan (B.5);
+  // the issues re-derive when it arrives.
+  const hasBodyText = paragraphs.some(p => p.content.trim() !== '');
+  const { dictionary } = useMilitaryDictionary(hasBodyText);
   const validationIssues = useMemo(
-    () => runLetterValidators(formData, vias, references, paragraphs),
-    [formData, vias, references, paragraphs],
+    () => runLetterValidators(formData, vias, references, paragraphs, { dictionary, enclosures }),
+    [formData, vias, references, paragraphs, enclosures, dictionary],
   );
 
   return (
     <ModernAppShell
       validationIssues={validationIssues}
+      isDirty={isDirty}
+      lastSavedAt={savedMark?.at ?? null}
       documentType={formData.documentType}
       onDocumentTypeChange={handleDocumentTypeChange}
       previewUrl={previewUrl}
@@ -947,10 +1153,12 @@ function NavalLetterGeneratorInner() {
       onImport={handleImport}
       onImportDocument={documentImport.startImport}
       isImportingDocument={documentImport.isProcessing}
+      onPasteImport={documentImport.startPasteImport}
+      onOpenCommandPalette={() => setPaletteOpen(true)}
       onClearForm={handleClearForm}
       savedLetters={savedLetters}
       onOpenLibrary={() => setShowLibrary(true)}
-      onLoadTemplateUrl={handleLoadTemplateUrl}
+      onLoadTemplateUrl={handleTemplatePick}
       currentUnitCode={currentUnitCode}
       currentUnitName={currentUnitName}
       onExportNldp={() => setShowExportNldpDialog(true)}
@@ -1042,6 +1250,12 @@ function NavalLetterGeneratorInner() {
         signatureLetterPageCount={signatureLetterPageCount}
         handleDynamicFormSubmit={handleDynamicFormSubmit}
         onDocumentTypeChange={handleDocumentTypeChange}
+        onLoadExample={handleLoadExample}
+        savedLetters={savedLetters}
+        samePageStatus={samePageStatus}
+        onAttachSamePageHostFile={handleAttachSamePageHostFile}
+        onSelectSamePageHostDraft={handleSelectSamePageHostDraft}
+        onClearSamePageHost={handleClearSamePageHost}
         enclosureRows={enclosureRows}
         enclosureFiles={enclosureFiles}
         onAddEnclosureRow={handleAddEnclosureRow}
@@ -1068,6 +1282,7 @@ function NavalLetterGeneratorInner() {
         onChangeDocumentType={documentImport.changeDocumentType}
         onConfirm={documentImport.confirmImport}
         onCancel={documentImport.cancelImport}
+        onImportText={documentImport.importFromText}
       />
       <ProofreadModal
         open={showProofreadModal}
@@ -1076,6 +1291,7 @@ function NavalLetterGeneratorInner() {
         paragraphs={paragraphs}
         enclosures={enclosures}
         references={references}
+        vias={vias}
       />
       <BatchGenerateModal
         open={showBatchModal}
@@ -1106,6 +1322,8 @@ function NavalLetterGeneratorInner() {
         onRename={handleRenameDocument}
         onDuplicate={handleDuplicateDocument}
         onDelete={handleDeleteDocument}
+        onSaveCurrent={saveLetter}
+        canSaveCurrent={documentHasContent}
       />
       <UnlockShareDialog
         open={hasEncryptedPending}
@@ -1136,6 +1354,7 @@ function NavalLetterGeneratorInner() {
         sequences={pkg.sequences}
         issues={pkg.issues}
         busy={pkg.busy}
+        fits={pkg.fits}
         onAdd={pkg.add}
         onRemove={pkg.remove}
         onMove={pkg.move}
@@ -1145,10 +1364,18 @@ function NavalLetterGeneratorInner() {
       />
       <ComplianceDialog
         open={showCompliance}
-        onOpenChange={setShowCompliance}
-        issues={validationIssues}
+        onOpenChange={(next) => {
+          setShowCompliance(next);
+          if (!next) setExportBlockers(null);
+        }}
+        issues={exportBlockers ?? validationIssues}
         onFix={handleFixIssue}
         onFixAll={handleFixAll}
+        onJumpToField={(field) => {
+          setShowCompliance(false);
+          setExportBlockers(null);
+          focusDocumentField(field);
+        }}
       />
       <CommandPalette
         open={paletteOpen}
@@ -1191,6 +1418,7 @@ function NavalLetterGeneratorInner() {
       />
       <GunnyBotPanel />
       <GunnyBotRuntime />
+      <ExportScanGate />
     </ModernAppShell>
   );
 }

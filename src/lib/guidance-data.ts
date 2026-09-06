@@ -37,17 +37,18 @@ export const GUIDANCE: GuidanceEntry[] = [
   {
     type: 'endorsement',
     label: 'Endorsement',
-    what: 'Forwards a basic letter through the chain of command, adding approval, disapproval, comment, or information at each level.',
+    what: 'Forwards a basic letter through the chain of command, adding approval, disapproval, comment, or information at each level. It goes on the signature page of the letter it endorses when the whole endorsement fits there, and on a new page when it does not (9-1).',
     whenToUse: [
       'Routing a subordinate\'s request up the chain with your recommendation',
       'Returning correspondence down the chain with a decision',
+      'Adding a short endorsement to the signature page of the letter below it, which 9-1 allows when it fits',
     ],
     whenNotToUse: [
       'Starting new correspondence - an endorsement always rides an existing basic letter',
-      'Same-page response when a separate-page format is required by the addressee',
+      'Same-page placement for an endorsement long enough to run past the foot of the signature page',
     ],
-    example: 'FIRST ENDORSEMENT on Sgt Smith ltr of 3 May 26',
-    citation: 'SECNAV M-5216.5, Ch. 8',
+    example: 'FIRST ENDORSEMENT on Sgt Smith ltr of 3 May 26, or FIRST ENDORSEMENT alone on a same-page endorsement which omits the identification (9-2.1.a)',
+    citation: 'SECNAV M-5216.5, Ch. 9',
   },
   {
     type: 'mfr',
@@ -92,7 +93,7 @@ export const GUIDANCE: GuidanceEntry[] = [
       'One-sided direction to a subordinate - use a directive or letter',
     ],
     example: 'AGREEMENT BETWEEN MCB QUANTICO AND FBI ACADEMY FOR RANGE FACILITY USE',
-    citation: 'SECNAV M-5216.5, Ch. 11',
+    citation: 'SECNAV M-5216.5, Ch. 10',
   },
   {
     type: 'mou',
@@ -106,7 +107,7 @@ export const GUIDANCE: GuidanceEntry[] = [
       'Any exchange of funds, personnel, or resources - use an MOA',
     ],
     example: 'UNDERSTANDING BETWEEN I MEF AND NAVAL HOSPITAL REGARDING MEDICAL TRAINING',
-    citation: 'SECNAV M-5216.5, Ch. 11',
+    citation: 'SECNAV M-5216.5, Ch. 10',
   },
   {
     type: 'business-letter',
@@ -120,7 +121,7 @@ export const GUIDANCE: GuidanceEntry[] = [
       'Communication between naval activities - use the standard letter',
     ],
     example: 'Response to a vendor inquiry regarding facility access procedures',
-    citation: 'SECNAV M-5216.5, Ch. 9',
+    citation: 'SECNAV M-5216.5, Ch. 11',
   },
   {
     type: 'mco',

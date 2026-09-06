@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import { Navmc11811Data, BoxBoundary } from '@/types/navmc';
-import { getBasePath } from '@/lib/path-utils';
+import { loadAssetBytes } from '@/lib/assets';
 
 // --- Configuration & Constants ---
 
@@ -22,8 +22,7 @@ export const PAGE11_BOXES: Record<string, BoxBoundary> = {
 // --- Helper Functions ---
 
 async function loadTemplates() {
-  const basePath = getBasePath();
-  const page1Bytes = await fetch(`${basePath}/templates/navmc11811/page1.pdf`).then((res) => res.arrayBuffer());
+  const page1Bytes = await loadAssetBytes('templates/navmc11811/page1.pdf');
   return { page1Bytes };
 }
 

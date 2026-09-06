@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useSyncedState } from "@/hooks/useSyncedState";
 import dynamic from "next/dynamic";
 import {
   Dialog,
@@ -52,20 +53,56 @@ interface SignaturePlacementModalProps {
 type InteractionMode = "none" | "drawing" | "moving" | "resizing";
 type ResizeHandle = "nw" | "ne" | "sw" | "se";
 
-export function SignaturePlacementModal({
+export function SignaturePlacementModal(props: SignaturePlacementModalProps) {
+  const { open, pdfBlob, totalPages, placeablePages } = props;
+  const lastLetterPage = placeablePages ?? totalPages;
+
+  // Fresh state on every open. The body below is remounted (via key) each
+  // time the dialog goes from closed to open, or the last letter page
+  // changes while it is open, so every box, selection and page choice
+  // starts over without an effect resetting them after the first paint.
+  const [openCount] = useSyncedState(open, (isOpen, prev: number | undefined) => (isOpen ? (prev ?? 0) + 1 : prev ?? 0));
+
+  // Object URL for the preview, one per blob, revoked when the blob
+  // changes or the modal unmounts. Held here so a remount of the body
+  // does not re-create it.
+  const pdfUrl = useMemo(() => (pdfBlob ? URL.createObjectURL(pdfBlob) : null), [pdfBlob]);
+  useEffect(() => {
+    if (!pdfUrl) return;
+    return () => URL.revokeObjectURL(pdfUrl);
+  }, [pdfUrl]);
+
+  return (
+    <SignaturePlacementBody
+      key={`${openCount}:${lastLetterPage}`}
+      {...props}
+      pdfUrl={pdfUrl}
+      lastLetterPage={lastLetterPage}
+    />
+  );
+}
+
+interface SignaturePlacementBodyProps extends SignaturePlacementModalProps {
+  pdfUrl: string | null;
+  lastLetterPage: number;
+}
+
+function SignaturePlacementBody({
   open,
   onClose,
   onConfirm,
   onConfirmAndCopyLink,
-  pdfBlob,
   totalPages,
-  placeablePages,
-}: SignaturePlacementModalProps) {
-  const lastLetterPage = placeablePages ?? totalPages;
-  const [currentPage, setCurrentPage] = useState(1);
+  pdfUrl,
+  lastLetterPage,
+}: SignaturePlacementBodyProps) {
+  // ENC: open on the LAST LETTER page (where the signature block lives).
+  // With enclosures merged behind, the last document page is an
+  // enclosure, not the letter.
+  const [currentPage, setCurrentPage] = useState(lastLetterPage > 0 ? lastLetterPage : 1);
   const [signatureBoxes, setSignatureBoxes] = useState<SignaturePosition[]>([]);
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
-  
+
   // Interaction State
   const [interactionMode, setInteractionMode] = useState<InteractionMode>("none");
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
@@ -73,30 +110,8 @@ export function SignaturePlacementModal({
   const [activeHandle, setActiveHandle] = useState<ResizeHandle | null>(null);
   const [tempRect, setTempRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState({ width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Create object URL from blob
-  useEffect(() => {
-    if (pdfBlob) {
-      const url = URL.createObjectURL(pdfBlob);
-      setPdfUrl(url);
-      return () => URL.revokeObjectURL(url);
-    }
-  }, [pdfBlob]);
-
-  // Reset state when modal opens. ENC: open on the LAST LETTER page
-  // (where the signature block lives) - with enclosures merged behind,
-  // the last document page is an enclosure, not the letter.
-  useEffect(() => {
-    if (open) {
-      setCurrentPage(lastLetterPage > 0 ? lastLetterPage : 1);
-      setSignatureBoxes([]);
-      setSelectedBoxId(null);
-      setInteractionMode("none");
-    }
-  }, [open, lastLetterPage]);
 
   // Handle page load to get dimensions
   const onPageLoadSuccess = useCallback(({ width, height }: { width: number; height: number }) => {

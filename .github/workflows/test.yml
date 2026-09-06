@@ -27,9 +27,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           # Single source of truth for the Node version. deploy.yml reads the
           # same file rather than hardcoding a number that can drift from it.
@@ -46,6 +46,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # BLOCKING. High and critical advisories in the PRODUCTION tree fail
+      # the run. devDependencies are excluded: they never ship. No
+      # allowlist - if an advisory has no fix, replace the dependency or
+      # discuss before adding an exception here.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
       # BLOCKING, and the reason this workflow exists in its current form.
       # `next build` typechecks, but only on main, and only at deploy time.
       # Catching it here is the difference between a bad five minutes and a
@@ -56,11 +63,73 @@ jobs:
       - name: Typecheck the tests
         run: npm run typecheck:tests
 
-      # Blocking on ERRORS only. The repo carries 54 warnings today, almost
+      # Blocking on ERRORS only. The repo carries 52 warnings today, almost
       # all react-hooks/set-state-in-effect, and eslint exits 0 on warnings.
       # Do not add --max-warnings 0 without clearing those first.
       - name: Lint
         run: npm run lint
 
+      # Warning counts only move down. Compares per-rule counts against
+      # .lint-baseline.json; a PR which lowers a count updates the baseline
+      # in the same PR (node scripts/lint-ratchet.mjs --update).
+      - name: Lint ratchet
+        run: npm run lint:ratchet
+
       - name: Run tests
         run: npm test
+
+  coverage:
+    # Coverage floor. Thresholds live in vitest.config.ts, set just below
+    # the measured baseline, so a PR which drops coverage fails here.
+    # Separate job so a threshold miss reads as "coverage", not "tests".
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # The parity test needs LibreOffice here too, otherwise it fails and
+      # the run reads red for the wrong reason.
+      - name: Install LibreOffice and Liberation fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-writer fonts-liberation
+      - run: npm ci
+      - name: Coverage threshold
+        run: npm run test:coverage
+
+  e2e:
+    # Browser smoke test against the BUILT static export. Unit tests never
+    # exercise dynamic import() boundaries, chunk loading, or the service
+    # worker; this job is the only guard for that class of break. See
+    # tests/e2e/smoke.spec.ts and docs/HARDENING_PLAN_2026-09.md Phase 0.1.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build static export
+        run: npm run build
+      - name: Bundle report
+        run: npm run bundle:report
+      - name: Smoke test
+        run: npm run test:e2e
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-traces-${{ github.sha }}
+          path: test-results/e2e
+          retention-days: 7
+          if-no-files-found: ignore

@@ -74,3 +74,22 @@ describe('GunnyBotSettings proxy control', () => {
     expect(screen.getByText(/will not work until you set a proxy URL/i)).toBeTruthy();
   });
 });
+
+describe('GunnyBotSettings in EDMS mode', () => {
+  it('locks the provider to GenAI.mil and reads its proxy on the first client render', async () => {
+    const { setEdmsContext, clearEdmsContext, resetEdmsCacheForTests } = await import('@/lib/edms-mode');
+    resetEdmsCacheForTests();
+    setEdmsContext({ requestId: 'REQ-1', ruc: '12345', ssic: '1650', docType: 'basic' });
+    setProxyUrl('genaimil', 'https://gw.example/edms');
+    useGunnyStore.setState({ provider: 'gemini', model: 'gemini-2.5-flash', keyPresent: false });
+    try {
+      render(<GunnyBotSettings />);
+      expect(useGunnyStore.getState().provider).toBe('genaimil');
+      expect(screen.getByText('https://gw.example/edms')).toBeTruthy();
+      expect(screen.queryByText(/will not work until you set a proxy URL/i)).toBeNull();
+    } finally {
+      clearEdmsContext();
+      resetEdmsCacheForTests();
+    }
+  });
+});

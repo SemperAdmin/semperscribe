@@ -26,6 +26,7 @@ import {
 } from '@/lib/i-type/page3-derivations';
 import { coverColumnWidths } from '@/lib/i-type/cover-columns';
 import { appendixSection } from './i-type-appendix-docx';
+import { loadOptionalAssetBytes } from '@/lib/assets';
 
 interface ITypeDocxData extends FormData {
   service?: string;
@@ -141,14 +142,12 @@ const indentedLine = (text: string) =>
     children: [new TextRun({ text, font: FONT, size: SIZE })],
   });
 
-async function loadSeal(): Promise<ArrayBuffer | null> {
-  try {
-    const res = await fetch('/USMC.png');
-    if (!res.ok) return null;
-    return await res.arrayBuffer();
-  } catch {
-    return null;
-  }
+// The USMC seal on the cover. Through the asset seam it resolves under
+// the deployment base path (the old fetch('/USMC.png') missed the
+// /semperscribe prefix and silently dropped the seal on GitHub Pages)
+// and reads from disk under Node.
+function loadSeal(): Promise<Uint8Array | null> {
+  return loadOptionalAssetBytes('USMC.png');
 }
 
 export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer> {
@@ -236,7 +235,7 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
           alignment: AlignmentType.CENTER,
           children: [
             new ImageRun({
-              data: new Uint8Array(sealData),
+              data: sealData,
               transformation: { width: 192, height: 192 },
               type: 'png',
             } as any),

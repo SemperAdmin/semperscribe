@@ -14,7 +14,7 @@ export function BusinessLetterForm() {
   return (
     <Card className="mb-8 border-border shadow-sm">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="text-lg font-semibold">Business Letter Details</CardTitle>
+        <CardTitle as="h3" className="text-lg font-semibold">Business Letter Details</CardTitle>
       </CardHeader>
       <CardContent className="pt-6">
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2">

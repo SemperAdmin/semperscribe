@@ -8,10 +8,8 @@
  * verified 2026-06-10 via search excerpt of the manual. Remaining
  * rules are pinned to the audit summary.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { generateDocxBlob } from '@/lib/docx-generator';
 import {

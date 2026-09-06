@@ -1,26 +1,20 @@
 import { ImageRun, HorizontalPositionRelativeFrom, VerticalPositionRelativeFrom, convertInchesToTwip } from 'docx';
 
+import { loadSealBytes } from '@/lib/seal-assets';
+
 type LetterheadType = 'marine-corps' | 'navy';
 
-// Decoding the ~3.8 MB base64 seal costs a full fetch+decode pass;
-// cache the decoded buffer per seal so repeated exports pay it once.
+// One ArrayBuffer per seal, sliced from the shared byte cache so repeated
+// exports pay for the load once. The bytes come from public/seals/ (see
+// seal-assets.ts), no longer from a base64 module.
 const sealBufferCache = new Map<LetterheadType, ArrayBuffer>();
-
-async function resolveSealDataUrl(letterheadType: LetterheadType): Promise<string> {
-  const { DOD_SEAL_DETAILED, NAVY_SEAL_BLUE } = await import('./dod-seal-data');
-  // Fallback to DoD seal if Navy seal is not ready
-  return (letterheadType === 'navy' && NAVY_SEAL_BLUE && !NAVY_SEAL_BLUE.includes('YOUR_NAVY_SEAL_BASE64_DATA_HERE'))
-    ? NAVY_SEAL_BLUE
-    : DOD_SEAL_DETAILED;
-}
 
 export async function getDoDSealBuffer(letterheadType: LetterheadType = 'marine-corps'): Promise<ArrayBuffer> {
   const cached = sealBufferCache.get(letterheadType);
   if (cached) return cached;
 
-  const dataUrl = await resolveSealDataUrl(letterheadType);
-  const response = await fetch(dataUrl);
-  const buffer = await response.arrayBuffer();
+  const bytes = await loadSealBytes(letterheadType === 'navy' ? 'navy' : 'dod');
+  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   sealBufferCache.set(letterheadType, buffer);
   return buffer;
 }

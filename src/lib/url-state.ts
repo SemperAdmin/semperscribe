@@ -1,4 +1,5 @@
 import LZString from 'lz-string';
+import { z } from 'zod';
 import { FormData, ParagraphData } from '@/types';
 import { encryptText, decryptText, DecryptFailedError, MalformedPayloadError } from '@/lib/crypto-utils';
 import type { ReviewComment } from '@/lib/review-comments';
@@ -59,7 +60,48 @@ export function encodeStateForUrl(state: ShareableState): string {
 }
 
 /**
- * Decodes and decompresses state from URL
+ * Shape check for a decoded share payload. A `?share=` link is
+ * attacker-constructable (no password, no integrity), and an `#es=`
+ * payload is only as trustworthy as the password holder, so nothing
+ * from either reaches the editor on the strength of a JSON.parse.
+ * Loose on purpose: unknown keys pass (the form carries many optional
+ * fields), but every field the app iterates or indexes must be the
+ * type it expects, or the link is reported as damaged.
+ */
+const stringList = z.array(z.string());
+const shareableStateSchema = z.looseObject({
+  formData: z.looseObject({ documentType: z.string().optional() }),
+  paragraphs: z.array(z.looseObject({
+    id: z.number(),
+    level: z.number(),
+    content: z.string(),
+  })).optional(),
+  references: stringList.optional(),
+  enclosures: stringList.optional(),
+  vias: stringList.optional(),
+  copyTos: stringList.optional(),
+  distList: stringList.optional(),
+  routing: z.looseObject({
+    requestedSigner: z.string(),
+    dueDate: z.string().optional(),
+    returnEmail: z.string().optional(),
+    note: z.string().optional(),
+  }).optional(),
+  expires: z.string().optional(),
+  comments: z.array(z.looseObject({
+    id: z.string(),
+    anchor: z.string(),
+    author: z.string(),
+    text: z.string(),
+    createdAt: z.string(),
+    resolved: z.boolean().optional(),
+  })).optional(),
+  version: z.number().optional(),
+});
+
+/**
+ * Decodes and decompresses state from URL. Returns null for anything
+ * which does not decompress, parse, or match the share-payload shape.
  */
 export function decodeStateFromUrl(encoded: string): ShareableState | null {
   try {
@@ -68,7 +110,12 @@ export function decodeStateFromUrl(encoded: string): ShareableState | null {
       console.error('Failed to decompress URL state');
       return null;
     }
-    const state = JSON.parse(json) as ShareableState;
+    const parsed = shareableStateSchema.safeParse(JSON.parse(json));
+    if (!parsed.success) {
+      console.error('Share payload failed shape validation:', parsed.error.issues[0]?.path.join('.'));
+      return null;
+    }
+    const state = parsed.data as unknown as ShareableState;
 
     // Version migration could happen here in the future
     if (!state.version) {

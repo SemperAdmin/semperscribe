@@ -5,18 +5,21 @@ import { Sidebar } from './Sidebar';
 import { LivePreview } from './LivePreview';
 import { HeaderActions } from './HeaderActions';
 import { PreviewModal } from './PreviewModal';
+import { ComplianceBanner, type PreviewIssue } from './ComplianceBanner';
 import { ParagraphData, SavedLetter, FormData } from '@/types';
-import { getBasePath } from '@/lib/path-utils';
 import { getExportFilename } from '@/lib/naval-format-utils';
+import { requiredFieldStatus, isDocumentUnstarted } from '@/lib/required-fields';
 import { FEEDBACK_URL, PORTAL_URL } from '@/lib/app-links';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { useCommandPaletteHint } from '@/hooks/useCommandPaletteHint';
+import { pickerTypeFor } from '@/lib/document-type-options';
 
 interface ModernAppShellProps {
   children: React.ReactNode;
   documentType: string;
   onDocumentTypeChange: (type: string) => void;
   previewUrl?: string;
-  validationIssues?: import('./LivePreview').PreviewIssue[];
+  validationIssues?: PreviewIssue[];
   isGeneratingPreview?: boolean;
   onExportDocx: () => void;
   onGeneratePdf: () => void;
@@ -27,11 +30,13 @@ interface ModernAppShellProps {
   onImport: (data: any) => void;
   onImportDocument?: (file: File) => void;
   isImportingDocument?: boolean;
+  /** R11 (D.7): opens the import review modal on its paste step. */
+  onPasteImport?: () => void;
   onClearForm: () => void;
   savedLetters: SavedLetter[];
   /** P1.2: opens the document library dialog */
   onOpenLibrary?: () => void;
-  onLoadTemplateUrl: (url: string) => void;
+  onLoadTemplateUrl: (url: string, templateDocumentType?: string) => void;
   currentUnitCode?: string;
   currentUnitName?: string;
   onExportNldp: () => void;
@@ -63,6 +68,8 @@ interface ModernAppShellProps {
   onSettings?: () => void;
   isDirty?: boolean;
   lastSavedAt?: Date | null;
+  /** D.7: opens the Ctrl+K command palette from the header hint. */
+  onOpenCommandPalette?: () => void;
 }
 
 export function ModernAppShell({
@@ -80,6 +87,7 @@ export function ModernAppShell({
   onImport,
   onImportDocument,
   isImportingDocument,
+  onPasteImport,
   onClearForm,
   savedLetters,
   onOpenLibrary,
@@ -108,17 +116,32 @@ export function ModernAppShell({
   onSettings,
   isDirty,
   lastSavedAt,
+  onOpenCommandPalette,
 }: ModernAppShellProps) {
   const [showPreview, setShowPreview] = React.useState(true);
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = React.useState(false);
-  const [logoSrc, setLogoSrc] = React.useState('/logo.png');
+  // Build-time base path (next.config.ts env), identical on the server
+  // render and the client, so the first paint requests the right URL.
+  // The previous state-plus-effect version rendered "/logo.png" first,
+  // which 404s on GitHub Pages before the effect corrected it (caught by
+  // the e2e smoke test's zero-console-error assertion).
+  const logoSrc = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/logo.png`;
+  const paletteShortcut = useCommandPaletteHint();
 
-  React.useEffect(() => {
-    // Get basePath on client-side for proper logo loading
-    const basePath = getBasePath();
-    setLogoSrc(`${basePath}/logo.png`);
-  }, []);
+  // E.2/E.4: the option on screen. A same-page endorsement is the
+  // endorsement type with its placement set, and the header badge and
+  // the templates filter follow the option, not the type.
+  const pickerType = pickerTypeFor({ documentType, endorsementPlacement: formData?.endorsementPlacement });
+
+  // D.8 (UX audit finding 9): a chosen type with nothing typed gets a
+  // list of what the preview is waiting for rather than a blank page.
+  // Null once anything has been entered.
+  const emptyStateFields = React.useMemo(() => {
+    if (!documentType || !formData) return null;
+    const fields = requiredFieldStatus(documentType, formData as Record<string, unknown>);
+    return isDocumentUnstarted(fields, paragraphs) ? fields : null;
+  }, [documentType, formData, paragraphs]);
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-sans overflow-hidden">
@@ -181,7 +204,7 @@ export function ModernAppShell({
           <button
             type="button"
             onClick={() => setShowMobileSidebar(true)}
-            className="md:hidden inline-flex items-center justify-center h-10 w-10 -ml-2 rounded-md text-primary-foreground hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="md:hidden inline-flex items-center justify-center h-10 w-10 max-sm:min-h-11 max-sm:min-w-11 -ml-2 rounded-md text-primary-foreground hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-primary/50"
             aria-label="Open document menu"
           >
             <Menu className="h-5 w-5" />
@@ -196,6 +219,7 @@ export function ModernAppShell({
               rel="noopener noreferrer"
               className="relative block h-10 w-10 overflow-hidden rounded-full border-2 border-primary/50 shadow-sm bg-white/10 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
+              {/* eslint-disable-next-line @next/next/no-img-element -- static export with images.unoptimized; next/image would render the same <img> with no optimisation */}
               <img
                 src={logoSrc}
                 alt="Semper Admin Portal (opens in a new tab)"
@@ -216,37 +240,73 @@ export function ModernAppShell({
 
           <div className="hidden sm:flex items-center space-x-2 text-sm">
             <span className="px-2 py-1 rounded bg-primary text-primary-foreground font-medium border border-primary-foreground/20 text-xs shadow-sm">
-              {documentType === 'navmc10274' ? 'AA FORM' : (documentType ? documentType.toUpperCase() : 'HOME')}
+              {documentType === 'navmc10274' ? 'AA FORM' : (documentType ? pickerType.toUpperCase() : 'HOME')}
             </span>
             {documentType && (
               <>
                 <span className="text-primary-foreground/50">/</span>
-                {isDirty ? (
-                  <span className="text-amber-300 font-medium text-xs flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                    Unsaved
-                  </span>
-                ) : lastSavedAt ? (
-                  <span className="text-emerald-300 font-medium text-xs flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    Saved
-                  </span>
-                ) : (
-                  <span className="text-primary-foreground/70 font-medium text-xs">Draft</span>
-                )}
+                {/* D.2: the save state, live at last. "Saved" means an
+                    explicit Save Draft, never the autosaved working copy,
+                    which the user did not choose to keep. */}
+                <span role="status">
+                  {isDirty ? (
+                    <span className="text-amber-300 font-medium text-xs flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                      Unsaved changes
+                    </span>
+                  ) : lastSavedAt ? (
+                    <span className="text-emerald-300 font-medium text-xs flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      Saved {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  ) : (
+                    <span className="text-primary-foreground/70 font-medium text-xs">Draft</span>
+                  )}
+                </span>
               </>
+            )}
+          </div>
+
+          {/* D.7: the palette hint. R8 shipped Ctrl+K with nothing on
+              screen naming it, so the audit's admin corporal never found
+              it. The kbd is the advertisement, and the button around it
+              is the way in for a pointer or a touch screen. */}
+          <div className="hidden lg:flex items-center ml-3">
+            {onOpenCommandPalette ? (
+              <button
+                type="button"
+                onClick={onOpenCommandPalette}
+                title={`Command palette (${paletteShortcut})`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-primary-foreground/20 px-2 py-1 text-primary-foreground/70 hover:text-primary-foreground hover:border-primary-foreground/40 transition-colors"
+              >
+                <span className="text-[11px]">Commands</span>
+                <kbd className="font-sans text-[10px] font-medium tracking-wide rounded bg-primary-foreground/10 px-1.5 py-0.5">
+                  {paletteShortcut}
+                </kbd>
+              </button>
+            ) : (
+              <span
+                title={`Command palette (${paletteShortcut})`}
+                className="inline-flex items-center gap-1.5 text-primary-foreground/70"
+              >
+                <span className="text-[11px]">Commands</span>
+                <kbd className="font-sans text-[10px] font-medium tracking-wide rounded bg-primary-foreground/10 px-1.5 py-0.5">
+                  {paletteShortcut}
+                </kbd>
+              </span>
             )}
           </div>
         </div>
 
         <HeaderActions
             className="text-primary-foreground"
-            documentType={documentType}
+            documentType={pickerType}
             onSave={onSave}
             onLoadDraft={onLoadDraft}
             onImport={onImport}
             onImportDocument={onImportDocument}
             isImportingDocument={isImportingDocument}
+            onPasteImport={onPasteImport}
             onExportDocx={onExportDocx}
             onGeneratePdf={onGeneratePdf}
             onClearForm={onClearForm}
@@ -306,18 +366,27 @@ export function ModernAppShell({
         </Sheet>
 
         {/* Center Pane: Editor */}
-        {/* F2 (SECTION_508_FINDINGS): app/layout.tsx owns the main
-            landmark - this is a labeled region, not a second main. */}
-        <div id="main-content" tabIndex={-1} role="region" aria-label="Document form" className="flex-1 overflow-y-auto bg-muted/10 p-4 md:p-6 lg:p-8 relative scroll-smooth">
-          <div className="max-w-4xl mx-auto space-y-6 pb-8">
-             {children}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* D.2: compliance feedback at every viewport width. This is
+              the one announced copy - the preview sheet renders a silent
+              one, and the preview aside no longer carries it at all. */}
+          {documentType && (
+            <ComplianceBanner issues={validationIssues} onOpenIssues={onCompliance} />
+          )}
+
+          {/* F2 (SECTION_508_FINDINGS): app/layout.tsx owns the main
+              landmark - this is a labeled region, not a second main. */}
+          <div id="main-content" tabIndex={-1} role="region" aria-label="Document form" className="flex-1 overflow-y-auto bg-muted/10 p-4 md:p-6 lg:p-8 relative scroll-smooth">
+            <div className="max-w-4xl mx-auto space-y-6 pb-8">
+               {children}
+            </div>
           </div>
         </div>
 
         {/* Right Pane: Live Preview or Custom Panel */}
         {showPreview && documentType && (
           customRightPanel ? (
-            <aside className="w-[45%] max-w-[900px] min-w-[500px] bg-muted/20 border-l border-border hidden xl:flex flex-col h-full overflow-hidden">
+            <aside aria-label="Live preview" className="w-[45%] max-w-[900px] min-w-[500px] bg-muted/20 border-l border-border hidden xl:flex flex-col h-full overflow-hidden">
               <div className="h-12 bg-card border-b border-border flex items-center justify-between px-4 shrink-0">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Live Preview</h3>
               </div>
@@ -327,14 +396,13 @@ export function ModernAppShell({
             </aside>
           ) : (
             <LivePreview
-              issues={validationIssues}
-              onOpenIssues={onCompliance}
               previewUrl={previewUrl}
               isLoading={isGeneratingPreview}
               onUpdatePreview={onUpdatePreview}
               documentType={documentType}
               downloadFileName={formData ? getExportFilename(formData, 'pdf') : undefined}
               onDownloadExport={onGeneratePdf}
+              emptyStateFields={emptyStateFields}
             />
           )
         )}
@@ -372,6 +440,8 @@ export function ModernAppShell({
         previewUrl={previewUrl}
         isLoading={isGeneratingPreview}
         onUpdatePreview={onUpdatePreview}
+        issues={validationIssues}
+        emptyStateFields={emptyStateFields}
       />
     </div>
   );

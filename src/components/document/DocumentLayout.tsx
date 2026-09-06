@@ -1,7 +1,9 @@
 'use client';
 
-import { ParagraphData, FormData } from '@/types';
+import { ParagraphData, FormData, SavedLetter } from '@/types';
+import type { SamePageStatus } from '@/lib/same-page-host';
 import { DocumentFeatures, DOCUMENT_TYPES } from '@/lib/schemas';
+import { pickerDefinitionFor } from '@/lib/document-type-options';
 import { DynamicForm } from '@/components/ui/DynamicForm';
 import { AMHSEditor } from '@/components/amhs/AMHSEditor';
 import { LandingPage } from '@/components/layout/LandingPage';
@@ -11,6 +13,7 @@ import { ClassificationSection } from '@/components/letter/ClassificationSection
 import { Page11RemarksSection } from '@/components/letter/Page11RemarksSection';
 import { Navmc10922FormSections } from '@/components/letter/Navmc10922Sections';
 import { Navmc10132FormSections } from '@/components/letter/Navmc10132Sections';
+import { CounselingSections } from '@/components/counseling/CounselingSections';
 import { getClassification } from '@/lib/classification';
 import { ClosingBlockSection } from '@/components/letter/ClosingBlockSection';
 import { MultipleToSection } from '@/components/letter/MultipleToSection';
@@ -24,12 +27,20 @@ import { SignaturePlacementModal } from '@/components/SignaturePlacementModal';
 import { HeaderSettingsSection } from './HeaderSettingsSection';
 import { FontSelectorSection } from './FontSelectorSection';
 import { EndorsementDetailsSection } from './EndorsementDetailsSection';
+import { SamePageEndorsementSection } from './SamePageEndorsementSection';
+import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
 import { SignatureFieldSection } from './SignatureFieldSection';
 import { DecisionGridSection } from '@/components/letter/DecisionGridSection';
 import { CoordinationPageForm } from '@/components/letter/CoordinationPageForm';
 import { ITypeFormSections } from '@/components/itype/ITypeFormSections';
 
 interface DocumentLayoutProps {
+  /** E.3: the letter a same-page endorsement is added to. */
+  savedLetters?: SavedLetter[];
+  samePageStatus?: SamePageStatus | null;
+  onAttachSamePageHostFile?: (file: File) => void;
+  onSelectSamePageHostDraft?: (letterId: string) => void;
+  onClearSamePageHost?: () => void;
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   formKey: number;
@@ -79,19 +90,21 @@ interface DocumentLayoutProps {
   // Dynamic form
   handleDynamicFormSubmit: (data: any) => void;
   /** ENC: enclosure rows (title + optional bound file) and file map */
-  enclosureRows: import('@/lib/enclosure-attachments').EnclosureRow[];
-  enclosureFiles: ReadonlyMap<string, import('@/lib/enclosure-attachments').EnclosureAttachment>;
+  enclosureRows: import('@/lib/enclosure-rows').EnclosureRow[];
+  enclosureFiles: ReadonlyMap<string, import('@/lib/enclosure-rows').EnclosureAttachment>;
   onAddEnclosureRow: () => void;
   onRemoveEnclosureRow: (key: string) => void;
   onUpdateEnclosureTitle: (key: string, title: string) => void;
   onMoveEnclosureRow: (key: string, direction: -1 | 1) => void;
   onClearEnclosureRows: () => void;
-  onBindEnclosureFile: (rowKey: string, attachment: import('@/lib/enclosure-attachments').EnclosureAttachment) => void;
+  onBindEnclosureFile: (rowKey: string, attachment: import('@/lib/enclosure-rows').EnclosureAttachment) => void;
   onUnbindEnclosureFile: (rowKey: string) => void;
   attachmentCoverPages?: boolean;
   onAttachmentCoverPagesChange?: (value: boolean) => void;
   /** Landing quick starts route through the same handler as the sidebar. */
   onDocumentTypeChange?: (type: string) => void;
+  /** D.8: landing card loading the shipped example .nldp. */
+  onLoadExample?: () => void;
   /** R1: review comments threaded to the paragraph pins. */
   comments?: import('@/lib/review-comments').ReviewComment[];
   reviewMode?: boolean;
@@ -154,28 +167,46 @@ export function DocumentLayout({
   onRemoveComment,
   commentAuthor,
   handleDynamicFormSubmit,
+  onLoadExample,
+  savedLetters,
+  samePageStatus,
+  onAttachSamePageHostFile,
+  onSelectSamePageHostDraft,
+  onClearSamePageHost,
 }: DocumentLayoutProps) {
   // Show landing page when no document type is selected
   if (!formData.documentType) {
-    return <LandingPage onSelectType={onDocumentTypeChange} />;
+    return <LandingPage onSelectType={onDocumentTypeChange} onLoadExample={onLoadExample} />;
   }
 
   const docTypeDef = DOCUMENT_TYPES[formData.documentType] || DOCUMENT_TYPES['basic'];
-  const features: DocumentFeatures = docTypeDef.features;
+  // E.5: a same-page endorsement written from scratch is the letter (the
+  // main sections) plus the endorsement card. With a received PDF
+  // attached as the letter, the letter sections have nothing to say and
+  // stay hidden; the endorsement card is the whole form.
+  const samePageComposite = isSamePageEndorsement(formData) && !!formData.samePageEndorsement;
+  const letterHidden = samePageComposite && !!formData.samePageHost;
+  const features: DocumentFeatures = letterHidden
+    ? { ...docTypeDef.features, showVia: false, showReferences: false, showEnclosures: false, showParagraphs: false, showClosingBlock: false, showUnitInfo: false }
+    : docTypeDef.features;
+  // E.2: the header names the option the drafter picked. A same-page
+  // endorsement is the endorsement type with its placement set, and the
+  // header says so rather than repeating the type's name.
+  const headerDef = pickerDefinitionFor(formData);
 
   return (
     <>
       {/* Document Type Header */}
       <div className="bg-card p-6 rounded-lg shadow-sm border border-border mb-6 flex items-center gap-4">
         <div className="text-4xl text-primary">
-          {docTypeDef.icon || DOCUMENT_TYPES['basic'].icon}
+          {headerDef.icon || DOCUMENT_TYPES['basic'].icon}
         </div>
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
-            {docTypeDef.name || DOCUMENT_TYPES['basic'].name}
+            {headerDef.name || DOCUMENT_TYPES['basic'].name}
           </h2>
           <p className="text-muted-foreground">
-            {docTypeDef.description || DOCUMENT_TYPES['basic'].description}
+            {headerDef.description || DOCUMENT_TYPES['basic'].description}
           </p>
         </div>
       </div>
@@ -215,7 +246,15 @@ export function DocumentLayout({
           )}
 
           {features.showEndorsementDetails && (
-            <EndorsementDetailsSection formData={formData} setFormData={setFormData} />
+            <EndorsementDetailsSection
+              formData={formData}
+              setFormData={setFormData}
+              savedLetters={savedLetters}
+              samePageStatus={samePageStatus}
+              onAttachHostFile={onAttachSamePageHostFile}
+              onSelectHostDraft={onSelectSamePageHostDraft}
+              onClearHost={onClearSamePageHost}
+            />
           )}
 
           {/* NAVMC 10922: four narrow DynamicForm instances interleaved
@@ -239,6 +278,10 @@ export function DocumentLayout({
               formKey={formKey}
               onClearForm={onClearForm}
             />
+          ) : formData.documentType === 'counseling' ? (
+            /* Counseling Worksheet: the seven-step guided session, every
+               input bound to formData (docs/COUNSELING_FORM_PLAN.md section 7). */
+            <CounselingSections key={formKey} formData={formData} setFormData={setFormData} />
           ) : (
             /* Dynamic Header Form based on Document Type */
             <div className="bg-card p-6 rounded-lg shadow-sm border border-border mb-6">
@@ -370,6 +413,18 @@ export function DocumentLayout({
               setCopyTos={setCopyTos}
               distList={distList}
               setDistList={setDistList}
+            />
+          )}
+
+          {samePageComposite && (
+            <SamePageEndorsementSection
+              key={`same-page-endorsement-${formKey}`}
+              formData={formData}
+              setFormData={setFormData}
+              vias={vias}
+              references={references}
+              enclosures={enclosureRows.map(r => r.title)}
+              samePageStatus={samePageStatus}
             />
           )}
 

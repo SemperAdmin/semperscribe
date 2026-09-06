@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BadgeCheck, Wand2, XCircle, AlertTriangle, Info } from 'lucide-react';
+import { BadgeCheck, Wand2, XCircle, AlertTriangle, Info, Crosshair } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ValidationIssue, ValidatorSeverity } from '@/lib/letter-validators';
 import { getFixer, hasFixer } from '@/lib/autofix';
@@ -37,6 +37,12 @@ interface ComplianceDialogProps {
   onFix: (issueId: string) => void;
   /** Applies every fixable issue in one step. */
   onFixAll: (issueIds: string[]) => void;
+  /**
+   * Takes the drafter to the form field an issue belongs to. Issues
+   * which name no field render no jump action. Optional so a surface
+   * with no form behind it still renders the list.
+   */
+  onJumpToField?: (field: string) => void;
 }
 
 const SEVERITY: Record<ValidatorSeverity, { label: string; icon: React.ComponentType<{ className?: string }>; className: string }> = {
@@ -45,7 +51,7 @@ const SEVERITY: Record<ValidatorSeverity, { label: string; icon: React.Component
   warn: { label: 'Advisory', icon: Info, className: 'text-muted-foreground' },
 };
 
-export function ComplianceDialog({ open, onOpenChange, issues, onFix, onFixAll }: ComplianceDialogProps) {
+export function ComplianceDialog({ open, onOpenChange, issues, onFix, onFixAll, onJumpToField }: ComplianceDialogProps) {
   const order: ValidatorSeverity[] = ['block', 'fail', 'warn'];
   const sorted = [...issues].sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity));
   const fixable = sorted.filter((i) => hasFixer(i.id));
@@ -88,16 +94,28 @@ export function ComplianceDialog({ open, onOpenChange, issues, onFix, onFixAll }
                         <p className="text-xs text-muted-foreground mt-1">{issue.detail}</p>
                         <p className="text-[10px] text-muted-foreground/70 mt-1">{issue.citation}</p>
                       </div>
-                      {fixer && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs shrink-0"
-                          onClick={() => onFix(issue.id)}
-                        >
-                          <Wand2 className="w-3 h-3 mr-1" /> {fixer.label}
-                        </Button>
-                      )}
+                      <div className="flex flex-col gap-1 shrink-0">
+                        {fixer && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => onFix(issue.id)}
+                          >
+                            <Wand2 className="w-3 h-3 mr-1" /> {fixer.label}
+                          </Button>
+                        )}
+                        {issue.field && onJumpToField && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs"
+                            onClick={() => onJumpToField(issue.field as string)}
+                          >
+                            <Crosshair className="w-3 h-3 mr-1" /> Go to field
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

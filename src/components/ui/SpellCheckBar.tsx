@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { SpellIssue } from '@/hooks/useSpellCheck';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, BookOpen, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { BookOpen, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
@@ -17,30 +17,37 @@ interface SpellCheckBarProps {
   className?: string;
 }
 
+/**
+ * Acronyms found in one paragraph, with the expansion to write on first
+ * use (SECNAV M-5216.5 paragraph 2-17.c). Reference material, not a
+ * warning: the document-level checker is the one place a first-use
+ * violation is reported. Hidden when there is nothing to show.
+ */
 export function SpellCheckBar({ issues, className }: SpellCheckBarProps) {
   const [expanded, setExpanded] = useState(false);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
-  if (issues.length === 0) return null;
-
-  const visible = issues.filter(i => !dismissed.has(i.word.toUpperCase()));
+  const visible = issues.filter(i => !dismissed.has(i.word));
   if (visible.length === 0) return null;
 
   const displayed = expanded ? visible : visible.slice(0, 5);
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className={cn(
-        'flex flex-wrap items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs',
-        'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-800/50',
-        className,
-      )}>
-        <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400 font-medium shrink-0">
+      <div
+        aria-label="Acronyms"
+        className={cn(
+          'flex flex-wrap items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs',
+          'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/50 dark:border-blue-800/50',
+          className,
+        )}
+      >
+        <span className="flex items-center gap-1 text-blue-700 dark:text-blue-400 font-medium shrink-0">
           <BookOpen className="h-3 w-3" />
-          <span>{visible.length} flagged</span>
+          <span>Acronyms</span>
         </span>
 
-        <span className="text-amber-300 dark:text-amber-700">|</span>
+        <span className="text-blue-300 dark:text-blue-700">|</span>
 
         {displayed.map((issue) => (
           <Tooltip key={issue.word}>
@@ -49,19 +56,17 @@ export function SpellCheckBar({ issues, className }: SpellCheckBarProps) {
                 variant="outline"
                 className={cn(
                   'cursor-default text-[10px] px-1.5 py-0 h-5 font-mono gap-1 group',
-                  issue.type === 'unknown'
-                    ? 'border-amber-400/60 text-amber-800 dark:text-amber-300 bg-amber-100/50 dark:bg-amber-900/30'
-                    : 'border-blue-400/60 text-blue-800 dark:text-blue-300 bg-blue-100/50 dark:bg-blue-900/30',
+                  'border-blue-400/60 text-blue-800 dark:text-blue-300 bg-blue-100/50 dark:bg-blue-900/30',
                 )}
               >
-                <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
                 {issue.word}
                 <button
                   type="button"
+                  aria-label={`Dismiss ${issue.word}`}
                   className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setDismissed(prev => new Set(prev).add(issue.word.toUpperCase()));
+                    setDismissed(prev => new Set(prev).add(issue.word));
                   }}
                 >
                   <X className="h-2.5 w-2.5" />
@@ -69,16 +74,9 @@ export function SpellCheckBar({ issues, className }: SpellCheckBarProps) {
               </Badge>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs text-xs">
-              {issue.type === 'unknown' ? (
-                <p>
-                  <span className="font-semibold">&ldquo;{issue.word}&rdquo;</span> not found in
-                  military dictionary. May be misspelled or a specialized term.
-                </p>
-              ) : (
-                <p>
-                  Spell out on first use: <span className="font-semibold">{issue.suggestion}</span>
-                </p>
-              )}
+              <p>
+                Spell out on first use: <span className="font-semibold">{issue.suggestion}</span>
+              </p>
             </TooltipContent>
           </Tooltip>
         ))}
@@ -86,7 +84,7 @@ export function SpellCheckBar({ issues, className }: SpellCheckBarProps) {
         {visible.length > 5 && (
           <button
             type="button"
-            className="flex items-center gap-0.5 text-amber-600 dark:text-amber-400 hover:underline text-[10px]"
+            className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400 hover:underline text-[10px]"
             onClick={() => setExpanded(!expanded)}
           >
             {expanded ? (

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import { getBasePath } from '@/lib/path-utils';
 
 export interface Template {
@@ -15,6 +16,41 @@ interface UseTemplatesProps {
   documentType?: string;
   currentUnitCode?: string;
   currentUnitName?: string;
+}
+
+/**
+ * Whether a template belongs to the document type on screen. A template
+ * with no type of its own counts as 'basic', which is how the index has
+ * always been read.
+ */
+export function templateMatchesDocumentType(t: Template, documentType: string): boolean {
+  return (t.documentType || 'basic') === documentType;
+}
+
+/**
+ * Whether a template belongs in the list for the current search and
+ * document type. Pure, so the memoised filters below list exactly the
+ * inputs they read.
+ *
+ * `documentType` is passed only while the type filter is on, so the
+ * caller owns that choice and the visible count reports what the list
+ * holds. Search narrows within the active filter: searching with the
+ * filter on returns matches of this type, and turning the filter off
+ * searches every template in the index.
+ */
+export function templateMatches(t: Template, searchQuery: string, documentType?: string): boolean {
+  if (documentType && !templateMatchesDocumentType(t, documentType)) return false;
+
+  const q = searchQuery.trim().toLowerCase();
+  if (q.length === 0) return true;
+
+  return [
+    t.title,
+    t.description || '',
+    t.unitName || '',
+    t.unitCode || '',
+    t.documentType || '',
+  ].some(field => field.toLowerCase().includes(q));
 }
 
 export function useTemplates({ documentType, currentUnitCode, currentUnitName }: UseTemplatesProps) {
@@ -46,53 +82,54 @@ export function useTemplates({ documentType, currentUnitCode, currentUnitName }:
     loadIndexes();
   }, []);
 
-  const matchesQuery = (t: Template) => {
-    const q = searchQuery.trim().toLowerCase();
-    const hasSearchQuery = q.length > 0;
+  /**
+   * How many templates across both indexes carry the document type on
+   * screen. Of the 69 shipped templates, 27 are AA forms and 15 are Page
+   * 11 entries, so most types have exactly one and several have none.
+   */
+  const typeMatchCount = useMemo(() => {
+    if (!documentType) return 0;
+    const matches = (t: Template) => templateMatchesDocumentType(t, documentType);
+    return globalTemplates.filter(matches).length + unitTemplates.filter(matches).length;
+  }, [globalTemplates, unitTemplates, documentType]);
 
-    // When searching, skip document type filter so users can discover templates
-    // across all document types (e.g., searching "DLA" while in a basic letter).
-    // When NOT searching, filter by current document type to show relevant templates.
-    if (!hasSearchQuery && documentType) {
-      if (t.documentType && t.documentType !== documentType) {
-        return false;
-      }
-      // If template has no type, assume 'basic'. Only show if looking for 'basic'
-      if (!t.documentType && documentType !== 'basic') {
-        return false;
-      }
-    }
+  /**
+   * D.7: the type filter is a control the user sees, not a hidden rule.
+   * It starts on when the current type has templates of its own and off
+   * when it has none, so a type with nothing of its own never presents
+   * an empty dialog over a full index. A toggle by the user stands until
+   * the document type changes or the indexes finish loading, which is
+   * what re-derives the default.
+   */
+  const [typeFilterOn, setTypeFilterOn] = useSyncedState(
+    `${documentType ?? ''}|${typeMatchCount}`,
+    () => typeMatchCount > 0,
+  );
 
-    if (!hasSearchQuery) return true;
+  const activeType = typeFilterOn && documentType ? documentType : undefined;
 
-    // Search in title, description, unit name, unit code, and document type
-    return [
-      t.title,
-      t.description || '',
-      t.unitName || '',
-      t.unitCode || '',
-      t.documentType || '',
-    ].some(field => field.toLowerCase().includes(q));
-  };
+  const filteredGlobalTemplates = useMemo(
+    () => globalTemplates.filter(t => templateMatches(t, searchQuery, activeType)),
+    [globalTemplates, searchQuery, activeType],
+  );
 
-  const filteredGlobalTemplates = useMemo(() => {
-    return globalTemplates.filter(matchesQuery);
-  }, [globalTemplates, searchQuery, documentType]);
-
-  const filteredUnitTemplates = useMemo(() => {
-    let list = unitTemplates.filter(matchesQuery);
-    
-    // If searching, show all matching unit templates.
-    // If NOT searching, maybe prioritize user's unit? 
-    // The original logic had a toggle for "Match Selected Unit".
-    // For now, we'll return all matching the search/type query.
-    
-    return list;
-  }, [unitTemplates, searchQuery, documentType]);
+  // Unit templates: every match of the search and type query. The
+  // original UI had a "Match Selected Unit" toggle; nothing here
+  // prioritises the user's unit yet.
+  const filteredUnitTemplates = useMemo(
+    () => unitTemplates.filter(t => templateMatches(t, searchQuery, activeType)),
+    [unitTemplates, searchQuery, activeType],
+  );
 
   return {
     globalTemplates: filteredGlobalTemplates,
     unitTemplates: filteredUnitTemplates,
+    /** Every entry in each index, before the search and the type filter. */
+    globalTotal: globalTemplates.length,
+    unitTotal: unitTemplates.length,
+    typeFilterOn,
+    setTypeFilterOn,
+    typeMatchCount,
     isLoading,
     error,
     searchQuery,

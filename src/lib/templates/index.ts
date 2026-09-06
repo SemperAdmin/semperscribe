@@ -81,7 +81,7 @@ export function getTemplateForType(typeId: string): DocumentTemplate {
  */
 export function getStaticTemplate(typeId: string): Omit<DocumentTemplate, 'definition'> {
     const template = getTemplateForType(typeId);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const { definition, ...staticData } = template;
     return staticData;
 }

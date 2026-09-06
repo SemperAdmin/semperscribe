@@ -22,7 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Layers, Plus, ChevronUp, ChevronDown, X, Download, RefreshCw, AlertTriangle, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SavedLetter } from '@/types';
-import { PackageMember, ComputedSequence, PackageIssue, totalPages } from '@/lib/package-assembly';
+import { PackageMember, ComputedSequence, PackageIssue, totalPages, fitsOnSignaturePage } from '@/lib/package-assembly';
+import type { SamePageFit } from '@/hooks/usePackageAssembly';
 
 interface PackageDialogProps {
   open: boolean;
@@ -32,6 +33,8 @@ interface PackageDialogProps {
   sequences: ComputedSequence[];
   issues: PackageIssue[];
   busy: boolean;
+  /** E.1: what the measure pass found for each same-page member. */
+  fits: Record<string, SamePageFit>;
   onAdd: (id: string) => void;
   onRemove: (id: string) => void;
   onMove: (index: number, direction: -1 | 1) => void;
@@ -41,7 +44,7 @@ interface PackageDialogProps {
 }
 
 export function PackageDialog({
-  open, onOpenChange, savedLetters, members, sequences, issues, busy,
+  open, onOpenChange, savedLetters, members, sequences, issues, busy, fits,
   onAdd, onRemove, onMove, onClear, onMeasure, onExport,
 }: PackageDialogProps) {
   const [pick, setPick] = useState('');
@@ -50,6 +53,7 @@ export function PackageDialog({
   const failures = issues.filter((i) => i.severity === 'fail');
   const warnings = issues.filter((i) => i.severity === 'warn');
   const pages = totalPages(members);
+  const inPlace = members.filter(fitsOnSignaturePage).length;
 
   const handleAdd = () => {
     if (!pick) return;
@@ -66,7 +70,9 @@ export function PackageDialog({
           </DialogTitle>
           <DialogDescription>
             Chain a basic letter with its endorsements. Page numbers, reference letters,
-            and enclosure numbers continue automatically across the package.
+            and enclosure numbers continue automatically across the package. An endorsement
+            set to same-page placement is measured against the page it would sit on, and
+            exports on a new page when it does not fit.
           </DialogDescription>
         </DialogHeader>
 
@@ -116,6 +122,7 @@ export function PackageDialog({
             <div className="space-y-2">
               {members.map((member, index) => {
                 const seq = sequences.find((s) => s.id === member.id);
+                const fit = fits[member.id];
                 return (
                   <div key={member.id} className="rounded-md border border-border bg-background/50 p-3">
                     <div className="flex items-start gap-2">
@@ -133,10 +140,25 @@ export function PackageDialog({
                               {member.pageCount} pg
                             </Badge>
                           )}
+                          {member.documentType === 'endorsement' && (
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                              {member.endorsementPlacement === 'same-page' ? 'Same page' : 'New page'}
+                            </Badge>
+                          )}
                         </div>
                         {seq && (
                           <p className="text-[11px] text-muted-foreground mt-1 tabular-nums">
                             Starts: page {seq.startingPageNumber} &middot; ref ({seq.startingReferenceLevel}) &middot; encl ({seq.startingEnclosureNumber})
+                          </p>
+                        )}
+                        {member.endorsementPlacement === 'same-page' && fit && (
+                          <p className={cn(
+                            'text-[11px] mt-1',
+                            fit.fits ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400',
+                          )}>
+                            {fit.fits
+                              ? `Fits on page ${fit.page} of the previous document.`
+                              : 'Does not fit: exported as a new-page endorsement.'}
                           </p>
                         )}
                       </div>
@@ -159,7 +181,8 @@ export function PackageDialog({
               {pages > 0 && (
                 <p className="text-xs text-muted-foreground pt-1 flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                  {pages} page{pages === 1 ? '' : 's'} total across {members.length} document{members.length === 1 ? '' : 's'}.
+                  {pages} page{pages === 1 ? '' : 's'} total across {members.length} document{members.length === 1 ? '' : 's'}
+                  {inPlace > 0 ? `, ${inPlace} added to a signature page above.` : '.'}
                 </p>
               )}
             </div>

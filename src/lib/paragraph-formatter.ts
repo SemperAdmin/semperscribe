@@ -107,8 +107,13 @@ export function createFormattedParagraph(
            }
            children.push(...parseContentToRuns(content, font, 24, color));
 
-           // Use 0.25" (360 twips) for standard Business Letter indent to match "8 spaces" policy
-           const indentSize = isShortLetter ? 1440 : 360;
+           // Half an inch, 720 twips. M-5216.5 11-2.6 indents a main
+           // paragraph "four spaces (or set margin at half inch)" and
+           // 12-3.2.c(2) has "Each paragraph must be indented 1/2 inch".
+           // The old 360 twips cited the "eight spaces" of Fig 11-1,
+           // which governs subdivisions, and left the export a quarter
+           // inch short of both rules and of the preview.
+           const indentSize = isShortLetter ? 1440 : 720;
 
            return new Paragraph({
                children,

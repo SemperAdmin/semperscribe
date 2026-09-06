@@ -34,7 +34,7 @@ import {
   Eraser,
   BadgeCheck,
 } from 'lucide-react';
-import { DOCUMENT_TYPES } from '@/lib/schemas';
+import { pickerOptions } from '@/lib/document-type-options';
 
 interface CommandPaletteProps {
   open: boolean;
@@ -65,8 +65,10 @@ export function CommandPalette({
     setTimeout(fn, 0);
   };
 
+  // E.2: the same-page endorsement is listed as its own option, directly
+  // after the endorsement it is a placement of (M-5216.5 9-1).
   const docTypes = useMemo(
-    () => Object.entries(DOCUMENT_TYPES).map(([key, def]) => ({ key, name: def.name })),
+    () => pickerOptions().map(({ key, name }) => ({ key, name })),
     [],
   );
 

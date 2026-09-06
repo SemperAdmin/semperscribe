@@ -175,7 +175,7 @@ export function DecisionGridSection({ data, mode, onDataChange, onModeChange }: 
   return (
     <Card className="border-l-4 border-l-blue-600">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold flex items-center">
+        <CardTitle as="h3" className="text-lg font-semibold flex items-center">
           <Layers className="w-5 h-5 mr-2 text-blue-600" />
           Decision Grid & Recommendations
         </CardTitle>

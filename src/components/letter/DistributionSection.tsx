@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,13 +21,6 @@ export function DistributionSection({
   onUpdateDistribution
 }: DistributionSectionProps) {
   const [showDistribution, setShowDistribution] = useState(distribution?.type !== 'none' && distribution?.type !== undefined);
-
-  useEffect(() => {
-    // Initialize if undefined
-    if (!distribution) {
-      onUpdateDistribution({ type: 'none' });
-    }
-  }, []);
 
   const handleToggleDistribution = (enabled: boolean) => {
     setShowDistribution(enabled);
@@ -78,7 +71,7 @@ export function DistributionSection({
   return (
     <Card className="border-border shadow-sm border-l-4 border-l-primary">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="text-lg flex items-center font-headline tracking-wide">
+        <CardTitle as="h3" className="text-lg flex items-center font-headline tracking-wide">
           <Share2 className="mr-2 h-5 w-5 text-primary-foreground" />
           Distribution
         </CardTitle>

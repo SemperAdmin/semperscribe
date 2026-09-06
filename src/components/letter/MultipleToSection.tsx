@@ -35,7 +35,7 @@ export function MultipleToSection({ recipients, setRecipients, toDistribution, s
   return (
     <Card className="shadow-sm border-border border-l-4 border-l-primary mb-6">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="flex items-center text-lg font-semibold font-headline tracking-wide">
+        <CardTitle as="h3" className="flex items-center text-lg font-semibold font-headline tracking-wide">
           <Users className="mr-2 h-5 w-5 text-primary-foreground" />
           To (Multiple Addressees)
         </CardTitle>

@@ -372,6 +372,20 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
     return `NAVMC 10132 - ${name}.${extension}`;
   }
 
+  // DD Form 368. The member's name identifies the request.
+  if (formData.documentType === 'dd368') {
+    const name = sanitize(formData.dd368MemberName ?? '') || 'Member';
+    return `DD 368 - ${name}.${extension}`;
+  }
+
+  // Counseling Worksheet. The Marine counseled and the session date
+  // identify the record.
+  if (formData.documentType === 'counseling') {
+    const name = sanitize(formData.counselingMarineLastName ?? '') || 'Marine';
+    const date = sanitize(formData.date ?? '');
+    return `Counseling - ${name}${date ? ` - ${date}` : ''}.${extension}`;
+  }
+
   // AMHS
   if (formData.documentType === 'amhs') {
     return `AMHS - ${subject}.${extension}`;

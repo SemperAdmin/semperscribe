@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P3.4 — directive identification block (MCO 5215.1K para 38;
  * POLICY_COMPLIANCE_AUDIT.md lines 98, 126, 138, 144, 160, 170).
@@ -9,10 +10,8 @@
  * the SSIC position. Continuation pages: designation + date flush
  * right, originator code OMITTED.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { generateDocxBlob } from '@/lib/docx-generator';
 import { generateBasePDFBlob } from '@/lib/pdf-generator';

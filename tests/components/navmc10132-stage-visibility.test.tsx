@@ -127,7 +127,6 @@ describe('screen order follows the 2026-08-27 ruling', () => {
       .map((title) => ({ title, node: screen.queryByText(title) }))
       .filter((entry): entry is { title: string; node: HTMLElement } => entry.node !== null)
       .sort((a, b) =>
-        // eslint-disable-next-line no-bitwise
         a.node.compareDocumentPosition(b.node) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
       )
       .map((entry) => entry.title);

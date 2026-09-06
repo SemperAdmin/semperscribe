@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
+import { resolvePickerType } from '@/lib/document-type-options';
 
 const GLOBAL_DIR = join(__dirname, '..', 'public', 'templates', 'global');
 const index: { id: string; title: string; description?: string; documentType?: string; url: string }[] =
@@ -38,8 +39,11 @@ describe('template index integrity', () => {
       const nldp = loadNldp(entry.url);
       const formType = nldp.data?.formData?.documentType;
       expect(formType, `${entry.id}: formData.documentType missing`).toBeTruthy();
+      // E.4: an index entry names the picker option it belongs to, which
+      // for the same-page endorsement is not a document type of its own.
       if (entry.documentType) {
-        expect(formType, `${entry.id}: index says ${entry.documentType}`).toBe(entry.documentType);
+        expect(formType, `${entry.id}: index says ${entry.documentType}`)
+          .toBe(resolvePickerType(entry.documentType).documentType);
       }
     }
   });

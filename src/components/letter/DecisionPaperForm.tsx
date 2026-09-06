@@ -21,7 +21,7 @@ export function DecisionPaperForm() {
   return (
     <Card className="mb-8 border-border shadow-sm">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="text-lg font-semibold">Decision Paper Details</CardTitle>
+        <CardTitle as="h3" className="text-lg font-semibold">Decision Paper Details</CardTitle>
       </CardHeader>
       <CardContent className="pt-6">
         <div className="grid gap-6 grid-cols-1">

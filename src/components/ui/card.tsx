@@ -29,11 +29,18 @@ const CardHeader = React.forwardRef<
 ))
 CardHeader.displayName = "CardHeader"
 
+/**
+ * D.8 (UX audit, "Form section headings: 0 of 9 are heading elements"):
+ * a card title renders as a plain div by default, which gave a
+ * screen-reader user no way to navigate the editor by heading. Pass
+ * `as="h3"` (or another heading level) where the title really is a
+ * section heading. The visual style is unchanged either way.
+ */
 const CardTitle = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
+  React.HTMLAttributes<HTMLDivElement> & { as?: "div" | "h2" | "h3" | "h4" }
+>(({ className, as: Component = "div", ...props }, ref) => (
+  <Component
     ref={ref}
     className={cn(
       "text-2xl font-semibold leading-none tracking-tight",

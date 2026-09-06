@@ -47,6 +47,10 @@ Constraints on this result:
    structure a machine without `soffice` lost the PDF assertions too,
    because the test aborted at the `soffice` check before reaching
    them. Less LibreOffice, more local coverage.
+
+   CI installs LibreOffice. Windows local runs: install LibreOffice,
+   then `$env:SOFFICE_PATH="C:\Program Files\LibreOffice\program\soffice.exe"`
+   before `npm test` if the default install directory probe misses it.
 2. LibreOffice pagination is a proxy for Microsoft Word pagination.
    They agree on simple flows at these metrics, but Word is the
    authoritative renderer. Treat parity-green as "no known divergence,"

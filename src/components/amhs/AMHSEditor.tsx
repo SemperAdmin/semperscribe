@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useLatestRef } from '@/hooks/useLatestRef';
 import { FormData, AMHSReference } from '@/types';
 import { DynamicForm } from '@/components/ui/DynamicForm';
 import { AMHSDefinition } from '@/lib/schemas';
@@ -19,12 +20,16 @@ interface AMHSEditorProps {
 
 export function AMHSEditor({ formData, onUpdate }: AMHSEditorProps) {
 
-  // Auto-generate DTG on first load if empty
+  // Auto-generate the DTG once, at first load, when the message has
+  // none. Mount-only on purpose: the field is editable, and re-running
+  // whenever it empties would refill it under the user's cursor. The
+  // ref supplies the current field value and callback to that one run.
+  const latest = useLatestRef({ amhsDtg: formData.amhsDtg, onUpdate });
   useEffect(() => {
-    if (!formData.amhsDtg) {
-      onUpdate({ amhsDtg: generateDTG() });
+    if (!latest.current.amhsDtg) {
+      latest.current.onUpdate({ amhsDtg: generateDTG() });
     }
-  }, []);
+  }, [latest]);
 
   const handleRefreshDTG = () => {
     onUpdate({ amhsDtg: generateDTG() });
@@ -62,7 +67,7 @@ export function AMHSEditor({ formData, onUpdate }: AMHSEditorProps) {
       {/* DTG with Refresh Button */}
       <Card>
         <CardHeader className="py-4">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle as="h3" className="text-lg flex items-center gap-2">
             <Clock className="h-5 w-5" />
             Date-Time Group
           </CardTitle>

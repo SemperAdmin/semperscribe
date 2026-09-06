@@ -6,7 +6,8 @@
  * Opens preselected on the active document type.
  */
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import {
   Dialog,
   DialogContent,
@@ -27,14 +28,19 @@ interface GuidanceDialogProps {
 }
 
 export function GuidanceDialog({ open, onOpenChange, documentType }: GuidanceDialogProps) {
-  const [selected, setSelected] = useState<GuidanceEntry>(GUIDANCE[0]);
-
-  useEffect(() => {
-    if (open && documentType) {
-      const match = GUIDANCE.find((g) => g.type === documentType);
-      if (match) setSelected(match);
-    }
-  }, [open, documentType]);
+  // Preselects the active document type each time the dialog opens or
+  // the type changes, and otherwise keeps whatever the user clicked.
+  // Derived in render from an open-and-type key, not in an effect.
+  const [selected, setSelected] = useSyncedState<string, GuidanceEntry>(
+    `${open}:${documentType ?? ''}`,
+    (_, prev) => {
+      if (open && documentType) {
+        const match = GUIDANCE.find((g) => g.type === documentType);
+        if (match) return match;
+      }
+      return prev ?? GUIDANCE[0];
+    },
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

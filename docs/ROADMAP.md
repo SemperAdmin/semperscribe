@@ -15,8 +15,8 @@ Uses the standard "From: / To: / Subj:" header structure.
 |------|--------|-----------|-------|
 | Standard Letter | DONE | SECNAV M-5216.5, Ch 2 | Default format for official correspondence outside the command |
 | Multiple-Address Letter | DONE | SECNAV M-5216.5, Ch 2 | Same as Standard Letter but addresses multiple recipients (e.g., "Distribution List") |
-| Endorsement (Same-Page) | DONE | SECNAV M-5216.5, Ch 3 | Continues on the original page if space permits |
-| Endorsement (New-Page) | DONE | SECNAV M-5216.5, Ch 3 | Starts on a fresh page |
+| Endorsement (Same-Page) | DONE | SECNAV M-5216.5, Ch 9 | E.1: drawn on the signature page below when 9-1's fit test passes, measured at package export |
+| Endorsement (New-Page) | DONE | SECNAV M-5216.5, Ch 9 | Starts on a fresh page, and is where a same-page endorsement falls back when it does not fit |
 
 ### Group 2: Memorandums
 

@@ -35,8 +35,8 @@ The following are explicit non-concerns for this PoC.
 
 - Findings against the live GitHub Pages deployment URL (the site is a static export with no backend).
 - Findings that require an attacker to first compromise the user's workstation, browser, or local file system.
-- Findings against samples in `examples/`, `public/templates/`, and `sample-directive.nldp` which contain only fictional data per the audit pass.
-- Two documented residual moderate findings in transitive postcss XSS via CSS stringification, accepted as low-attack-surface per `docs/COMPLIANCE_REMEDIATION_PLAN.md` Phase 3 P3-3.
+- Findings against samples in `public/examples/`, `public/templates/`, and `sample-directive.nldp` which contain only fictional data per the audit pass.
+- Advisories the CI audit gate already blocks. Every test run executes `npm audit --omit=dev --audit-level=high` against the production tree, and Dependabot files weekly updates for the rest. The two moderate postcss findings recorded in `docs/COMPLIANCE_REMEDIATION_PLAN.md` Phase 3 P3-3 were cleared by the 0.2.0 lockfile refresh; as of 2026-09-05 `npm audit` reports zero advisories in both trees.
 
 ## In Scope
 
@@ -63,6 +63,36 @@ validation the ingest side already performs.
 
 Exporting a data package does not change what may be typed into the app.
 The CUI warning still governs.
+
+## Headless Companion Surface
+
+The `companion/` directory holds an HTTP server and an MCP stdio server
+which render documents outside the browser. Neither ships in the web
+application, and neither runs unless an operator starts it.
+
+The HTTP server binds `127.0.0.1` and carries no authentication by
+design. Its trust boundary is the loopback interface and the operating
+system account it runs under, so anything which reaches the socket
+renders documents. `COMPANION_HOST` widens the bind, and a wider bind
+publishes an unauthenticated renderer to whatever the new address
+reaches. Put a reverse proxy which authenticates the caller in front of
+it before widening it. The process prints a warning on startup when the
+bind is not loopback. No CORS headers are sent, so a browser page from
+another origin is refused the response.
+
+Three controls sit inside the surface. The export sensitive-data scan is
+mirrored, so a document with SSN, EDIPI, or clustered PHI hits is refused
+with a 422 naming the findings until the caller sets
+`acknowledgeSensitive`. File writes happen only under
+`COMPANION_OUT_DIR`, resolved through realpath before the confinement
+check, so traversal, absolute paths, planted symlinks, and symlinked
+subdirectories are refused. Request bodies are capped at two megabytes
+and each operation is bounded by a forty five second timer.
+
+A path traversal, an injection, or a confinement bypass in `companion/`
+is in scope for a report on the same terms as `src/`. The absence of
+authentication on a loopback listener is the documented design and is
+not a finding. See [`docs/COMPANION.md`](docs/COMPANION.md).
 
 ## Third-Party Data Flow (GunnyBot)
 

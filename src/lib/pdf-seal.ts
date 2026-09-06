@@ -1,21 +1,19 @@
-type SealData = {
-  DOD_SEAL_DETAILED: string;
-  NAVY_SEAL_BLUE: string;
-};
+import { loadSealDataUrl, type SealKind } from '@/lib/seal-assets';
 
-// The seal module is ~3.8 MB of base64; loading it lazily keeps it out
-// of the first-load bundle. Cached after the first import.
-let sealData: SealData | null = null;
+// Data URLs by seal, filled by preloadPDFSeal(). The PDF generators
+// await the preload before building the document tree because
+// @react-pdf renders synchronously and <Image> needs its source ready.
+const loaded = new Map<SealKind, string>();
 
 /**
- * Load the seal data chunk. Must resolve before any render calls
- * getPDFSealDataUrl() — the PDF generators await this before building
- * the document tree.
+ * Load both seals (2.9 MB of PNG, fetched once and cached by
+ * seal-assets and by the service worker). Must resolve before any render
+ * calls getPDFSealDataUrl().
  */
 export async function preloadPDFSeal(): Promise<void> {
-  if (!sealData) {
-    sealData = await import('./dod-seal-data');
-  }
+  const kinds: SealKind[] = ['dod', 'navy'];
+  const urls = await Promise.all(kinds.map(kind => loadSealDataUrl(kind)));
+  kinds.forEach((kind, i) => loaded.set(kind, urls[i]));
 }
 
 /**
@@ -24,15 +22,11 @@ export async function preloadPDFSeal(): Promise<void> {
  * @returns Base64 data URL for the seal image
  */
 export function getPDFSealDataUrl(headerType: 'USMC' | 'DON' | 'DLA' = 'USMC'): string {
-  if (!sealData) {
+  // Navy blue seal for DON, DoD seal for USMC and DLA.
+  const kind: SealKind = headerType === 'DON' ? 'navy' : 'dod';
+  const url = loaded.get(kind);
+  if (!url) {
     throw new Error('Seal data not loaded — await preloadPDFSeal() before rendering the PDF');
   }
-  const { DOD_SEAL_DETAILED, NAVY_SEAL_BLUE } = sealData;
-
-  // Use Navy blue seal for DON, DoD seal for USMC and DLA
-  const seal = (headerType === 'DON' && NAVY_SEAL_BLUE && !NAVY_SEAL_BLUE.includes('YOUR_NAVY_SEAL_BASE64_DATA_HERE'))
-    ? NAVY_SEAL_BLUE
-    : DOD_SEAL_DETAILED;
-
-  return seal;
+  return url;
 }

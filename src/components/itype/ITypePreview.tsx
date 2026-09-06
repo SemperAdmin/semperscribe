@@ -20,7 +20,9 @@ export const ITypePreview: React.FC<ITypePreviewProps> = ({ formData: externalFo
   const { formData: storeFormData, sealImageBase64, isLoading } = useITypeStore();
   const formData = externalFormData || storeFormData;
 
-  const componentsAffected = formData?.componentsAffected || [];
+  // Stable per input: the two memos below key on it, and a fresh `|| []`
+  // each render would defeat them.
+  const componentsAffected = useMemo(() => formData?.componentsAffected || [], [formData?.componentsAffected]);
 
   // Components Affected always begins on page 2. Page 1 stays a cover.
   // Ruling 2026-06-10 (hard stance): first SIX rows ON PAGE 1, always

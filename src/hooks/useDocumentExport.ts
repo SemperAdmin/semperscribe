@@ -1,14 +1,17 @@
 'use client';
 
 import { DOCUMENT_TYPES } from '@/lib/schemas';
-import { secnavPageCapIssue } from '@/lib/letter-validators';
+import { getExportBlockers, secnavPageCapIssue } from '@/lib/letter-validators';
+import type { ValidationIssue } from '@/lib/letter-validators';
 import { getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { downloadDocument } from '@/services/export/index';
-import type { DocumentDataSlices } from './useLivePreview';
-import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-attachments';
+import { resolveSamePageRender, type DocumentDataSlices, type SamePageHostResolver } from './useLivePreview';
+import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
+import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-rows';
 import { getClassification, bannerText } from '@/lib/classification';
 import { getEdmsContext, edmsBaseFilename } from '@/lib/edms-mode';
+import { clearedForExport } from '@/lib/export-gate';
 
 interface UseDocumentExportArgs {
   data: DocumentDataSlices;
@@ -18,15 +21,25 @@ interface UseDocumentExportArgs {
   enclosureRows?: EnclosureRow[];
   enclosureFiles?: ReadonlyMap<string, EnclosureAttachment>;
   attachmentCoverPages?: boolean;
+  /** E.3: the letter a same-page endorsement is added to, when attached. */
+  resolveSamePageHost?: SamePageHostResolver;
   /** XFA: surfaces the Adobe-only note when the official form exports. */
   toast?: (opts: { title: string; description: string }) => void;
+  /**
+   * Called with the block-severity issues when the export gate refuses.
+   * page.tsx opens the compliance dialog on it. The hook stays free of
+   * UI: it reports the refusal and the owner of the dialog shows it.
+   * With no callback wired the refusal still holds, and the toast, when
+   * one is supplied, carries the reason.
+   */
+  onBlocked?: (issues: ValidationIssue[]) => void;
 }
 
 /**
  * Document export orchestration: the hard export gate, the SECNAV
  * page-cap check, format routing (PDF/DOCX/I-Type), and the download.
  */
-export function useDocumentExport({ data, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages, toast }: UseDocumentExportArgs) {
+export function useDocumentExport({ data, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages, resolveSamePageHost, toast, onBlocked }: UseDocumentExportArgs) {
   const { formData, vias, references, enclosures, copyTos, paragraphs, distList } = data;
 
   /**
@@ -54,6 +67,33 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
 
   const generateDocument = async (format: 'docx' | 'pdf') => {
     try {
+      // M-5216.5 export gate, HARD BLOCK. `block` severity is
+      // documented as "export must refuse", and until now the only
+      // caller was the signature ceremony: the ordinary PDF and DOCX
+      // downloads ran the sensitive-data scan and nothing else, so a
+      // window-envelope violation exported without complaint. Sits
+      // above every branch below, the same place the scan sits, so no
+      // download path routes around it.
+      const blockers = getExportBlockers(formData, vias, references, paragraphs);
+      if (blockers.length > 0) {
+        onBlocked?.(blockers);
+        toast?.({
+          title: 'Export blocked',
+          description:
+            `${blockers.length} rule${blockers.length === 1 ? '' : 's'} must be cleared first. `
+            + 'The Compliance Issues dialog lists them.',
+        });
+        return;
+      }
+
+      // Pre-export sensitive-data check. Sits above every branch below
+      // (I-Type, SECNAV cap, official XFA form, standard pipeline) so no
+      // download path skips it. A hit prompts, it does not block.
+      const cleared = await clearedForExport({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+      if (!cleared) {
+        return;
+      }
+
       // Route I-Type documents through unified export
       if (formData.documentType === 'i-type') {
         await downloadDocument(formData.documentType, formData, format);
@@ -71,7 +111,15 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
         const { getPDFPageCount } = await import('@/lib/pdf-generator');
         const capIssue = secnavPageCapIssue(formData.documentType, await getPDFPageCount(secnavCountedBlob));
         if (capIssue) {
-          alert(`Export blocked:\n\n- ${capIssue.rule}\n  ${capIssue.detail}\n  [${capIssue.citation}]`);
+          // Was a native alert(): unstyled, uncopyable, naming no field
+          // and offering no way back to the document (UX audit finding
+          // 8). It routes through the compliance dialog now, the same
+          // surface every other blocking rule reports to.
+          onBlocked?.([capIssue]);
+          toast?.({
+            title: 'Export blocked',
+            description: `${capIssue.rule}. ${capIssue.detail}`,
+          });
           return;
         }
       }
@@ -119,10 +167,37 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
       let blob: Blob;
 
       if (format === 'pdf') {
-        blob = await applySignatureFields(
-          secnavCountedBlob ?? await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
+        // E.3 (M-5216.5 9-1): a same-page endorsement with the letter
+        // attached exports as that letter with the endorsement placed,
+        // the same render the preview showed.
+        const { hostBytes, blockCtx } = await resolveSamePageRender(
+          { formData, vias, references, enclosures, copyTos, paragraphs, distList },
+          resolveSamePageHost,
         );
+        if (hostBytes) {
+          const { renderSamePageWithHost, describePlacement } = await import('@/lib/same-page-host');
+          const endorsed = await renderSamePageWithHost(blockCtx, generatePdfForDocType, hostBytes);
+          blob = new Blob([new Uint8Array(endorsed.bytes)], { type: 'application/pdf' });
+          toast?.({
+            title: endorsed.placement.status === 'fits' ? 'Same-page endorsement placed' : 'Exported as a new-page endorsement',
+            description: describePlacement(endorsed.placement),
+          });
+        } else {
+          blob = await applySignatureFields(
+            secnavCountedBlob ?? await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
+          );
+        }
       } else {
+        // E.5: Word takes no PDF host and the DOCX emitter renders one
+        // document, so the two-half same-page endorsement has no Word
+        // form. Say so rather than export the letter half as the whole.
+        if (isSamePageEndorsement(formData) && formData.samePageEndorsement) {
+          toast?.({
+            title: 'Word export is not available for a same-page endorsement',
+            description: 'The letter and its endorsement are composed onto one page in the PDF. Export the PDF.',
+          });
+          return;
+        }
         const features = DOCUMENT_TYPES[formData.documentType]?.features;
         const paragraphsToRender = features?.isDirective
           ? mergeAdminSubsections(paragraphs, formData.adminSubsections)
@@ -170,7 +245,10 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
       }
     } catch (error) {
       console.error(`Error generating ${format.toUpperCase()}:`, error);
-      alert(`Failed to generate ${format.toUpperCase()}. Please check the console for details.`);
+      toast?.({
+        title: `${format.toUpperCase()} export failed`,
+        description: 'The document did not render. The browser console carries the detail.',
+      });
     }
   };
 

@@ -14,6 +14,7 @@
 
 import { FormData } from '@/types';
 import type { ValidationIssue } from '@/lib/letter-validators';
+import { ranks } from '@/lib/ranks';
 
 /** Doc types that render a left-block naval signature (formData.sig). */
 const NAVAL_SIG_TYPES = new Set([
@@ -46,6 +47,69 @@ export function looksLikeInitial(token: string): boolean {
   return /^(?:[A-Za-z]\.)+[A-Za-z]?\.?$/.test(token);
 }
 
+/**
+ * Rank and grade tokens which never belong on a naval signature line.
+ *
+ * M-5216.5 7-2.14.b lists the four forms a signature line takes: name
+ * only, name and title, name and title and "Acting", or name and "By
+ * direction". No form carries a rank, and 7-2.14.a(1) asks only for
+ * the typed name below the signature with the surname in capitals.
+ *
+ * The Marine abbreviations come from src/lib/ranks.ts, the app's own
+ * rank table, so the two never drift apart. The supplement below is
+ * the other services, which a naval letter signer is as free to be:
+ * ranks.ts is Marine Corps only, and a Navy or Army signer typing
+ * "LCDR" or "MAJ" is exactly the case this rule is for. Pay grades
+ * are included because 7-2.14.b has no form for a grade either.
+ */
+const OTHER_SERVICE_RANKS = [
+  // Navy officer and warrant
+  'ENS', 'LTJG', 'LT', 'LCDR', 'CDR', 'CAPT', 'RDML', 'RADM', 'VADM', 'ADM',
+  // Navy enlisted. The apprenticeships (SR, SA, SN) are left out
+  // deliberately: "SR" collides with the generational suffix in
+  // "J. A. SMITH SR", and a signature line at that pay grade is rare.
+  'PO3', 'PO2', 'PO1', 'CPO', 'SCPO', 'MCPO',
+  // Army and Air Force officer
+  '2LT', '1LT', 'CPT', 'MAJ', 'LTC', 'COL', 'BG', 'MG', 'LTG', 'GEN',
+  // Army and Air Force enlisted
+  'PVT', 'PFC', 'SPC', 'CPL', 'SGT', 'SSG', 'SFC', 'MSG', 'SGM', 'CSM',
+  'AMN', 'SRA', 'SSGT', 'TSGT', 'MSGT', 'SMSGT', 'CMSGT',
+];
+
+/** Pay grades, with or without the dash the forms argue about. */
+const PAY_GRADE = /^[EWO]-?(?:10|[1-9])$/i;
+
+/** Every rank token this rule recognises, upper case for comparison. */
+const RANK_TOKENS = new Set<string>([
+  ...ranks.map((r) => r.abbreviation.toUpperCase()),
+  ...OTHER_SERVICE_RANKS,
+]);
+
+/** Spelled-out rank names, longest first so "Lieutenant Colonel" wins. */
+const RANK_NAMES = ranks
+  .map((r) => r.name.toUpperCase())
+  .sort((a, b) => b.length - a.length);
+
+/**
+ * The rank or grade a signature line carries, or null when it carries
+ * none. Trailing punctuation is stripped, so "Maj." reads as "MAJ".
+ */
+export function rankInSignature(sig: string): string | null {
+  const clean = sig.trim();
+  if (!clean) return null;
+  const upper = clean.toUpperCase();
+  for (const name of RANK_NAMES) {
+    if (upper.startsWith(name + ' ')) return name;
+  }
+  for (const raw of clean.split(/\s+/)) {
+    const token = raw.replace(/[.,]+$/, '');
+    if (!token) continue;
+    if (RANK_TOKENS.has(token.toUpperCase())) return token;
+    if (PAY_GRADE.test(token)) return token;
+  }
+  return null;
+}
+
 export function validateSignature(formData: FormData): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   if (!NAVAL_SIG_TYPES.has(formData.documentType)) return issues;
@@ -74,7 +138,24 @@ export function validateSignature(formData: FormData): ValidationIssue[] {
     }
   }
 
-  // 2. Delegation line present but not a recognized authority phrase.
+  // 2. Rank or grade on the signature line (7-2.14.b).
+  if (sig) {
+    const rank = rankInSignature(sig);
+    if (rank) {
+      issues.push({
+        id: 'signature-rank',
+        severity: 'warn',
+        field: 'sig',
+        rule: 'A naval signature line carries no rank or grade',
+        citation: 'SECNAV M-5216.5 7-2.14.b',
+        detail:
+          `"${rank}" reads as a rank or grade. The four forms are name, name and title, name and title with `
+          + '"Acting", or name with "By direction". Drop the rank and leave the surname in capitals.',
+      });
+    }
+  }
+
+  // 3. Delegation line present but not a recognized authority phrase.
   const delegation = (formData.delegationText ?? '').trim();
   if (delegation) {
     const lower = delegation.toLowerCase();

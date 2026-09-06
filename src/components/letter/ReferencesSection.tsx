@@ -3,7 +3,8 @@
  * Manages the list of document references with dynamic add/remove functionality
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
+import { useSyncedState, anyNonBlank } from '@/hooks/useSyncedState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -22,11 +23,9 @@ interface ReferencesSectionProps {
 }
 
 export function ReferencesSection({ references, setReferences, formData, setFormData }: ReferencesSectionProps) {
-  const [showRef, setShowRef] = useState(false);
-
-  useEffect(() => {
-    setShowRef(references.some(r => r.trim() !== ''));
-  }, [references]);
+  // Follows the source whenever it changes identity, and may be set
+  // directly in between. Derived in render, not in an effect.
+  const [showRef, setShowRef] = useSyncedState(references, list => anyNonBlank(list));
 
   const addItem = useCallback(() => setReferences([...references, '']), [references, setReferences]);
   const removeItem = useCallback((index: number) => setReferences(references.filter((_, i) => i !== index)), [references, setReferences]);
@@ -57,7 +56,7 @@ export function ReferencesSection({ references, setReferences, formData, setForm
   return (
     <Card className="shadow-sm border-border mb-6 border-l-4 border-l-primary">
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
-        <CardTitle className="flex items-center text-lg font-semibold font-headline tracking-wide">
+        <CardTitle as="h3" className="flex items-center text-lg font-semibold font-headline tracking-wide">
           <Book className="mr-2 h-5 w-5 text-primary-foreground" />
           References
         </CardTitle>

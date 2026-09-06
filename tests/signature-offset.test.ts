@@ -1,13 +1,12 @@
+// @vitest-environment node
 /**
  * Signature placement — 4th line below the last line of text
  * (SECNAV M-5216.5 7-2.16: three blank lines, signature on the fourth).
  * Regression for the defect where a trailing body spacer plus the
  * signature block's three blank lines put the signature on the 5th line.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { generateBasePDFBlob } from '@/lib/pdf-generator';
 import { generateDocxBlob } from '@/lib/docx-generator';

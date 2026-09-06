@@ -51,7 +51,7 @@ export function StructuredReferenceInput({ formData, setFormData }: StructuredRe
   return (
     <Card className="border-border shadow-md bg-card">
       <CardHeader className="py-3 px-4 border-b border-border bg-secondary text-primary-foreground rounded-t-lg">
-        <CardTitle className="text-sm font-bold flex items-center gap-2 tracking-wide">
+        <CardTitle as="h4" className="text-sm font-bold flex items-center gap-2 tracking-wide">
           <Info className="w-4 h-4 text-primary-foreground" />
           Basic Letter Reference Components
         </CardTitle>

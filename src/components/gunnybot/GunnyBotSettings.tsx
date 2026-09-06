@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useHydrated } from '@/hooks/useHydrated';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -38,24 +40,21 @@ export function GunnyBotSettings() {
   const [keyInput, setKeyInput] = useState('');
   const [testing, setTesting] = useState(false);
 
-  // Proxy base URL for the selected provider. Read after mount only:
-  // localStorage does not exist during the static-export prerender, and
-  // reading it in the render body would hydrate to a different tree, the
-  // same trap the EDMS flag below avoids.
+  // Browser-only reads. localStorage (proxy URL) and sessionStorage (EDMS
+  // flag) do not exist during the static-export prerender, so both derive
+  // from the hydration state: false on the server and the hydration
+  // render, then read once on the first client render.
+  const hydrated = useHydrated();
   const [proxyInput, setProxyInput] = useState('');
-  const [proxySaved, setProxySaved] = useState<string | null>(null);
+  const [edmsLocked] = useSyncedState(hydrated, h => h && isEdmsMode());
+  // Proxy base URL for the selected provider. Kept in step from
+  // handleProviderChange and the save/clear handlers afterwards.
+  const [proxySaved, setProxySaved] = useSyncedState(hydrated, (h): string | null =>
+    h ? getProxyUrl(isEdmsMode() ? EDMS_ALLOWED_PROVIDER : provider) : null,
+  );
 
-  // EDMS mode is read after mount, never during render. sessionStorage
-  // is unavailable during the static-export prerender, so reading it in
-  // the render body would hydrate to a different tree.
-  const [edmsLocked, setEdmsLocked] = useState(false);
   useEffect(() => {
-    // Proxy settings live in localStorage, which the static-export
-    // prerender does not have. Read once here, then keep the value in
-    // step from handleProviderChange rather than from a second effect.
-    setProxySaved(getProxyUrl(useGunnyStore.getState().provider));
     if (!isEdmsMode()) return;
-    setEdmsLocked(true);
     // Snap the selection to the only cleared provider. This is a
     // convenience so the panel matches what the gate will allow. The
     // control itself is in lib/gunnybot/client.ts.
@@ -64,7 +63,6 @@ export function GunnyBotSettings() {
       const first = getAdapter(EDMS_ALLOWED_PROVIDER)?.models[0]?.id;
       if (first) setModel(first);
       setKeyPresent(getKey(EDMS_ALLOWED_PROVIDER) !== null);
-      setProxySaved(getProxyUrl(EDMS_ALLOWED_PROVIDER));
     }
     // Mount-only. EDMS mode does not change within a tab's lifetime.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P4.1 — directive structural pages and roman-numeral cascade
  * (MCO 5215.1K para 48; plan Phase 4 item 1).
@@ -8,10 +9,8 @@
  * absent). The PDF carried these since baseline; P4.1 builds the
  * DOCX sections to parity (sectPr per page, static roman footer).
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { generateDocxBlob } from '@/lib/docx-generator';
 import { generateBasePDFBlob } from '@/lib/pdf-generator';

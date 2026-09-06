@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P3.6 — distribution statements and placement (MCO 5215.1K encl (1),
  * "Letterhead Stationery" section, statements block at pages 1-8/1-9;
@@ -10,10 +11,8 @@
  * Any edit to DISTRIBUTION_STATEMENTS must re-verify against the
  * source, not against this test.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { DISTRIBUTION_STATEMENTS } from '@/lib/constants';
 import { resolveDistributionStatement } from '@/lib/naval-format-utils';

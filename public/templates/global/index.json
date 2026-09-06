@@ -16,9 +16,23 @@
   {
     "id": "endorsement",
     "title": "New-Page Endorsement",
-    "description": "Used to forward a basic letter with comments, recommendations, or new information.",
+    "description": "Figure 9-1 of SECNAV M-5216.5, the second endorsement: on a new page, repeating the basic letter's SSIC and subject and identifying the basic letter in the endorsement line.",
     "documentType": "endorsement",
     "url": "/templates/global/endorsement.nldp"
+  },
+  {
+    "id": "same-page-endorsement",
+    "title": "Same-Page Endorsement",
+    "description": "An appointment letter from the commanding officer to a Marine, acknowledged by the Marine in a first endorsement on the same page: two signers, no Via.",
+    "documentType": "same-page-endorsement",
+    "url": "/templates/global/same-page-endorsement.nldp"
+  },
+  {
+    "id": "same-page-figure-9-1",
+    "title": "Same-Page Endorsement, Figure 9-1 (manual example)",
+    "description": "Figure 9-1 of SECNAV M-5216.5 as one document: the NAS Meridian letter signed by its writer, and the first endorsement added to its signature page by the first Via addressee.",
+    "documentType": "same-page-endorsement",
+    "url": "/templates/global/same-page-figure-9-1.nldp"
   },
   {
     "id": "memorandum-for-record",
@@ -453,8 +467,7 @@
     "description": "GAIN of spouse by proxy marriage - CO cannot approve, routes to CMC (MFP-1). Sample data - replace before use.",
     "documentType": "navmc10922",
     "url": "/templates/global/navmc10922-marriage-proxy.nldp"
-  }
-,
+  },
   {
     "id": "navmc10132-simple-ua",
     "title": "NAVMC 10132 - Simple UA, Accepted NJP",
@@ -482,5 +495,33 @@
     "description": "The accused elects to appeal, so items 12 through 15 carry data through a completed appeal decision. Sample data - replace before use.",
     "documentType": "navmc10132",
     "url": "/templates/global/navmc10132-appeal-filed.nldp"
+  },
+  {
+    "id": "dd368-sample",
+    "title": "Conditional Release (DD 368), sample",
+    "description": "DD Form 368 with Section I filled for a Marine sergeant requesting release to the Navy Reserve. Sample data - replace before use.",
+    "documentType": "dd368",
+    "url": "/templates/global/dd368-sample.nldp"
+  },
+  {
+    "id": "counseling-initial",
+    "title": "Initial Counseling Session (Cpl and above)",
+    "description": "A sergeant's initial counseling session about 30 days into a new senior/junior relationship: the seven ICS objectives covered, six functional areas answered, three well-formed targets, next session 90 days out (NAVMC 2795 para 2001.1, 4002). Sample data - replace before use.",
+    "documentType": "counseling",
+    "url": "/templates/global/counseling-initial.nldp"
+  },
+  {
+    "id": "counseling-thirty-day",
+    "title": "30-Day Counseling (LCpl and below)",
+    "description": "A lance corporal's 30-day session: brief, the para 2001.3.e topics as subjects, four targets, next session 30 days out. Sample data - replace before use.",
+    "documentType": "counseling",
+    "url": "/templates/global/counseling-thirty-day.nldp"
+  },
+  {
+    "id": "counseling-follow-on",
+    "title": "Follow-On Session",
+    "description": "A corporal's follow-on session: last session's targets reviewed and marked, one carried forward, three targets set, next session six months out (NAVMC 2795 para 2001.2). Sample data - replace before use.",
+    "documentType": "counseling",
+    "url": "/templates/global/counseling-follow-on.nldp"
   }
 ]

@@ -12,6 +12,7 @@ import {
   FileInput,
   Type,
   Building2,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ParagraphData } from '@/types';
@@ -21,6 +22,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { pickerTypeFor, SAME_PAGE_ENDORSEMENT_OPTION } from '@/lib/document-type-options';
 
 interface SidebarProps {
   className?: string;
@@ -183,6 +185,14 @@ function scrollToResult(result: SearchResult, query: string) {
 export function Sidebar({ className, documentType, onDocumentTypeChange, paragraphs = [], formData, onItemSelect }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
+  // E.2: the endorsement's two placements (M-5216.5 9-1) are two
+  // options here. The form still carries one document type, so the
+  // selected option is read from the type and the placement together.
+  const pickerType = pickerTypeFor({
+    documentType,
+    endorsementPlacement: formData?.endorsementPlacement,
+  });
+
   // Wrap the document-type handler so the mobile drawer auto-closes on selection.
   // When onItemSelect is undefined (desktop), behavior is identical to a direct call.
   const handleSelect = (type: string) => {
@@ -220,7 +230,7 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
   }, [searchQuery, paragraphs, formData]);
 
   return (
-    <aside className={cn("w-64 bg-card border-r border-border hidden md:flex flex-col h-full", className)}>
+    <aside aria-label="Document types and search" className={cn("w-64 bg-card border-r border-border hidden md:flex flex-col h-full", className)}>
       <div className="flex-1 min-h-0 overflow-y-auto native-scroll">
         {/* Document Type Selector */}
         <div className="p-4 border-b border-border">
@@ -251,9 +261,14 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                     label="Multiple-Address Letter"
                   />
                   <DocumentTypeButton
-                    active={documentType === 'endorsement'}
+                    active={pickerType === 'endorsement'}
                     onClick={() => handleSelect('endorsement')}
                     label="Endorsement"
+                  />
+                  <DocumentTypeButton
+                    active={pickerType === SAME_PAGE_ENDORSEMENT_OPTION}
+                    onClick={() => handleSelect(SAME_PAGE_ENDORSEMENT_OPTION)}
+                    label="Same-Page Endorsement"
                   />
                 </div>
               </AccordionContent>
@@ -444,6 +459,32 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                     onClick={() => handleSelect('navmc10132')}
                     label="Unit Punishment Book (NAVMC 10132)"
                   />
+                  <DocumentTypeButton
+                    active={documentType === 'dd368'}
+                    onClick={() => handleSelect('dd368')}
+                    label="Conditional Release (DD 368)"
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Counseling Worksheets Group. Not a form: MCO 1500.61 para
+                5.b(1) prescribes none, so the entry is a guided session
+                with a record at the end (docs/COUNSELING_FORM_PLAN.md). */}
+            <AccordionItem value="counseling-worksheets" className="border-none">
+              <AccordionTrigger className="py-2 text-sm font-semibold text-foreground hover:no-underline">
+                <span className="flex items-center">
+                  <Users className="w-4 h-4 mr-2 text-primary" />
+                  Counseling Worksheets
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-2">
+                <div className="space-y-1 pl-2">
+                  <DocumentTypeButton
+                    active={documentType === 'counseling'}
+                    onClick={() => handleSelect('counseling')}
+                    label="Counseling Worksheet"
+                  />
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -488,17 +529,23 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Find in Document</h3>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            {/* D.8: the audit counted this input among the five visible
+                controls with no accessible name - a placeholder is not
+                one, and it disappears the moment anything is typed. */}
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search..."
+              aria-label="Find in document"
               className="w-full pl-8 pr-8 py-1.5 text-sm rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center max-sm:min-h-11 max-sm:min-w-11 text-muted-foreground hover:text-foreground"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -548,7 +595,9 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
 function DocumentTypeButton({ active, onClick, label, isSpecial }: { active: boolean, onClick: () => void, label: string, isSpecial?: boolean }) {
   return (
     <button
+      type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         "w-full text-left flex items-center px-2 py-1.5 text-sm font-medium rounded-md group transition-colors",
         active

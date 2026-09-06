@@ -6,7 +6,8 @@
  * and restore either revision into the editor.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import {
   Dialog,
   DialogContent,
@@ -86,20 +87,29 @@ function DiffRow({ field }: { field: FieldDiff }) {
   );
 }
 
-export function RevisionCompareDialog({ open, onOpenChange, letters, onRestore }: RevisionCompareDialogProps) {
-  const [beforeId, setBeforeId] = useState<string>('');
-  const [afterId, setAfterId] = useState<string>('');
+type ComparePhase = 'closed' | 'open-waiting' | 'open-ready';
+interface CompareSelection {
+  beforeId: string;
+  afterId: string;
+  initialized: boolean;
+}
 
-  // Default to the two most recent saves.
-  const [initialized, setInitialized] = useState(false);
-  React.useEffect(() => {
-    if (open && !initialized && letters.length >= 2) {
-      setAfterId(letters[0].id);
-      setBeforeId(letters[1].id);
-      setInitialized(true);
+export function RevisionCompareDialog({ open, onOpenChange, letters, onRestore }: RevisionCompareDialogProps) {
+  // Selection keyed on the dialog phase. Opening with two or more saves
+  // defaults to the two most recent, once per open; closing re-arms the
+  // default for the next open. Derived during render, not in an effect.
+  const phase: ComparePhase = open ? (letters.length >= 2 ? 'open-ready' : 'open-waiting') : 'closed';
+  const [selection, setSelection] = useSyncedState(phase, (p, prev): CompareSelection => {
+    const base = prev ?? { beforeId: '', afterId: '', initialized: false };
+    if (p === 'closed') return base.initialized ? { ...base, initialized: false } : base;
+    if (p === 'open-ready' && !base.initialized) {
+      return { beforeId: letters[1].id, afterId: letters[0].id, initialized: true };
     }
-    if (!open) setInitialized(false);
-  }, [open, initialized, letters]);
+    return base;
+  });
+  const { beforeId, afterId } = selection;
+  const setBeforeId = (id: string) => setSelection((s) => ({ ...s, beforeId: id }));
+  const setAfterId = (id: string) => setSelection((s) => ({ ...s, afterId: id }));
 
   const before = letters.find((l) => l.id === beforeId);
   const after = letters.find((l) => l.id === afterId);

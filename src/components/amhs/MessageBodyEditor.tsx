@@ -49,7 +49,7 @@ export function MessageBodyEditor({ value, onChange }: MessageBodyEditorProps) {
   return (
     <Card className="w-full">
       <CardHeader className="py-4">
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle as="h3" className="text-lg flex items-center gap-2">
           <Type className="h-5 w-5" />
           Message Text (GENTEXT/REMARKS)
         </CardTitle>

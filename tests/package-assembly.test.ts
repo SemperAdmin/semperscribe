@@ -6,7 +6,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   computeSequences, validatePackage, applySequence, toMember,
-  totalPages, moveMember, sequenceFor, PackageMember,
+  totalPages, moveMember, sequenceFor, fitsOnSignaturePage,
+  asNewPageFallback, PackageMember,
 } from '@/lib/package-assembly';
 import type { SavedLetter } from '@/types';
 
@@ -69,6 +70,77 @@ describe('computeSequences', () => {
   });
 });
 
+describe('same-page placement (E.1, M-5216.5 9-1)', () => {
+  /** Basic (2pg) -> 1st End same-page, fits -> 2nd End (2pg). */
+  function samePageChain(fits: boolean | undefined): PackageMember[] {
+    return [
+      member({ id: 'b', documentType: 'basic', pageCount: 2, referenceCount: 1, enclosureCount: 1 }),
+      member({
+        id: 'e1', documentType: 'endorsement', endorsementLevel: 'FIRST',
+        endorsementPlacement: 'same-page', samePageFits: fits,
+        pageCount: fits === true ? 0 : 1, referenceCount: 1,
+      }),
+      member({ id: 'e2', documentType: 'endorsement', endorsementLevel: 'SECOND', pageCount: 2 }),
+    ];
+  }
+
+  it('a fitting same-page endorsement adds no page and starts on the host page', () => {
+    const seq = computeSequences(samePageChain(true));
+    expect(seq[1].startingPageNumber).toBe(2); // the basic letter's last page
+    expect(seq[1].previousPackagePageCount).toBe(1);
+    // The next member continues from the host's count, not from a page
+    // the same-page endorsement never added.
+    expect(seq[2].startingPageNumber).toBe(3);
+    expect(seq[2].previousPackagePageCount).toBe(2);
+    expect(totalPages(samePageChain(true))).toBe(4);
+  });
+
+  it('a same-page endorsement which does not fit numbers like a new-page one', () => {
+    const seq = computeSequences(samePageChain(false));
+    expect(seq[1].startingPageNumber).toBe(3);
+    expect(seq[1].previousPackagePageCount).toBe(2);
+    expect(seq[2].startingPageNumber).toBe(4);
+  });
+
+  it('reference and enclosure sequences run either way (9-2.3, 9-2.4)', () => {
+    const fitting = computeSequences(samePageChain(true));
+    const spilling = computeSequences(samePageChain(false));
+    expect(fitting[1].startingReferenceLevel).toBe('b');
+    expect(fitting[2].startingReferenceLevel).toBe('c');
+    expect(spilling[2].startingReferenceLevel).toBe('c');
+    expect(fitting[1].startingEnclosureNumber).toBe(2);
+  });
+
+  it('fitsOnSignaturePage reads placement and measurement together', () => {
+    expect(fitsOnSignaturePage(member({ endorsementPlacement: 'same-page', samePageFits: true }))).toBe(true);
+    expect(fitsOnSignaturePage(member({ endorsementPlacement: 'same-page', samePageFits: false }))).toBe(false);
+    expect(fitsOnSignaturePage(member({ endorsementPlacement: 'same-page' }))).toBe(false);
+    expect(fitsOnSignaturePage(member({ samePageFits: true }))).toBe(false);
+  });
+
+  it('the new-page fallback restores the identification (Figure 9-1)', () => {
+    const letter = {
+      documentType: 'endorsement', id: 'e1', savedAt: 'x',
+      endorsementPlacement: 'same-page', samePageOmitsIdentification: true,
+      vias: [], references: [], enclosures: [], copyTos: [], paragraphs: [],
+    } as unknown as SavedLetter;
+    const fallback = asNewPageFallback(letter);
+    expect(fallback.endorsementPlacement).toBe('new-page');
+    expect(fallback.samePageOmitsIdentification).toBe(false);
+  });
+
+  it('toMember carries the placement off the saved document', () => {
+    const letter = {
+      documentType: 'endorsement', id: 'e1', savedAt: 'x',
+      endorsementPlacement: 'same-page',
+      vias: [], references: [], enclosures: [], copyTos: [], paragraphs: [],
+    } as unknown as SavedLetter;
+    expect(toMember(letter, 0, true).endorsementPlacement).toBe('same-page');
+    expect(toMember(letter, 0, true).samePageFits).toBe(true);
+    expect(toMember(letter, 1).samePageFits).toBeUndefined();
+  });
+});
+
 describe('validatePackage', () => {
   it('passes a well-formed chain', () => {
     expect(validatePackage(chain()).filter((i) => i.severity === 'fail')).toHaveLength(0);
@@ -104,6 +176,40 @@ describe('validatePackage', () => {
   it('warns when page counts are unmeasured', () => {
     const issues = validatePackage([member({ pageCount: 0 })]);
     expect(issues.some((i) => i.id === 'package-unknown-page-counts' && i.severity === 'warn')).toBe(true);
+  });
+
+  it('fails when the first member is a same-page endorsement (9-1)', () => {
+    const issues = validatePackage([
+      member({ id: 'e1', documentType: 'endorsement', endorsementLevel: 'FIRST', endorsementPlacement: 'same-page' }),
+    ]);
+    const issue = issues.find((i) => i.id === 'package-first-member-same-page');
+    expect(issue?.severity).toBe('fail');
+    expect(issue?.detail).toContain('9-1');
+  });
+
+  it('warns when a same-page endorsement has not been measured', () => {
+    const issues = validatePackage([
+      member({ id: 'b', documentType: 'basic', pageCount: 1 }),
+      member({
+        id: 'e1', documentType: 'endorsement', endorsementLevel: 'FIRST',
+        endorsementPlacement: 'same-page', pageCount: 1,
+      }),
+    ]);
+    const issue = issues.find((i) => i.id === 'package-same-page-unmeasured');
+    expect(issue?.severity).toBe('warn');
+    expect(issue?.detail).toContain('Measure the package to check fit');
+  });
+
+  it('does not call a measured same-page member unmeasured for its zero pages', () => {
+    const issues = validatePackage([
+      member({ id: 'b', documentType: 'basic', pageCount: 1 }),
+      member({
+        id: 'e1', documentType: 'endorsement', endorsementLevel: 'FIRST',
+        endorsementPlacement: 'same-page', samePageFits: true, pageCount: 0,
+      }),
+    ]);
+    expect(issues.some((i) => i.id === 'package-unknown-page-counts')).toBe(false);
+    expect(issues.some((i) => i.id === 'package-same-page-unmeasured')).toBe(false);
   });
 
   it('says nothing about an empty package', () => {

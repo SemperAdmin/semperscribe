@@ -12,6 +12,7 @@ import {
   MonitorDown,
   Paperclip,
   Radio,
+  Sparkles,
   ShieldCheck,
   Stamp,
   Undo2,
@@ -21,7 +22,15 @@ import {
 interface LandingPageProps {
   /** Starts a document of the given type (same path as the sidebar). */
   onSelectType?: (type: string) => void;
+  /**
+   * D.8: loads the shipped example .nldp through the template-URL
+   * import path, the same one the File menu uses for a .nldp file.
+   */
+  onLoadExample?: () => void;
 }
+
+/** D.8: the one example package shipped with the app. */
+export const EXAMPLE_DOCUMENT_URL = '/examples/sample-training-schedule.nldp';
 
 const QUICK_STARTS = [
   { type: 'basic', icon: FileText, name: 'Standard Naval Letter', blurb: 'The workhorse of official correspondence' },
@@ -64,13 +73,13 @@ const FEATURES = [
 ];
 
 const WORKFLOW = [
-  { step: '1', title: 'Pick a type', body: '25 document types from the sidebar - letters, directives, staffing papers, forms, messages.' },
+  { step: '1', title: 'Pick a type', body: '26 document types from the sidebar - letters, directives, staffing papers, forms, messages.' },
   { step: '2', title: 'Fill guided sections', body: 'Unit lookup, profile auto-fill, reference suggestions, clause inserts.' },
   { step: '3', title: 'Validate live', body: 'The preview and compliance banner update as you type. Fix issues before anyone kicks it back.' },
   { step: '4', title: 'Export or share', body: 'Formatted PDF or DOCX, merged enclosures, batch runs, or an encrypted share link.' },
 ];
 
-export function LandingPage({ onSelectType }: LandingPageProps) {
+export function LandingPage({ onSelectType, onLoadExample }: LandingPageProps) {
   return (
     <div className="max-w-5xl mx-auto space-y-10 py-8 animate-in fade-in duration-700">
       {/* Hero */}
@@ -90,7 +99,7 @@ export function LandingPage({ onSelectType }: LandingPageProps) {
             You bring the content - the formatting, citations, and compliance checks are handled.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-            {['25 document types', 'SECNAV M-5216.5 aligned', 'Live compliance checks', '100% on-device - no server'].map((chip) => (
+            {['26 document types', 'SECNAV M-5216.5 aligned', 'Live compliance checks', '100% on-device - no server'].map((chip) => (
               <span
                 key={chip}
                 className="rounded-full border border-secondary-foreground/20 bg-secondary-foreground/10 px-3 py-1 text-xs font-medium text-secondary-foreground/90"
@@ -130,6 +139,29 @@ export function LandingPage({ onSelectType }: LandingPageProps) {
             </button>
           ))}
         </div>
+
+        {/* D.8 (UX audit finding 7, the brand-new join): the first run
+            taught the warning system and never showed a letter. This
+            card opens a finished, validator-clean basic letter so the
+            format is visible before anything is typed. */}
+        {onLoadExample && (
+          <button
+            type="button"
+            onClick={onLoadExample}
+            className="group flex w-full items-start gap-3 rounded-xl border border-dashed border-primary/50 bg-primary/5 p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-foreground">Start from a filled example</span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Opens a complete standard naval letter, header to signature, with every compliance check already passing. Edit it or clear it and start your own.
+              </span>
+            </span>
+            <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+          </button>
+        )}
       </section>
 
       {/* Workflow */}

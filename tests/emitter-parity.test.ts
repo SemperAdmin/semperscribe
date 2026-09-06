@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Emitter parity: the preview and the export must carry the same
  * content (audit 2026-08-16).
@@ -17,16 +18,19 @@
  * neither emitter invents text the drafter never typed, and an empty
  * required field is reported by the validators instead.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { generateDocxBlob } from '@/lib/docx-generator';
 import { generateBasePDFBlob } from '@/lib/pdf-generator';
-import { extractPdfTextLayout } from './golden/helpers';
+import { extractPdfTextLayout, type PdfTextItem } from './golden/helpers';
+import { LINE_HEIGHT_12PT, PDF_MARGINS } from '@/lib/pdf-settings';
 import { runLetterValidators } from '@/lib/letter-validators';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
+import { indexToRefLetter } from '@/lib/reference-letters';
+
+/** (a) through the nth letter, using the one shared walk. */
+const indexRange = (n: number) => Array.from({ length: n }, (_, i) => indexToRefLetter(i + 1));
 
 const PARAGRAPHS = [{ id: '1', level: 1, content: 'Body text alpha.', title: '' }] as any;
 
@@ -68,6 +72,22 @@ async function pdfText(formData: any, paragraphs: any = PARAGRAPHS): Promise<str
   const blob = await generateBasePDFBlob(formData, [], [], [], [], paragraphs, []);
   const layout = await extractPdfTextLayout(blob);
   return layout.map((i) => i.text).join('\n');
+}
+
+/** The same two, with a reference and enclosure list the emitters letter and number. */
+async function docxListText(formData: any, references: string[], enclosures: string[] = []): Promise<string> {
+  const blob = await generateDocxBlob(formData, [], references, enclosures, [], PARAGRAPHS, []);
+  const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+  return (await zip.file('word/document.xml')!.async('string')).replace(/<[^>]+>/g, '');
+}
+
+async function pdfListText(formData: any, references: string[], enclosures: string[] = []): Promise<string> {
+  const blob = await generateBasePDFBlob(formData, [], references, enclosures, [], PARAGRAPHS, []);
+  const layout = await extractPdfTextLayout(blob);
+  // A reference line reaches the layout as separate runs for "(", the
+  // letter and ")", so the runs are joined without a separator and the
+  // parenthesized letter reads as one token.
+  return layout.map((i) => i.text).join('');
 }
 
 describe('empty date, From and To are never fabricated', () => {
@@ -372,11 +392,43 @@ describe('validator messages a drafter can act on', () => {
   // Found in the browser pass 2026-08-16: an ABSENT field made Zod
   // report a type error, so the panel read "Recipient Name: Invalid
   // input: expected string, received undefined".
+  //
+  // D.4 moved the message on again. The rule now states the
+  // REQUIREMENT and cites the paragraph it comes from, so the detail
+  // names the field's state and then says what the manual asks for.
   it('an absent required field reads as a plain requirement', () => {
     const ids = runLetterValidators({ documentType: 'business-letter' } as any, [], [], PARAGRAPHS);
     const recipient = ids.find(i => i.id === 'schema-business-letter-recipientName');
-    expect(recipient?.detail).toBe('Recipient Name: Recipient Name is required');
+    expect(recipient?.detail).toContain('Recipient Name is empty.');
+    expect(recipient?.rule).toBe('The inside address names the person or the business written to');
+    expect(recipient?.citation).toBe('SECNAV M-5216.5 11-2.2.a');
     expect(ids.map(i => i.detail).join(' ')).not.toContain('expected string');
+  });
+
+  // UX audit finding 3: "SSIC fails its document schema", cited to
+  // "Basic Letter schema (src/lib/schemas.ts)". A source path in a
+  // citation field gives a reviewing officer nothing to check.
+  it('no validator message cites a source path', () => {
+    const issues = runLetterValidators({ documentType: 'basic' } as any, [], [], PARAGRAPHS);
+    expect(issues.length).toBeGreaterThan(0);
+    for (const issue of issues) {
+      expect(issue.citation).not.toContain('src/lib');
+      expect(issue.citation).not.toContain('.ts');
+      expect(issue.rule).not.toContain('document schema');
+    }
+  });
+
+  it('the required header fields cite the paragraph which requires them', () => {
+    const issues = runLetterValidators({ documentType: 'basic' } as any, [], [], PARAGRAPHS);
+    const byId = new Map(issues.map(i => [i.id, i]));
+    expect(byId.get('schema-basic-ssic')?.rule).toBe('An SSIC is required on every naval letter');
+    expect(byId.get('schema-basic-ssic')?.citation).toBe('SECNAV M-5216.5 7-2.3.a(1)');
+    expect(byId.get('schema-basic-from')?.citation).toBe('SECNAV M-5216.5 7-2.6.a');
+    expect(byId.get('schema-basic-to')?.citation).toBe('SECNAV M-5216.5 7-2.7.a');
+    expect(byId.get('schema-basic-date')?.citation).toBe('SECNAV M-5216.5 7-2.3.a(3) and 2-16.a');
+    // The field name travels with the issue, so the compliance dialog
+    // jumps to it.
+    expect(byId.get('schema-basic-ssic')?.field).toBe('ssic');
   });
 
   // M-5216.5 11-2.9 keeps references out of BOTH emitters, so the
@@ -587,5 +639,324 @@ describe('Courier headings hang to their own 7-character column', () => {
       expect(wrapped, `${label} must wrap for this test to mean anything`).toBeDefined();
       expect(wrapped!.x - margin, `${label} wrap column`).toBeCloseTo(COURIER_COLUMN, 1);
     }
+  });
+});
+
+/**
+ * Reference lettering and enclosure numbering, M-5216.5 9-2.3 and
+ * 9-2.4. Two divergences of the same class, both measured before D.3:
+ *
+ *   5. The DOCX applied startingReferenceLevel and
+ *      startingEnclosureNumber to every document type while the PDF
+ *      applied them only to an endorsement, so a stale "c" on a basic
+ *      letter (a saved draft, a shared link) lettered Word (c) and (d)
+ *      against a preview reading (a) and (b).
+ *   6. Both emitters walked character codes from the starting letter,
+ *      so the 27th reference printed "{" where the validator and the
+ *      package assembler read "aa".
+ *
+ * Only an endorsement continues another document's sequences, and the
+ * walk itself lives in src/lib/reference-letters.ts.
+ */
+describe('reference letters and enclosure numbers are scoped and shared', () => {
+  const REFS = ['MCO 1500.1 of 3 Mar 25', 'MCO 1600.2 of 4 Apr 25'];
+  const ENCLS = ['Roster of 4 Apr 25'];
+  const CONTINUED = { startingReferenceLevel: 'c', startingEnclosureNumber: '3' };
+
+  const STALE_BASIC = {
+    ...BASE,
+    documentType: 'basic',
+    from: 'Commanding Officer, Unit',
+    to: 'Commandant of the Marine Corps',
+    ...CONTINUED,
+  };
+
+  const ENDORSEMENT = {
+    ...STALE_BASIC,
+    documentType: 'endorsement',
+    endorsementLevel: 'FIRST',
+    basicLetterReference: '1500 G-1 of 3 Mar 25',
+  };
+
+  it('a basic letter carrying a stale starting letter renders (a) and (b) in the DOCX', async () => {
+    const text = await docxListText(STALE_BASIC, REFS, ENCLS);
+    expect(text).toContain('(a)');
+    expect(text).toContain('(b)');
+    expect(text).not.toContain('(c)');
+    expect(text).toContain('(1)');
+    expect(text).not.toContain('(3)');
+  });
+
+  it('and the same (a) and (b) in the PDF', async () => {
+    const text = await pdfListText(STALE_BASIC, REFS, ENCLS);
+    expect(text).toContain('(a)');
+    expect(text).toContain('(b)');
+    expect(text).not.toContain('(c)');
+    expect(text).toContain('(1)');
+    expect(text).not.toContain('(3)');
+  });
+
+  it('an endorsement renders (c) and (d) in the DOCX', async () => {
+    const text = await docxListText(ENDORSEMENT, REFS, ENCLS);
+    expect(text).toContain('(c)');
+    expect(text).toContain('(d)');
+    expect(text).not.toContain('(a)');
+    expect(text).toContain('(3)');
+  });
+
+  it('and the same (c) and (d) in the PDF', async () => {
+    const text = await pdfListText(ENDORSEMENT, REFS, ENCLS);
+    expect(text).toContain('(c)');
+    expect(text).toContain('(d)');
+    expect(text).not.toContain('(a)');
+    expect(text).toContain('(3)');
+  });
+
+  const MANY = Array.from({ length: 27 }, (_, i) => `MCO ${1500 + i}.1 of 3 Mar 25`);
+
+  it('the 27th reference letters as (aa) in the DOCX, never as "{"', async () => {
+    const text = await docxListText({ ...STALE_BASIC, ...{ startingReferenceLevel: 'a' } }, MANY);
+    expect(text).toContain('(z)');
+    expect(text).toContain('(aa)');
+    expect(text).not.toContain('({)');
+  });
+
+  it('the 27th reference letters as (aa) in the PDF, never as "{"', async () => {
+    const text = await pdfListText({ ...STALE_BASIC, ...{ startingReferenceLevel: 'a' } }, MANY);
+    expect(text).toContain('(z)');
+    expect(text).toContain('(aa)');
+    expect(text).not.toContain('({)');
+  });
+
+  it('and the validator letters the same 27 the same way', () => {
+    const cited = indexRange(27).map((l) => `ref (${l})`).join(', ');
+    const issues = runLetterValidators(
+      { ...STALE_BASIC, startingReferenceLevel: 'a' } as any,
+      [],
+      MANY,
+      [{ id: '1', level: 1, content: cited, title: '' }] as any,
+    );
+    expect(issues.filter((i) => i.id.startsWith('ref-'))).toEqual([]);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * D.5, 2026-09-05: the civilian branch follows chapters 11 and 12.    *
+ * ------------------------------------------------------------------ */
+
+describe('business and executive letters follow chapters 11 and 12', () => {
+  /** Two body paragraphs. The first wraps, so the wrapped line shows
+   *  the first-line indent against the left margin; the second is the
+   *  last line of text the close is measured from. */
+  const CIVIL_PARAGRAPHS = [
+    {
+      id: '1',
+      level: 1,
+      title: '',
+      content:
+        'Alpha paragraph body long enough to wrap onto a second line so the ' +
+        'wrapped line sits at the left margin while the first line is indented.',
+    },
+    { id: '2', level: 1, title: '', content: 'ZLASTBODYZ' },
+  ] as any;
+
+  const CIVIL = {
+    ...BASE,
+    ssic: '5216',
+    originatorCode: 'Ser JA/28',
+    sig: 'j. q. public',
+    signerTitle: 'Executive Officer',
+    recipientName: 'Mr. A. B. Seay',
+    recipientAddress: '1234 Any Street\nBaltimore, MD 21085-1234',
+    salutation: 'Dear Mr. Seay:',
+  };
+
+  const BUSINESS = { ...CIVIL, documentType: 'business-letter' };
+  const EXECUTIVE = { ...CIVIL, documentType: 'executive-correspondence', execFormat: 'letter' };
+  const ENCLOSURES = ['Widget report', 'Cost sheet'];
+
+  async function civilianLayout(formData: any) {
+    const blob = await generateBasePDFBlob(formData, [], [], ENCLOSURES, [], CIVIL_PARAGRAPHS, []);
+    return extractPdfTextLayout(blob);
+  }
+
+  /** The y and x of the first layout item whose text starts with `prefix`. */
+  const yOf = (layout: PdfTextItem[], prefix: string) =>
+    layout.find((i) => i.text.startsWith(prefix))!.y;
+  const xOf = (layout: PdfTextItem[], prefix: string) =>
+    layout.find((i) => i.text.startsWith(prefix))!.x;
+
+  /** Paragraphs of word/document.xml as {text, firstLine} in order. */
+  async function docxParagraphs(formData: any) {
+    const blob = await generateDocxBlob(formData, [], [], ENCLOSURES, [], CIVIL_PARAGRAPHS, []);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file('word/document.xml')!.async('string');
+    return [...xml.matchAll(/<w:p(?: [^>]*)?>([\s\S]*?)<\/w:p>/g)].map((m) => ({
+      text: [...m[1].matchAll(/<w:t(?: [^>]*)?>([\s\S]*?)<\/w:t>/g)].map((t) => t[1]).join(''),
+      firstLine: /w:firstLine="(\d+)"/.exec(m[1])?.[1] ?? null,
+    }));
+  }
+
+  /** Alignment of the identification-symbol table in the DOCX. */
+  async function docxIdBlockAlignment(formData: any) {
+    const blob = await generateDocxBlob(formData, [], [], ENCLOSURES, [], CIVIL_PARAGRAPHS, []);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file('word/document.xml')!.async('string');
+    const tblPr = /<w:tblPr>([\s\S]*?)<\/w:tblPr>/.exec(xml)![1];
+    return /<w:jc w:val="(\w+)"\/>/.exec(tblPr)![1];
+  }
+
+  /** Blank paragraphs between the two given texts in the DOCX body. */
+  function blanksBetween(paragraphs: { text: string }[], first: string, second: string) {
+    const from = paragraphs.findIndex((p) => p.text.includes(first));
+    const to = paragraphs.findIndex((p, i) => i > from && p.text.includes(second));
+    return paragraphs.slice(from + 1, to).filter((p) => p.text.trim() === '').length;
+  }
+
+  // M-5216.5 11-2.1 and Fig 11-2: the three identification symbols sit
+  // "in the upper left corner, blocked one below the other". Both
+  // emitters anchored them right, measured x=460.3pt in the preview.
+  it('the business-letter identification symbols block at the left margin', async () => {
+    const layout = await civilianLayout(BUSINESS);
+    expect(xOf(layout, '5216')).toBe(PDF_MARGINS.left);
+    expect(xOf(layout, 'Ser JA/28')).toBe(PDF_MARGINS.left);
+    expect(xOf(layout, 'August 14, 2026')).toBe(PDF_MARGINS.left);
+    expect(await docxIdBlockAlignment(BUSINESS)).toBe('left');
+  });
+
+  // Fig 11-4 sets the window-envelope symbols right of centre on line
+  // 10, clear of the address window, so that variant keeps its anchor.
+  it('the window-envelope variant keeps its right-anchored block', async () => {
+    const layout = await civilianLayout({ ...BUSINESS, isWindowEnvelope: true });
+    expect(xOf(layout, '5216')).toBeGreaterThan(400);
+    expect(await docxIdBlockAlignment({ ...BUSINESS, isWindowEnvelope: true })).toBe('right');
+  });
+
+  // Chapter 12 states no placement for the executive identification
+  // symbols and Fig 12-2 shows the date to the right, so it is left
+  // where it is.
+  it('the executive letter keeps its right-anchored block', async () => {
+    const layout = await civilianLayout(EXECUTIVE);
+    expect(xOf(layout, '5216')).toBeGreaterThan(400);
+    expect(await docxIdBlockAlignment(EXECUTIVE)).toBe('right');
+  });
+
+  // M-5216.5 11-2.9.a(1): "Signer's name in all capital letters."
+  // The preview printed it as typed while the export capitalised it.
+  it.each([['business', BUSINESS], ['executive', EXECUTIVE]] as const)(
+    'the %s signer name renders in capitals on both surfaces',
+    async (_label, formData) => {
+      const layout = await civilianLayout(formData);
+      const text = layout.map((i) => i.text).join('\n');
+      expect(text).toContain('J. Q. PUBLIC');
+      expect(text).not.toContain('j. q. public');
+      const paragraphs = await docxParagraphs(formData);
+      expect(paragraphs.some((p) => p.text === 'J. Q. PUBLIC')).toBe(true);
+    },
+  );
+
+  // M-5216.5 11-2.6 "four spaces, or set margin at half inch" and
+  // 12-3.2.c(2) "Each paragraph must be indented 1/2 inch". The
+  // preview measured x=72.0pt, no indent at all, because react-pdf
+  // reads textIndent on the Text node and not on the View.
+  it.each([['business', BUSINESS], ['executive', EXECUTIVE]] as const)(
+    'the %s first line indents half an inch and the wrap returns to the margin',
+    async (_label, formData) => {
+      const layout = await civilianLayout(formData);
+      expect(xOf(layout, 'Alpha paragraph body')).toBe(PDF_MARGINS.left + 36);
+      expect(xOf(layout, 'ZLASTBODYZ')).toBe(PDF_MARGINS.left + 36);
+      // The run after the first line is that paragraph's wrapped line,
+      // which returns to the left margin.
+      const first = layout.findIndex((i) => i.text.startsWith('Alpha paragraph body'));
+      const wrapped = layout[first + 1];
+      expect(wrapped.text).not.toContain('ZLASTBODYZ');
+      expect(wrapped.x).toBe(PDF_MARGINS.left);
+      const paragraphs = await docxParagraphs(formData);
+      expect(paragraphs.find((p) => p.text === 'ZLASTBODYZ')?.firstLine).toBe('720');
+    },
+  );
+
+  // M-5216.5 11-2.8 and 12-3.4: the close on the second line below the
+  // text. 11-2.9.a and 12-3.2.e(3)(a): the name on the fourth line
+  // below the close. Measured three and six before this change.
+  it.each([['business', BUSINESS], ['executive', EXECUTIVE]] as const)(
+    'the %s close and name sit on the second and fourth lines',
+    async (_label, formData) => {
+      const layout = await civilianLayout(formData);
+      const lastBody = yOf(layout, 'ZLASTBODYZ');
+      const close = yOf(layout, 'Sincerely,');
+      const name = yOf(layout, 'J. Q. PUBLIC');
+      expect(lastBody - close).toBeCloseTo(2 * LINE_HEIGHT_12PT, 1);
+      expect(close - name).toBeCloseTo(4 * LINE_HEIGHT_12PT, 1);
+      const paragraphs = await docxParagraphs(formData);
+      expect(blanksBetween(paragraphs, 'ZLASTBODYZ', 'Sincerely,')).toBe(1);
+      expect(blanksBetween(paragraphs, 'Sincerely,', 'J. Q. PUBLIC')).toBe(3);
+    },
+  );
+
+  // M-5216.5 11-2.10.a: "Type 'Enclosure' on the second line below the
+  // signature line, number and describe them briefly." Chapter 12
+  // states no enclosure-line form, so the executive letter keeps its
+  // plain list.
+  it('the business letter numbers its enclosure entries on both surfaces', async () => {
+    const layout = await civilianLayout(BUSINESS);
+    const text = layout.map((i) => i.text).join('');
+    expect(text).toContain('(1) Widget report');
+    expect(text).toContain('(2) Cost sheet');
+    const paragraphs = await docxParagraphs(BUSINESS);
+    expect(paragraphs.some((p) => p.text === '(1) Widget report')).toBe(true);
+    expect(paragraphs.some((p) => p.text === '(2) Cost sheet')).toBe(true);
+  });
+
+  it('the executive letter leaves its enclosure entries unnumbered', async () => {
+    const paragraphs = await docxParagraphs(EXECUTIVE);
+    expect(paragraphs.some((p) => p.text === 'Widget report')).toBe(true);
+    expect(paragraphs.some((p) => p.text === '(1) Widget report')).toBe(false);
+  });
+});
+
+describe('DLA correspondence does not move with the business letter', () => {
+  // The DLA plan (docs/DLA_CORRESPONDENCE_PLAN.md) makes the DLA
+  // ruleset "a separate, parallel ruleset", additive only, governed by
+  // the DLA Correspondence Manual rather than M-5216.5 chapters 11 and
+  // 12. Every block D.5 touches already excludes the DLA types, and
+  // this pins that: the positions below are the pre-D.5 measurement.
+  const DLA = {
+    ...BASE,
+    documentType: 'dla-business-letter',
+    headerType: 'DLA',
+    ssic: '5216',
+    originatorCode: 'Ser JA/28',
+    sig: 'j. q. public',
+    signerFullName: 'J. Q. PUBLIC',
+    recipientName: 'Mr. A. B. Seay',
+    recipientAddress: '1234 Any Street',
+    salutation: 'Dear Mr. Seay:',
+  } as any;
+
+  const DLA_PARAGRAPHS = [
+    { id: '1', level: 1, title: '', content: 'Alpha paragraph body.' },
+    { id: '2', level: 2, title: '', content: 'Subdivision body.' },
+  ] as any;
+
+  it('the DLA business letter renders the layout it rendered before D.5', async () => {
+    const blob = await generateBasePDFBlob(DLA, [], [], ['Widget report'], [], DLA_PARAGRAPHS, []);
+    const layout = await extractPdfTextLayout(blob);
+    const at = (prefix: string) => {
+      const item = layout.find((i) => i.text.startsWith(prefix))!;
+      return { x: item.x, y: item.y };
+    };
+    // Date flush right, no SSIC block: DLA Corr Manual Ch.3.
+    expect(at('August 14, 2026')).toEqual({ x: 460.3, y: 675.2 });
+    // Level 1 body at the left margin, subdivision one tab in.
+    expect(at('Alpha paragraph body.').x).toBe(72);
+    expect(at('a.').x).toBe(108);
+    // Attachment line above the body, not below the signature.
+    expect(at('Attachment:').y).toBeGreaterThan(at('Alpha paragraph body.').y);
+    // Close and full name as the DLA branch has always placed them.
+    const close = at('Sincerely,');
+    const name = at('J. Q. PUBLIC');
+    expect(close.x).toBe(306);
+    expect(close.y - name.y).toBeCloseTo(6 * LINE_HEIGHT_12PT, 1);
   });
 });

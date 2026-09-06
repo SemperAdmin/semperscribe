@@ -1,0 +1,76 @@
+{
+  "metadata": {
+    "packageId": "nldp_1788000000001_dd368_sample",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-09-06T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "Conditional Release (DD 368), sample",
+      "description": "DD Form 368 with Section I filled for a Marine sergeant requesting release to the Navy Reserve. Sample data - replace before use.",
+      "subject": "",
+      "documentType": "dd368",
+      "tags": [
+        "template",
+        "forms",
+        "dd368"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "dd368",
+      "dd368MemberName": "SAMPLE, MARINE, A.",
+      "dd368PayGrade": "E-5",
+      "dd368Edipi": "1234567890",
+      "dd368ServiceComponent": "USMC",
+      "dd368CurrentUnit": "Commanding Officer, 1st Battalion, 6th Marines, Camp Lejeune, NC 28542",
+      "dd368MemberStreet": "100 Sample Street",
+      "dd368MemberCity": "Jacksonville",
+      "dd368MemberState": "NC",
+      "dd368MemberZip": "28540",
+      "dd368RecruiterStreet": "Navy Recruiting Station, 200 Example Avenue",
+      "dd368RecruiterCity": "Raleigh",
+      "dd368RecruiterState": "NC",
+      "dd368RecruiterZip": "27601",
+      "dd368GainingComponent": "USNR",
+      "dd368CurrentComponent": "",
+      "dd368MemberSignedDate": "260906",
+      "dd368RecruiterName": "RECRUITER, SAMPLE, B.",
+      "dd368RecruiterTitle": "Navy Recruiter, NRS Raleigh",
+      "dd368RecruiterSignedDate": "260906",
+      "dd368Decision": "",
+      "dd368ReleaseValidUntil": "",
+      "dd368OfficialName": "",
+      "dd368OfficialTitle": "",
+      "dd368OfficialPhone": "",
+      "dd368OfficialStreet": "",
+      "dd368OfficialCity": "",
+      "dd368OfficialState": "",
+      "dd368OfficialZip": "",
+      "dd368OfficialSignedDate": "",
+      "dd368OathService": "",
+      "dd368CertifyingName": "",
+      "dd368CertifyingTitle": "",
+      "dd368CertifyingUnit": "",
+      "dd368CertifyingPhone": "",
+      "dd368CertifyingStreet": "",
+      "dd368CertifyingCity": "",
+      "dd368CertifyingState": "",
+      "dd368CertifyingZip": "",
+      "dd368CertifyingSignedDate": "",
+      "dd368Remarks": ""
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}

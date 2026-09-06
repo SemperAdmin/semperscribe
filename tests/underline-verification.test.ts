@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * S5 — level 5-8 designator underlines, both emitters (audit gap G6).
  *
@@ -10,10 +11,8 @@
  * document.xml; PDF vector path operators in the content stream
  * (react-pdf draws each underline as a filled path).
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { generateBasePDFBlob } from '@/lib/pdf-generator';
 import { generateDocxBlob } from '@/lib/docx-generator';

@@ -12,7 +12,8 @@ import {
 } from '@/lib/merge-utils';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { getExportFilename } from '@/lib/naval-format-utils';
-import JSZip from 'jszip';
+import { clearedForExport } from '@/lib/export-gate';
+import { getExportBlockers } from '@/lib/letter-validators';
 
 export type BatchStatus = 'idle' | 'generating' | 'done' | 'error';
 
@@ -76,9 +77,51 @@ export function useBatchGenerate() {
     mergeFields: MergeField[],
     rows: Record<string, string>[],
   ): Promise<void> => {
+    // M-5216.5 export gate, HARD BLOCK, over the TEMPLATE. `block`
+    // severity is documented as "export must refuse", and the batch
+    // path ran only the sensitive-data scan, so one unresolved
+    // window-envelope violation shipped as a ZIP of a hundred copies
+    // of it. The template carries the rules a merge row cannot change:
+    // the window-envelope controls, the addressee counts and the
+    // classification are all template state.
+    const blockers = getExportBlockers(templateFormData, vias, references, templateParagraphs);
+    if (blockers.length > 0) {
+      setStatus('error');
+      setProgress({
+        current: 0,
+        total: rows.length,
+        currentLabel:
+          `Export blocked by ${blockers.length} compliance rule${blockers.length === 1 ? '' : 's'}: `
+          + blockers.map((b) => `${b.rule} (${b.citation})`).join(', ')
+          + '. Clear them on the document, then run the batch again.',
+        errors: [],
+      });
+      return;
+    }
+
+    // Pre-export sensitive-data check over the template AND every merge
+    // row. Merge values (names, EDIPIs, case numbers) are exactly where
+    // identifiers arrive in a batch, so the template alone is not enough.
+    const cleared = await clearedForExport({
+      formData: templateFormData,
+      paragraphs: templateParagraphs,
+      vias,
+      references,
+      enclosures,
+      copyTos,
+      distList,
+      rows,
+    });
+    if (!cleared) {
+      return;
+    }
+
     setStatus('generating');
     setProgress({ current: 0, total: rows.length, currentLabel: 'Starting...', errors: [] });
 
+    // jszip (and its pako inflater) load with the first batch run, not
+    // with the page (B.4, HARDENING_PLAN_2026-09).
+    const { default: JSZip } = await import('jszip');
     const zip = new JSZip();
     const errors: { row: number; label: string; error: string }[] = [];
 

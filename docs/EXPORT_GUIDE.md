@@ -39,6 +39,78 @@ If you want to skip the dialog configuration:
 2. Immediately click "Export Package" in the dialog (uses default settings)
 3. File downloads with minimal configuration
 
+## Same-Page Endorsements
+
+An endorsement carries a placement: new page or same page. SECNAV
+M-5216.5 9-1 decides between them by measurement, not by taste. If the
+endorsement "will completely fit on the signature page of the basic
+letter or the preceding endorsement", it goes on that page. If not, it
+goes on a new page.
+
+The fit is measured when the package is assembled, because it depends
+on the document underneath. Open Assemble Package, add the basic letter
+and its endorsements in order, and press Measure pages. Each same-page
+member reports either "Fits on page N of the previous document" or
+"Does not fit: exported as a new-page endorsement". Export package PDF
+then draws the fitting blocks onto the signature pages above them, so
+they add no page and the members after them keep their numbering, and
+exports the rest as new-page endorsements.
+
+The measurement itself: the block fits when it renders to a single page
+and its height plus two blank lines clears the one inch bottom margin,
+counting down from the last line of content on the page below it. Page
+numbers, classification banners and distribution statements sit inside
+that margin and are not counted as content.
+
+A same-page endorsement omits the SSIC, the subject and the basic
+letter's identification by default, which 9-2.1.a allows as long as the
+entire page will be photocopied. With that omission the endorsement
+line reads FIRST ENDORSEMENT with nothing after it, and the
+identification block is the Ser line and the date, which is what
+Figure 9-1 draws. Clearing the checkbox brings the SSIC, the subject
+and the "on ..." clause back. When a same-page endorsement does not
+fit and falls back to a new page, the identification is restored
+whatever the checkbox said, because every new-page endorsement carries
+it (Figure 9-1, second endorsement).
+
+A same-page endorsement is one document with two halves and two
+signers (owner's model, 2026-09-06; Figure 9-1). The main sections are
+the letter, signed by its writer. The "Endorsement (second half)" card
+is the endorsement: From and To derived from the letter per 9-2.2 (the
+first Via endorses to the addressee; with no Via, the addressee
+endorses back to the writer), the remaining Vias, its Ser line and
+date, its body, signer 2, Copy to, and the references and enclosures
+it adds, numbered after the letter's. The preview and the PDF export
+draw the letter, draw the endorsement as the block, and compose the two
+with the Figure 9-1 rule between them; when the block does not fit,
+the endorsement is appended as a new-page endorsement with the
+identification restored. The card says which happened.
+
+A letter that arrived signed as a PDF attaches under Endorsement
+Details instead. It becomes the top half, the letter sections hide, and
+the endorsement card is the whole form. Word export is not offered for
+the two-half document, since Word takes no PDF host and the DOCX
+emitter renders one document.
+
+Without a letter attached, a same-page endorsement previews and
+exports as a page of its own: letterhead, seal and page numbering like
+any letter, with the 9-2.1.a omission still taken. There is no
+signature page present to measure against, so the compliance panel
+reports that and cites 9-1 rather than refusing. The bare block, with
+no letterhead and no page number, exists only inside the composer: it
+is rendered when a letter is attached or a package is assembled, and
+drawn onto that letter's signature page (Figure 9-1). The Word export
+is always the page, since Word takes no PDF host.
+
+Figure 9-1 draws a horizontal rule between the basic letter's last
+line and the first endorsement's identification block, the full width
+of the text. The text of 9-2 does not mention it; the app's owner
+ruled on 2026-09-06 that the figure governs. The composer draws the
+rule on every composed page, one line below the letter's last line,
+across the text width, at three quarters of a point. A same-page
+endorsement on a page of its own carries no rule, since there is no
+letter above it.
+
 ## Official NAVMC Form Exports (XFA)
 
 Three document types export onto the OFFICIAL fillable NAVMC form
@@ -132,3 +204,18 @@ Download completed successfully
 ```
 
 The functionality is working correctly - it was a UI understanding issue, not a technical problem!
+## Counseling Worksheet
+
+Not an official form: MCO 1500.61 para 5.b(1) prescribes none. The
+export is the app's own boxed, numbered layout
+(`src/services/pdf/counselingGenerator.ts`), PDF only, 32 items in ten
+sections with check boxes, PRIVACY SENSITIVE top and bottom of every
+page, page numbers, and the handling statement of NAVMC 2795 para
+3005.1.i under the two-signer certification block. No form number or
+edition prints.
+Nothing blocks the export. The suggestions still open show on the close
+step and in the compliance panel as warnings, and the sensitive-data
+dialog fires on the EDIPI fields the way it does for every type. The
+file is named for the Marine counseled and the session date:
+`Counseling - LASTNAME - D MMM YY.pdf`. Full design in
+`docs/COUNSELING_FORM_PLAN.md`.

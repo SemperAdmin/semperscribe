@@ -41,6 +41,8 @@ import { getClassification, bannerText, needsCuiBlock, cuiBlockLines, portionPre
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from '@/lib/font-policy';
 import type { ParagraphIndentSpec } from '@/lib/indent-engine';
 import { generateDisplayCitation } from '@/lib/citation';
+import { refLetterAt, startingRefLetterFor, startingEnclosureNumberFor } from '@/lib/reference-letters';
+import { isSamePageBlockRender, omitsIdentification, endorsementLineText } from '@/lib/same-page-endorsement';
 
 interface NavalLetterPDFProps {
   formData: FormData;
@@ -404,13 +406,20 @@ function ParagraphItem({
 
   if (documentType === 'business-letter' || documentType === 'executive-correspondence') {
      if (level === 1) {
-        // Main Paragraph: First line indent 0.25" (18pt) to match Word/policy "8 spaces"
+        // Main paragraph first-line indent, half an inch (36pt).
+        // M-5216.5 11-2.6: "Indent main paragraphs four spaces (or set
+        // margin at half inch)". 12-3.2.c(2): "Each paragraph must be
+        // indented 1/2 inch." The old 18pt cited the "eight spaces" of
+        // Fig 11-1, which governs SUBDIVISIONS, not main paragraphs.
+        // textIndent has to sit on the Text node: react-pdf reads it
+        // there and ignores it on the enclosing View, so the indent
+        // measured 0pt on every business and executive letter.
         // Short Letter rule: If isShortLetter is true, indent is 1 inch (72pt)
-        const indent = isShortLetter ? 72 : 18; 
-        
+        const indent = isShortLetter ? 72 : 36;
+
         return (
-          <View style={{ marginLeft: 0, marginBottom: isLast ? 0 : PDF_SPACING.paragraph, textIndent: indent }}>
-             <Text style={isShortLetter ? { lineHeight: 2.0 } : {}}>
+          <View style={{ marginLeft: 0, marginBottom: isLast ? 0 : PDF_SPACING.paragraph }}>
+             <Text style={{ textIndent: indent, ...(isShortLetter ? { lineHeight: 2.0 } : {}) }}>
                 {paragraph.title && (
                     <Text style={{ fontWeight: shouldBoldTitle ? 'bold' : 'normal' }}>
                         {titleText}{paragraph.content ? '.' : ''}{paragraph.content ? '\u00A0\u00A0' : ''}
@@ -509,7 +518,13 @@ function ParagraphItem({
 
     return (
       <View style={{ marginBottom: isLast ? 0 : PDF_SPACING.paragraph }}>
-        <Text>
+        {/* D.1: two-line orphan and widow floor, the same rule the
+            correspondence branch below carries. M-5216.5 Fig 7-1 para
+            3.a: do not start a paragraph at the bottom of the page
+            unless at least two lines of text remain on that page and at
+            least two lines carry over. Courier serves every USMC
+            directive and every courier-font letter. */}
+        <Text orphans={2} widows={2}>
           {leadingSpaces}
           {isUnderlined ? (
             <>
@@ -577,7 +592,7 @@ function ParagraphItem({
   return (
     <View style={{ flexDirection: 'row', marginLeft: tabs.citation, marginBottom: isLast ? 0 : PDF_SPACING.paragraph }}>
       <View style={{ width: hangingIndent }}>
-        <Text>
+        <Text orphans={2} widows={2}>
           {isUnderlined ? (
             <>
               {citation.includes('(') && '('}
@@ -591,7 +606,10 @@ function ParagraphItem({
           )}
         </Text>
       </View>
-      <Text style={{ flex: 1 }}>
+      {/* D.1: same two-line floor as the correspondence branch
+          (M-5216.5 Fig 7-1 para 3.a). This branch serves the Times
+          formats which carry no indent spec. */}
+      <Text style={{ flex: 1 }} orphans={2} widows={2}>
         {paragraph.title && (
             <Text style={{
               fontWeight: shouldBoldTitle ? 'bold' : 'normal',
@@ -637,6 +655,8 @@ export function NavalLetterPDF({
   const isDLAMemo = formData.documentType === 'dla-memorandum';
   const isDLABusinessLetter = formData.documentType === 'dla-business-letter';
   const isCivilianStyle = isBusinessLetter || isExecLetter || isDLAType;
+  /** M-5216.5 11-2.1: business-letter identification symbols upper left. */
+  const idBlockLeft = isBusinessLetter && !formData.isWindowEnvelope;
 
   const sealDataUrl = getPDFSealDataUrl(formData.headerType as 'USMC' | 'DON' | 'DLA');
   const formattedDate = isCivilianStyle
@@ -692,9 +712,23 @@ export function NavalLetterPDF({
   const isDecisionPaper = formData.documentType === 'decision-paper';
   const isStaffingPaper = ['position-paper', 'information-paper', 'decision-paper'].includes(formData.documentType);
 
+  /**
+   * E.1 (M-5216.5 9-1, 9-2.1.a, Figure 9-1). When composed onto the
+   * signature page of the letter it endorses, a same-page endorsement
+   * renders as a BLOCK, not as a document: no letterhead, no seal, no
+   * page number and no continuation header, because that page already
+   * carries all of those. The composer in lib/same-page-endorsement.ts
+   * places the block; this branch only decides what the block contains.
+   * E.4: rendered on its own, with no letter under it, the same-page
+   * endorsement is a page like any other, letterhead and seal included,
+   * with the 9-2.1.a omission still taken.
+   */
+  const isSamePageBlock = isSamePageBlockRender(formData);
+  const omitEndorsementIdentification = omitsIdentification(formData);
+
   // Determine if standard header (Seal + Letterhead) should be shown
   // HIDDEN for MFR, From-To Memo, and Staffing Papers (per MCO 5216.20B)
-  const showStandardHeader = !isFromToMemo && !isMfr && !isStaffingPaper;
+  const showStandardHeader = !isFromToMemo && !isMfr && !isStaffingPaper && !isSamePageBlock;
 
   const moaData = formData.moaData || {
     activityA: '',
@@ -734,14 +768,28 @@ export function NavalLetterPDF({
   const isEndorsement = formData.documentType === 'endorsement';
   const startPage = isEndorsement ? (formData.startingPageNumber || 1) : 1;
 
-  // Calculate starting indices for refs/encls
-  const startRefChar = isEndorsement && formData.startingReferenceLevel 
-    ? formData.startingReferenceLevel.charCodeAt(0) 
-    : 'a'.charCodeAt(0);
-    
-  const startEnclNum = isEndorsement && formData.startingEnclosureNumber
-    ? parseInt(formData.startingEnclosureNumber, 10)
-    : 1;
+  // Starting reference letter and enclosure number for refs/encls.
+  // Only an endorsement continues the basic letter's sequences
+  // (M-5216.5 9-2.3 and 9-2.4), and the letter walk lives in
+  // src/lib/reference-letters.ts so the DOCX and the validator letter
+  // the same list the same way past (z).
+  const startRefLetter = startingRefLetterFor(
+    formData.documentType,
+    formData.startingReferenceLevel,
+  );
+
+  const startEnclNum = startingEnclosureNumberFor(
+    formData.documentType,
+    formData.startingEnclosureNumber,
+  );
+
+  // The "(a)" column is a fixed width, and a two-letter reference past
+  // (z) overruns it: react-pdf wrapped "(aa)" to "(-" plus "aa)". The
+  // column grows by one character width per extra letter, so a list of
+  // 26 or fewer keeps the 18pt column it has always had.
+  const longestRefLetter = references.filter((r) => r.trim())
+    .reduce((longest, _, i) => Math.max(longest, refLetterAt(startRefLetter, i).length), 1);
+  const refLetterColumnWidth = 12 + 6 * longestRefLetter;
 
   const fontFamily = getPDFBodyFont(formData.bodyFont || 'times');
 
@@ -824,7 +872,7 @@ export function NavalLetterPDF({
           style={styles.continuationHeader}
           fixed
           render={({ pageNumber }) => (
-            pageNumber > 1 ? (
+            pageNumber > 1 && !isSamePageBlock ? (
               <View>
                 {isCivilianStyle && (
                    <View style={{ marginBottom: 12 }}>
@@ -868,7 +916,7 @@ export function NavalLetterPDF({
         <View
           fixed
           render={({ pageNumber }) => (
-            pageNumber > 1 ? (
+            pageNumber > 1 && !isSamePageBlock ? (
               <View style={{ height: isDirective
                 ? CONTINUATION_HEADER_HEIGHT
                 : isCivilianStyle
@@ -956,14 +1004,27 @@ export function NavalLetterPDF({
         )}
 
         {/* SSIC Block - Hide for MFR, FromToMemo, Staffing Papers, DLA types */}
-        {/* New Layout: Flush Right Container, Left Aligned Text Content */}
+        {/* Naval letters and directives keep the flush-right container with
+            left-aligned text. The business letter blocks its three
+            identification symbols at the upper LEFT (M-5216.5 11-2.1,
+            Fig 11-2). The window-envelope variant keeps the right block:
+            Fig 11-4 sets those symbols on line 10 to the right of centre
+            so they clear the address window, and 11-2.1 does not govern
+            it. Chapter 12 states no placement for executive
+            correspondence, and Fig 12-2 shows the date to the right, so
+            the executive letter is left where it is. */}
         {!isFromToMemo && !isMfr && !isMoaOrMou && !isStaffingPaper && !isDLAType && (
-          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: PDF_SPACING.sectionGap }}>
+          <View style={{ flexDirection: 'row', justifyContent: idBlockLeft ? 'flex-start' : 'flex-end', marginBottom: PDF_SPACING.sectionGap }}>
              <View style={{ alignItems: 'flex-start' }}>
+                {/* E.1 (9-2.1.a): a same-page endorsement omits the SSIC
+                    when the whole page is photocopied, which is what
+                    Figure 9-1 draws - Ser and date alone. */}
+                {!omitEndorsementIdentification && (
                 <Text style={styles.addressLine}>
                   {/* P3.4: designation = abbreviation + SSIC (audit line 138) */}
                   {isDirective ? getDirectiveDesignation(formData) : (formData.ssic || '')}
                 </Text>
+                )}
                 <Text style={styles.addressLine}>{formData.originatorCode || ''}</Text>
                 {/* The executive letter carries its date in its own block
                     below (Ch 12-3 para 3), which also honors omitDate.
@@ -1126,11 +1187,16 @@ export function NavalLetterPDF({
           </View>
         )}
 
-        {/* Endorsement Identification Line - Between date and From */}
-        {isEndorsement && formData.endorsementLevel && formData.basicLetterReference && (
+        {/* Endorsement Identification Line - Between date and From.
+            M-5216.5 9-2.1.a places it at the left margin on the second
+            line below the date line, and 9-2.1.b gives the wording.
+            With the same-page omission taken there is no basic-letter
+            identification to append, so Figure 9-1 shows the ordinal
+            and the word alone. */}
+        {isEndorsement && formData.endorsementLevel && (formData.basicLetterReference || omitEndorsementIdentification) && (
           <View style={{ marginBottom: PDF_SPACING.sectionGap }}>
             <Text style={styles.addressLine}>
-              {`${formData.endorsementLevel} ENDORSEMENT on ${formData.basicLetterReference}`}
+              {endorsementLineText(formData)}
             </Text>
           </View>
         )}
@@ -1374,8 +1440,21 @@ export function NavalLetterPDF({
         )}
 
         {/* Subject */}
-        {/* Subject Line - Hide for MOA/MOU (handled in header), Staffing Papers (handled in custom header), Business/Exec Letter (custom placement) */}
-        {!isMoaOrMou && !isStaffingPaper && !isCivilianStyle && (
+        {/* Subject Line - Hide for MOA/MOU (handled in header), Staffing
+            Papers (handled in custom header), Business/Exec Letter
+            (custom placement), and a same-page endorsement which omits
+            the subject with the rest of the identification (9-2.1.a). */}
+        {/* E.1: with the subject omitted the blank line above it is
+            still owed. Figure 9-1 shows the body starting on the second
+            line below the Via line, and a reference or enclosure list
+            added by the endorsement sits in the same place the subject
+            would have. The spacer carries the subject section's top
+            margin so nothing else moves. */}
+        {omitEndorsementIdentification && (
+          <View style={{ marginTop: PDF_SPACING.sectionGap }} />
+        )}
+
+        {!isMoaOrMou && !isStaffingPaper && !isCivilianStyle && !omitEndorsementIdentification && (
         <View style={styles.subjectSection}>
           {formData.bodyFont === 'courier' ? (
             <>
@@ -1402,7 +1481,7 @@ export function NavalLetterPDF({
         {(!isCivilianStyle || isDLAType) && refsWithContent.length > 0 && (
           <View style={styles.refEnclSection}>
             {refsWithContent.map((ref, i) => {
-              const refLetter = String.fromCharCode(startRefChar + i);
+              const refLetter = refLetterAt(startRefLetter, i);
               if (formData.bodyFont === 'courier') {
                 const prefix = i === 0
                   ? `Ref:\u00A0\u00A0\u00A0(${refLetter})\u00A0`
@@ -1412,7 +1491,7 @@ export function NavalLetterPDF({
               return (
                 <View key={i} style={styles.refEnclLine}>
                   <Text style={styles.refEnclLabel}>{i === 0 ? 'Ref:' : ''}</Text>
-                  <Text style={{ width: 18 }}>({refLetter})</Text>
+                  <Text style={{ width: refLetterColumnWidth }}>({refLetter})</Text>
                   <Text style={{ flex: 1 }}>{ref}</Text>
                 </View>
               );
@@ -1757,34 +1836,46 @@ export function NavalLetterPDF({
             // across a page break (M-5216.5 7-2.16 discipline applied
             // to the business closing; user-reported split 2026-06-10).
             <View wrap={false}>
-                {/* Complimentary Close (Centered) */}
+                {/* Complimentary close, second line below the text
+                    (M-5216.5 11-2.8 and 12-3.4). The body section already
+                    carries one blank line below the last paragraph, so
+                    the close takes the next line. The extra blank line
+                    which used to sit here put the close on the third. */}
                 <View style={{ marginBottom: PDF_SPACING.sectionGap * 3, marginLeft: PDF_INDENTS.signature }}>
-                    <View style={styles.emptyLine} />
                     <Text style={styles.addressLine}>
                         {getComplimentaryClose(formData)}
                     </Text>
                 </View>
 
-                {/* Signature Block (Centered) - may be omitted for exec correspondence */}
+                {/* Signer's name, fourth line below the close (11-2.9.a
+                    and 12-3.2.e(3)(a)). The three blank lines are the close
+                    block's marginBottom above. The two blank lines which
+                    used to lead this block put the name on the sixth.
+                    The name is typed in capitals (11-2.9.a(1)), which
+                    the DOCX and the naval branch already did. */}
                 {!formData.omitSignatureBlock && (
                   <View style={{ marginBottom: PDF_SPACING.sectionGap, marginLeft: PDF_INDENTS.signature }}>
-                       <View style={styles.emptyLine} />
-                       <View style={styles.emptyLine} />
-                       {formData.sig && <Text style={styles.addressLine}>{formData.sig}</Text>}
+                       {formData.sig && <Text style={styles.addressLine}>{formData.sig.toUpperCase()}</Text>}
                        {isBusinessLetter && formData.signerRank && <Text style={styles.addressLine}>{formData.signerRank}</Text>}
                        {formData.signerTitle && <Text style={styles.addressLine}>{formData.signerTitle}</Text>}
                        {formData.delegationText && <Text style={styles.addressLine}>{formData.delegationText}</Text>}
                   </View>
                 )}
 
-                {/* Enclosures (Flush Left) */}
+                {/* Enclosures (Flush Left). M-5216.5 11-2.10.a has the
+                    business letter "number and describe them briefly",
+                    so the entries carry (1), (2) and so on. Chapter 12
+                    states no enclosure-line form, so the executive
+                    letter keeps its plain list. */}
                 {enclsWithContent.length > 0 && (
                     <View style={{ marginBottom: PDF_SPACING.sectionGap, marginLeft: 0 }}>
                         <Text style={styles.addressLine}>
                             {enclsWithContent.length > 1 ? 'Enclosures' : 'Enclosure'}
                         </Text>
                         {enclsWithContent.map((encl, i) => (
-                            <Text key={i} style={styles.addressLine}>{encl}</Text>
+                            <Text key={i} style={styles.addressLine}>
+                                {isBusinessLetter ? `(${i + 1}) ${encl}` : encl}
+                            </Text>
                         ))}
                     </View>
                 )}
@@ -1910,10 +2001,14 @@ export function NavalLetterPDF({
         {/* Copy to (Standard Letter) - Hide for Business/Exec Letter AND Staffing Papers (show for DLA) */}
         {!isDirective && (!isCivilianStyle || isDLAType) && !isStaffingPaper && copiesWithContent.length > 0 && (
           <View style={styles.copyToSection}>
-            {/* Add full space if any distribution list was rendered above */}
-            {(isToDistribution || (distListWithContent.length > 0)) && (
-               <View style={styles.emptyLine} />
-            )}
+            {/* D.1: one blank line always precedes the label, so "Copy to:"
+                lands on the second line below the line above it, whether
+                that is the signature line (M-5216.5 7-2.15.b: "Type 'Copy
+                to:' at the left margin on the second line below the
+                signature line") or the last line of a distribution list.
+                The DOCX emitter pushes the same blank line unconditionally
+                (docx-generator.ts, Standard Letter Copy To). */}
+            <View style={styles.emptyLine} />
             <Text style={styles.copyToLabel}>
               {isDLAType ? 'cc:' : (formData.bodyFont === 'courier' ? 'Copy to:  ' : 'Copy to:')}
             </Text>
@@ -1927,6 +2022,10 @@ export function NavalLetterPDF({
 
         {/* Footer - page number on pages after first */}
         {/* DLA: page number at right margin per Ch.3-2 Para 13 */}
+        {/* E.1: a same-page endorsement adds no page, so it carries no
+            page number of its own. The signature page it lands on keeps
+            the number the host document gave it. */}
+        {!isSamePageBlock && (
         <Text
           style={isDLAType ? { ...styles.footer, textAlign: 'right', right: PDF_MARGINS.right } : styles.footer}
           render={({ pageNumber }) => {
@@ -1935,6 +2034,7 @@ export function NavalLetterPDF({
           }}
           fixed
         />
+        )}
 
         {/* Distribution Statement Footer — first page only for directives */}
         {distributionStatementText !== '' && (

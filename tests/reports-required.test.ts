@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P3.7 — Reports Required rule (MCO 5216.20B par. 29b/29c; audit
  * line 142): up to 4 reports list in the heading block on the
@@ -5,10 +6,8 @@
  * page immediately after the signature page, with a referral line in
  * the heading block.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-
-vi.mock('@/lib/pdf-fonts', () => import('./golden/pdf-fonts-mock'));
 
 import { generateDocxBlob } from '@/lib/docx-generator';
 import { generateBasePDFBlob } from '@/lib/pdf-generator';

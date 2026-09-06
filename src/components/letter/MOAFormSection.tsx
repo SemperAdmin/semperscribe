@@ -68,7 +68,7 @@ export function MOAFormSection({ formData, setFormData }: MOAFormSectionProps) {
     <Card className="border-primary/20 shadow-md overflow-hidden">
       <CardHeader className="bg-secondary text-secondary-foreground border-b border-secondary/10 p-4 flex flex-row items-center gap-2">
         <Handshake className="w-5 h-5" />
-        <CardTitle className="text-lg font-bold font-headline tracking-wide">
+        <CardTitle as="h3" className="text-lg font-bold font-headline tracking-wide">
           {formData.documentType === 'moa' ? 'Agreement Details' : 'Understanding Details'}
         </CardTitle>
       </CardHeader>

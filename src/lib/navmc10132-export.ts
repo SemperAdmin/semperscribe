@@ -39,27 +39,28 @@ import {
   NAVMC_10132_UNLOCK_READ_ONLY,
 } from '@/lib/navmc10132-acroform';
 import fieldMap from '../../tools/aa-forms/navmc10132-map.json';
-import { officialFormPath } from '@/lib/xfa-form-fill';
+import { officialFormAsset } from '@/lib/xfa-form-fill';
+import { loadAssetBytes } from '@/lib/assets';
 import { getNavmc10132Base } from '@/lib/navmc10132-base-file';
 import { writeNavmc10132Incremental } from '@/lib/navmc10132-incremental-write';
 import { navmc10132LockedFieldNames } from '@/lib/navmc10132-locks';
 
 /**
- * Fetch the bundled blank and fill it from document state.
+ * Load the bundled blank through the asset seam and fill it from document state.
  *
- * Throws when the blank cannot be fetched, because a silently empty export of a
+ * Throws when the blank cannot be read, because a silently empty export of a
  * legal record is worse than a visible failure.
  */
 export async function exportNavmc10132Form(formData: FormData): Promise<Blob> {
+  // A signed file the clerk loaded is the base every later pass writes
+  // into. Only a fresh case starts from the bundled blank.
   const uploaded = await getNavmc10132Base();
   if (uploaded) return exportIntoUploadedFile(formData, uploaded.bytes);
 
-  const path = officialFormPath('navmc10132');
-  if (!path) throw new Error('No official blank registered for NAVMC 10132.');
-  const res = await fetch(path);
-  if (!res.ok) throw new Error(`Failed to load the NAVMC 10132 blank (${res.status}).`);
-  const blank = await res.arrayBuffer();
-  const bytes = await fillAcroForm(blank, navmc10132Values(formData), {
+  const asset = officialFormAsset('navmc10132');
+  if (!asset) throw new Error('No official blank registered for NAVMC 10132.');
+  const base = await loadAssetBytes(asset);
+  const bytes = await fillAcroForm(base, navmc10132Values(formData), {
     fields: fieldMap.fields as AcroFormFieldMeta[],
     unlockReadOnly: [...NAVMC_10132_UNLOCK_READ_ONLY],
     // The Adobe usage-rights signature is void the moment the bytes change.

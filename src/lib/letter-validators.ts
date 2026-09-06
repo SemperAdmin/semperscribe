@@ -10,15 +10,30 @@
 import { FormData, ParagraphData } from '@/types';
 import { validateClassification } from '@/lib/classification';
 import { validateSignature } from '@/lib/signature-validators';
-import { validateAcronyms } from '@/lib/acronym-validators';
+import { validateAcronyms, ACRONYM_STOPLIST, expansionIndexFor } from '@/lib/acronym-validators';
+import type { DictionaryEntry } from '@/lib/military-dictionary';
 import { runNavmc10922Validators } from '@/lib/navmc10922-validators';
 import { runNavmc10132Validators } from '@/lib/navmc10132-validators';
+import { runDd368Validators } from '@/lib/dd368-validators';
+import { runCounselingValidators } from '@/lib/counseling';
+import { validateSamePageComposite } from '@/lib/same-page-composite';
+import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
 import {
   validateSchemaFields,
   validateSalutation,
   validateCivilianReferences,
   validateRetiredFouo,
 } from '@/lib/schema-validators';
+import {
+  refLetterAt,
+  startingRefLetterFor,
+  startingEnclosureNumberFor,
+} from '@/lib/reference-letters';
+
+// One source for reference lettering across the validator and both
+// emitters (src/lib/reference-letters.ts). Re-exported here so the
+// existing importers of indexToRefLetter keep their path.
+export { indexToRefLetter } from '@/lib/reference-letters';
 
 export type ValidatorSeverity = 'block' | 'fail' | 'warn';
 
@@ -28,27 +43,30 @@ export interface ValidationIssue {
   rule: string;
   citation: string;
   detail: string;
-}
-
-/** Excel-style letters: 1 -> a, 26 -> z, 27 -> aa (audit line 147). */
-export function indexToRefLetter(num: number): string {
-  let result = '';
-  while (num > 0) {
-    const remainder = (num - 1) % 26;
-    result = String.fromCharCode(97 + remainder) + result;
-    num = Math.floor((num - 1) / 26);
-  }
-  return result;
+  /**
+   * The form field the issue belongs to, when one field owns it. The
+   * compliance dialog turns this into a jump-to-field action, so the
+   * value is a form field name (the same name the header inputs
+   * carry), never a label.
+   */
+  field?: string;
 }
 
 /**
  * Reference rules (audit line 24): every listed reference must be
- * cited in the text; references are listed in order of FIRST text
- * citation; citations must not exceed the list.
+ * cited in the text, references are listed in order of FIRST text
+ * citation, and citations must not exceed the list.
+ *
+ * startLetter is the letter the first listed reference carries. It is
+ * "a" for every document which starts its own sequence and the
+ * continuation letter for an endorsement (M-5216.5 9-2.3), so an
+ * endorsement whose list runs (c) and (d) is read against those two
+ * letters rather than against (a) and (b).
  */
 export function validateReferences(
   references: string[],
   paragraphs: ParagraphData[],
+  startLetter: string = 'a',
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const refs = references.filter((r) => r.trim());
@@ -73,7 +91,7 @@ export function validateReferences(
   }
 
   const citedSet = new Set(cited);
-  const listedLetters = refs.map((_, i) => indexToRefLetter(i + 1));
+  const listedLetters = refs.map((_, i) => refLetterAt(startLetter, i));
 
   // Every listed ref cited in text.
   listedLetters.forEach((letter, i) => {
@@ -96,7 +114,7 @@ export function validateReferences(
         severity: 'fail',
         rule: 'Cited references must appear in the reference list',
         citation: 'M-5216.5; audit line 24',
-        detail: `Text cites ref (${letter}) but only ${refs.length} reference(s) are listed.`,
+        detail: `Text cites ref (${letter}) but the reference list runs (${listedLetters[0]}) to (${listedLetters[listedLetters.length - 1]}).`,
       });
     }
   }
@@ -124,11 +142,11 @@ export function validateReferences(
   refs.forEach((r, i) => {
     if (/\bNOTAL\b/.test(r) && !/\(NOTAL\)/.test(r)) {
       issues.push({
-        id: `ref-notal-format-${indexToRefLetter(i + 1)}`,
+        id: `ref-notal-format-${refLetterAt(startLetter, i)}`,
         severity: 'warn',
         rule: 'NOTAL annotation is parenthesized: "(NOTAL)"',
         citation: 'CORE_CONCEPTS_UPDATE_PLAN.md Phase 2 item 2 (plan-only; not located in audit text)',
-        detail: `Reference (${indexToRefLetter(i + 1)}) contains NOTAL without parentheses.`,
+        detail: `Reference (${refLetterAt(startLetter, i)}) contains NOTAL without parentheses.`,
       });
     }
   });
@@ -782,14 +800,255 @@ export function secnavPageCapIssue(
   };
 }
 
+/**
+ * Endorsement continuation (M-5216.5 9-2.3 and 9-2.4). An endorsement
+ * letters its added references and numbers its added enclosures by
+ * "continuing the sequence" from the basic letter and previous
+ * endorsements, so a second document in a package which still starts
+ * at (a) and 1 repeats letters and numbers already in use.
+ *
+ * Both issues are warns rather than fails. A basic letter which listed
+ * no references leaves its first endorsement legitimately starting at
+ * (a), and the same holds for enclosure 1, so the starting values are
+ * never wrong on their face. The package assembler sets them from the
+ * running totals when the endorsement is filed in a package.
+ */
+export function validateEndorsementContinuation(
+  formData: FormData,
+  references: string[],
+  enclosures: readonly string[] = [],
+): ValidationIssue[] {
+  if (formData.documentType !== 'endorsement') return [];
+  const issues: ValidationIssue[] = [];
+
+  const refCount = references.filter((r) => r.trim()).length;
+  const startLetter = String(formData.startingReferenceLevel ?? '').trim();
+  if (refCount > 0 && (startLetter === '' || startLetter.toLowerCase() === 'a')) {
+    issues.push({
+      id: 'endorsement-reference-continuation',
+      severity: 'warn',
+      rule: 'Endorsement references continue the basic letter lettering',
+      citation: 'M-5216.5 9-2.3',
+      detail: `This endorsement adds ${refCount} reference(s) starting at (a). Paragraph 9-2.3 assigns added references a letter by "continuing the sequence of letters from the basic letter and previous endorsements". Set the starting reference letter to the one after the last reference already in use, unless nothing before this endorsement listed a reference.`,
+    });
+  }
+
+  const enclCount = enclosures.filter((e) => e.trim()).length;
+  const startNumber = String(formData.startingEnclosureNumber ?? '').trim();
+  if (enclCount > 0 && (startNumber === '' || startNumber === '1')) {
+    issues.push({
+      id: 'endorsement-enclosure-continuation',
+      severity: 'warn',
+      rule: 'Endorsement enclosures continue the basic letter numbering',
+      citation: 'M-5216.5 9-2.4',
+      detail: `This endorsement adds ${enclCount} enclosure(s) starting at 1. Paragraph 9-2.4 assigns added enclosures a number by "continuing the sequence of numbers from the basic letter and previous endorsements". Set the starting enclosure number to the one after the last enclosure already in use, unless nothing before this endorsement carried an enclosure.`,
+    });
+  }
+
+  return issues;
+}
+
+/**
+ * E.1 (M-5216.5 9-1). A same-page endorsement has no meaning on its
+ * own: 9-1 decides its placement by whether it fits on the signature
+ * page of the document it endorses, and that page is not present when
+ * the endorsement is exported by itself. The single-document export
+ * produces the block, which is the right file to hand a drafter who
+ * will add it to a signed page, so this reports rather than refuses.
+ */
+export function validateSamePageEndorsementExport(formData: FormData): ValidationIssue[] {
+  if (!isSamePageEndorsement(formData)) return [];
+  // E.3: with the letter being endorsed attached, the fit is measured
+  // and the block placed on every preview and export, so there is
+  // nothing to report. E.5: the two-half document carries its letter.
+  if (formData.samePageHost || formData.samePageEndorsement) return [];
+  return [{
+    id: 'same-page-endorsement-alone',
+    severity: 'warn',
+    rule: 'Same-page placement is decided against the page below it',
+    citation: 'M-5216.5 9-1',
+    detail: 'Same-page placement is decided against the signature page of the letter being endorsed; exported alone, this is the block only. Attach the letter being endorsed under Endorsement Details, or assemble the package, to have the fit measured and the block placed.',
+    field: 'samePageHost',
+  }];
+}
+
+/**
+ * Subject-line rules (M-5216.5 7-2.9.a and 12-3.2.c(4), figure 7-1).
+ *
+ * Two rules the app had no check for at all. 7-2.9.a says "In
+ * correspondence, do not use acronyms in the subject line", and
+ * 12-3.2.c(4) repeats it for executive correspondence: an acronym is
+ * allowed once spelled out "except in the subject line or title".
+ * Figure 7-1 sets the shape of the line itself, "NORMAL WORD ORDER
+ * WITH ALL LETTERS CAPITALIZED AND NO PUNCTUATION".
+ *
+ * The whole subject is upper case by format, so an all-caps token
+ * proves nothing. A token is reported only when the military
+ * dictionary carries it as an abbreviation, which is the same index
+ * the first-use rule reads, and only at three letters or more: a
+ * two-letter token in a capitalised subject is an ordinary word far
+ * more often than an acronym. The dictionary arrives on demand
+ * (B.5), so it comes in as an argument the way validateAcronyms takes
+ * it, never as a static import.
+ *
+ * Both rules are warn severity. A drafter who means the acronym, or
+ * whose command writes a subject with a slash in it, keeps the export.
+ */
+const SUBJECT_RULE_TYPES = new Set([
+  'basic', 'multiple-address', 'endorsement',
+  'from-to-memo', 'letterhead-memo', 'mfr',
+  'executive-correspondence',
+]);
+
+/** Trailing punctuation figure 7-1 keeps off the subject line. */
+const TERMINAL_PUNCTUATION = /[.,;:!?]+$/;
+
+export function validateSubjectLine(
+  formData: FormData,
+  dictionary: readonly DictionaryEntry[] = [],
+): ValidationIssue[] {
+  if (!SUBJECT_RULE_TYPES.has(formData.documentType)) return [];
+  const subject = String(formData.subj ?? '').trim();
+  if (!subject) return [];
+
+  const issues: ValidationIssue[] = [];
+
+  // Acronyms. Dictionary membership is the gate, so a subject of
+  // ordinary words in capitals reports nothing.
+  const index = dictionary.length > 0 ? expansionIndexFor(dictionary) : null;
+  if (index) {
+    const found: string[] = [];
+    for (const match of subject.matchAll(/\b[A-Z]{3,8}\b/g)) {
+      const token = match[0];
+      if (found.includes(token) || ACRONYM_STOPLIST.has(token)) continue;
+      if (!index.has(token)) continue;
+      found.push(token);
+    }
+    if (found.length > 0) {
+      const readings = found
+        .map((token) => {
+          const expansions = index.get(token) ?? [];
+          return expansions.length > 0 ? `${token} ("${expansions[0]}")` : token;
+        })
+        .join(', ');
+      issues.push({
+        id: 'subject-acronym',
+        severity: 'warn',
+        field: 'subj',
+        rule: 'The subject line carries no acronyms',
+        citation: 'SECNAV M-5216.5 7-2.9.a and 12-3.2.c(4)',
+        detail:
+          `The subject line uses ${readings}. Write the words out here and use the acronym in the paragraphs below.`,
+      });
+    }
+  }
+
+  // Terminal punctuation.
+  const trailing = subject.match(TERMINAL_PUNCTUATION);
+  if (trailing) {
+    issues.push({
+      id: 'subject-terminal-punctuation',
+      severity: 'warn',
+      field: 'subj',
+      rule: 'The subject line ends without punctuation',
+      citation: 'SECNAV M-5216.5 7-2.9.a, Fig 7-1',
+      detail:
+        `The subject line ends with "${trailing[0]}". Figure 7-1 writes it in normal word order, capitalised, with no punctuation.`,
+    });
+  }
+
+  return issues;
+}
+
+/**
+ * Enclosure order (M-5216.5 7-2.11.a): "List enclosures in the
+ * enclosure line in the order they appear in the text." The reference
+ * line carries the same rule at 7-2.10.a and has been checked three
+ * ways since Phase 2. The enclosure line had only a count cross-check
+ * in the proofread panel, so a letter which cites enclosure (2) before
+ * enclosure (1) passed every check the app ran.
+ *
+ * Numbering starts wherever the document starts it, so an endorsement
+ * continuing the basic letter's sequence at (3) is read against (3)
+ * and (4) rather than against (1) and (2) (9-2.4).
+ *
+ * Same severity as the reference-order rule it mirrors: fail. The
+ * order is not a matter of judgment once the citations are in the text.
+ */
+export function validateEnclosureOrder(
+  formData: FormData,
+  enclosures: readonly string[],
+  paragraphs: ParagraphData[],
+): ValidationIssue[] {
+  const encls = enclosures.filter((e) => e.trim());
+  if (encls.length < 2) return [];
+
+  const start = startingEnclosureNumberFor(formData.documentType, formData.startingEnclosureNumber);
+  const listed = encls.map((_, i) => String(start + i));
+
+  const allText = paragraphs.map((p) => `${p.title ?? ''} ${p.content}`).join(' ');
+
+  // Mirrors the reference clause matcher: separators are required
+  // tokens inside the starred group, so whitespace has one parse and
+  // the pattern cannot backtrack polynomially on imported text.
+  const enclClause = /\bencls?(?:osures?)?\s*((?:\(\d+\)(?:\s*(?:,|and|through|thru))*\s*)+)/gi;
+  const cited: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = enclClause.exec(allText)) !== null) {
+    for (const n of m[1].matchAll(/\((\d+)\)/g)) {
+      if (!cited.includes(n[1])) cited.push(n[1]);
+    }
+  }
+
+  const firstCitationOrder = cited.filter((n) => listed.includes(n));
+  const expected = listed.filter((n) => firstCitationOrder.includes(n));
+  const mismatch = firstCitationOrder.findIndex((n, i) => n !== expected[i]);
+  if (mismatch === -1) return [];
+
+  return [{
+    id: 'encl-citation-order',
+    severity: 'fail',
+    rule: 'Enclosures are listed in the order they are first cited in the text',
+    citation: 'SECNAV M-5216.5 7-2.11.a',
+    detail:
+      `First-citation order is (${firstCitationOrder.join('), (')}), so enclosure (${firstCitationOrder[mismatch]}) ` +
+      `is cited before enclosure (${expected[mismatch]}). Reorder the enclosure list to match the text.`,
+  }];
+}
+
+export interface LetterValidatorOptions {
+  /**
+   * The military dictionary, when the caller has loaded it. Optional:
+   * it only enriches acronym warnings with a suggested expansion. The
+   * table is loaded on demand (B.5) so the validators never import it.
+   */
+  dictionary?: readonly DictionaryEntry[];
+  /**
+   * The enclosure lines, when the caller holds them. Only the
+   * endorsement continuation rule (9-2.4) reads them, so a caller with
+   * no enclosures in scope leaves the rule inert rather than wrong.
+   */
+  enclosures?: readonly string[];
+}
+
 export function runLetterValidators(
   formData: FormData,
   vias: string[],
   references: string[],
   paragraphs: ParagraphData[],
+  options: LetterValidatorOptions = {},
 ): ValidationIssue[] {
+  // Only an endorsement continues another document's reference
+  // sequence (9-2.3), which is the scoping rule the PDF already
+  // applies. Every other type reads against (a) whatever a saved draft
+  // carries in the field.
+  const startRefLetter = startingRefLetterFor(
+    formData.documentType,
+    formData.startingReferenceLevel,
+  );
   return [
-    ...validateReferences(references, paragraphs),
+    ...validateReferences(references, paragraphs, startRefLetter),
+    ...validateEndorsementContinuation(formData, references, options.enclosures),
     ...validateParagraphStructure(paragraphs),
     ...validateWindowEnvelope(formData, vias),
     ...validateActionAddressees(formData),
@@ -803,13 +1062,23 @@ export function runLetterValidators(
     ...validateRevisionSuffix(formData),
     ...validateClassification(formData, paragraphs),
     ...validateSignature(formData),
-    ...validateAcronyms(paragraphs),
+    ...validateAcronyms(paragraphs, options.dictionary),
+    ...validateSubjectLine(formData, options.dictionary),
+    ...validateEnclosureOrder(formData, options.enclosures ?? [], paragraphs),
+    ...validateSamePageEndorsementExport(formData),
+    ...validateSamePageComposite(formData),
     // NAVMC 10922 dependency-application rules - no-op for every other
     // documentType (docs/NAVMC_10922_SPEC.md section 9).
     ...runNavmc10922Validators(formData),
     // NAVMC 10132 unit punishment book rules - likewise a no-op for every
     // other documentType (docs/NAVMC_10132_SPEC.md section 6).
     ...runNavmc10132Validators(formData),
+    // DD Form 368 rules, a no-op for every other documentType.
+    ...runDd368Validators(formData),
+    // Counseling Worksheet: suggestions only, every one a warning, a
+    // no-op for every other documentType (docs/COUNSELING_FORM_PLAN.md
+    // section 5).
+    ...runCounselingValidators(formData),
     // Salutation presence, then the generic schema pass. Order matters
     // only for reading: the cited rule precedes the schema echo, and
     // the schema pass suppresses the salutation path to avoid a

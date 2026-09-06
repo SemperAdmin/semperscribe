@@ -1,0 +1,105 @@
+{
+  "metadata": {
+    "packageId": "nldp_1788000000000_same_page_endorsement",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-09-06T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "Same-Page Endorsement",
+      "description": "An appointment letter from the commanding officer to a Marine, acknowledged by the Marine in a first endorsement on the same page: two signers, no Via. Sample data - replace before use.",
+      "subject": "APPOINTMENT AS COMMAND DESIGNATED DIRECTIVES MANAGER (CDDM)",
+      "documentType": "endorsement",
+      "tags": [
+        "template",
+        "standard",
+        "same-page",
+        "appointment"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "endorsement",
+      "endorsementPlacement": "same-page",
+      "samePageOmitsIdentification": true,
+      "endorsementLevel": "FIRST",
+      "basicLetterReference": "",
+      "basicLetterSsic": "5215",
+      "ssic": "5215",
+      "originatorCode": "CO",
+      "date": "29 Nov 25",
+      "from": "Commanding Officer, (Unit)",
+      "to": "Staff Sergeant John T. Smith 1234567890/0111 USMC",
+      "subj": "APPOINTMENT AS COMMAND DESIGNATED DIRECTIVES MANAGER (CDDM)",
+      "sig": "I. M. COMMANDER",
+      "delegationText": "",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "a",
+      "startingEnclosureNumber": "1",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0,
+      "headerType": "USMC",
+      "bodyFont": "times",
+      "accentColor": "black",
+      "samePageEndorsement": {
+        "from": "Staff Sergeant John T. Smith 1234567890/0111 USMC",
+        "to": "Commanding Officer, (Unit)",
+        "vias": [],
+        "originatorCode": "",
+        "date": "1 Dec 25",
+        "paragraphs": [
+          {
+            "id": 1,
+            "level": 1,
+            "content": "I acknowledge this appointment and understand the duties assigned in references (a) and (b).",
+            "isMandatory": true
+          }
+        ],
+        "sig": "J. T. SMITH",
+        "delegationText": "",
+        "copyTos": [],
+        "references": [],
+        "enclosures": [],
+        "addressingEdited": false,
+        "basicLetterReference": ""
+      }
+    },
+    "vias": [],
+    "references": [
+      "MCO 5215.1K w/Admin CH-3",
+      "The Directives Review Process (DRP) Guide"
+    ],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "content": "Per references (a) and (b), you are appointed as the Command Designated Directives Manager (CDDM) for this command, effective the date of this letter.",
+        "isMandatory": true
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "You will coordinate with the Marine Corps Directives Management Program at Headquarters Marine Corps for orientation and training, manage the command's Directives Control Point, and coordinate with directives action officers and their offices of primary responsibility to conduct the Directives Review Process."
+      },
+      {
+        "id": 3,
+        "level": 1,
+        "content": "This appointment remains in effect from the date signed until you leave the assignment or are relieved in writing."
+      }
+    ]
+  }
+}

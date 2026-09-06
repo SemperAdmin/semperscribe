@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * PHASE 0 PARITY HARNESS — page-fill pagination parity.
  *
@@ -34,13 +35,11 @@
  * Baseline: commit 82a6c52. Result at baseline is recorded in
  * tests/golden/PARITY_STATUS.md, red or green, honestly.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'child_process';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
-
-vi.mock('@/lib/pdf-fonts', () => import('./pdf-fonts-mock'));
 
 import { generateBasePDFBlob } from '@/lib/pdf-generator';
 import { generateDocxBlob } from '@/lib/docx-generator';
@@ -234,10 +233,21 @@ describe('Page-fill pagination parity (PDF vs DOCX)', () => {
       const dir = mkdtempSync(path.join(tmpdir(), 'parity-'));
       const docxPath = path.join(dir, 'fixture.docx');
       writeFileSync(docxPath, Buffer.from(await docxBlob.arrayBuffer()));
-      execFileSync(SOFFICE!, ['--headless', '--convert-to', 'pdf', '--outdir', dir, docxPath], {
-        timeout: 60000,
-      });
-      const converted = readFileSync(path.join(dir, 'fixture.pdf'));
+      // soffice exits 0 even when it converts nothing (for example when the
+      // Writer module is not installed: "source file could not be loaded").
+      // Capture its output and check for the PDF, so a broken install fails
+      // with the converter's own words rather than a bare ENOENT.
+      const sofficeOutput = execFileSync(
+        SOFFICE!,
+        ['--headless', '--convert-to', 'pdf', '--outdir', dir, docxPath],
+        { timeout: 60000, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+      );
+      const convertedPath = path.join(dir, 'fixture.pdf');
+      expect(
+        existsSync(convertedPath),
+        `soffice ran but wrote no PDF. LibreOffice Writer must be installed (Debian: libreoffice-writer). soffice output: ${sofficeOutput.trim() || '(none)'}`,
+      ).toBe(true);
+      const converted = readFileSync(convertedPath);
       const docxLayout = await extractPdfTextLayout(new Blob([converted]));
       const docxMarkerPage = pageOfMarker(docxLayout, PARITY_MARKER);
       const docxPageCount = Math.max(...docxLayout.map((i) => i.page));
