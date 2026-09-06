@@ -227,10 +227,6 @@ export function addMonths(date: Date, months: number): Date {
   return out;
 }
 
-function daysBetween(a: Date, b: Date): number {
-  return Math.round((b.getTime() - a.getTime()) / 86_400_000);
-}
-
 // --- Next-session interval (NAVMC 2795 para 2001) ---
 
 export interface SessionInterval {

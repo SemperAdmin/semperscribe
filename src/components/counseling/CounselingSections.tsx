@@ -14,7 +14,7 @@
  * Every input writes to formData directly, so no react-hook-form
  * instance can clobber a value a one-click action wrote.
  */
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
