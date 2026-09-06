@@ -5,6 +5,17 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.9.2] - 2026-09-06
+
+### Fixed
+
+- A same-page endorsement whose composition onto the attached letter
+  failed (the pdfjs worker did not load, the attached file is not a
+  readable PDF) kept the last render on screen with no word from the
+  card, so a page of its own passed for the endorsed document. The
+  card now reports the failure and its message, and says the preview
+  is the last render that succeeded.
+
 ## [0.9.1] - 2026-09-06
 
 ### Added

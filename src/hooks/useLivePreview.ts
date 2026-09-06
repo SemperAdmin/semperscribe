@@ -116,6 +116,12 @@ export function useLivePreview(
       setSamePageStatus(status);
     } catch (e) {
       console.error("Preview generation failed", e);
+      // E.3: a same-page endorsement whose composition failed keeps the
+      // last render on screen, so the card has to say what happened or
+      // the page alone passes for the endorsed document.
+      if (isSamePageEndorsement(formData)) {
+        setSamePageStatus({ status: 'error', message: e instanceof Error ? e.message : String(e) });
+      }
     } finally {
       setIsGeneratingPreview(false);
     }

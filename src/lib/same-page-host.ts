@@ -72,8 +72,16 @@ export type EndorsedPlacement =
   | { status: 'fits'; page: number; pages: number }
   | { status: 'new-page'; reason: string; startsOnPage: number; pages: number };
 
-/** The placement, or the absence of a letter to place against. */
-export type SamePageStatus = EndorsedPlacement | { status: 'no-host' };
+/**
+ * The placement, the absence of a letter to place against, or a
+ * failure while placing: the composer could not read one of the PDFs
+ * (the pdfjs worker did not load, the attached file is not a readable
+ * PDF). The preview then keeps its last render, and the card says why.
+ */
+export type SamePageStatus =
+  | EndorsedPlacement
+  | { status: 'no-host' }
+  | { status: 'error'; message: string };
 
 export interface EndorsedDocument {
   bytes: Uint8Array;
@@ -162,5 +170,7 @@ export function describePlacement(status: SamePageStatus | null | undefined): st
       return `Fits on the signature page. The endorsement is on page ${status.page} of ${status.pages} and adds no page (9-1).`;
     case 'new-page':
       return `Does not fit on the signature page, so it exports as a new-page endorsement starting on page ${status.startsOnPage} of ${status.pages} (9-1). ${status.reason}`;
+    case 'error':
+      return `The endorsement could not be placed on the letter: ${status.message}`;
   }
 }

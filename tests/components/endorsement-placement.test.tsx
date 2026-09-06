@@ -148,6 +148,17 @@ describe('letter being endorsed (E.3)', () => {
     expect(screen.getByTestId('same-page-host-missing').textContent).toContain('"Old request" is no longer in the library');
   });
 
+  it('says when the composition failed, so the last render is not taken for the endorsed document', () => {
+    render(
+      <Harness
+        initial={{ endorsementPlacement: 'same-page', samePageHost: { kind: 'file', fileId: 'f1', fileName: 'basic-letter.pdf' } }}
+        samePageStatus={{ status: 'error', message: 'Setting up fake worker failed.' }}
+      />,
+    );
+    expect(screen.getByTestId('same-page-host-error').textContent).toContain('could not be placed on the letter: Setting up fake worker failed.');
+    expect(screen.queryByTestId('same-page-host-status')).toBeNull();
+  });
+
   it('reports the new-page fallback when the block does not fit', () => {
     render(
       <Harness
