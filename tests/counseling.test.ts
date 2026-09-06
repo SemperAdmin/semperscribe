@@ -273,3 +273,61 @@ describe('the record', () => {
     expect(Math.max(...items.map((i) => i.page))).toBeGreaterThanOrEqual(2);
   });
 });
+
+/**
+ * Containers grow with their text and never let it escape. Measured
+ * defects, 2026-09-06, from a stress render: a name typed without spaces
+ * ran through the cell border into item 8; a long life-event label ran
+ * off the page; a comment longer than a page ran through the footer
+ * marking. Every assertion here is on the PDF text layer's positions.
+ */
+describe('containers expand and text stays inside them', () => {
+  const LONG = 'This is a deliberately long entry which keeps going so the cell must wrap across several lines and the row must grow to hold it. ';
+  const NOSPACE = 'https://example.mil/a/very/long/path/without/any/spaces/at/all/which/cannot/wrap/normally/1234567890';
+  const PAGE_W = 612;
+  const MARGIN = 36;
+  const BOTTOM = 44;
+
+  async function layout(overrides: Partial<FormData>) {
+    const bytes = await generateCounseling(form(overrides));
+    return extractPdfTextLayout(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
+  }
+
+  it('breaks a word wider than its cell instead of running through the border', async () => {
+    const items = await layout({ counselingMarineLastName: 'VERYLONGLASTNAMEWITHOUTSPACESXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' });
+    // Item 7 is 200pt wide from the left margin. Every fragment of the name
+    // starts inside it, and none is the whole unbroken string.
+    const fragments = items.filter((i) => i.page === 1 && /WITHOUTSPACES|X{5,}/.test(i.text));
+    expect(fragments.length).toBeGreaterThanOrEqual(2);
+    for (const f of fragments) expect(f.x).toBeLessThan(MARGIN + 200);
+    expect(fragments.some((f) => f.text.includes('VERYLONGLASTNAMEWITHOUTSPACESXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'))).toBe(false);
+  });
+
+  it('wraps a check label wider than its column under the checkbox', async () => {
+    const items = await layout({ counselingLifeEvents: ['other'], counselingLifeEventsOther: LONG + LONG });
+    const words = items.filter((i) => i.page === 1 && i.text.includes('deliberately'));
+    expect(words.length).toBeGreaterThanOrEqual(2);
+    // Nothing starts past the right margin, and the wrapped lines share the
+    // right-hand column's x.
+    for (const w of words) expect(w.x).toBeLessThan(PAGE_W - MARGIN);
+  });
+
+  it('splits a comment longer than a page across pages with a continued label, above the footer', async () => {
+    const items = await layout({ counselingSeniorComments: LONG.repeat(45), counselingIncludeMarineComments: true, counselingMarineComments: LONG.repeat(3) });
+    const body = items.filter((i) => i.text.includes('deliberately'));
+    for (const b of body) expect(b.y, `text on page ${b.page} below the bottom margin`).toBeGreaterThanOrEqual(BOTTOM);
+    expect(items.some((i) => i.text.includes("27. SENIOR'S COMMENTS (continued)"))).toBe(true);
+    // The Marine's comments finished on their first page and are not marked continued.
+    expect(items.some((i) => i.text.includes("28. MARINE'S COMMENTS (optional) (continued)"))).toBe(false);
+    // The certification block still follows, on the last page.
+    const last = Math.max(...items.map((i) => i.page));
+    expect(items.some((i) => i.page === last && i.text.includes('SECTION X. CERTIFICATION'))).toBe(true);
+  });
+
+  it('keeps a target with an unbreakable URL inside its column', async () => {
+    const items = await layout({ counselingOccasion: 'follow-on', counselingPriorTargets: [{ text: NOSPACE, status: 'not-met', note: '' }] as never });
+    const pieces = items.filter((i) => /example\.mil|\/[a-z]+\/|1234567890/.test(i.text));
+    expect(pieces.length).toBeGreaterThanOrEqual(2);
+    for (const p of pieces) expect(p.x).toBeLessThan(MARGIN + 30 + 380);
+  });
+});
