@@ -7,7 +7,8 @@ built yet. Companion to `COUNSELING_FORM_PLAN.md`.
 **Owner decisions, 2026-09-06.** Marks start blank, with one control
 which applies the order's 2.5 baseline to all three attributes. The
 benchmark prints on the worksheet the Marine signs. The section is
-hidden when the Marine counseled is E-5 or above.
+hidden when the grade entered on this worksheet is E-5 or above.
+Rubric descriptors show in the editor only. See section 10.
 
 ## 1. Why
 
@@ -284,11 +285,14 @@ situations. Embodies continual "Body, Mind, Spirit Improvement".
 4. Prior-benchmark load, once the counseling plan's Phase 2 per-Marine
    link exists. Until then, typed by hand.
 
-## 10. Open questions for the owner
+## 10. Owner decisions on the open questions (2026-09-06)
 
-- Whether the descriptor paragraphs from Figure 1-2 print on the
-  worksheet (adds most of a page) or appear only in the editor.
-  Recommendation: editor only; the PDF carries the band name.
-- Whether the section stays when the Marine's grade changes from E-4 to
-  E-5 mid-record (a promotion between sessions). Recommendation: keep
-  the data, hide the section, note it in the suggestion.
+- Descriptor paragraphs from Figure 1-2 appear in the editor only. The
+  PDF carries the attribute, the mark, the band name and the
+  justification. Nothing else.
+- The grade gate reads the grade entered on this worksheet, at this
+  session. The app keeps no database and no per-Marine history, so
+  there is no promotion to detect. A worksheet for an E-5 has no
+  benchmark section; a worksheet for an E-4 has one. Prior marks, when
+  present, are whatever the senior typed or loaded into
+  `counselingPriorBenchmark` for this document.
