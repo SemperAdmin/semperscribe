@@ -3300,6 +3300,7 @@ export const Dd368Definition: DocumentTypeDefinition = {
 // fields for the required-field and unstarted checks; the guided editor
 // in src/components/counseling renders the record itself.
 const counselingText = () => z.string().optional();
+const counselingJepesMark = () => z.object({ mark: z.string(), justification: z.string(), commendatory: z.boolean(), adverseReason: z.string() }).partial();
 
 export const CounselingSchema = z.object({
   documentType: z.literal('counseling'),
@@ -3344,6 +3345,11 @@ export const CounselingSchema = z.object({
   counselingSeniorSignedDate: counselingText(),
   counselingMarineSignedDate: counselingText(),
   counselingDismissed: z.array(z.string()).optional(),
+  // Provisional JEPES benchmark (docs/COUNSELING_JEPES_BENCHMARK_PLAN.md). Optional throughout, so every saved document and template still parses.
+  counselingBenchmark: z.object({
+    character: counselingJepesMark(), mos: counselingJepesMark(), leadership: counselingJepesMark(),
+  }).partial().optional(),
+  counselingPriorBenchmark: z.object({ character: z.string(), mos: z.string(), leadership: z.string(), date: z.string() }).partial().optional(),
 });
 
 export const CounselingDefinition: DocumentTypeDefinition = {
