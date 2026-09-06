@@ -73,13 +73,24 @@ fit and falls back to a new page, the identification is restored
 whatever the checkbox said, because every new-page endorsement carries
 it (Figure 9-1, second endorsement).
 
-A same-page endorsement carries the letter it is added to. Under
-Endorsement Details, attach the signed letter as a PDF or pick a letter
-from the library. The preview and the PDF export are then the letter
-with the endorsement on it: composed onto the signature page when the
-block fits, and appended as a new-page endorsement numbered after the
-letter's pages when it does not, with the identification restored. The
-details card and the export toast say which happened.
+A same-page endorsement is one document with two halves and two
+signers (owner's model, 2026-09-06; Figure 9-1). The main sections are
+the letter, signed by its writer. The "Endorsement (second half)" card
+is the endorsement: From and To derived from the letter per 9-2.2 (the
+first Via endorses to the addressee; with no Via, the addressee
+endorses back to the writer), the remaining Vias, its Ser line and
+date, its body, signer 2, Copy to, and the references and enclosures
+it adds, numbered after the letter's. The preview and the PDF export
+draw the letter, draw the endorsement as the block, and compose the two
+with the Figure 9-1 rule between them; when the block does not fit,
+the endorsement is appended as a new-page endorsement with the
+identification restored. The card says which happened.
+
+A letter that arrived signed as a PDF attaches under Endorsement
+Details instead. It becomes the top half, the letter sections hide, and
+the endorsement card is the whole form. Word export is not offered for
+the two-half document, since Word takes no PDF host and the DOCX
+emitter renders one document.
 
 Without a letter attached, a same-page endorsement previews and
 exports as a page of its own: letterhead, seal and page numbering like

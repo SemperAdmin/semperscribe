@@ -22,6 +22,7 @@ import { configureConsole, debugUserAction, debugFormChange } from '@/lib/consol
 import { DOCUMENT_TYPES } from '@/lib/schemas';
 import { resolvePickerType, pickerTypeFor } from '@/lib/document-type-options';
 import { resolveHostBytes } from '@/lib/same-page-host';
+import { emptySamePagePart } from '@/lib/same-page-composite';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { AMHSPreview } from '@/components/amhs/AMHSPreview';
 import { useToast } from '@/hooks/use-toast';
@@ -617,6 +618,12 @@ function NavalLetterGeneratorInner() {
         : newType === 'basic' ? '' : prev.endorsementLevel,
       // E.3: the letter being endorsed belongs to an endorsement only.
       samePageHost: newType === 'endorsement' ? prev.samePageHost : undefined,
+      // E.5: the same-page option is the two-half document; the
+      // endorsement half starts empty, dated today, and takes its
+      // addressing from the letter as it is written.
+      samePageEndorsement: endorsementPlacement === 'same-page'
+        ? (prev.samePageEndorsement ?? { ...emptySamePagePart(), date: getTodaysDate() })
+        : undefined,
       basicLetterReference: newType === 'basic' ? '' : prev.basicLetterReference,
       referenceWho: newType === 'basic' ? '' : prev.referenceWho,
       referenceType: newType === 'basic' ? '' : prev.referenceType,

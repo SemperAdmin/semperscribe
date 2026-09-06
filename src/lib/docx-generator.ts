@@ -39,7 +39,7 @@ import {
   getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle, resolveDistributionStatement } from './naval-format-utils';
 import { createFormattedParagraph } from "./paragraph-formatter";
 import { refLetterAt, startingRefLetterFor, startingEnclosureNumberFor } from "./reference-letters";
-import { isSamePageBlockRender, omitsIdentification, endorsementLineText } from "./same-page-endorsement";
+import { isSamePageBlockRender, isSamePageEndorsement, omitsIdentification, endorsementLineText } from "./same-page-endorsement";
 import { generateCitation } from "./citation";
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from "./indent-engine";
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from "./font-policy";
@@ -154,6 +154,9 @@ export async function generateDocxBlob(
   // carries the letterhead. Kept as a branch so the two emitters read
   // the same way.
   const isSamePageBlock = isSamePageBlockRender(formData);
+  if (isSamePageEndorsement(formData) && formData.samePageEndorsement && !isSamePageBlock) {
+    throw new Error('Word export is not available for a same-page endorsement written from scratch: the letter and its endorsement are composed onto one page in the PDF.');
+  }
   const omitEndorsementIdentification = omitsIdentification(formData);
 
   const moaData = formData.moaData || {

@@ -35,7 +35,7 @@ export interface PickerSelection {
 const SAME_PAGE_OPTION: PickerOption = {
   key: SAME_PAGE_ENDORSEMENT_OPTION,
   name: 'Same-Page Endorsement',
-  description: 'Forwards correspondence on the signature page of the letter it endorses when it fits there (M-5216.5 9-1).',
+  description: 'One page, two signers: the letter, and the endorsement added below its signature when it fits there (M-5216.5 9-1, Figure 9-1).',
   icon: DOCUMENT_TYPES.endorsement?.icon,
 };
 

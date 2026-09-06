@@ -6,7 +6,7 @@ import type { ValidationIssue } from '@/lib/letter-validators';
 import { getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { downloadDocument } from '@/services/export/index';
-import type { DocumentDataSlices, SamePageHostResolver } from './useLivePreview';
+import { resolveSamePageRender, type DocumentDataSlices, type SamePageHostResolver } from './useLivePreview';
 import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
 import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-rows';
 import { getClassification, bannerText } from '@/lib/classification';
@@ -170,14 +170,13 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
         // E.3 (M-5216.5 9-1): a same-page endorsement with the letter
         // attached exports as that letter with the endorsement placed,
         // the same render the preview showed.
-        const hostBytes = isSamePageEndorsement(formData) && resolveSamePageHost ? await resolveSamePageHost() : null;
+        const { hostBytes, blockCtx } = await resolveSamePageRender(
+          { formData, vias, references, enclosures, copyTos, paragraphs, distList },
+          resolveSamePageHost,
+        );
         if (hostBytes) {
           const { renderSamePageWithHost, describePlacement } = await import('@/lib/same-page-host');
-          const endorsed = await renderSamePageWithHost(
-            { formData, vias, references, enclosures, copyTos, paragraphs, distList },
-            generatePdfForDocType,
-            hostBytes,
-          );
+          const endorsed = await renderSamePageWithHost(blockCtx, generatePdfForDocType, hostBytes);
           blob = new Blob([new Uint8Array(endorsed.bytes)], { type: 'application/pdf' });
           toast?.({
             title: endorsed.placement.status === 'fits' ? 'Same-page endorsement placed' : 'Exported as a new-page endorsement',
@@ -189,6 +188,16 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
           );
         }
       } else {
+        // E.5: Word takes no PDF host and the DOCX emitter renders one
+        // document, so the two-half same-page endorsement has no Word
+        // form. Say so rather than export the letter half as the whole.
+        if (isSamePageEndorsement(formData) && formData.samePageEndorsement) {
+          toast?.({
+            title: 'Word export is not available for a same-page endorsement',
+            description: 'The letter and its endorsement are composed onto one page in the PDF. Export the PDF.',
+          });
+          return;
+        }
         const features = DOCUMENT_TYPES[formData.documentType]?.features;
         const paragraphsToRender = features?.isDirective
           ? mergeAdminSubsections(paragraphs, formData.adminSubsections)
