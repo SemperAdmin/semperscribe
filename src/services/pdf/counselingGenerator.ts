@@ -1,38 +1,162 @@
 /**
  * Counseling Worksheet: the app's render (docs/COUNSELING_FORM_PLAN.md
- * section 6).
+ * section 6, mock-up A of 2026-09-06).
  *
- * No official blank exists, so the record is drawn: portrait letter,
- * Helvetica, PRIVACY SENSITIVE top and bottom of every page, sections in
- * the order the session runs, two signature lines, and the handling
- * statement of NAVMC 2795 para 3005.1.i. Long sections flow onto
- * further pages.
+ * No official blank exists, so the record is drawn as a boxed,
+ * numbered form the way DD and NAVMC forms read: a title block, ten
+ * sections in session order, item numbers with the label in the top
+ * left of each box, check boxes for the closed choices, a six-area
+ * table, a five-row target table, a two-signer certification block,
+ * the handling paragraph of NAVMC 2795 para 3005.1.i as the privacy
+ * block, and PRIVACY SENSITIVE top and bottom of every page. No form
+ * identifier prints (owner decision): a unit record kept by two people
+ * and destroyed at relationship end has no edition to track.
+ *
+ * `counselingFormModel` holds every printed value by item number, so
+ * tests check content without parsing the drawing.
  */
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'pdf-lib';
 import type { FormData } from '@/types';
 import {
-  AREA_STATUS_LABELS, COUNSELING_AREAS, COUNSELING_LIFE_EVENTS, HANDLING_STATEMENT, ICS_OBJECTIVES, PRIOR_TARGET_STATUS_LABELS,
-  PRIVACY_MARKING, STANDARD_KINDS, counselingArea, counselingAreaEntries, counselingField, counselingIcsObjectives,
-  counselingLifeEvents, counselingMarineDisplayName, counselingPriorTargets, counselingSeniorDisplayName, counselingSubjects,
-  counselingTargets, gradeLabel, occasionLabel, targetSentence,
+  AREA_CITATION, COUNSELING_AREAS, COUNSELING_LIFE_EVENTS, HANDLING_STATEMENT, ICS_OBJECTIVES, PRIVACY_MARKING, STANDARD_KINDS,
+  counselingArea, counselingAreaEntries, counselingField, counselingIcsObjectives, counselingLifeEvents, counselingOccasion,
+  counselingPriorTargets, counselingSubjects, counselingTargets, rankAbbreviation, targetSentence,
+  type CounselingAreaEntry, type CounselingPriorTarget, type CounselingSubject, type CounselingTarget,
 } from '@/lib/counseling';
+
+// --- the model ---
+
+export interface FormCheck { label: string; on: boolean }
+
+export interface FormItem {
+  n: number;
+  label: string;
+  value?: string;
+  checks?: FormCheck[];
+}
+
+export interface CounselingFormModel {
+  title: string;
+  subtitle: string;
+  items: FormItem[];
+  /** Section IV, by occasion: 'ics', 'event' or 'review'. */
+  agenda: 'ics' | 'event' | 'review';
+  areas: CounselingAreaEntry[];
+  subjects: CounselingSubject[];
+  priorTargets: CounselingPriorTarget[];
+  targets: CounselingTarget[];
+  marineCommentsIncluded: boolean;
+  handling: string;
+}
+
+function gradeText(value: string): string {
+  const abbr = rankAbbreviation(value);
+  return value && abbr !== value ? `${abbr} ${value}` : value;
+}
+
+function name(formData: FormData, prefix: string): string {
+  const get = (f: string) => counselingField(formData, `${prefix}${f}`).trim();
+  const tail = [get('FirstName'), get('MiddleInitial') ? `${get('MiddleInitial').replace(/\.$/, '')}.` : ''].filter(Boolean).join(', ');
+  return [get('LastName'), tail].filter(Boolean).join(', ');
+}
+
+export function counselingFormModel(formData: FormData): CounselingFormModel {
+  const get = (f: string) => counselingField(formData, f).trim();
+  const occasionValue = get('counselingOccasion');
+  const occasion = counselingOccasion(occasionValue);
+  const kind = occasion?.kind;
+  const lifeEvents = counselingLifeEvents(formData);
+  const objectives = new Set(counselingIcsObjectives(formData));
+  const component = get('counselingMarineComponent');
+
+  const items: FormItem[] = [
+    {
+      n: 1, label: 'OCCASION',
+      checks: [
+        { label: 'Initial (ICS)', on: kind === 'initial' },
+        { label: 'Follow-on', on: kind === 'follow-on' },
+        { label: '30-day (LCpl and below)', on: kind === 'thirty-day' },
+        { label: 'Event-related', on: kind === 'event' },
+        { label: `Other: ${kind === 'baseline' ? occasion!.label : ''}`, on: kind === 'baseline' },
+      ],
+    },
+    { n: 2, label: 'DATE OF SESSION', value: get('date') },
+    { n: 3, label: 'TARGET DATE, NEXT SESSION', value: get('counselingNextSessionDate') },
+    { n: 4, label: 'DATE OF ICS', value: get('counselingIcsDate') },
+    { n: 5, label: 'DATE OF LAST SESSION', value: get('counselingLastSessionDate') },
+    {
+      n: 6, label: 'LIFE EVENTS',
+      checks: [
+        ...COUNSELING_LIFE_EVENTS.map((e) => ({ label: e.label, on: lifeEvents.includes(e.value) })),
+        { label: `Unit-specific: ${get('counselingLifeEventsOther')}`, on: !!get('counselingLifeEventsOther') },
+      ],
+    },
+    { n: 7, label: 'NAME (Last, First, MI)', value: name(formData, 'counselingMarine') },
+    { n: 8, label: 'GRADE', value: gradeText(get('counselingMarineGrade')) },
+    { n: 9, label: 'EDIPI', value: get('counselingMarineEdipi') },
+    { n: 10, label: 'DOR', value: get('counselingMarineDor') },
+    { n: 11, label: 'PMOS', value: get('counselingMarinePmos') },
+    { n: 12, label: 'BILLET TITLE AND DESCRIPTION', value: [get('counselingBilletTitle'), get('counselingBilletDescription')].filter(Boolean).join('. ') },
+    { n: 13, label: 'BMOS', value: get('counselingMarineBilletMos') },
+    { n: 14, label: 'COMP', checks: [{ label: 'AC', on: component === 'active' }, { label: 'RC', on: component === 'reserve' }] },
+    { n: 15, label: 'NAME (Last, First, MI)', value: name(formData, 'counselingSenior') },
+    { n: 16, label: 'GRADE', value: gradeText(get('counselingSeniorGrade')) },
+    { n: 17, label: 'EDIPI', value: get('counselingSeniorEdipi') },
+    { n: 18, label: 'BILLET', value: get('counselingSeniorBillet') },
+    kind === 'initial'
+      ? { n: 19, label: 'ICS OBJECTIVES COVERED', checks: ICS_OBJECTIVES.map((o) => ({ label: o.text.replace(/\.$/, ''), on: objectives.has(o.id) })) }
+      : kind === 'event'
+        ? { n: 19, label: 'EVENT', value: get('counselingEventDescription') }
+        : { n: 19, label: 'AGENDA', value: occasion ? "Progress on the targets set last session (Section VII), strengths and deficiencies, problems since the last session and an agreed solution." : '' },
+    { n: 20, label: 'AREA' },
+    { n: 21, label: 'SUBJECTS DISCUSSED' },
+    { n: 22, label: 'MAJOR ACCOMPLISHMENTS AND SIGNIFICANT EVENTS', value: get('counselingAccomplishments') },
+    { n: 23, label: 'STRENGTHS', value: get('counselingStrengths') },
+    { n: 24, label: 'DEFICIENCIES', value: get('counselingDeficiencies') },
+    { n: 25, label: 'TARGET SET LAST SESSION' },
+    { n: 26, label: 'TARGET (action, object, standard)' },
+    { n: 27, label: "SENIOR'S COMMENTS", value: get('counselingSeniorComments') },
+    { n: 28, label: "MARINE'S COMMENTS (optional)", value: get('counselingMarineComments') },
+    { n: 29, label: 'MARINE PERFORMING COUNSELING', value: [rankAbbreviation(get('counselingSeniorGrade')), name(formData, 'counselingSenior')].filter(Boolean).join(' ') },
+    { n: 30, label: 'DATE', value: get('counselingSeniorSignedDate') },
+    { n: 31, label: 'MARINE COUNSELED', value: [rankAbbreviation(get('counselingMarineGrade')), name(formData, 'counselingMarine')].filter(Boolean).join(' ') },
+    { n: 32, label: 'DATE', value: get('counselingMarineSignedDate') },
+  ];
+
+  return {
+    title: 'COUNSELING WORKSHEET',
+    subtitle: 'Unit record under MCO 1500.61 and NAVMC 2795 (App A). Not an official form.',
+    items,
+    agenda: kind === 'initial' ? 'ics' : kind === 'event' ? 'event' : 'review',
+    areas: counselingAreaEntries(formData),
+    subjects: counselingSubjects(formData).filter((s) => s.text.trim()),
+    priorTargets: counselingPriorTargets(formData).filter((t) => t.text.trim()),
+    targets: counselingTargets(formData),
+    marineCommentsIncluded: (formData as Record<string, unknown>).counselingIncludeMarineComments === true || !!get('counselingMarineComments'),
+    handling: HANDLING_STATEMENT,
+  };
+}
+
+// --- the drawing ---
 
 const PAGE_W = 612;
 const PAGE_H = 792;
-const MARGIN = 54;
-const TOP = PAGE_H - MARGIN;
-const BOTTOM = MARGIN + 18;
+const MARGIN = 36;
+const TOP = PAGE_H - 48;
+const BOTTOM = 44;
 const WIDTH = PAGE_W - MARGIN * 2;
 const INK = rgb(0, 0, 0);
-const RULE = rgb(0.55, 0.55, 0.55);
-const BODY = 10;
-const SMALL = 8;
-const HEADING = 11;
+const SHADE = rgb(0.88, 0.88, 0.88);
+const LINE = 0.6;
+const LABEL = 6.5;
+const VALUE = 9;
+const SECTION = 8;
+const SMALL = 7;
+const PAD = 3;
+const LABEL_H = 9;
+const CHECK = 6.5;
 
-export interface CounselingRecordLine {
-  kind: 'title' | 'heading' | 'text' | 'pair' | 'small';
-  text: string;
-}
+interface Fonts { body: PDFFont; bold: PDFFont }
 
 function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const out: string[] = [];
@@ -50,166 +174,340 @@ function wrap(text: string, font: PDFFont, size: number, maxWidth: number): stri
   return out;
 }
 
-function blank(value: string): string {
-  return value.trim() || '—';
+/** A cell's content: a label line, then a value or a list of checks. */
+interface Cell {
+  w: number;
+  label?: string;
+  value?: string;
+  checks?: FormCheck[];
+  /** Checks per line; defaults to one. */
+  perLine?: number;
+  minLines?: number;
+  bold?: boolean;
+  size?: number;
 }
 
-/**
- * The record as ordered lines, the way it prints. Tests read this to
- * check content without parsing the PDF; the renderer draws it.
- */
-export function counselingRecordLines(formData: FormData): CounselingRecordLine[] {
-  const get = (name: string) => counselingField(formData, name).trim();
-  const lines: CounselingRecordLine[] = [];
-  const push = (kind: CounselingRecordLine['kind'], text: string) => lines.push({ kind, text });
+class Sheet {
+  readonly doc: PDFDocument;
+  readonly fonts: Fonts;
+  page!: PDFPage;
+  y = TOP;
+  pages: PDFPage[] = [];
 
-  push('title', 'COUNSELING WORKSHEET');
-  push('pair', `Occasion: ${blank(occasionLabel(formData))}`);
-  push('pair', `Date of session: ${blank(get('date'))}`);
-  if (get('counselingIcsDate')) push('pair', `Date of initial counseling session: ${get('counselingIcsDate')}`);
-  if (get('counselingLastSessionDate')) push('pair', `Date of last session: ${get('counselingLastSessionDate')}`);
-  push('pair', `Target date for next session: ${blank(get('counselingNextSessionDate'))}`);
-  const events = counselingLifeEvents(formData).map((v) => COUNSELING_LIFE_EVENTS.find((e) => e.value === v)?.label ?? v);
-  if (get('counselingLifeEventsOther')) events.push(get('counselingLifeEventsOther'));
-  if (events.length) push('pair', `Life events: ${events.join('; ')}`);
-  if (get('counselingEventDescription')) push('pair', `Event: ${get('counselingEventDescription')}`);
-
-  push('heading', 'MARINE COUNSELED');
-  push('pair', `Name: ${blank(counselingMarineDisplayName(formData))}`);
-  const marineBits = [
-    get('counselingMarineGrade') ? `Grade: ${gradeLabel(get('counselingMarineGrade'))}` : '',
-    get('counselingMarineComponent') ? `Component: ${get('counselingMarineComponent') === 'reserve' ? 'Reserve' : 'Active'}` : '',
-    get('counselingMarineEdipi') ? `EDIPI: ${get('counselingMarineEdipi')}` : '',
-    get('counselingMarineDor') ? `DOR: ${get('counselingMarineDor')}` : '',
-    get('counselingMarinePmos') ? `PMOS: ${get('counselingMarinePmos')}` : '',
-    get('counselingMarineBilletMos') ? `Billet MOS: ${get('counselingMarineBilletMos')}` : '',
-  ].filter(Boolean);
-  if (marineBits.length) push('pair', marineBits.join('    '));
-  if (get('counselingBilletTitle') || get('counselingBilletDescription')) {
-    push('pair', `Billet: ${[get('counselingBilletTitle'), get('counselingBilletDescription')].filter(Boolean).join('. ')}`);
+  constructor(doc: PDFDocument, fonts: Fonts) {
+    this.doc = doc;
+    this.fonts = fonts;
+    this.newPage();
   }
 
-  push('heading', 'MARINE PERFORMING COUNSELING (SENIOR)');
-  push('pair', `Name: ${blank(counselingSeniorDisplayName(formData))}`);
-  const seniorBits = [
-    get('counselingSeniorEdipi') ? `EDIPI: ${get('counselingSeniorEdipi')}` : '',
-    get('counselingSeniorBillet') ? `Billet: ${get('counselingSeniorBillet')}` : '',
-  ].filter(Boolean);
-  if (seniorBits.length) push('pair', seniorBits.join('    '));
-
-  const objectives = counselingIcsObjectives(formData);
-  if (objectives.length) {
-    push('heading', 'INITIAL COUNSELING SESSION OBJECTIVES COVERED');
-    for (const o of ICS_OBJECTIVES) if (objectives.includes(o.id)) push('text', `• ${o.text}`);
-  }
-  const prior = counselingPriorTargets(formData).filter((t) => t.text.trim());
-  if (prior.length) {
-    push('heading', 'REVIEW OF TARGETS FROM LAST SESSION');
-    prior.forEach((t, i) => push('text', `${i + 1}. ${t.text.trim()}${t.status ? ` (${PRIOR_TARGET_STATUS_LABELS[t.status]})` : ''}`));
+  newPage() {
+    this.page = this.doc.addPage([PAGE_W, PAGE_H]);
+    this.pages.push(this.page);
+    this.y = TOP;
   }
 
-  push('heading', 'SUBJECTS DISCUSSED');
-  const subjects = counselingSubjects(formData).filter((s) => s.text.trim());
-  if (subjects.length === 0) push('text', '—');
-  for (const s of subjects) {
-    const area = s.area === 'duties' ? 'Duties' : counselingArea(s.area)?.title;
-    push('text', `• ${s.text.trim()}${area ? ` [${area}]` : ''}`);
+  ensure(height: number) {
+    if (this.y - height < BOTTOM) this.newPage();
   }
 
-  push('heading', 'FUNCTIONAL AREAS OF LEADER DEVELOPMENT');
-  for (const entry of counselingAreaEntries(formData)) {
-    const area = COUNSELING_AREAS.find((a) => a.id === entry.area)!;
-    const status = entry.status ? AREA_STATUS_LABELS[entry.status] : 'Not answered';
-    push('text', `${area.title}: ${status}${entry.notes.trim() ? `. ${entry.notes.trim()}` : ''}`);
+  text(x: number, y: number, s: string, size: number, bold = false) {
+    this.page.drawText(s, { x, y, size, font: bold ? this.fonts.bold : this.fonts.body, color: INK });
   }
 
-  if (get('counselingAccomplishments')) { push('heading', 'MAJOR ACCOMPLISHMENTS AND SIGNIFICANT EVENTS'); push('text', get('counselingAccomplishments')); }
-  if (get('counselingStrengths')) { push('heading', 'STRENGTHS'); push('text', get('counselingStrengths')); }
-  if (get('counselingDeficiencies')) { push('heading', 'DEFICIENCIES'); push('text', get('counselingDeficiencies')); }
+  rect(x: number, y: number, w: number, h: number, fill = false) {
+    this.page.drawRectangle({ x, y, width: w, height: h, borderColor: INK, borderWidth: LINE, color: fill ? SHADE : undefined, opacity: fill ? 1 : 0, borderOpacity: 1 });
+  }
 
-  push('heading', 'TARGETS FOR THE COMING PERIOD');
-  const targets = counselingTargets(formData).map(targetSentence).map((sentence, i) => ({ sentence, i }));
-  const filled = counselingTargets(formData);
-  if (targets.every((t) => !t.sentence)) push('text', '—');
-  targets.forEach(({ sentence, i }) => {
-    if (!sentence) return;
-    const t = filled[i];
-    const tags = [
-      t.standardKinds.length ? `Standard: ${t.standardKinds.map((k) => STANDARD_KINDS.find((s) => s.value === k)?.label ?? k).join(', ')}` : '',
-      t.area ? `Area: ${counselingArea(t.area)?.title ?? t.area}` : '',
-    ].filter(Boolean);
-    push('text', `${i + 1}. ${sentence}${tags.length ? ` (${tags.join('; ')})` : ''}`);
-  });
+  checkbox(x: number, y: number, on: boolean) {
+    this.page.drawRectangle({ x, y, width: CHECK, height: CHECK, borderColor: INK, borderWidth: 0.5, opacity: 0, borderOpacity: 1 });
+    if (on) {
+      this.page.drawLine({ start: { x: x + 1, y: y + 1 }, end: { x: x + CHECK - 1, y: y + CHECK - 1 }, thickness: 0.8, color: INK });
+      this.page.drawLine({ start: { x: x + 1, y: y + CHECK - 1 }, end: { x: x + CHECK - 1, y: y + 1 }, thickness: 0.8, color: INK });
+    }
+  }
 
-  if (get('counselingSeniorComments')) { push('heading', "SENIOR'S COMMENTS"); push('text', get('counselingSeniorComments')); }
-  const includeMarine = (formData as Record<string, unknown>).counselingIncludeMarineComments === true;
-  if (includeMarine || get('counselingMarineComments')) { push('heading', "MARINE'S COMMENTS"); push('text', blank(get('counselingMarineComments'))); }
+  /** Height a cell needs at its width. */
+  cellHeight(cell: Cell): number {
+    const size = cell.size ?? VALUE;
+    const lineH = size * 1.25;
+    let lines = 0;
+    if (cell.checks) {
+      const per = cell.perLine ?? 1;
+      lines = Math.ceil(cell.checks.length / per);
+    } else {
+      lines = cell.value ? wrap(cell.value, this.fonts.body, size, cell.w - PAD * 2).length : 0;
+    }
+    lines = Math.max(lines, cell.minLines ?? 1);
+    return (cell.label ? LABEL_H : PAD) + lines * lineH + PAD;
+  }
 
-  push('heading', 'CERTIFICATION');
-  push('pair', `Marine performing counseling: ${blank(counselingSeniorDisplayName(formData))}    Date: ${blank(get('counselingSeniorSignedDate'))}`);
-  push('pair', `Marine counseled: ${blank(counselingMarineDisplayName(formData))}    Date: ${blank(get('counselingMarineSignedDate'))}`);
-  push('small', HANDLING_STATEMENT);
-  return lines;
+  /** Draws one cell in a box of the given height at (x, top). */
+  drawCell(x: number, top: number, h: number, cell: Cell) {
+    this.rect(x, top - h, cell.w, h);
+    let y = top;
+    if (cell.label) {
+      this.text(x + PAD, top - LABEL, cell.label, LABEL, true);
+      y = top - LABEL_H;
+    } else {
+      y = top - PAD;
+    }
+    const size = cell.size ?? VALUE;
+    const lineH = size * 1.25;
+    if (cell.checks) {
+      const per = cell.perLine ?? 1;
+      const colW = (cell.w - PAD * 2) / per;
+      cell.checks.forEach((c, i) => {
+        const col = i % per;
+        const row = Math.floor(i / per);
+        const cx = x + PAD + col * colW;
+        const cy = y - (row + 1) * lineH + (lineH - CHECK) / 2;
+        this.checkbox(cx, cy, c.on);
+        this.text(cx + CHECK + 3, cy + 0.8, c.label, size - 1, cell.bold);
+      });
+    } else if (cell.value) {
+      wrap(cell.value, this.fonts.body, size, cell.w - PAD * 2).forEach((line, i) => {
+        this.text(x + PAD, y - (i + 1) * lineH + 2, line, size, cell.bold);
+      });
+    }
+  }
+
+  /**
+   * A table: header row, body rows, and a note, kept on one page when
+   * the whole fits on a fresh page, else flowing row by row.
+   */
+  table(header: Cell[], rows: Cell[][], note?: string) {
+    const rowH = (cells: Cell[]) => Math.max(...cells.map((c) => this.cellHeight(c)));
+    const noteH = note ? wrap(note, this.fonts.body, SMALL, WIDTH - PAD * 2).length * SMALL * 1.3 + PAD * 2 : 0;
+    const total = rowH(header) + rows.reduce((sum, r) => sum + rowH(r), 0) + noteH;
+    const keep = total <= TOP - BOTTOM - 12 ? total : rowH(header) + (rows[0] ? rowH(rows[0]) : 0);
+    this.flushSection(keep);
+    this.ensure(keep);
+    this.row(header);
+    for (const r of rows) this.row(r);
+    if (note) this.note(note);
+  }
+
+  /** One row of cells, x from the left margin, with a shared height. */
+  row(cells: Cell[], fixedHeight?: number): number {
+    const h = fixedHeight ?? Math.max(...cells.map((c) => this.cellHeight(c)));
+    this.flushSection(h);
+    this.ensure(h);
+    let x = MARGIN;
+    for (const c of cells) {
+      this.drawCell(x, this.y, h, c);
+      x += c.w;
+    }
+    this.y -= h;
+    return h;
+  }
+
+  /** A section bar waits for the block under it, so it never ends a page alone. */
+  pendingSection: string | null = null;
+
+  section(title: string) {
+    this.pendingSection = title;
+  }
+
+  /** Draws the waiting section bar, keeping it with a block of the given height. */
+  flushSection(blockHeight: number) {
+    if (!this.pendingSection) return;
+    const h = 12;
+    this.ensure(h + blockHeight);
+    this.rect(MARGIN, this.y - h, WIDTH, h, true);
+    this.text(MARGIN + PAD, this.y - 8.5, this.pendingSection, SECTION, true);
+    this.y -= h;
+    this.pendingSection = null;
+  }
+
+  note(text: string) {
+    const lines = wrap(text, this.fonts.body, SMALL, WIDTH - PAD * 2);
+    const h = lines.length * SMALL * 1.3 + PAD * 2;
+    this.flushSection(h);
+    this.ensure(h);
+    this.rect(MARGIN, this.y - h, WIDTH, h);
+    lines.forEach((line, i) => this.text(MARGIN + PAD, this.y - PAD - (i + 1) * SMALL * 1.3 + 2, line, SMALL));
+    this.y -= h;
+  }
 }
 
-interface Cursor { page: PDFPage; y: number }
+function item(model: CounselingFormModel, n: number): FormItem {
+  return model.items.find((i) => i.n === n)!;
+}
+
+function labelled(i: FormItem): string {
+  return `${i.n}. ${i.label}`;
+}
 
 export async function generateCounseling(formData: FormData): Promise<Uint8Array> {
+  const model = counselingFormModel(formData);
   const doc = await PDFDocument.create();
   doc.setTitle('Counseling Worksheet');
-  const font = await doc.embedFont(StandardFonts.Helvetica);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-
-  const marking = (page: PDFPage) => {
-    const w = bold.widthOfTextAtSize(PRIVACY_MARKING, SMALL);
-    page.drawText(PRIVACY_MARKING, { x: (PAGE_W - w) / 2, y: PAGE_H - 30, size: SMALL, font: bold, color: INK });
-    page.drawText(PRIVACY_MARKING, { x: (PAGE_W - w) / 2, y: 22, size: SMALL, font: bold, color: INK });
-  };
-  const newPage = (): Cursor => {
-    const page = doc.addPage([PAGE_W, PAGE_H]);
-    marking(page);
-    return { page, y: TOP };
-  };
-  let cursor = newPage();
-  const ensure = (height: number) => {
-    if (cursor.y - height < BOTTOM) cursor = newPage();
+  const fonts: Fonts = { body: await doc.embedFont(StandardFonts.Helvetica), bold: await doc.embedFont(StandardFonts.HelveticaBold) };
+  const s = new Sheet(doc, fonts);
+  const it = (n: number) => item(model, n);
+  const cell = (n: number, w: number, extra: Partial<Cell> = {}): Cell => {
+    const i = it(n);
+    return { w, label: labelled(i), value: i.value, checks: i.checks, ...extra };
   };
 
-  for (const line of counselingRecordLines(formData)) {
-    if (line.kind === 'title') {
-      ensure(24);
-      const w = bold.widthOfTextAtSize(line.text, 14);
-      cursor.page.drawText(line.text, { x: (PAGE_W - w) / 2, y: cursor.y - 14, size: 14, font: bold, color: INK });
-      cursor.y -= 26;
-      continue;
-    }
-    if (line.kind === 'heading') {
-      ensure(HEADING * 2.6);
-      cursor.y -= 8;
-      cursor.page.drawText(line.text, { x: MARGIN, y: cursor.y - HEADING, size: HEADING, font: bold, color: INK });
-      cursor.y -= HEADING + 3;
-      cursor.page.drawLine({ start: { x: MARGIN, y: cursor.y }, end: { x: MARGIN + WIDTH, y: cursor.y }, thickness: 0.5, color: RULE });
-      cursor.y -= 5;
-      continue;
-    }
-    if (line.kind === 'small') {
-      cursor.y -= 10;
-      const rows = wrap(line.text, font, SMALL, WIDTH);
-      for (const row of rows) {
-        ensure(SMALL * 1.3);
-        cursor.page.drawText(row, { x: MARGIN, y: cursor.y - SMALL, size: SMALL, font, color: INK });
-        cursor.y -= SMALL * 1.3;
-      }
-      continue;
-    }
-    const rows = wrap(line.text, font, BODY, WIDTH);
-    for (const row of rows) {
-      ensure(BODY * 1.35);
-      cursor.page.drawText(row, { x: MARGIN, y: cursor.y - BODY, size: BODY, font, color: INK });
-      cursor.y -= BODY * 1.35;
-    }
-    if (line.kind === 'text') cursor.y -= 2;
+  // Title block.
+  {
+    const h = 30;
+    s.rect(MARGIN, s.y - h, WIDTH, h);
+    const tw = fonts.bold.widthOfTextAtSize(model.title, 13);
+    s.text((PAGE_W - tw) / 2, s.y - 13, model.title, 13, true);
+    const sw = fonts.body.widthOfTextAtSize(model.subtitle, SMALL);
+    s.text((PAGE_W - sw) / 2, s.y - 25, model.subtitle, SMALL);
+    s.y -= h;
   }
+
+  // Section I. Session: item 1 tall on the left, items 2 to 5 as two rows on the right.
+  s.section('SECTION I. SESSION');
+  {
+    const leftW = 190;
+    const rightW = (WIDTH - leftW) / 2;
+    const left = cell(1, leftW);
+    const r1 = [cell(2, rightW), cell(3, rightW)];
+    const r2 = [cell(4, rightW), cell(5, rightW)];
+    const leftH = s.cellHeight(left);
+    const h1 = Math.max(...r1.map((c) => s.cellHeight(c)));
+    const h2 = Math.max(...r2.map((c) => s.cellHeight(c)));
+    const rightH = h1 + h2;
+    const total = Math.max(leftH, rightH);
+    const extra = total - rightH;
+    s.flushSection(total);
+    s.ensure(total);
+    s.drawCell(MARGIN, s.y, total, left);
+    let x = MARGIN + leftW;
+    for (const c of r1) { s.drawCell(x, s.y, h1 + extra, c); x += c.w; }
+    x = MARGIN + leftW;
+    for (const c of r2) { s.drawCell(x, s.y - h1 - extra, h2, c); x += c.w; }
+    s.y -= total;
+  }
+  s.row([cell(6, WIDTH, { perLine: 2 })]);
+
+  // Section II. Marine counseled.
+  s.section('SECTION II. MARINE COUNSELED');
+  s.row([cell(7, 200), cell(8, 70), cell(9, 100), cell(10, 90), cell(11, 80)]);
+  s.row([cell(12, 360), cell(13, 80), cell(14, 100, { perLine: 2 })]);
+
+  // Section III. Senior.
+  s.section('SECTION III. MARINE PERFORMING COUNSELING (SENIOR)');
+  s.row([cell(15, 200), cell(16, 70), cell(17, 100), cell(18, 170)]);
+
+  // Section IV. Agenda, by occasion.
+  const agendaCite = model.agenda === 'ics' ? 'initial: NAVMC 2795 para 2001.1.b' : model.agenda === 'event' ? 'event-related: NAVMC 2795 para 2001.4' : 'follow-on and 30-day: NAVMC 2795 para 2001.2.b, 2001.3';
+  s.section(`SECTION IV. AGENDA (${agendaCite})`);
+  s.row([cell(19, WIDTH, model.agenda === 'ics' ? { perLine: 2 } : { minLines: 2 })]);
+
+  // Section V. The six areas.
+  s.section(`SECTION V. FUNCTIONAL AREAS OF LEADER DEVELOPMENT (${AREA_CITATION})`);
+  const areaCols = [80, 40, 40, 40, WIDTH - 200];
+  s.table(
+    [
+      { w: areaCols[0], value: labelled(it(20)), bold: true, size: LABEL + 0.5 },
+      { w: areaCols[1], value: 'DIS', bold: true, size: LABEL + 0.5 },
+      { w: areaCols[2], value: 'N/S', bold: true, size: LABEL + 0.5 },
+      { w: areaCols[3], value: 'TGT', bold: true, size: LABEL + 0.5 },
+      { w: areaCols[4], value: 'NOTES', bold: true, size: LABEL + 0.5 },
+    ],
+    model.areas.map((entry) => {
+      const area = COUNSELING_AREAS.find((a) => a.id === entry.area)!;
+      return [
+        { w: areaCols[0], value: area.title },
+        { w: areaCols[1], checks: [{ label: '', on: entry.status === 'discussed' }] },
+        { w: areaCols[2], checks: [{ label: '', on: entry.status === 'not-this-session' }] },
+        { w: areaCols[3], checks: [{ label: '', on: entry.status === 'target-set' }] },
+        { w: areaCols[4], value: entry.notes.trim() },
+      ];
+    }),
+    'DIS = discussed.  N/S = not this session.  TGT = target set (Section VIII).',
+  );
+
+  // 21. Subjects discussed.
+  {
+    const lines = model.subjects.map((sub, i) => {
+      const tag = sub.area === 'duties' ? 'Duties' : counselingArea(sub.area)?.title ?? '';
+      return `${String.fromCharCode(97 + (i % 26))}. ${sub.text.trim()}${tag ? `  [${tag}]` : ''}`;
+    });
+    s.row([{ w: WIDTH, label: `${labelled(it(21))} (NAVMC 2795 para 3005.1.j)`, value: lines.join('\n'), minLines: 2 }]);
+  }
+
+  // Section VI. Performance.
+  s.section('SECTION VI. PERFORMANCE THIS PERIOD');
+  s.row([cell(22, WIDTH, { minLines: 2 })]);
+  s.row([cell(23, WIDTH / 2, { minLines: 2 }), cell(24, WIDTH / 2, { minLines: 2 })]);
+
+  // Section VII. Review of targets from last session.
+  s.section('SECTION VII. REVIEW OF TARGETS FROM LAST SESSION (follow-on only, NAVMC 2795 para 2001.2.b)');
+  const reviewCols = [24, WIDTH - 24 - 150, 150];
+  const reviewRows = model.priorTargets.length >= 2 ? model.priorTargets : [...model.priorTargets, ...Array.from({ length: 2 - model.priorTargets.length }, () => ({ text: '', status: '' as const }))];
+  s.table(
+    [
+      { w: reviewCols[0], value: '25.', bold: true, size: LABEL + 0.5 },
+      { w: reviewCols[1], value: it(25).label, bold: true, size: LABEL + 0.5 },
+      { w: reviewCols[2], value: 'RESULT', bold: true, size: LABEL + 0.5 },
+    ],
+    reviewRows.map((t, i) => [
+      { w: reviewCols[0], value: `${String.fromCharCode(97 + (i % 26))}.` },
+      { w: reviewCols[1], value: t.text.trim(), minLines: 2 },
+      {
+        w: reviewCols[2], perLine: 3, size: VALUE - 1,
+        checks: [
+          { label: 'Met', on: t.status === 'met' }, { label: 'Part', on: t.status === 'partly-met' }, { label: 'Not', on: t.status === 'not-met' },
+          { label: 'Dropped', on: t.status === 'dropped' }, { label: 'Carried', on: t.status === 'carried-forward' }, { label: '', on: false },
+        ],
+      },
+    ]),
+  );
+
+  // Section VIII. Targets, five rows always.
+  s.section('SECTION VIII. TARGETS FOR THE COMING PERIOD (NAVMC 2795 para 4002)');
+  const targetCols = [24, 300, 60, 66, WIDTH - 450];
+  const stdCode: Record<string, string> = { quantity: 'Qn', quality: 'Ql', timeliness: 'T', manner: 'M' };
+  const targetRows = model.targets.length >= 5 ? model.targets : [...model.targets, ...Array.from({ length: 5 - model.targets.length }, () => ({ action: '', object: '', standardKinds: [], standard: '', dueDate: '', area: '' as const }))];
+  s.table(
+    [
+      { w: targetCols[0], value: '26.', bold: true, size: LABEL + 0.5 },
+      { w: targetCols[1], value: it(26).label, bold: true, size: LABEL + 0.5 },
+      { w: targetCols[2], value: 'STD', bold: true, size: LABEL + 0.5 },
+      { w: targetCols[3], value: 'DUE', bold: true, size: LABEL + 0.5 },
+      { w: targetCols[4], value: 'AREA', bold: true, size: LABEL + 0.5 },
+    ],
+    targetRows.map((t, i) => {
+      const sentence = targetSentence(t);
+      const body = sentence ? sentence.replace(/ by [^,]+\.$/, '.') : '';
+      return [
+        { w: targetCols[0], value: `${String.fromCharCode(97 + (i % 26))}.` },
+        { w: targetCols[1], value: body, minLines: 1 },
+        { w: targetCols[2], value: t.standardKinds.map((k) => stdCode[k] ?? k).join(', ') },
+        { w: targetCols[3], value: t.dueDate.trim() },
+        { w: targetCols[4], value: t.area ? counselingArea(t.area)?.title ?? t.area : '' },
+      ];
+    }),
+    `STD: ${STANDARD_KINDS.map((k) => `${stdCode[k.value]} = ${k.label.toLowerCase()}`).join(', ')} (NAVMC 2795 para 4002.1.h).`,
+  );
+
+  // Section IX. Comments.
+  s.section('SECTION IX. COMMENTS');
+  s.row([cell(27, WIDTH / 2, { minLines: 3 }), cell(28, WIDTH / 2, { minLines: 3, value: model.marineCommentsIncluded ? it(28).value : '' })]);
+
+  // Section X. Certification.
+  s.section('SECTION X. CERTIFICATION');
+  const sigCols = [300, 150, WIDTH - 450];
+  s.row([cell(29, sigCols[0], { minLines: 2 }), { w: sigCols[1], label: 'SIGNATURE', minLines: 2 }, cell(30, sigCols[2], { minLines: 2 })]);
+  s.row([cell(31, sigCols[0], { minLines: 2 }), { w: sigCols[1], label: 'SIGNATURE', minLines: 2 }, cell(32, sigCols[2], { minLines: 2 })]);
+  s.note(`HANDLING. ${model.handling}`);
+
+  // Marking and page numbers, once the count is known.
+  const total = s.pages.length;
+  const mw = fonts.bold.widthOfTextAtSize(PRIVACY_MARKING, SMALL + 1);
+  s.pages.forEach((page, i) => {
+    page.drawText(PRIVACY_MARKING, { x: (PAGE_W - mw) / 2, y: PAGE_H - 30, size: SMALL + 1, font: fonts.bold, color: INK });
+    page.drawText(PRIVACY_MARKING, { x: (PAGE_W - mw) / 2, y: 26, size: SMALL + 1, font: fonts.bold, color: INK });
+    const pn = `Page ${i + 1} of ${total}`;
+    page.drawText(pn, { x: PAGE_W - MARGIN - fonts.body.widthOfTextAtSize(pn, SMALL), y: 26, size: SMALL, font: fonts.body, color: INK });
+  });
 
   return doc.save();
 }

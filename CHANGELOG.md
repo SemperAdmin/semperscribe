@@ -5,6 +5,24 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.11.1] - 2026-09-06
+
+### Changed
+
+- The Counseling Worksheet prints as a boxed, numbered form (mock-up A
+  of the owner's request, 2026-09-06): a title block, ten sections in
+  session order, 32 numbered items with the label in the top left of
+  each box, check boxes for occasion, life events, component, ICS
+  objectives, the six areas and prior-target results, a six-area table
+  with a legend, a five-row target table with standard-kind codes, a
+  two-signer certification block with signature cells, the handling
+  paragraph of NAVMC 2795 para 3005.1.i as the privacy block, PRIVACY
+  SENSITIVE top and bottom of every page, and page numbers. Section IV
+  follows the occasion: the seven ICS objectives for an initial
+  session, the event for an event-related one, the review agenda
+  otherwise. No form identifier prints (owner decision). Section bars
+  and tables keep together across page breaks.
+
 ## [0.11.0] - 2026-09-06
 
 ### Added
