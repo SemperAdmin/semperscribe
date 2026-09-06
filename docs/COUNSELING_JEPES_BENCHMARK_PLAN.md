@@ -1,8 +1,18 @@
 # Counseling Worksheet: JEPES benchmark section, plan
 
 Design for a provisional JEPES benchmark recorded at each counseling
-session, for Marines in the grades JEPES covers. Nothing in this plan is
-built yet. Companion to `COUNSELING_FORM_PLAN.md`.
+session, for Marines in the grades JEPES covers. Companion to
+`COUNSELING_FORM_PLAN.md`.
+
+**Implementation status 2026-09-06.** Phases 1 to 3 shipped on branch
+`counseling-jepes`: `src/lib/counseling.ts` (JEPES vocabulary, bands,
+grade gate, suggestions), `src/lib/schemas.ts` (optional fields),
+`src/components/counseling/CounselingSections.tsx` (`BenchmarkBlock`
+under Step 5), `src/services/pdf/counselingGenerator.ts` (Section
+VI-A), tests in `tests/counseling.test.ts` and
+`tests/components/counseling-sections.test.tsx`, and the follow-on
+sample template. Phase 4 (prior marks loaded from a saved session) waits
+on the counseling plan's per-Marine link; until then the prior is typed.
 
 **Owner decisions, 2026-09-06.** Marks start blank, with one control
 which applies the order's 2.5 baseline to all three attributes. The

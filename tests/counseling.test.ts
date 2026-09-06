@@ -427,3 +427,50 @@ describe('JEPES benchmark: bands, scope, suggestions', () => {
     expect(CounselingSchema.safeParse(cpl()).success).toBe(true);
   });
 });
+
+describe('JEPES benchmark on the record', () => {
+  const bench = (marks: Record<string, Partial<JepesMark>>) => ({ counselingBenchmark: marks } as unknown as Partial<FormData>);
+  async function text(overrides: Partial<FormData>) {
+    const bytes = await generateCounseling(form(overrides));
+    const items = await extractPdfTextLayout(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
+    return { items, all: items.map((i) => i.text).join(' ') };
+  }
+
+  it('prints nothing for a blank benchmark, and nothing for a Sergeant even when marked', async () => {
+    expect((await text({ counselingMarineGrade: 'E-4' })).all).not.toContain('SECTION VI-A');
+    expect((await text({ counselingMarineGrade: 'E-5', ...bench({ mos: { mark: '4.5', justification: 'x' } }) })).all).not.toContain('SECTION VI-A');
+    expect(counselingFormModel(form({ counselingMarineGrade: 'E-5', ...bench({ mos: { mark: '4.5' } }) })).benchmark).toBeNull();
+  });
+
+  it('prints attribute, prior, mark, band and justification, and never the rubric descriptors', async () => {
+    const { all } = await text({
+      counselingMarineGrade: 'E-4',
+      counselingPriorBenchmark: { character: '2.5', mos: '2.5', leadership: '2.5', date: '8 Jun 26' },
+      ...bench({
+        character: { mark: '2.8' },
+        mos: { mark: '4.2', justification: 'NAM for the field exercise.', commendatory: true },
+        leadership: { mark: '0.0', adverseReason: 'njp', justification: 'NJP on 3 Aug 26 for UA.' },
+      }),
+    } as Partial<FormData>);
+    expect(all).toContain('SECTION VI-A. JEPES BENCHMARK (provisional, not the mark of record');
+    expect(all).toContain('PRIOR (8 Jun 26)');
+    expect(all).toContain('Individual Character');
+    expect(all).toContain('Meets Expectations');
+    expect(all).toContain('4.2');
+    expect(all).toContain('Exceptional');
+    expect(all).toContain('NAM for the field exercise. Formal commendatory material on file.');
+    expect(all).toContain('Non Rec / Adverse');
+    expect(all).toContain('NJP or court-martial during the reporting period NJP on 3 Aug 26 for UA.');
+    expect(all).toContain('not adverse and do not by themselves NOT REC');
+    // Descriptors are editor-only (owner decision).
+    expect(all).not.toContain('bias for action');
+    expect(all).not.toContain('Competency Review Board (CRB). Documented');
+  });
+
+  it('places the section between Performance and the targets review', () => {
+    const model = counselingFormModel(form({ counselingMarineGrade: 'E-4', ...bench({ mos: { mark: '2.5' } }) }));
+    expect(model.benchmark).toHaveLength(3);
+    expect(model.benchmark![1]).toMatchObject({ attribute: 'MOS Proficiency and/or Mission Accomplishment', mark: '2.5', band: 'Meets Expectations', prior: '', justification: '' });
+    expect(model.benchmark![0].mark).toBe('');
+  });
+});
