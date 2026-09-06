@@ -10,6 +10,12 @@ and the app guides the leader through every requirement, the six
 functional areas included, in every session. Sections 4, 7 and 8 reflect
 this.
 
+**Owner decision, 2026-09-06 (second).** No hard requirements. The
+record exports with whatever the leader filled in. Everything policy
+says becomes a suggestion keyed to the situation of the session, shown
+with its cite and applied in one click where the app has enough to act.
+Section 5 is rewritten on that basis.
+
 ## 1. What was supplied, and what each document settles
 
 | Source | Date | What it governs |
@@ -29,7 +35,9 @@ Three facts drive every design decision below.
 - **The documentation minimum is four items.** NAVMC 2795 para 3005.1.j
   and Appendix A para 1: the date of the session, the name of the Marine
   counseled, the subjects discussed, and/or the targets or tasks set.
-  These are the only hard validation blocks.
+  Documentation itself is "recommended," with "specific procedures up to
+  the individual unit commanders" (Appendix A para 1). The app suggests
+  these four and blocks on none of them.
 - **The record belongs to two people.** NAVMC 2795 para 3005.1.i: the
   documentation "is for use only by the senior and the junior. It is not
   to be forwarded to an officer in the reporting chain, nor is it to be
@@ -137,10 +145,10 @@ upcoming events.
 be discussed in every session, and para 5.b(1) warns against records
 kept as a "paper drill" or to "check the block." A 10 to 15 minute
 30-day session (NAVMC 2795 para 2001.3.d) will not cover six areas
-every time. So the app walks every session through all six and requires
-each area to be answered, not discussed: discussed with notes, not this
-session, or a target set. Coverage across a Marine's sessions is what
-the app watches.
+every time. So the app walks every session through all six and suggests an answer
+for each, not a discussion: discussed with notes, not this session, or
+a target set. Coverage across a Marine's sessions is what the app
+watches, and reports as a suggestion.
 
 ### 2.8 What this form is not
 
@@ -190,28 +198,29 @@ page 11 invites the confusion section 2.8 warns about.
 
 | Field | Type | Rule |
 |---|---|---|
-| `counselingOccasion` | select: initial, follow-on, 30-day, event-related, and the eight baseline occasions from 2.1 | required |
-| `counselingDate` | date | required (3005.1.j(1)) |
+| `counselingOccasion` | select: initial, follow-on, 30-day, event-related, and the eight baseline occasions from 2.1 | drives suggestions |
+| `counselingDate` | date | suggested (3005.1.j(1)) |
 | `counselingIcsDate` | date | shown for follow-on; defaults to the session date for initial |
 | `counselingLastSessionDate` | date | shown for follow-on |
 | `counselingNextSessionDate` | date | defaulted per 2.2 from grade and component; editable |
+| `counselingLifeEvents` | multi-select from MCO 1500.61 para 4.b(1)(b) | drives suggestions |
 | `counselingEventDescription` | text | shown for event-related |
 
 ### Section 2. Marine counseled
 
 | Field | Rule |
 |---|---|
-| `counselingMarineLastName`, `FirstName`, `MiddleInitial` | last name required (3005.1.j(2)) |
+| `counselingMarineLastName`, `FirstName`, `MiddleInitial` | suggested (3005.1.j(2)) |
 | `counselingMarineRank` | select, drives the frequency rule |
 | `counselingMarineComponent` | select: active, reserve. Drives the 30-day versus 3-month rule. |
 | `counselingMarineEdipi` | optional. See decision 1. |
 | `counselingMarineDor`, `Pmos`, `BilletMos` | optional |
-| `counselingBilletTitle`, `counselingBilletDescription` | title required for initial |
+| `counselingBilletTitle`, `counselingBilletDescription` | optional |
 
 ### Section 3. Marine performing counseling
 
 `counselingSeniorLastName`, `FirstName`, `MiddleInitial`, `Rank`,
-`Billet`. Last name and rank required.
+`Billet`. All optional.
 
 ### Section 4. Subjects discussed
 
@@ -226,7 +235,7 @@ item becoming a subject line. Satisfies 3005.1.j(3).
 `{ area, status, notes }` with status `discussed`, `not-this-session`
 or `target-set`. The guided flow (section 7) shows the area's
 definition and prompts from 2.7, and the notes become subject lines
-under that area. An area left unanswered is a warning, never a block.
+under that area. An area left unanswered raises a suggestion, never a block.
 
 ### Section 5. Review of targets from last session (follow-on only)
 
@@ -257,8 +266,8 @@ copy into Section 8. Satisfies 2001.2.b.
 - `area`: functional area.
 
 The form prints each as one sentence: "To achieve a 95 percent NCI
-completion rate by 31 December." The structure exists so the validator
-sees an action, an object and a standard.
+completion rate by 31 December." The structure exists so the suggestion
+engine sees an action, an object and a standard.
 
 ### Section 9. Comments
 
@@ -277,37 +286,84 @@ statement:
 > personally identifiable information protected by the Privacy Act of
 > 1974 (MCO 1500.61 para 5.c).
 
-## 5. Validators
+## 5. Suggestions, not requirements
 
-Blocks (the four minimum items and the two signers):
+Nothing in this document type blocks an export. The only dialog on the
+way out is the app's existing sensitive-data gate, which fires on EDIPI
+and SSN patterns for every document type and has an "Export anyway"
+button. That gate is Privacy Act handling (MCO 1500.61 para 5.c), not a
+counseling rule, and stays as it is.
 
-| Id | Rule | Cite |
-|---|---|---|
-| `counseling-date` | session date present | 3005.1.j(1) |
-| `counseling-marine-name` | Marine's last name present | 3005.1.j(2) |
-| `counseling-content` | at least one subject or one target | 3005.1.j(3), (4) "and/or" |
-| `counseling-senior-name` | senior's last name and rank present | Figures A-1, A-2 |
-| `counseling-ssn` | any nine-digit SSN pattern in any field | existing export gate; SSN is not collected |
+Everything else is a suggestion. A suggestion has four parts: the
+situation that raises it, the text, the cite, and an action the leader
+takes in one click where the app has enough to act. Suggestions are
+dismissible for the session and never repeat once dismissed. They show
+in the step they belong to and in one list on the close step.
 
-Warnings (policy the counselor decides on):
+### 5.1 Situation inputs
 
-| Id | Rule | Cite |
-|---|---|---|
-| `counseling-target-count` | fewer than 3 or more than 5 targets | 4002.1.i(4) |
-| `counseling-target-form` | a target with no action verb, no object, or no standard | 4002.1.f, g |
-| `counseling-target-due` | a target due after the next session date | 4002.1.i(4) "before the next counseling session" |
-| `counseling-ics-objectives` | initial session with fewer than the seven ICS objectives covered | 2001.1.b |
-| `counseling-follow-on-review` | follow-on session with no prior-target review | 2001.2.b |
-| `counseling-next-session` | next session date later than the interval for the grade and component | 2001.1 to 2001.3 |
-| `counseling-first-follow-on` | initial session whose next session date is not about 90 days out (Cpl and above) or about 30 days out (LCpl and below, active) | 2001.2.a, 2001.3.a |
-| `counseling-area-unanswered` | a functional area with no status set this session | MCO 1500.61 4.a(1)(d), 4.b(1) "deliberately integrate" |
-| `counseling-area-coverage` | over a Marine's linked sessions, an area marked "not this session" three times running, or never discussed across the last 6 months | MCO 1500.61 4.a(1)(d). Phase 2, needs the per-Marine link. |
-| `counseling-mentor-label` | the word "mentor" in a signer's billet | MCO 1500.61 4.a(1)(d) |
+The situation is what the leader has already entered. The engine reads:
 
-The next-session default computes from grade and component: LCpl and
-below active, +30 days; LCpl and below reserve, +3 months; Cpl and above
-from an initial session, +90 days; Cpl and above from a follow-on, +6
-months.
+- occasion (initial, follow-on, 30-day, event-related, or one of the
+  eight baseline occasions from MCO 1500.61 para 4.b(2));
+- life events ticked in step 1, from MCO 1500.61 para 4.b(1)(b):
+  eligible for promotion or reenlistment, birth of a child, PCS move,
+  first car or house, selection to a resident school or special
+  training, and "other";
+- the Marine's grade and component;
+- dates: session, ICS, last session, next session;
+- last session's targets and their status (follow-on);
+- the six area statuses;
+- the targets entered so far and their parts.
+
+### 5.2 The suggestion table
+
+| Id | Situation | Suggestion | Cite | One-click action |
+|---|---|---|---|---|
+| `date` | session date empty | Record the date of the session. | NAVMC 2795 3005.1.j(1) | Set today |
+| `marine-name` | Marine's name empty | Record the name of the Marine counseled. | 3005.1.j(2) | none |
+| `content` | no subjects and no targets | Record the subjects discussed or the targets set, or both. | 3005.1.j(3), (4) | Go to step 4 |
+| `senior-name` | senior's name empty | Record who performed the counseling. | Figures A-1, A-2 | none |
+| `next-session` | next-session date empty | Set the target date for the next session: N days out for this grade and component. | 2001.1 to 2001.3, Figures A-1, A-2 | Set the computed date |
+| `next-session-late` | next-session date past the interval | The interval for this grade and component is N. | 2001.2.a, 2001.3.a, 2001.3.f | Set the computed date |
+| `ics-agenda` | occasion initial | Cover the seven ICS objectives: expectations, understanding, targets and plans, interest, leadership style, motivation, unit mission and duties. | 2001.1.b | Load the checklist |
+| `ics-unit-status` | occasion initial | Review the unit's mission and status and the Marine's primary and collateral duties. | 2001.1.c | Add subject |
+| `follow-on-review` | occasion follow-on, no prior targets loaded | Review progress on the targets set last session and modify or add. | 2001.2.b | Load last session's targets (phase 2) |
+| `target-not-met` | a prior target marked not met | Identify the cause and agree a solution, or drop or modify the target if circumstances changed. | 2001.2.b, 4002.1.i(6) | Carry forward as a new target |
+| `thirty-day-topics` | grade LCpl and below | A 10 to 15 minute session. Topics: strengths and weaknesses, pay and LES, family, off-duty education and PME, personal goals, upcoming events. | 2001.3.d, e | Mark the matching areas |
+| `reserve-interval` | component reserve, grade LCpl and below | Reservists: every 3 months and once during annual training duty. | 2001.3.f | Set the computed date |
+| `event-praise` | occasion event-related | A session is an occasion for praise as well as for problems. | 2001.4.b | none |
+| `target-count-low` | fewer than 3 targets | Set a few important targets, generally three to five, achievable before the next session. | 4002.1.i(4) | Add target |
+| `target-count-high` | more than 5 targets | More than five targets. Keep the ones that make the biggest difference before the next session. | 4002.1.i(4) | none |
+| `target-form` | a target with no action verb, object or standard | State the target as an action, its object and a standard: quantity, quality, timeliness or manner. | 4002.1.f to h | Open the target builder |
+| `target-due` | a target due after the next session | This target is due after the next session. Move the date or split the target. | 4002.1.i(4) | Set due to next session |
+| `target-ownership` | all targets entered by the senior with no Marine's comment | Targets are a joint effort. Ask the Marine for one. | 4002.1.i(5) | none |
+| `area-unanswered` | an area with no status | Answer each of the six areas: discussed, not this session, or target set. | MCO 1500.61 4.a(1)(d), 4.b(1) | Mark not this session |
+| `area-target` | an area marked target set with no target tagged to it | An area is marked for a target. Build it in step 6. | 4.a(1)(d) | Add target tagged to the area |
+| `area-coverage` | an area not discussed in the Marine's last three linked sessions, or in 6 months | This area has not come up since (date). | 4.a(1)(d) | Open the area card (phase 2) |
+| `life-promotion` | eligible for promotion or reenlistment | Cover the timeline, PME and cutting-score or board requirements, and reenlistment options. | 4.b(1)(b), 4.b(2) | Mark Future and Fighter discussed |
+| `life-child` | birth of a child | Cover dependency paperwork (NAVMC 10922 exists in this app), housing, finances and leave. | 4.b(1)(b) | Mark Family and Finances discussed |
+| `life-pcs` | PCS move | Cover orders, household goods, family plans, finances during the move. | 4.b(1)(b), 4.b(2) | Mark Family and Finances discussed |
+| `life-purchase` | first car or house | Cover the financial decision and a command financial counselor referral. | 4.b(1)(b), 4.a(1)(d) Finances | Mark Finances discussed |
+| `life-school` | resident school or special training | Cover preparation, prerequisites and what follows the course. | 4.b(1)(b) | Mark Fighter and Future discussed |
+| `force-preservation` | occasion Force Preservation | Cover physical, mental, spiritual and social well-being and the resources available. | 4.b(2), 4.a(1)(d) Fitness | Mark Fitness discussed |
+| `fitrep-procon` | occasion fitness report or pro/con marks | Tie the marks to the targets set and met this period. | 4.b(2), 4002 | Load prior targets |
+| `new-unit` | occasion joining a new unit or major billet change | This starts a new senior/junior relationship. Hold the ICS about 30 days in. | 2001.1.a, 4.b(2) | Set occasion initial and next session +30 days |
+| `mentor-label` | "mentor" in a billet field | Counseling is the senior's duty. Mentoring is voluntary and never directed. | 4.a(1)(d) | none |
+| `handling` | always, on the close step | This record is for the senior and junior only. Not forwarded. Destroyed when the relationship ends. | 3005.1.i | none |
+
+The next-session computation: LCpl and below active, +30 days; LCpl
+and below reserve, +3 months; Cpl and above from an initial session,
++90 days; Cpl and above from a follow-on, +6 months.
+
+### 5.3 What this costs
+
+A blank record exports. That is within policy: documentation is
+recommended, not required, and its content is the commander's call.
+The trade is a leader who fills in only what the session needed, with
+the app having shown every applicable rule on the way. The close step
+lists the suggestions still open so the export is a decision, not an
+oversight.
 
 ## 6. Render
 
@@ -337,19 +393,20 @@ months.
   per-Marine notebook view in phase 2 has a home.
 - **Guided flow.** The editor presents the session as seven steps, in
   the order a session runs (NAVMC 2795 chapter 3), with the policy
-  requirement for each step shown at its head and a done or not-done
-  mark in a progress rail. The flat section list the rest of the app
+  guidance for each step shown at its head, the open suggestions for the
+  step under it, and a progress rail. No step is mandatory and every
+  step is skippable. The flat section list the rest of the app
   uses is the fallback view. The step layout is new UI.
 
-| Step | What the leader does | Requirement shown |
+| Step | What the leader does | Guidance shown |
 |---|---|---|
-| 1. Occasion and timing | Pick the occasion. See the interval rule and the computed next-session date. | NAVMC 2795 para 2001, MCO 1500.61 para 4.b(2) |
+| 1. Occasion and timing | Pick the occasion and any life events. See the interval rule and the computed next-session date. | NAVMC 2795 para 2001, MCO 1500.61 para 4.b(1)(b), 4.b(2) |
 | 2. Who | Marine counseled and Marine performing counseling. | NAVMC 2795 para 3005.1.j(2) |
 | 3. Agenda | Initial: the seven ICS objectives as a checklist. Follow-on: last session's targets, each marked met, partly met, not met, dropped or carried forward. Event-related: the event. | Para 2001.1.b, 2001.2.b |
-| 4. The six areas | One card per area with the order's definition and the prompts from 2.7. Set discussed, not this session, or target set. Notes become subjects discussed. | MCO 1500.61 para 4.a(1)(d) |
+| 4. The six areas | One card per area with the order's definition and the prompts from 2.7, re-ordered so the areas the situation points at come first. Set discussed, not this session, or target set. Notes become subjects discussed. | MCO 1500.61 para 4.a(1)(d) |
 | 5. Performance | Major accomplishments, strengths, deficiencies. | Para 3005.1.g, 2001.2.b |
 | 6. Targets | Three to five, each built as action, object, standard, due date, area. Targets flagged in step 4 are pre-seeded here. | Para 4002 |
-| 7. Close and record | Senior's and Marine's comments, signatures, the handling statement. Export. | Para 3004, 3005.1.i |
+| 7. Close and record | Senior's and Marine's comments, signatures, the handling statement, the list of open suggestions. Export. | Para 3004, 3005.1.i |
 
 - **Session-type first.** The occasion in step 1 decides what steps 3
   and 4 show. The prompts in step 4 shift for a 30-day session to the
@@ -375,8 +432,8 @@ months.
 
 | Phase | Scope | Gate |
 |---|---|---|
-| 1 | New category and sidebar group. Schema, definition, the seven-step guided flow with the six-area cards and prompts, validators from section 5 (blocks, plus the target, count, next-session and unanswered-area warnings), pdf render, three templates, unit, component and pdf tests, docs. Version 0.11.0. | All existing gates, plus pdf tests reading back every field, all six areas and the handling statement. |
-| 2 | Per-Marine link across sessions: the leader-notebook view listing a Marine's sessions, "start follow-on session" with prior-target carry-forward, the cross-session area-coverage warning, delete-all-for-Marine, e2e test of the initial-to-follow-on chain. | e2e green. |
+| 1 | New category and sidebar group. Schema, definition, the seven-step guided flow with the six-area cards and prompts, the suggestion engine from section 5 (every row except the two phase 2 rows), pdf render, three templates, unit, component and pdf tests, docs. Version 0.11.0. | All existing gates, plus pdf tests reading back every field, all six areas and the handling statement. |
+| 2 | Per-Marine link across sessions: the leader-notebook view listing a Marine's sessions, "start follow-on session" with prior-target carry-forward, the cross-session area-coverage suggestion, delete-all-for-Marine, e2e test of the initial-to-follow-on chain. | e2e green. |
 | 3 | DOCX export, printable blank for by-hand sessions, coverage summary per Marine on the record. | Bundle budget unchanged for the initial load (the generator stays lazy). |
 
 Phase 1 is the deliverable the owner tests. Phases 2 and 3 wait on that
@@ -385,7 +442,8 @@ feedback.
 ## 9. Decisions the owner makes before phase 1
 
 Settled 2026-09-06: own category "Leader Development," guided flow, all
-six functional areas walked in every session.
+six functional areas walked in every session, no hard requirements,
+suggestions keyed to the situation.
 
 1. **EDIPI.** The unit form collects it for both Marines. Policy's
    minimum needs neither. Recommendation: keep it optional for the
