@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  AlertTriangle,
   ArrowRight,
   BadgeCheck,
   BookOpen,
@@ -214,21 +213,6 @@ export function LandingPage({ onSelectType, onLoadExample }: LandingPageProps) {
           <span className="flex items-center gap-1.5"><Radio className="h-3.5 w-3.5" /> AMHS messages</span>
           <span className="flex items-center gap-1.5"><FileUp className="h-3.5 w-3.5" /> Word/PDF import</span>
           <span className="flex items-center gap-1.5"><Undo2 className="h-3.5 w-3.5" /> Full undo history</span>
-        </div>
-      </section>
-
-      {/* Disclaimers - compact, complete */}
-      <section
-        aria-labelledby="disclaimer-heading"
-        className="rounded-xl border-l-4 border-l-amber-500 border border-border bg-amber-50/60 dark:bg-amber-950/20 px-5 py-4"
-      >
-        <h2 id="disclaimer-heading" className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-200">
-          <AlertTriangle className="h-4 w-4" /> Important Disclaimers
-        </h2>
-        <div className="mt-2 space-y-1.5 text-xs leading-relaxed text-amber-800/90 dark:text-amber-200/90">
-          <p><strong>UNCLASSIFIED USE ONLY:</strong> Never input classified data. CUI is permitted only on a DoD system authorized for it and only once your authorizing official has approved this application for that use (DoDI 5200.48 para 3.3.c, 3.10.b). This project holds no such approval of its own. PII such as EDIPI is entered at your discretion and risk, stays in your browser, and is scanned before export.</p>
-          <p><strong>VERIFICATION REQUIRED:</strong> While Semper Scribe automates formatting, the final content is the responsibility of the originator. Always verify references and administrative details against current directives.</p>
-          <p><strong>BROWSER COMPATIBILITY:</strong> Optimized for modern browsers. Some legacy systems may experience rendering issues.</p>
         </div>
       </section>
 
