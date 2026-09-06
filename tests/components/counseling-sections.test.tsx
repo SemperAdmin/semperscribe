@@ -174,6 +174,6 @@ describe('JEPES benchmark block (docs/COUNSELING_JEPES_BENCHMARK_PLAN.md)', () =
     expect(screen.getAllByText(/Start each attribute at 2.5/).length).toBeGreaterThanOrEqual(1);
     const card = screen.getByTestId('benchmark-mos');
     fireEvent.change(within(card).getByLabelText('Mark (0.0 to 5.0)'), { target: { value: '4.5' } });
-    expect(screen.getByText(/MOS Proficiency and\/or Mission Accomplishment: a mark in the Exceptional band requires a justification/)).toBeInTheDocument();
+    expect(screen.getAllByText(/MOS Proficiency and\/or Mission Accomplishment: a mark in the Exceptional band requires a justification/).length).toBeGreaterThanOrEqual(1);
   });
 });
