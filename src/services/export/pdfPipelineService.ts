@@ -180,6 +180,13 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
     const bytes = await generateDd368(ctx.formData);
     return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
   },
+  // Counseling Worksheet: the app's own layout, no official blank
+  // (docs/COUNSELING_FORM_PLAN.md section 6).
+  counseling: async (ctx) => {
+    const { generateCounseling } = await import('@/services/pdf/counselingGenerator');
+    const bytes = await generateCounseling(ctx.formData);
+    return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+  },
   navmc10132: async (ctx) => {
     try {
       const { exportNavmc10132Form } = await import('@/lib/navmc10132-export');

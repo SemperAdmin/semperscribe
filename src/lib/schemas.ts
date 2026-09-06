@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { COUNSELING_OCCASIONS } from '@/lib/counseling';
 import { ITypeDefinition } from '@/lib/i-type/definition';
 import {
   NAVMC_10922_RELATIONSHIPS,
@@ -59,7 +60,7 @@ export interface SectionDefinition {
   className?: string; // Optional override for the grid layout (e.g. "grid-cols-1")
 }
 
-export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'dd368' | 'amhs' | 'coordination-page';
+export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'dd368' | 'counseling' | 'amhs' | 'coordination-page';
 export type ExportFormat = 'pdf' | 'docx' | 'amhs-text';
 export type DocumentCategory =
   | 'standard-letter'
@@ -69,7 +70,8 @@ export type DocumentCategory =
   | 'staffing-papers'
   | 'external-executive'
   | 'amhs'
-  | 'dla-correspondence';
+  | 'dla-correspondence'
+  | 'counseling-worksheets';
 
 export interface DocumentFeatures {
   // Section visibility
@@ -3287,6 +3289,108 @@ export const Dd368Definition: DocumentTypeDefinition = {
   ],
 };
 
+// --- Counseling Worksheet (docs/COUNSELING_FORM_PLAN.md) ---
+//
+// Not a form. MCO 1500.61 para 5.b(1) prescribes none and NAVMC 2795
+// Appendix A calls its worksheets suggested, so the record is the app's
+// own layout around the four documentation minimums of NAVMC 2795 para
+// 3005.1.j. Nothing is required (owner decision, 2026-09-06): the
+// suggestion engine in src/lib/counseling.ts carries every rule, keyed
+// to the situation of the session. The sections below name the scalar
+// fields for the required-field and unstarted checks; the guided editor
+// in src/components/counseling renders the record itself.
+const counselingText = () => z.string().optional();
+
+export const CounselingSchema = z.object({
+  documentType: z.literal('counseling'),
+  date: counselingText(),
+  counselingOccasion: counselingText(),
+  counselingLifeEvents: z.array(z.string()).optional(),
+  counselingLifeEventsOther: counselingText(),
+  counselingEventDescription: counselingText(),
+  counselingIcsDate: counselingText(),
+  counselingLastSessionDate: counselingText(),
+  counselingNextSessionDate: counselingText(),
+  counselingMarineLastName: counselingText(),
+  counselingMarineFirstName: counselingText(),
+  counselingMarineMiddleInitial: counselingText(),
+  counselingMarineGrade: counselingText(),
+  counselingMarineComponent: z.enum(['', 'active', 'reserve']).optional(),
+  counselingMarineEdipi: counselingText(),
+  counselingMarineDor: counselingText(),
+  counselingMarinePmos: counselingText(),
+  counselingMarineBilletMos: counselingText(),
+  counselingBilletTitle: counselingText(),
+  counselingBilletDescription: counselingText(),
+  counselingSeniorLastName: counselingText(),
+  counselingSeniorFirstName: counselingText(),
+  counselingSeniorMiddleInitial: counselingText(),
+  counselingSeniorGrade: counselingText(),
+  counselingSeniorEdipi: counselingText(),
+  counselingSeniorBillet: counselingText(),
+  counselingIcsObjectives: z.array(z.string()).optional(),
+  counselingPriorTargets: z.array(z.object({ text: z.string(), status: z.string() })).optional(),
+  counselingSubjects: z.array(z.object({ text: z.string(), area: z.string() })).optional(),
+  counselingAreas: z.array(z.object({ area: z.string(), status: z.string(), notes: z.string() })).optional(),
+  counselingAccomplishments: counselingText(),
+  counselingStrengths: counselingText(),
+  counselingDeficiencies: counselingText(),
+  counselingTargets: z.array(z.object({
+    action: z.string(), object: z.string(), standardKinds: z.array(z.string()), standard: z.string(), dueDate: z.string(), area: z.string(),
+  })).optional(),
+  counselingSeniorComments: counselingText(),
+  counselingIncludeMarineComments: z.boolean().optional(),
+  counselingMarineComments: counselingText(),
+  counselingSeniorSignedDate: counselingText(),
+  counselingMarineSignedDate: counselingText(),
+  counselingDismissed: z.array(z.string()).optional(),
+});
+
+export const CounselingDefinition: DocumentTypeDefinition = {
+  id: 'counseling',
+  name: 'Counseling Worksheet',
+  description:
+    'A guided counseling session under MCO 1500.61 and NAVMC 2795, recorded for the senior and the Marine counseled: occasion and timing, the six functional areas, targets for the coming period, and a record for two signers.',
+  icon: '🗣️',
+  schema: CounselingSchema,
+  features: {
+    ...STANDARD_LETTER_FEATURES,
+    showHeaderSettings: false,
+    showUnitInfo: false,
+    showVia: false,
+    showReferences: false,
+    showEnclosures: false,
+    showParagraphs: false,
+    showClosingBlock: false,
+    showSignature: false,
+    // The record carries its own PRIVACY SENSITIVE marking and handling
+    // statement (NAVMC 2795 para 3005.1.i; MCO 1500.61 para 5.c).
+    showClassification: false,
+    category: 'counseling-worksheets',
+    pdfPipeline: 'counseling',
+    exportFormats: ['pdf'],
+  },
+  sections: [
+    {
+      id: 'counseling-session',
+      title: 'Step 1. Occasion and timing',
+      fields: [
+        { name: 'counselingOccasion', label: 'Occasion', type: 'select', options: COUNSELING_OCCASIONS.map((o) => ({ value: o.value, label: o.label })) },
+        { name: 'date', label: 'Date of session', type: 'date' },
+        { name: 'counselingNextSessionDate', label: 'Target date for next session', type: 'date' },
+      ],
+    },
+    {
+      id: 'counseling-who',
+      title: 'Step 2. Who',
+      fields: [
+        { name: 'counselingMarineLastName', label: 'Marine counseled, last name', type: 'text' },
+        { name: 'counselingSeniorLastName', label: 'Marine performing counseling, last name', type: 'text' },
+      ],
+    },
+  ],
+};
+
 export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   basic: BasicLetterDefinition,
   'multiple-address': MultipleAddressLetterDefinition,
@@ -3301,6 +3405,7 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   navmc10922: Navmc10922Definition,
   navmc10132: Navmc10132Definition,
   dd368: Dd368Definition,
+  counseling: CounselingDefinition,
   mfr: MFRDefinition,
   'from-to-memo': FromToMemoDefinition,
   'letterhead-memo': LetterheadMemoDefinition,

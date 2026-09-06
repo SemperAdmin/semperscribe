@@ -5,6 +5,38 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.11.0] - 2026-09-06
+
+### Added
+
+- Counseling Worksheet, phase 1 of docs/COUNSELING_FORM_PLAN.md, under
+  its own "Counseling Worksheets" group (owner decision: not a form, so
+  not under Forms). A guided seven-step session in the order NAVMC 2795
+  chapter 3 runs one: occasion and timing, who, agenda, the six
+  functional areas of MCO 1500.61 para 4.a(1)(d) with the order's own
+  definitions as prompts, performance, targets, close and record.
+- No hard requirements. Every rule is a suggestion keyed to the
+  situation (occasion, life events, grade, component, dates, prior
+  targets, area status, targets), with its cite and, where the app has
+  enough to act, a one-click action: the computed next-session date
+  (NAVMC 2795 para 2001), the ICS objectives still open (2001.1.b), a
+  missed prior target carried forward (2001.2.b), open areas marked
+  "not this session", life-event subjects (MCO 1500.61 para 4.b(1)(b)),
+  the 30-day topics for a lance corporal (2001.3.e), and target count,
+  form and due date (4002). Suggestions are dismissible per session and
+  show once more on the close step. The compliance panel lists them as
+  warnings.
+- Targets built as action, object, standard (quantity, quality,
+  timeliness, manner), due date and area, read back as one sentence.
+- The record: the app's own layout, PRIVACY SENSITIVE top and bottom,
+  both EDIPIs, "Strengths and deficiencies" and "Senior's comments" in
+  place of the unit worksheet's titles, the Marine's comments as an
+  option, two signature lines, and the handling statement of NAVMC 2795
+  para 3005.1.i. Grades E-1 through O-6 with warrant officers on the
+  corporal-through-colonel interval. PDF only.
+- Three templates: Initial Counseling Session (Cpl and above), 30-Day
+  Counseling (LCpl and below), Follow-On Session.
+
 ## [0.10.1] - 2026-09-06
 
 ### Changed
