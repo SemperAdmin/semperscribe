@@ -488,5 +488,12 @@
     "description": "The accused elects to appeal, so items 12 through 15 carry data through a completed appeal decision. Sample data - replace before use.",
     "documentType": "navmc10132",
     "url": "/templates/global/navmc10132-appeal-filed.nldp"
+  },
+  {
+    "id": "dd368-sample",
+    "title": "Conditional Release (DD 368), sample",
+    "description": "DD Form 368 with Section I filled for a Marine sergeant requesting release to the Navy Reserve. Sample data - replace before use.",
+    "documentType": "dd368",
+    "url": "/templates/global/dd368-sample.nldp"
   }
 ]
