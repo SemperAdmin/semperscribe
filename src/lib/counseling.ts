@@ -102,7 +102,11 @@ export const COUNSELING_OCCASIONS: readonly CounselingOccasion[] = [
   { value: 'event-related', label: 'Event-related', kind: 'event', citation: 'NAVMC 2795 para 2001.4' },
   { value: 'rs-mro', label: 'Establishment of the RS and MRO relationship', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2)' },
   { value: 'fitness-report', label: 'Issuance of a fitness report', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2)' },
-  { value: 'pro-con', label: 'Assignment of proficiency and conduct marks', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2)' },
+  // MCO 1500.61 para 4.b(2) says "assignment of proficiency and conduct
+  // marks". JEPES replaced those marks for junior enlisted (MCO 1616.1,
+  // 25 Nov 2020), so the occasion is named for the system a Marine sees.
+  // The value stays 'pro-con' so saved documents and templates still load.
+  { value: 'pro-con', label: 'JEPES evaluation (formerly proficiency and conduct marks)', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2); MCO 1616.1' },
   { value: 'promotion-eligibility', label: 'Eligibility for promotion', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2)' },
   { value: 'new-unit', label: 'Joining a new unit', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2)' },
   { value: 'pcs', label: 'Permanent change of station', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2)' },
@@ -556,8 +560,8 @@ export function counselingSuggestions(formData: FormData): CounselingSuggestion[
   if (occasionValue === 'fitness-report' || occasionValue === 'pro-con') {
     out.push({
       id: 'fitrep-procon', step: 3,
-      text: 'Tie the marks to the targets set and met this period, so the evaluation and the counseling say the same thing.',
-      citation: 'MCO 1500.61 para 4.b(2); NAVMC 2795 para 4002',
+      text: 'Tie the fitness report or JEPES marks to the targets set and met this period, so the evaluation and the counseling say the same thing.',
+      citation: 'MCO 1500.61 para 4.b(2); MCO 1616.1; NAVMC 2795 para 4002',
     });
   }
 

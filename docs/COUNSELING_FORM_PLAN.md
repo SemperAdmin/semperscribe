@@ -367,7 +367,7 @@ The situation is what the leader has already entered. The engine reads:
 | `life-purchase` | first car or house | Cover the financial decision and a command financial counselor referral. | 4.b(1)(b), 4.a(1)(d) Finances | Mark Finances discussed |
 | `life-school` | resident school or special training | Cover preparation, prerequisites and what follows the course. | 4.b(1)(b) | Mark Fighter and Future discussed |
 | `force-preservation` | occasion Force Preservation | Cover physical, mental, spiritual and social well-being and the resources available. | 4.b(2), 4.a(1)(d) Fitness | Mark Fitness discussed |
-| `fitrep-procon` | occasion fitness report or pro/con marks | Tie the marks to the targets set and met this period. | 4.b(2), 4002 | Load prior targets |
+| `fitrep-procon` | occasion fitness report or JEPES (formerly pro/con) marks | Tie the marks to the targets set and met this period. | 4.b(2), 4002 | Load prior targets |
 | `new-unit` | occasion joining a new unit or major billet change | This starts a new senior/junior relationship. Hold the ICS about 30 days in. | 2001.1.a, 4.b(2) | Set occasion initial and next session +30 days |
 | `mentor-label` | "mentor" in a billet field | Counseling is the senior's duty. Mentoring is voluntary and never directed. | 4.a(1)(d) | none |
 | `handling` | always, on the close step | This record is for the senior and junior only. Not forwarded. Destroyed when the relationship ends. | 3005.1.i | none |
