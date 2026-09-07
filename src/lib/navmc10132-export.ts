@@ -24,6 +24,14 @@
  * that resembles theirs with every signature broken. See
  * navmc10132-incremental-write.ts for what that costs and why.
  *
+ * WHICH DOCUMENT'S FILE (audit P6-1). The base is looked up by the id the
+ * loader recorded on `formData.navmc10132BaseFileId`, and only when the
+ * document also carries the load report saying a signed file is behind it.
+ * A fresh document has neither and fills the blank; a document whose id
+ * does not resolve in this browser (a `.nldp` from another machine) fills
+ * the blank and the report says so. No document can reach a base it did
+ * not load.
+ *
  * THE PREVIEW USES THIS TOO. `pdfPipelineService` calls this function for
  * both the export and the live preview, so a loaded document previews as
  * ITSELF rather than as a fresh blank. That was Stephen's ask in the same
@@ -41,20 +49,42 @@ import {
 import fieldMap from '../../tools/aa-forms/navmc10132-map.json';
 import { officialFormAsset } from '@/lib/xfa-form-fill';
 import { loadAssetBytes } from '@/lib/assets';
-import { getNavmc10132Base } from '@/lib/navmc10132-base-file';
+import { getNavmc10132Base, navmc10132BaseFileIdOf } from '@/lib/navmc10132-base-file';
 import { writeNavmc10132Incremental } from '@/lib/navmc10132-incremental-write';
 import { navmc10132LockedFieldNames } from '@/lib/navmc10132-locks';
 
+/** What an export did, for the caller to tell the clerk. */
+export interface Navmc10132ExportReport {
+  /** `incremental`: written into the loaded signed file. `blank`: the bundled blank, filled. */
+  path: 'blank' | 'incremental';
+  /** Field names the incremental writer refused (signature-closed, or not on the form). */
+  refused: string[];
+  /**
+   * True when the document carries a load report but its recorded base
+   * did not resolve, so the blank was filled in place of the signed file.
+   */
+  baseMissing: boolean;
+}
+
 /**
- * Load the bundled blank through the asset seam and fill it from document state.
+ * The export, with the report of which path ran and what was refused.
  *
- * Throws when the blank cannot be read, because a silently empty export of a
- * legal record is worse than a visible failure.
+ * Throws when the blank cannot be read, because a silently empty export of
+ * a legal record is worse than a visible failure; and throws when the
+ * signed base cannot be READ from storage (Navmc10132BaseReadError), for
+ * the same reason with more force: a blank in place of a signed file is a
+ * document with every signature gone.
  */
-export async function exportNavmc10132Form(formData: FormData): Promise<Blob> {
+export async function exportNavmc10132FormWithReport(
+  formData: FormData,
+): Promise<{ blob: Blob; report: Navmc10132ExportReport }> {
   // A signed file the clerk loaded is the base every later pass writes
-  // into. Only a fresh case starts from the bundled blank.
-  const uploaded = await getNavmc10132Base();
+  // into. Only a document whose load report says a file is behind it, and
+  // whose recorded id resolves, takes that path. Everything else starts
+  // from the bundled blank.
+  const loaded = Boolean(formData.navmc10132LoadReport);
+  const baseFileId = loaded ? navmc10132BaseFileIdOf(formData) : null;
+  const uploaded = loaded ? await getNavmc10132Base(baseFileId) : null;
   if (uploaded) return exportIntoUploadedFile(formData, uploaded.bytes);
 
   const asset = officialFormAsset('navmc10132');
@@ -68,7 +98,15 @@ export async function exportNavmc10132Form(formData: FormData): Promise<Blob> {
     // as tampering. Spec decision D-12.
     stripUsageRights: true,
   });
-  return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+  return {
+    blob: new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }),
+    report: { path: 'blank', refused: [], baseMissing: loaded },
+  };
+}
+
+/** The export alone, for callers that want only the bytes. */
+export async function exportNavmc10132Form(formData: FormData): Promise<Blob> {
+  return (await exportNavmc10132FormWithReport(formData)).blob;
 }
 
 /**
@@ -84,13 +122,16 @@ export async function exportNavmc10132Form(formData: FormData): Promise<Blob> {
  * bytes rather than with the export, because they are true of any write into
  * a signed document, not only of an export.
  *
- * REFUSALS ARE LOGGED, NOT SWALLOWED. A clerk who edited a locked field will
- * not see their change in the file, and the console line is the only trace
- * of why until the UI surfaces it. The UI half already stops them editing
- * one (navmc10132-locks.ts), so a refusal here means either a stale value
- * from before the file was loaded, or a bug.
+ * REFUSALS ARE REPORTED, NOT SWALLOWED (audit P6-5). A clerk who edited a
+ * locked field will not see their change in the file. The UI half already
+ * stops them editing one (navmc10132-locks.ts), so a refusal here means
+ * either a stale value from before the file was loaded, or a bug; either
+ * way the export toast names the field, and the console keeps the line.
  */
-async function exportIntoUploadedFile(formData: FormData, base: Uint8Array): Promise<Blob> {
+async function exportIntoUploadedFile(
+  formData: FormData,
+  base: Uint8Array,
+): Promise<{ blob: Blob; report: Navmc10132ExportReport }> {
   const result = await writeNavmc10132Incremental(
     base,
     navmc10132Values(formData),
@@ -109,5 +150,8 @@ async function exportIntoUploadedFile(formData: FormData, base: Uint8Array): Pro
     );
   }
 
-  return new Blob([new Uint8Array(result.bytes)], { type: 'application/pdf' });
+  return {
+    blob: new Blob([new Uint8Array(result.bytes)], { type: 'application/pdf' }),
+    report: { path: 'incremental', refused: [...result.refused], baseMissing: false },
+  };
 }

@@ -1485,6 +1485,8 @@ export const Navmc10132Schema = z.object({
    * navmc10132-item6-parse.ts.
    */
   punishmentImposedFromFile: z.string().optional(),
+  /** The id of the uploaded signed file in browser storage, set by the loader; see navmc10132-base-file.ts. */
+  navmc10132BaseFileId: z.string().optional(),
 
   page11CorrectiveAction: z.string().optional(),
   page11AssistanceAvailable: z.string().optional(),

@@ -92,7 +92,8 @@ export function useLivePreview(
     try {
       // Eager preview: render on any change, no subject-or-from gate
       // (Stephen 2026-08: the preview should appear as soon as any field is set).
-      const ctx = { formData, vias, references, enclosures, copyTos, paragraphs, distList };
+      // P6-5: the placeholder notice is a preview courtesy only. Exports throw.
+      const ctx = { formData, vias, references, enclosures, copyTos, paragraphs, distList, mode: 'preview' as const };
       let blob: Blob;
       let status: SamePageStatus | null = null;
       // E.3 (M-5216.5 9-1, Figure 9-1): a same-page endorsement with the

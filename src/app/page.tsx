@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
 import { ParagraphData, SavedLetter, ValidationState, FormData, ReportData, SamePageHost } from '@/types';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { EXAMPLE_DOCUMENT_URL } from '@/components/layout/LandingPage';
@@ -15,7 +15,7 @@ import {
   filePut, fileGet, fileDeleteIfOwnedBy, fileDeleteForDoc, fileReparentByIds,
   WORKING_COPY_DOC_ID,
 } from '@/lib/document-library';
-import { putNavmc10132Base } from '@/lib/navmc10132-base-file';
+import { putNavmc10132Base, navmc10132BaseFileIdOf } from '@/lib/navmc10132-base-file';
 import { backupDocument } from '@/lib/auto-backup';
 import { runLetterValidators } from '@/lib/letter-validators';
 import type { ValidationIssue } from '@/lib/letter-validators';
@@ -261,6 +261,12 @@ function NavalLetterGeneratorInner() {
 
   // R3: autosave becomes active once the initial document load settles
   const [autosaveReady, setAutosaveReady] = useState(false);
+
+  // P6-7: set when Save could not re-parent the bound files (enclosures,
+  // the uploaded signed NAVMC 10132) to the saved document. While set, the
+  // Clear Form sweep of working-copy files is skipped, because it would
+  // delete files a saved document still depends on.
+  const reparentFailedRef = useRef(false);
 
   // Unit header state (sourced from user profile)
   const [currentUnitCode, setCurrentUnitCode] = useState<string | undefined>(undefined);
@@ -713,7 +719,25 @@ function NavalLetterGeneratorInner() {
         // E.3: the attached letter being endorsed is owned the same way.
         const host = newLetter.samePageHost as SamePageHost | undefined;
         if (host?.kind === 'file') boundIds.push(host.fileId);
-        fileReparentByIds(boundIds, newLetter.id).catch((error) => console.error('Enclosure file re-parent failed', error));
+        // P6-7: the uploaded signed NAVMC 10132 is owned the same way too.
+        // Left out, it stayed under the working copy and Clear Form after
+        // Save deleted the saved document's signed file.
+        const navmcBaseId = navmc10132BaseFileIdOf(newLetter as FormData);
+        if (navmcBaseId) boundIds.push(navmcBaseId);
+        fileReparentByIds(boundIds, newLetter.id).catch((error) => {
+          console.error('Enclosure file re-parent failed', error);
+          // The files still belong to the working copy, so the next Clear
+          // Form sweep would delete what this save depends on. Hold the
+          // sweep off and say so.
+          if (boundIds.length > 0) {
+            reparentFailedRef.current = true;
+            toast({
+              title: 'Attached files not moved to the saved document',
+              description: 'The draft saved, but its attached files (enclosures, a signed NAVMC 10132) could not be re-parented to it. Save again before clearing the form.',
+              variant: 'destructive',
+            });
+          }
+        });
         // P1.3: mirror to the backup folder when auto backup is on.
         backupDocument(newLetter).catch((error) => {
           console.error('Auto backup failed', error);
@@ -814,8 +838,17 @@ function NavalLetterGeneratorInner() {
         setReferences(['']);
         setEnclosureRows([newRow()]);
         setEnclosureFiles(new Map());
-        // ENC: clear-form abandons unsaved write-through files.
-        fileDeleteForDoc(WORKING_COPY_DOC_ID).catch((error) => console.error('Working-copy file cleanup failed', error));
+        // ENC: clear-form abandons unsaved write-through files, the
+        // uploaded signed NAVMC 10132 among them (navmc10132-base-file.ts).
+        // The new document carries no base id, so it fills the blank
+        // whether or not the sweep runs. P6-7: skipped when the last Save
+        // failed to move its files off the working copy.
+        if (reparentFailedRef.current) {
+          reparentFailedRef.current = false;
+          console.warn('Working-copy file cleanup skipped: the last save could not re-parent its files.');
+        } else {
+          fileDeleteForDoc(WORKING_COPY_DOC_ID).catch((error) => console.error('Working-copy file cleanup failed', error));
+        }
         setCopyTos(['']);
         setComments([]);
         setReviewMode(false);
@@ -855,6 +888,10 @@ function NavalLetterGeneratorInner() {
    */
   const applyNavmc10132Load = useCallback(
     (patch: Record<string, unknown>, report: unknown, bytes: ArrayBuffer, fileName: string) => {
+      // P6-1: the base is keyed by an id minted per load and recorded on
+      // the document, so the export reads THIS document's file and no
+      // other. The previous base of this document, if any, is replaced.
+      const previousBaseId = navmc10132BaseFileIdOf(formData);
       setFormData(prev => ({ ...prev, ...patch, navmc10132LoadReport: report }));
 
       // REMOUNT EVERY DYNAMICFORM, and this line is the whole of Stephen's
@@ -878,17 +915,69 @@ function NavalLetterGeneratorInner() {
       // Five megabytes, so IndexedDB rather than document state, which is
       // JSON-serialized on every autosave. See navmc10132-base-file.ts.
       //
-      // FIRE AND FORGET, DELIBERATELY. The form is already populated and
-      // usable; a storage failure costs the incremental path, not the load,
-      // and the export degrades to filling the blank rather than failing.
-      putNavmc10132Base(bytes, fileName).catch((error) =>
-        console.error('Storing the uploaded NAVMC 10132 failed; exports will fill the blank instead:', error),
-      );
+      // NOT AWAITED, DELIBERATELY. The form is already populated and
+      // usable. The id lands on the document once the bytes are stored; a
+      // storage failure leaves no id, so the export fills the blank and its
+      // toast says the signed file is not available, rather than failing.
+      putNavmc10132Base(bytes, fileName, { replaces: previousBaseId })
+        .then((id) => setFormData(prev => ({ ...prev, navmc10132BaseFileId: id })))
+        .catch((error) => {
+          console.error('Storing the uploaded NAVMC 10132 failed; exports will fill the blank instead:', error);
+          // The previous base was not replaced (the put failed before the
+          // delete), but it belongs to the file that was loaded BEFORE this
+          // one; the document now describes the new file, so no base.
+          setFormData(prev => (navmc10132BaseFileIdOf(prev) === previousBaseId
+            ? { ...prev, navmc10132BaseFileId: undefined }
+            : prev));
+          toast({
+            title: 'Signed file not kept',
+            description: 'The uploaded NAVMC 10132 could not be stored in this browser. Exports will fill the blank form, without its signatures, until it is loaded again.',
+            variant: 'destructive',
+          });
+        });
 
       debugFormChange('NAVMC 10132 Loaded From PDF', patch);
     },
-    [],
+    // formData is read once, for the previous base id. The consumer
+    // (useDocumentImport) already re-creates its callback on every
+    // formData change, so this dependency costs nothing extra.
+    [formData, toast],
   );
+
+  /**
+   * P6-1: `handleImport` MERGES over the previous document state, so a
+   * draft, a template, a share link or an `.nldp` that carries no signed
+   * file would otherwise inherit the previous document's base id and load
+   * report, and export INTO the previous Marine's signed file. Clearing
+   * both first leaves the incoming document with exactly what it brought:
+   * a saved draft of a loaded UPB carries its own id and gets its own base
+   * back; everything else fills the blank.
+   *
+   * The bytes are not deleted here: a saved document may own them, and
+   * an unsaved base falls to the Clear Form sweep.
+   */
+  const dropNavmc10132Base = useCallback(() => {
+    setFormData(prev => (
+      prev.navmc10132BaseFileId === undefined && prev.navmc10132LoadReport === undefined
+        ? prev
+        : { ...prev, navmc10132BaseFileId: undefined, navmc10132LoadReport: undefined }
+    ));
+  }, []);
+
+  const handleImportFresh = useCallback((payload: Parameters<typeof handleImport>[0]) => {
+    dropNavmc10132Base();
+    handleImport(payload);
+  }, [dropNavmc10132Base, handleImport]);
+
+  const handleLoadDraftFresh = useCallback((id: string) => {
+    dropNavmc10132Base();
+    handleLoadDraft(id);
+  }, [dropNavmc10132Base, handleLoadDraft]);
+
+  const handleLoadTemplateUrlFresh = useCallback((url: string) => {
+    dropNavmc10132Base();
+    return handleLoadTemplateUrl(url);
+  }, [dropNavmc10132Base, handleLoadTemplateUrl]);
 
   const documentImport = useDocumentImport({
     applyImport: applyDocumentImport,
@@ -931,7 +1020,7 @@ function NavalLetterGeneratorInner() {
       }
       handleDocumentTypeChange(targetType);
     }
-    handleLoadTemplateUrl(url);
+    handleLoadTemplateUrlFresh(url);
   };
 
   const handleClearSavedLetters = () => {
@@ -1084,7 +1173,7 @@ function NavalLetterGeneratorInner() {
     hasEncryptedPending, unlockEncrypted, dismissEncrypted,
     sharedPending, confirmShared, dismissShared,
   } = useShareLinkLoader({
-    handleImport,
+    handleImport: handleImportFresh,
     toast,
     // EDMS handoff. Scalars only: no subject, no names, no body. See
     // lib/edms-handoff.ts for why the payload is deliberately narrow.
@@ -1122,8 +1211,8 @@ function NavalLetterGeneratorInner() {
   // menu uses for a .nldp, so the example loads exactly as a drafter's
   // own package would.
   const handleLoadExample = useCallback(() => {
-    handleLoadTemplateUrl(EXAMPLE_DOCUMENT_URL);
-  }, [handleLoadTemplateUrl]);
+    handleLoadTemplateUrlFresh(EXAMPLE_DOCUMENT_URL);
+  }, [handleLoadTemplateUrlFresh]);
 
   // Phase 2: inline compliance issues for the live preview banner. The
   // military dictionary only adds suggested expansions to acronym
@@ -1149,8 +1238,8 @@ function NavalLetterGeneratorInner() {
       onGeneratePdf={() => generateDocument('pdf')}
       onSave={saveLetter}
       paragraphs={paragraphs}
-      onLoadDraft={handleLoadDraft}
-      onImport={handleImport}
+      onLoadDraft={handleLoadDraftFresh}
+      onImport={handleImportFresh}
       onImportDocument={documentImport.startImport}
       isImportingDocument={documentImport.isProcessing}
       onPasteImport={documentImport.startPasteImport}
@@ -1318,7 +1407,7 @@ function NavalLetterGeneratorInner() {
         open={showLibrary}
         onOpenChange={setShowLibrary}
         letters={savedLetters}
-        onLoad={handleLoadDraft}
+        onLoad={handleLoadDraftFresh}
         onRename={handleRenameDocument}
         onDuplicate={handleDuplicateDocument}
         onDelete={handleDeleteDocument}
@@ -1344,7 +1433,7 @@ function NavalLetterGeneratorInner() {
         open={showCompare}
         onOpenChange={setShowCompare}
         letters={savedLetters}
-        onRestore={handleLoadDraft}
+        onRestore={handleLoadDraftFresh}
       />
       <PackageDialog
         open={showPackage}
