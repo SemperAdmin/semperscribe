@@ -196,6 +196,19 @@ export type CounselingComponent = '' | 'active' | 'reserve';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+/**
+ * A local-midnight Date from calendar parts (0-indexed month), or null when
+ * they do not name a real day. `new Date(y, m, d)` rolls 31 Feb into March and
+ * 0 Jan into December silently, and maps a year under 100 onto 1900-1999, so
+ * the result is checked against the parts it was built from.
+ */
+function exactLocalDate(year: number, month: number, day: number): Date | null {
+  const date = new Date(year, month, day);
+  if (isNaN(date.getTime())) return null;
+  if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) return null;
+  return date;
+}
+
 export function parseNavalDate(value: string | undefined): Date | null {
   const text = (value ?? '').trim();
   if (!text) return null;
@@ -204,13 +217,11 @@ export function parseNavalDate(value: string | undefined): Date | null {
     const month = MONTHS.findIndex((m) => m.toLowerCase() === naval[2].toLowerCase());
     if (month < 0) return null;
     const year = naval[3].length === 2 ? 2000 + Number(naval[3]) : Number(naval[3]);
-    const date = new Date(year, month, Number(naval[1]));
-    return isNaN(date.getTime()) ? null : date;
+    return exactLocalDate(year, month, Number(naval[1]));
   }
   const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (iso) {
-    const date = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-    return isNaN(date.getTime()) ? null : date;
+    return exactLocalDate(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
   }
   return null;
 }
@@ -225,10 +236,19 @@ export function addDays(date: Date, days: number): Date {
   return out;
 }
 
+/**
+ * CALENDAR MONTHS, CLAMPED. NAVMC 2795 para 2001.2.a says "no more than 6
+ * months", so 31 Aug plus 6 months is 28 Feb (29 in a leap year). setMonth
+ * rolls 31 Feb forward into 3 Mar, which is past the limit. Clamp to the
+ * last day of the target month instead (same rule as njp-suspension-period).
+ */
 export function addMonths(date: Date, months: number): Date {
-  const out = new Date(date.getTime());
-  out.setMonth(out.getMonth() + months);
-  return out;
+  const total = date.getMonth() + months;
+  const year = date.getFullYear() + Math.floor(total / 12);
+  const month = ((total % 12) + 12) % 12;
+  const daysInTarget = new Date(year, month + 1, 0).getDate();
+  const day = Math.min(date.getDate(), daysInTarget);
+  return new Date(year, month, day);
 }
 
 // --- Next-session interval (NAVMC 2795 para 2001) ---
@@ -878,15 +898,22 @@ export function isJepesGrade(grade: string): boolean {
   return /^E-[1234]$/.test(grade.trim());
 }
 
-/** A mark as a number, or null for blank or unparseable text. */
+/**
+ * A mark as a number, or null for blank or unparseable text. One or two
+ * decimals are accepted ("4.5", "4.50", "2.55"); the typed text stays in the
+ * field, only the value is read. 5.01 is out of range.
+ */
 export function jepesMarkValue(mark: string): number | null {
   const text = mark.trim();
-  if (!/^\d(\.\d)?$/.test(text)) return null;
+  if (!/^\d(\.\d{1,2})?$/.test(text)) return null;
   const n = Number(text);
   return n >= 0 && n <= 5 ? n : null;
 }
 
-/** The band a mark falls in, by the inclusive ranges of Figure 1-2. */
+/**
+ * The band a mark falls in, by the inclusive ranges of Figure 1-2. A
+ * two-decimal mark is rounded to tenths for banding, so "4.50" bands as 4.5.
+ */
 export function jepesBand(mark: string): JepesBand | null {
   const n = jepesMarkValue(mark);
   if (n === null) return null;

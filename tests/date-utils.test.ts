@@ -11,14 +11,20 @@ describe('parseAndFormatDate', () => {
   });
 
   describe('ISO date format (YYYY-MM-DD)', () => {
-    it('converts ISO dates to naval format', () => {
-      const result = parseAndFormatDate('2024-01-15');
-      expect(result).toMatch(/\d{1,2} Jan 2[34]/);
+    it('converts ISO dates to naval format on the exact calendar day', () => {
+      // Exact day: the old /\d{1,2} Jan 2[34]/ tolerated the one-day-early
+      // UTC-midnight parse (P5-2). The test run is pinned to Los Angeles.
+      expect(parseAndFormatDate('2024-01-15')).toBe('15 Jan 24');
+      expect(parseAndFormatDate('2024-01-01')).toBe('1 Jan 24');
     });
 
     it('handles single-digit months and days', () => {
-      const result = parseAndFormatDate('2024-03-05');
-      expect(result).toMatch(/\d{1,2} Mar 2[34]/);
+      expect(parseAndFormatDate('2024-03-05')).toBe('5 Mar 24');
+      expect(parseAndFormatDate('2024-3-5')).toBe('5 Mar 24');
+    });
+
+    it('returns a rolled ISO date unchanged', () => {
+      expect(parseAndFormatDate('2024-02-31')).toBe('2024-02-31');
     });
   });
 

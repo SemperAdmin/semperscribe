@@ -10,6 +10,13 @@ export default defineConfig({
     // parallel workers push them past the 5s default on slower runs.
     testTimeout: 30000,
     globals: true,
+    // Pin the worker clock west of Greenwich. The ECMAScript spec parses a
+    // bare 'YYYY-MM-DD' as UTC midnight, so the one-day-early bug (P5-2)
+    // only reproduces in a negative-offset zone; CI runs in UTC and would
+    // never see it. Los Angeles also observes DST, so day-count arithmetic
+    // across the March change (P5-10) is exercised. tests/p5-dates.test.ts
+    // asserts the pin took effect.
+    env: { TZ: 'America/Los_Angeles' },
     environment: 'jsdom',
     setupFiles: './tests/setup.ts',
     // Playwright specs live under tests/e2e and run through

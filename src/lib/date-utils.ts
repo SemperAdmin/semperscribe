@@ -5,6 +5,36 @@
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /**
+ * Build a LOCAL-midnight Date from calendar parts, or null when the parts do
+ * not name a real day (31 Feb, 0 Jan, month 13). `new Date(y, m, d)` rolls
+ * such input forward or back silently, so the constructed date is checked
+ * against the parts it was built from.
+ *
+ * @param month - 1-indexed calendar month
+ */
+export function localDateFromParts(year: number, month: number, day: number): Date | null {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+  return date;
+}
+
+/**
+ * Parse 'YYYY-MM-DD' (or 'YYYY-M-D') into a LOCAL-midnight Date. Never route
+ * an ISO date-only string through `new Date(string)`: the spec parses it as
+ * UTC midnight, and west of Greenwich the local calendar day comes back one
+ * day early (see src/lib/navmc10132-date.ts). Returns null for anything that
+ * is not an ISO calendar date, rolled dates included.
+ */
+export function parseIsoLocalDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value.trim());
+  if (!match) return null;
+  return localDateFromParts(Number(match[1]), Number(match[2]), Number(match[3]));
+}
+
+/**
  * Formats a date string to Business Letter format (Month D, YYYY)
  * e.g., "January 5, 2015"
  */
@@ -33,14 +63,16 @@ export function formatBusinessDate(dateString: string): string {
       const year = yearStr.length === 2 ? 2000 + parseInt(yearStr) : parseInt(yearStr);
       
       if (monthIndex !== -1) {
-        date = new Date(year, monthIndex, day);
+        // Null for a rolled date such as 31 Feb; the input then comes back unchanged.
+        date = localDateFromParts(year, monthIndex + 1, day);
       }
+      if (!date) return dateString;
     } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-       // Handle YYYY-MM-DD explicitly as local time to avoid timezone shifts
-       const [y, m, d] = dateString.split('-').map(Number);
-       date = new Date(y, m - 1, d);
+      // Handle YYYY-MM-DD explicitly as local time to avoid timezone shifts
+      date = parseIsoLocalDate(dateString);
+      if (!date) return dateString;
     }
-    
+
     // Fallback to standard Date parsing
     if (!date) {
       const parsed = new Date(dateString);
@@ -83,8 +115,9 @@ export function parseAndFormatDate(dateString: string): string {
     const day = dateString.substring(6, 8);
     date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
   } else if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(dateString)) {
-    // ISO format YYYY-MM-DD
-    date = new Date(dateString);
+    // ISO format YYYY-MM-DD, parsed by parts into a LOCAL date. new Date(iso)
+    // is UTC midnight and printed the previous day west of Greenwich.
+    date = parseIsoLocalDate(dateString);
   } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateString)) {
     // MM/DD/YYYY format
     const parts = dateString.split('/');
