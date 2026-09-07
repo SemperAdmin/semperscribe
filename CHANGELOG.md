@@ -5,6 +5,111 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.0] - 2026-09-07
+
+Remediation of the 2026-09-07 findings report (docs/AUDIT_2026-09-07.md).
+Every item carries a regression test written before the fix.
+
+### Fixed
+
+- NAVMC 10132: the signed base file is keyed per document, the incremental
+  write runs only for a document which loaded that file, and a fresh
+  document never writes into another Marine's signed UPB. A fill failure
+  is an export failure, not a placeholder page with a success toast, in
+  the browser and the companion. Refused field writes are named in the
+  toast. Save carries the base with the document (P6-1, P6-5, P6-6, P6-7).
+- NJP money: one dollar parser for every forfeiture field ($ and thousands
+  separators accepted, exponent and hex refused); V-20 and W-07 BLOCK on an
+  unreadable non-empty amount instead of skipping; item 6 prints one
+  dollar sign; the pay-facts inputs keep the decimal point (150.00 no
+  longer stores 15000); suspension periods must be whole months and days;
+  PRIUM fields refuse cents and six digits; negative and fractional day
+  counts are flagged (P5-1, P5-3, P5-6, P5-7, P5-12).
+- Dates: ISO dates parse as local calendar days, so 15 Jan prints 15 Jan
+  west of Greenwich and a 1 July cancellation prints July; counseling
+  intervals clamp to month ends (31 Aug plus six months is 28 Feb);
+  rolled dates such as 31 Feb are rejected; NAVMC 10922 day counts are
+  DST-safe; two-decimal JEPES marks band. The test suite runs pinned to
+  America/Los_Angeles (P5-2, P5-4, P5-9, P5-10, P5-11).
+- Validators: the SSIC change-annotation strip, the acronym definition
+  scan and the rich-text tokenizer are linear; 200 000 spaces or 40 000
+  distinct acronyms complete in milliseconds where they took 20 to 66
+  seconds on the main thread and in the companion (P4-1, P4-2, P4-3).
+- Save Draft reports success only after the write; a failed write keeps
+  the working copy and the header stays Unsaved. Escape or a click
+  outside the recovery dialog keeps the copy; Discard asks once inside
+  the dialog. Working copies are per tab, a stale write is refused, and a
+  second tab's Discard deletes only its own copy and files. Loading a
+  draft, importing or picking a template over unsaved work prompts first
+  and starts from a blank document, so no signature fields, host or NAVMC
+  base ride into the new one. AMHS copy and library rename, duplicate and
+  delete report failures (P6-2, P6-3, P6-4, P6-9, P6-10, P6-17).
+- The live preview drops superseded renders and shows a notice when the
+  last render failed. Concurrent export scans settle the earlier prompt.
+  A failed File System Access write is aborted so no empty file is left.
+  IndexedDB version changes and blocked opens are reported; a new service
+  worker prompts for reload and never caches an error page as the offline
+  shell (P6-11, P6-12, P6-13, P6-15, P6-16).
+
+### Security
+
+- The signature request link is encrypted (#es=) with a password of at
+  least 12 characters, refused in EDMS mode when unprotected, and gated by
+  the sensitive-data scan, as is the sign-ready PDF and every share link.
+  Share passwords are 12 characters minimum with a passphrase generator.
+  Share payloads are size-capped before decoding (P2-1, P2-6, P2-11, P3-2).
+- GunnyBot proxy URLs are loopback-only unless the user acknowledges a
+  named remote host in Settings; EDMS mode refuses a remote proxy at send
+  time; the destination host is shown beside Send (P2-2).
+- Companion: Host and Origin checks (403 on rebinding), an optional bearer
+  token which becomes mandatory for a non-loopback bind, own-property
+  document-type lookup, EDMS context validated in both skins, atomic
+  temp-and-rename output writes, no output path in error bodies
+  (P2-3, P2-4, P2-9, P2-10, P6-14, P6-20).
+- Uploaded PDFs are stripped of OpenAction, page and annotation actions of
+  the Launch, JavaScript, SubmitForm, ImportData, GoToR and GoToE kinds
+  before they are merged into an export (P4-4). Document import refuses
+  files over 10 MB before reading them (P4-5). An unseparated nine-digit
+  SSN is reported by the export and GunnyBot scans (P2-8).
+- Settings, Data, "Delete all local data" clears every IndexedDB store,
+  every app key in localStorage and sessionStorage, then reloads (P2-5).
+  Auto-backup keeps the newest five snapshots per document, deletes them
+  with the document, and warns when the folder looks synced (P3-3).
+
+### Accessibility
+
+- Signature placement is keyboard-operable: Add signature field, arrow
+  keys move, Alt+arrows resize, Delete removes, each field named. Every
+  select, input and textarea across the forms carries an accessible name.
+  DynamicForm checkboxes are named. The command palette has a title,
+  valid listbox children and returns focus. Dark-theme header text,
+  preview placeholders, tab labels, the wordmark and the footer meet
+  4.5:1. Heading order is fixed and the h1 survives at phone width. The
+  axe suite covers every editor, the Settings and Share dialogs, the
+  command palette, dark theme, header and footer, and passes with no
+  serious or critical violation (P8-1 to P8-12).
+
+### Changed
+
+- Privacy and Security Notice: personal information about a service
+  member in a record is CUI in the Privacy category (PRVCY) under the DoD
+  CUI Registry, so the authorizing-official condition applies to a form
+  produced for a real Marine. New Section 6A states what is kept, that
+  nothing expires on its own, and how to delete it (P9-1, P9-4).
+- LICENSES.md names @axe-core/playwright as the MPL-2.0 direct
+  devDependency; the typescript pin carries its reason and a Dependabot
+  ignore (P7-2, P7-4).
+
+### Open, needing an owner ruling
+
+- P5-5: whether MCM Part V 5.d(4) caps a combination at the imposing
+  grade's extra-duty maximum or the imposed code's own maximum.
+- P5-8: whether a vacation offence on the day of punishment falls inside
+  the suspension period.
+- P6-8: successive saves share enclosure bytes; deleting the newest save
+  orphans the older saves' enclosures. Needs a per-save copy or a
+  reference count.
+
 ## [0.12.0] - 2026-09-07
 
 ### Added
