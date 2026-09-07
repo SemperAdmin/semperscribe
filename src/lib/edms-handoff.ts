@@ -43,7 +43,7 @@ export interface EdmsPrefill extends EdmsContext {
  * A malformed link opens the blank editor, which is a state the Marine
  * understands, instead of a half-populated one, which is not.
  */
-const PATTERNS = {
+export const PATTERNS = {
   requestId: /^\d{1,9}$/,
   ruc: /^[A-Za-z0-9]{1,8}$/,
   ssic: /^\d{4,5}$/,

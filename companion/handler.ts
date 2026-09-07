@@ -60,7 +60,7 @@ export interface DocumentTypeSummary {
 }
 
 function summarise(id: string): DocumentTypeSummary {
-  const def = DOCUMENT_TYPES[id];
+  const def = requireDefinition(id, 400);
   const features = def.features;
   return {
     id,
@@ -79,8 +79,22 @@ export function listDocumentTypes(): DocumentTypeSummary[] {
   return Object.keys(DOCUMENT_TYPES).map(summarise);
 }
 
+/**
+ * DOCUMENT_TYPES is a plain object, so a bare index would answer
+ * "constructor" or "__proto__" with an Object.prototype member and the
+ * summariser would fall over reading .features from it (AUDIT P2-9).
+ * An own-property check keeps the lookup to the types the table defines
+ * (hasOwnProperty.call rather than Object.hasOwn: the app tsconfig lib
+ * predates ES2022).
+ */
+export function findDefinition(type: string): (typeof DOCUMENT_TYPES)[string] | undefined {
+  return Object.prototype.hasOwnProperty.call(DOCUMENT_TYPES, type)
+    ? DOCUMENT_TYPES[type]
+    : undefined;
+}
+
 function requireDefinition(type: string, status: number) {
-  const def = DOCUMENT_TYPES[type];
+  const def = findDefinition(type);
   if (!def) {
     throw new CompanionError(
       'unknown_document_type',
@@ -356,7 +370,7 @@ export async function validateDocument(document: unknown): Promise<ValidateResul
   const warnings: string[] = [...(imported.warnings ?? [])];
   if (documentType === null) {
     errors.push('Missing formData.documentType');
-  } else if (!DOCUMENT_TYPES[documentType]) {
+  } else if (!findDefinition(documentType)) {
     errors.push(`Unknown document type "${documentType}"`);
   }
 
@@ -483,7 +497,7 @@ async function renderDocx(slices: DocumentSlices): Promise<Uint8Array> {
     const result = await exportDocument('i-type', slices.formData, 'docx');
     return result instanceof Blob ? blobBytes(result) : new Uint8Array(result);
   }
-  const features = DOCUMENT_TYPES[slices.formData.documentType]?.features;
+  const features = findDefinition(slices.formData.documentType)?.features;
   const paragraphs = features?.isDirective
     ? mergeAdminSubsections(slices.paragraphs, slices.formData.adminSubsections)
     : slices.paragraphs;
