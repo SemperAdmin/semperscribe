@@ -64,13 +64,56 @@ export interface StoredEnclosureFile {
 /** localStorage flag guarding the one-time legacy import. */
 export const LIBRARY_MIGRATED_KEY = 'semperscribe-library-migrated';
 
+/**
+ * P3-3: what libDelete calls after the document is gone, so the backup
+ * folder (lib/auto-backup) drops that document's snapshots too. A hook
+ * rather than an import: auto-backup imports this module. Nothing is
+ * registered until auto-backup loads, and a hook failure is logged,
+ * never surfaced as a failed delete - the library write already held.
+ */
+type BackupDeleteHook = (id: string) => Promise<unknown>;
+let backupDeleteHook: BackupDeleteHook | null = null;
+
+export function registerBackupDeleteHook(hook: BackupDeleteHook | null): void {
+  backupDeleteHook = hook;
+}
+
+/**
+ * P6-11: set when another tab (a newer deploy) asked this connection to
+ * step aside for a schema upgrade. The connection is closed on the spot;
+ * every later open refuses with RELOAD_REQUIRED_MESSAGE, which the Save
+ * path shows, because this tab's code no longer matches the database.
+ */
+export const RELOAD_REQUIRED_MESSAGE =
+  'The app was updated in another tab. Reload the app, then save again.';
+let reloadRequired = false;
+
+export function isReloadRequired(): boolean {
+  return reloadRequired;
+}
+
+/** Test seam: the flag is module state and tests share the module. */
+export function resetReloadRequiredForTests(): void {
+  reloadRequired = false;
+}
+
 export function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
       reject(new Error('IndexedDB unavailable'));
       return;
     }
+    if (reloadRequired) {
+      reject(new Error(RELOAD_REQUIRED_MESSAGE));
+      return;
+    }
     const req = indexedDB.open(DB_NAME, DB_VERSION);
+    // P6-11: an older tab holding the database open blocks this
+    // upgrade. Without a handler the promise never settles and the Save
+    // spinner runs forever; reject so the caller can say what to do.
+    req.onblocked = () => {
+      reject(new Error('The document library is open in another tab running an older version. Close or reload that tab, then try again.'));
+    };
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) {
@@ -86,7 +129,16 @@ export function openDb(): Promise<IDBDatabase> {
         files.createIndex('docId', 'docId', { unique: false });
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      // P6-11: a newer deploy in another tab wants to upgrade. Close so
+      // its open is not blocked, and flag this tab as stale.
+      db.onversionchange = () => {
+        reloadRequired = true;
+        db.close();
+      };
+      resolve(db);
+    };
     req.onerror = () => reject(req.error ?? new Error('IndexedDB open failed'));
   });
 }
@@ -150,6 +202,13 @@ export async function libDelete(id: string): Promise<void> {
     await txDone(tx);
   } finally {
     db.close();
+  }
+  if (backupDeleteHook) {
+    try {
+      await backupDeleteHook(id);
+    } catch (error) {
+      console.warn('Backup folder cleanup failed', error);
+    }
   }
 }
 

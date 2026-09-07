@@ -22,6 +22,7 @@
 
 import { PDFDocument, PDFFont, StandardFonts, rgb } from 'pdf-lib';
 import type { EnclosureAttachment, MergeItem } from '@/lib/enclosure-rows';
+import { sanitizePdfActions } from '@/lib/pdf-sanitize';
 
 // The row model, the file reader and the merge schedule live in
 // enclosure-rows.ts, which has no pdf-lib dependency, so page.tsx and
@@ -120,6 +121,9 @@ export async function mergeAttachmentsIntoPdf(
       } catch {
         throw new Error(`Enclosure (${number}) "${attachment.fileName}" failed to parse as a PDF.`);
       }
+      // P4-4: copyPages carries page /AA and annotation actions along;
+      // strip JavaScript, Launch, SubmitForm and friends before copying.
+      sanitizePdfActions(source);
       const pages = await merged.copyPages(source, source.getPageIndices());
       pages.forEach((page) => {
         merged.addPage(page);

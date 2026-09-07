@@ -41,6 +41,8 @@ interface CacheStub {
 interface Harness {
   listeners: Record<string, Listener[]>;
   cache: CacheStub;
+  /** Messages the worker posted to its clients. */
+  posted: unknown[];
   setFetch: (fn: (request: RequestStub) => Promise<Response>) => void;
 }
 
@@ -56,6 +58,7 @@ function loadWorker(): Harness {
     },
   };
   let fetchImpl: (request: RequestStub) => Promise<Response> = async () => new Response('');
+  const posted: unknown[] = [];
   const self = {
     registration: { scope: SCOPE },
     location: { href: SCOPE, origin: ORIGIN },
@@ -63,7 +66,13 @@ function loadWorker(): Harness {
       (listeners[name] ??= []).push(fn);
     },
     skipWaiting: async () => undefined,
-    clients: { claim: async () => undefined },
+    clients: {
+      claim: async () => undefined,
+      matchAll: async () => [
+        { postMessage: (m: unknown) => posted.push(m) },
+        { postMessage: (m: unknown) => posted.push(m) },
+      ],
+    },
   };
   const context = vm.createContext({
     self,
@@ -83,6 +92,7 @@ function loadWorker(): Harness {
   return {
     listeners,
     cache,
+    posted,
     setFetch: (fn) => {
       fetchImpl = fn;
     },
@@ -168,5 +178,21 @@ describe('service worker navigation branch', () => {
     });
     const { response } = await navigate(harness);
     expect(response).toBe(shell);
+  });
+});
+
+// P6-11 (remediation 2026-09): skipWaiting plus clients.claim swaps the
+// worker under open tabs with nothing said. Activation now tells every
+// client, so the page can offer a reload.
+describe('service worker activation (P6-11)', () => {
+  it('posts sw-updated to every client after activating', async () => {
+    const waited: Promise<unknown>[] = [];
+    const event = { waitUntil: (p: Promise<unknown>) => { waited.push(p); } };
+    for (const fn of harness.listeners.activate ?? []) (fn as unknown as (e: unknown) => void)(event);
+    await Promise.allSettled(waited);
+    expect(harness.posted).toEqual([
+      { type: 'sw-updated' },
+      { type: 'sw-updated' },
+    ]);
   });
 });

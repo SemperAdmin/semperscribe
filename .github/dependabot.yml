@@ -26,6 +26,9 @@ updates:
       # zod 4.5.x carries a schema compiler on the classic import path,
       # +83 KB of initial-load JS (docs/audits/2026-09-05/bundle-attribution.md).
       - dependency-name: zod
+      # typescript is exact-pinned (package.json "//", P7-4): a minor
+      # compiler release can fail typecheck with no code change.
+      - dependency-name: typescript
       # Major versions are a review conversation, never an auto-PR.
       - dependency-name: "*"
         update-types: [version-update:semver-major]

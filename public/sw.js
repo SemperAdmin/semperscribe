@@ -43,6 +43,11 @@ self.addEventListener('activate', (event) => {
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+      // P6-11: skipWaiting + claim swaps the worker under open tabs, whose
+      // loaded chunks may no longer match the new deploy's. Tell every
+      // client so the page can offer a reload instead of failing later.
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((clients) => clients.forEach((client) => client.postMessage({ type: 'sw-updated' })))
   );
 });
 

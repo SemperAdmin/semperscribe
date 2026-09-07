@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SignatureRouting } from '@/lib/url-state';
 import { probeSignatureBlob, SignatureProbeResult } from '@/lib/signature-probe';
+import { toast } from '@/hooks/use-toast';
 
 interface Props {
   routing: SignatureRouting;
@@ -27,7 +28,11 @@ interface Props {
 
 interface SavedHandle {
   getFile: () => Promise<File>;
-  createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }>;
+  createWritable: () => Promise<{
+    write: (b: Blob) => Promise<void>;
+    close: () => Promise<void>;
+    abort?: () => Promise<void>;
+  }>;
 }
 
 /**
@@ -48,12 +53,25 @@ async function saveBlob(blob: Blob, fileName: string): Promise<SavedHandle | nul
         types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
       });
       const w = await handle.createWritable();
-      await w.write(blob);
-      await w.close();
+      try {
+        await w.write(blob);
+        await w.close();
+      } catch (e) {
+        // P6-16: an unaborted writable leaves a zero-byte file under
+        // the chosen name; abort discards the partial write.
+        await w.abort?.().catch(() => undefined);
+        throw e;
+      }
       return handle;
     } catch (e) {
       if ((e as DOMException)?.name === 'AbortError') throw e;
-      // fall through to anchor download on any other picker failure
+      // Fall through to the anchor download on any other picker or
+      // write failure, and say so: the file lands in Downloads, not
+      // where the picker pointed, and the one-click re-read is gone.
+      toast({
+        title: 'Saved as a download instead',
+        description: `Writing "${fileName}" to the chosen location failed (${e instanceof Error ? e.message : String(e)}). The PDF was saved through your browser's download folder; drop the signed file back here after signing.`,
+      });
     }
   }
   const url = URL.createObjectURL(blob);

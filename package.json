@@ -6,7 +6,8 @@
   "//": [
     "Exact pins: pdfjs-dist matches react-pdf's exact dependency so the lockfile dedupes to a single copy (two pdfjs versions = two worker bundles).",
     "mammoth is exact-pinned defensively against .docx import-parsing regressions; bump deliberately and re-run tests/services/import before releasing.",
-    "zod is held at 4.4.3: 4.5.x adds a schema compiler to the classic import path, +83 KB of initial-load JS for no app feature (docs/audits/2026-09-05/bundle-attribution.md). Revisit with a zod/mini migration or a slimmer release."
+    "zod is held at 4.4.3: 4.5.x adds a schema compiler to the classic import path, +83 KB of initial-load JS for no app feature (docs/audits/2026-09-05/bundle-attribution.md). Revisit with a zod/mini migration or a slimmer release.",
+    "typescript is exact-pinned so every checkout, CI and the lint ratchet type-check with one compiler: a minor TS release tightens inference and turns a green tree red for no code change. Bump deliberately with `npm run typecheck && npm run typecheck:tests` (P7-4)."
   ],
   "scripts": {
     "dev": "next dev",

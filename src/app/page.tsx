@@ -82,6 +82,37 @@ function NavalLetterGeneratorInner() {
   }, []);
 
   const { toast } = useToast();
+
+  // P6-11: the service worker takes over open tabs on activation
+  // (skipWaiting + clients.claim), so a tab's loaded chunks can be a
+  // deploy behind the worker serving it. Both the controllerchange
+  // event and the worker's own sw-updated message land here; the
+  // toast fires once per activation.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    const sw = navigator.serviceWorker;
+    // A first install also claims the page; only a tab that already had
+    // a controller has an old version to reload away from.
+    const hadController = sw.controller !== null;
+    let announced = false;
+    const announce = () => {
+      if (announced || !hadController) return;
+      announced = true;
+      toast({
+        title: 'A new version is ready',
+        description: 'Save your work, then reload the page to finish updating.',
+      });
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.data && typeof event.data === 'object' && (event.data as { type?: string }).type === 'sw-updated') announce();
+    };
+    sw.addEventListener('controllerchange', announce);
+    sw.addEventListener('message', onMessage);
+    return () => {
+      sw.removeEventListener('controllerchange', announce);
+      sw.removeEventListener('message', onMessage);
+    };
+  }, [toast]);
   const { profile, loaded: profileLoaded, updateProfile, clearProfile, getFormDefaults } = useUserProfile();
   const [showSettings, setShowSettings] = useState(false);
 

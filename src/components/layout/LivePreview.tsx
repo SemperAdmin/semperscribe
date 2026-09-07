@@ -32,6 +32,8 @@ interface LivePreviewProps {
    * "show the empty state instead of a blank render".
    */
   emptyStateFields?: RequiredFieldStatus[] | null;
+  /** P6-13: why the last render failed; the pane shows it over the previous render. */
+  previewError?: string | null;
 }
 
 /**
@@ -70,7 +72,7 @@ export function PreviewEmptyState({ fields }: { fields: RequiredFieldStatus[] })
   );
 }
 
-export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview, documentType = 'standard', downloadFileName, onDownloadExport, emptyStateFields }: LivePreviewProps) {
+export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview, documentType = 'standard', downloadFileName, onDownloadExport, emptyStateFields, previewError }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // R12 (USER_DRIVEN_ROADMAP): the Print and Download buttons were inert.
@@ -151,6 +153,11 @@ export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview,
           {isLoading ? 'Updating document preview' : previewUrl ? 'Document preview updated' : 'Preview not available'}
         </div>
         <PageCountIndicator url={previewUrl || null} documentType={documentType} />
+        {previewError && !isLoading && (
+          <div role="alert" className="absolute inset-x-0 top-0 z-10 border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-xs text-foreground">
+            Preview is out of date: the last render failed ({previewError}). The page below is the previous render.
+          </div>
+        )}
         {/* D.8: the untouched document never shows a spinner or a blank
             page - it says what it is waiting for. */}
         {emptyStateFields && emptyStateFields.length > 0 ? (

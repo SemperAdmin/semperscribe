@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { FormData, ParagraphData, SignaturePosition } from '@/types';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { getClassification, bannerText } from '@/lib/classification';
@@ -69,6 +69,14 @@ export function useLivePreview(
   // E.3: where the same-page endorsement landed on the last render.
   // Null for every other document.
   const [samePageStatus, setSamePageStatus] = useState<SamePageStatus | null>(null);
+  // P6-13: why the last render failed, or null. The pane shows it over
+  // the previous (still valid) render instead of passing stale bytes
+  // off as current.
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  // P6-13: render sequence. Every updatePreview takes the next number;
+  // a result whose number is no longer the latest is dropped, so a slow
+  // earlier render can never overwrite a newer one.
+  const renderSeq = useRef(0);
 
   // S2f: configured signature fields ride EVERY PDF surface — preview,
   // export, and the ceremony save all show the same boxes (Stephen's
@@ -88,6 +96,8 @@ export function useLivePreview(
 
   // Manual Preview Generation
   const updatePreview = useCallback(async () => {
+    const seq = ++renderSeq.current;
+    const isCurrent = () => seq === renderSeq.current;
     setIsGeneratingPreview(true);
     try {
       // Eager preview: render on any change, no subject-or-from gate
@@ -130,14 +140,19 @@ export function useLivePreview(
         }
       }
 
+      // A newer render started while this one ran: its result wins.
+      if (!isCurrent()) return;
       const url = URL.createObjectURL(blob);
       setPreviewUrl(prev => {
         if (prev) URL.revokeObjectURL(prev);
         return url;
       });
       setSamePageStatus(status);
+      setPreviewError(null);
     } catch (e) {
+      if (!isCurrent()) return;
       console.error("Preview generation failed", e);
+      setPreviewError(e instanceof Error ? e.message : String(e));
       // E.3: a same-page endorsement whose composition failed keeps the
       // last render on screen, so the card has to say what happened or
       // the page alone passes for the endorsed document.
@@ -145,7 +160,7 @@ export function useLivePreview(
         setSamePageStatus({ status: 'error', message: e instanceof Error ? e.message : String(e) });
       }
     } finally {
-      setIsGeneratingPreview(false);
+      if (isCurrent()) setIsGeneratingPreview(false);
     }
   }, [formData, vias, references, enclosures, copyTos, paragraphs, distList, applySignatureFields, enclosureRows, enclosureFiles, attachmentCoverPages, resolveSamePageHost]);
 
@@ -157,5 +172,5 @@ export function useLivePreview(
     return () => clearTimeout(timer);
   }, [updatePreview]);
 
-  return { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus };
+  return { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus, previewError };
 }

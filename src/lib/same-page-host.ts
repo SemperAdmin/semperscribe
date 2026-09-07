@@ -113,7 +113,10 @@ async function pageCount(bytes: Uint8Array): Promise<number> {
 
 async function appendPages(hostBytes: Uint8Array, tailBytes: Uint8Array): Promise<Uint8Array> {
   const { PDFDocument } = await import('pdf-lib');
+  const { sanitizePdfActions } = await import('@/lib/pdf-sanitize');
   const host = await PDFDocument.load(hostBytes);
+  // P4-4: a file-kind host is an upload; its actions do not ship.
+  sanitizePdfActions(host);
   const tail = await PDFDocument.load(tailBytes);
   const pages = await host.copyPages(tail, tail.getPageIndices());
   for (const page of pages) host.addPage(page);

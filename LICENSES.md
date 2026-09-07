@@ -54,7 +54,7 @@ One package carries Mozilla Public License 2.0.
 
 | Package | License | Source |
 |---------|---------|--------|
-| axe-core | MPL-2.0 | Transitive of testing libraries (@testing-library/react and similar) |
+| axe-core | MPL-2.0 | Dependency of the direct devDependency @axe-core/playwright (the e2e accessibility scan); also reached transitively through eslint-config-next via eslint-plugin-jsx-a11y |
 
 MPL-2.0 is not on the OSS Guidance paragraph 3G approved-without-action list. Per the same paragraph, "Component CIOs may grant permission to use other licenses if required." If the PoC moves to a sponsoring DoD Component, expect to seek that approval.
 
