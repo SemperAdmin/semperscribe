@@ -123,6 +123,7 @@ export function PlatformSettings() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-foreground">Backing up to &quot;{status.folderName}&quot;</p>
+                  {status.syncWarning && <p className="text-xs text-amber-700 dark:text-amber-300" role="note">{status.syncWarning}</p>}
                   <p className="text-xs text-muted-foreground">Every save writes a timestamped .nldp file. Survives cleared browser data.</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleBackupAll} disabled={busy}>

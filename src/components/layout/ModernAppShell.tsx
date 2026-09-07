@@ -19,6 +19,8 @@ interface ModernAppShellProps {
   documentType: string;
   onDocumentTypeChange: (type: string) => void;
   previewUrl?: string;
+  /** P6-13: the last render failed; the pane shows the previous render with a notice. */
+  previewError?: string | null;
   validationIssues?: PreviewIssue[];
   isGeneratingPreview?: boolean;
   onExportDocx: () => void;
@@ -77,6 +79,7 @@ export function ModernAppShell({
   documentType,
   onDocumentTypeChange,
   previewUrl,
+  previewError,
   validationIssues,
   isGeneratingPreview,
   onExportDocx,
@@ -408,6 +411,7 @@ export function ModernAppShell({
               downloadFileName={formData ? getExportFilename(formData, 'pdf') : undefined}
               onDownloadExport={onGeneratePdf}
               emptyStateFields={emptyStateFields}
+              previewError={previewError}
             />
           )
         )}
