@@ -100,15 +100,23 @@ Every item carries a regression test written before the fix.
   devDependency; the typescript pin carries its reason and a Dependabot
   ignore (P7-2, P7-4).
 
+### Rulings applied 2026-09-07
+
+- P5-5: the 5.d(4) combination cap is the extra-duty maximum the
+  imposing grade may award (`extraDutyMaximumFor`: 14 at company grade,
+  45 at field grade), not the imposed code's own ceiling.
+- P6-8: every save owns its own copy of its attached files
+  (`fileCopyForSave`). Deleting a save cascades to its copies alone.
+- P9-1: a name or an EDIPI is not CUI on its own; whether a completed
+  record is CUI (Privacy) is the user's command's determination.
+- P2-7, P7-1, P7-3, P9-2: recorded as accepted risks in
+  `docs/RMF_READINESS.md` Section 9. eslint 10 measured as blocked by
+  eslint-config-next's plugin set.
+
 ### Open, needing an owner ruling
 
-- P5-5: whether MCM Part V 5.d(4) caps a combination at the imposing
-  grade's extra-duty maximum or the imposed code's own maximum.
 - P5-8: whether a vacation offence on the day of punishment falls inside
   the suspension period.
-- P6-8: successive saves share enclosure bytes; deleting the newest save
-  orphans the older saves' enclosures. Needs a per-save copy or a
-  reference count.
 
 ## [0.12.0] - 2026-09-07
 
