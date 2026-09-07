@@ -1804,6 +1804,8 @@ describe('Meta: every source-level export blocker has a recorded stage-scoping d
       'navmc10132-v22-': 'NOT-ABSENCE: requires an existing suspensions[] entry (V-22)',
       'navmc10132-v29-vacation-offence-before-suspension-':
         'NOT-ABSENCE: requires an existing vacations[] entry with offenceDate set (V-29)',
+      'navmc10132-w23-vacation-offence-same-day-':
+        'NOT-ABSENCE: requires an existing vacations[] entry with offenceDate equal to punishmentDate (W-23, warn)',
       'navmc10132-v30-vacation-authority-insufficient-':
         'NOT-ABSENCE: requires an existing vacated-full vacations[] entry (V-30)',
       'navmc10132-v35-reduction-barred-grade':

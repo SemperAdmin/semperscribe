@@ -113,10 +113,10 @@ Every item carries a regression test written before the fix.
   `docs/RMF_READINESS.md` Section 9. eslint 10 measured as blocked by
   eslint-config-next's plugin set.
 
-### Open, needing an owner ruling
-
-- P5-8: whether a vacation offence on the day of punishment falls inside
-  the suspension period.
+- P5-8: a vacation offence dated before the item 6 punishment date
+  blocks (V-29). The same date warns under new W-23, "confirm the
+  offence followed the imposition", because dates carry no time and the
+  suspension runs from the date of the punishment.
 
 ## [0.12.0] - 2026-09-07
 

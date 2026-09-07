@@ -1836,10 +1836,21 @@ export function vacationOrderDeadlineIssues(formData: FormData): ValidationIssue
 }
 
 /**
- * V-29 (blocker on the certain lower bound only). The offense or violation
- * that triggers a vacation must have been committed on or after the item 6
- * punishment date, i.e. during the period of suspension it is offered to
- * justify. Decision row D-49.
+ * V-29 (blocker on the certain lower bound only) and its W-23 companion.
+ * The offense or violation that triggers a vacation must have been
+ * committed on or after the item 6 punishment date, i.e. during the period
+ * of suspension it is offered to justify. Decision row D-49.
+ *
+ * THE SAME DATE IS NOT PROVABLY OUTSIDE THE WINDOW. Owner ruling 2026-09-07
+ * (audit P5-8): both fields hold a date and no time, and MCM Part V para
+ * 6.a(2) runs the suspension "from the date of the suspension", so a Marine
+ * restricted at the morning's NJP who breaks restriction that evening has
+ * offended inside the period on the same date. The app cannot tell that
+ * case from an offence which preceded the hearing. An offence dated BEFORE
+ * the punishment date is provably outside the window and BLOCKS (V-29). An
+ * offence on the SAME date WARNS (W-23): "confirm the offence followed the
+ * imposition." Before the ruling the same date blocked, the JSDoc said "on
+ * or after", and spec V-29 said strictly after; the three now agree.
  *
  * MCO 5800.16 Vol 14 para 011201, verbatim: "Vacation of suspension may
  * only be based on an offense under the UCMJ committed during the period
@@ -1908,19 +1919,33 @@ export function vacationOffenceWindowIssues(formData: FormData): ValidationIssue
     const offenceDate = (vacation.offenceDate ?? '').trim();
     if (offenceDate === '' || punishmentDate === '') return; // nothing recorded yet to test
 
-    if (offenceDate <= punishmentDate) {
+    if (offenceDate < punishmentDate) {
       issues.push(
         issue(
           `navmc10132-v29-vacation-offence-before-suspension-${index}`,
           'block',
-          `Vacation record ${index}'s triggering offence is dated ${offenceDate}, on or before ` +
+          `Vacation record ${index}'s triggering offence is dated ${offenceDate}, before ` +
             `the item 6 punishment date of ${punishmentDate}.`,
           'MCO 5800.16 Vol 14 para 011201; JAGMAN (JAGINST 5800.7G CH-2) para 0118.d',
           'Vacation may only be based on conduct committed during the period of suspension, ' +
-            `which begins on the item 6 punishment date. An offence dated ${offenceDate}, on ` +
-            `or before ${punishmentDate}, cannot have occurred during a suspension that had ` +
+            `which begins on the item 6 punishment date. An offence dated ${offenceDate}, ` +
+            `before ${punishmentDate}, cannot have occurred during a suspension that had ` +
             'not yet begun. Correct the offence date, or confirm this vacation record ' +
             'targets the right suspension.',
+        ),
+      );
+    } else if (offenceDate === punishmentDate) {
+      issues.push(
+        issue(
+          `navmc10132-w23-vacation-offence-same-day-${index}`,
+          'warn',
+          `Vacation record ${index}'s triggering offence is dated ${offenceDate}, the same ` +
+            'date as the item 6 punishment. Confirm the offence followed the imposition.',
+          'MCO 5800.16 Vol 14 para 011201; MCM Part V para 6.a(2)',
+          'The suspension runs from the date of the punishment, so an offence later that ' +
+            'same day falls inside it and an offence earlier that day does not. The record ' +
+            'carries dates without times, so the application cannot tell which. Confirm the ' +
+            'offence followed the imposition before relying on this vacation.',
         ),
       );
     }
