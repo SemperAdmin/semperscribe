@@ -1790,6 +1790,12 @@ describe('Meta: every source-level export blocker has a recorded stage-scoping d
         'NOT-ABSENCE: requires an existing punishments[] entry with a months value (W-06)',
       'navmc10132-v19-correctional-custody-grade':
         'NOT-ABSENCE: requires an existing correctional-custody punishments[] entry (V-19)',
+      'navmc10132-w07-dollars-':
+        'NOT-ABSENCE: requires an existing punishments[] entry with a dollars value (W-07, block since P5-1)',
+      'navmc10132-w07-dollarsPerMonth-':
+        'NOT-ABSENCE: requires an existing punishments[] entry with a dollarsPerMonth value (W-07, block since P5-1)',
+      'navmc10132-v20-forfeiture-unreadable-':
+        'NOT-ABSENCE: fires only on a NON-EMPTY unreadable forfeiture text; blank never fires (V-20, P5-1)',
       'navmc10132-v20-ceiling-unreadable-':
         'NOT-ABSENCE: an unset punishmentDate reads as table-not-current, which is excluded from the surfaced reasons (V-20)',
       'navmc10132-v20-forfeiture-over-ceiling-':

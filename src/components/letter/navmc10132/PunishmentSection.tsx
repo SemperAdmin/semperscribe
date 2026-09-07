@@ -34,6 +34,7 @@ import {
   isNavmc10132SectionLocked,
 } from '@/lib/navmc10132-locks';
 import { formForfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
+import { parseDollars, formatDollars } from '@/lib/navmc10132-money';
 import { ForfeitureLadderPanel } from '@/components/letter/navmc10132/ForfeitureLadderPanel';
 import {
   Gavel, Plus, Trash2, AlertTriangle, HelpCircle, Info,
@@ -516,6 +517,20 @@ function clampToCeiling(raw: string, ceiling: number | undefined): string {
   return value > ceiling ? String(ceiling) : raw;
 }
 
+/**
+ * The forfeiture boxes accept only what parseDollars will read once the
+ * entry is complete: digits, an optional leading $, thousands commas, at
+ * most two decimal places. A keystroke outside that shape is dropped and the
+ * previous value kept, never edited out of the middle of the entry (P5-1,
+ * P5-3). A trailing "." or "," is allowed mid-entry. Cents are allowed here
+ * so the whole-dollar rule (W-07) can name the figure it refuses.
+ */
+const DOLLARS_KEYSTROKE_SHAPE = /^\$?[\d,]*(\.\d{0,2})?$/;
+
+function sanitiseDollarsKeystroke(next: string, previous: string | undefined): string {
+  return DOLLARS_KEYSTROKE_SHAPE.test(next) ? next : (previous ?? '');
+}
+
 function ParameterInputs({
   code,
   entry,
@@ -576,8 +591,9 @@ function ParameterInputs({
                   <span className="text-sm text-muted-foreground">$</span>
                   <Input
                     type="text"
+                    inputMode="decimal"
                     value={entry.dollars ?? ''}
-                    onChange={(e) => onChange({ dollars: e.target.value })}
+                    onChange={(e) => onChange({ dollars: sanitiseDollarsKeystroke(e.target.value, entry.dollars) })}
                   />
                 </div>
                 <CeilingNote
@@ -599,8 +615,13 @@ function ParameterInputs({
                   <span className="text-sm text-muted-foreground">$</span>
                   <Input
                     type="text"
+                    inputMode="decimal"
                     value={entry.dollarsPerMonth ?? ''}
-                    onChange={(e) => onChange({ dollarsPerMonth: e.target.value })}
+                    onChange={(e) =>
+                      onChange({
+                        dollarsPerMonth: sanitiseDollarsKeystroke(e.target.value, entry.dollarsPerMonth),
+                      })
+                    }
                   />
                 </div>
                 <CeilingNote
@@ -1009,14 +1030,25 @@ function CeilingNote({
     );
   }
 
-  const amount = Number((entered ?? '').trim());
-  const over = Number.isFinite(amount) && entered?.trim() !== '' && amount > max;
+  // The same reader V-20 uses, so the note and the gate agree on "$700" and
+  // "1,200", which Number() read as NaN and the note passed in silence.
+  const enteredText = (entered ?? '').trim();
+  const parsed = parseDollars(enteredText);
+  const unreadable = enteredText !== '' && parsed === null;
+  const over = parsed !== null && parsed.dollars > max;
 
   return (
     <div className="space-y-1">
-      {over && (
+      {unreadable && (
         <p className="text-[11px] font-medium text-destructive">
-          ${amount} exceeds the ${max} ceiling at {ceiling.payGrade}. Export is blocked.
+          &quot;{enteredText}&quot; is not a dollar figure. Enter digits, such as 700 or $1,200.
+          Export is blocked.
+        </p>
+      )}
+      {over && parsed && (
+        <p className="text-[11px] font-medium text-destructive">
+          {formatDollars(parsed.cents)} exceeds the ${max} ceiling at {ceiling.payGrade}. Export is
+          blocked.
         </p>
       )}
       <p className="text-[11px] text-muted-foreground">

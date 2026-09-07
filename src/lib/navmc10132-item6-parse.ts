@@ -52,12 +52,22 @@ import {
   releaseOnePunishmentsFor,
   type Navmc10132Punishment,
 } from '@/lib/navmc10132-punishments';
+import { parseDollars } from '@/lib/navmc10132-money';
 
 /** The suffix renderPunishment adds when the punishments run concurrently. */
 const CONCURRENT_SUFFIX = ', to run concurrently';
 
 /** How renderPunishment joins more than one clause. */
 const CLAUSE_JOIN = ', and ';
+
+/**
+ * A dollar figure as the renderer prints it: complete thousands groups or
+ * none, and cents only where present. `[\\d,]+` used to sit here, which
+ * admitted "1,,200" and a lone comma; the shape now mirrors
+ * navmc10132-money.ts, and entryFrom re-reads the capture through
+ * parseDollars so the stored entry is the normalised figure.
+ */
+const MONEY_PATTERN = '(?:\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.\\d{2})?';
 
 /**
  * A placeholder's pattern, as a capturing group.
@@ -70,9 +80,9 @@ const PLACEHOLDER_PATTERNS: Readonly<Record<string, string>> = {
   limits: '(.+?)',
   days: '(\\d+)',
   months: '(\\d+)',
-  dollars: '([\\d,]+(?:\\.\\d{2})?)',
-  dollarsPerMonth: '([\\d,]+(?:\\.\\d{2})?)',
-  totalForf: '[\\d,]+(?:\\.\\d{2})?',
+  dollars: `(${MONEY_PATTERN})`,
+  dollarsPerMonth: `(${MONEY_PATTERN})`,
+  totalForf: MONEY_PATTERN,
   gradeReducedTo: '([A-Za-z0-9/\\-]+)',
   oralOrWritten: '(orally|in writing)',
   suspClause: '(w/susp fr du|w/o susp fr du)',
@@ -199,7 +209,10 @@ function entryFrom(compiled: CompiledTemplate, match: RegExpMatchArray): Navmc10
       return;
     }
     if (name === 'dollars' || name === 'dollarsPerMonth') {
-      entry[name] = value.replace(/,/g, '');
+      // The pattern above only matches what parseDollars reads, so this is
+      // never null; the fallback keeps the text rather than dropping it.
+      const parsed = parseDollars(value);
+      entry[name] = parsed === null ? value : String(parsed.dollars);
       return;
     }
     entry[name] = value;

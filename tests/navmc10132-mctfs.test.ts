@@ -85,8 +85,17 @@ describe('mctfsDollars', () => {
     expect(mctfsDollars(12345)).toBe('12345');
   });
 
-  it('truncates a non-integer amount rather than rounding it', () => {
-    expect(mctfsDollars(18.9)).toBe('00018');
+  // PRIUM 70502.1 reports whole dollars in five bytes. A figure with cents or
+  // a sixth digit is not a smaller figure, it is one the field cannot state,
+  // so it throws rather than truncating (P5-7, 2026-09).
+  it('throws on a non-integer amount rather than truncating it', () => {
+    expect(() => mctfsDollars(18.9)).toThrow();
+    expect(() => mctfsDollars(500.75)).toThrow();
+  });
+
+  it('throws on a figure wider than five bytes', () => {
+    expect(() => mctfsDollars(123456)).toThrow();
+    expect(mctfsDollars(99999)).toBe('99999');
   });
 });
 

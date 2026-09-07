@@ -198,3 +198,106 @@ describe('one builder feeds the card, the punishment builder and the A-1-f scrip
     expect(fromCard.rungs.find((rung) => rung.operative)?.reduced).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// P5-3 (2026-09): the inputs keep what the clerk typed, or refuse the
+// keystroke. They never delete characters out of the middle of an entry, which
+// is how "150.00" became "15000" and "2.5" became "25".
+// ---------------------------------------------------------------------------
+
+import { useState } from 'react';
+import { fireEvent } from '@testing-library/react';
+import { SuspensionSection } from '@/components/letter/navmc10132/SuspensionSection';
+
+/** A controlled harness, so a rejected keystroke is observable as the old value surviving. */
+function Harness({ initial }: { initial: FormData }) {
+  const [formData, setFormData] = useState<FormData>(initial);
+  return (
+    <AccusedPayFactsSection
+      formData={formData}
+      setFormData={setFormData}
+      SectionCard={StubSectionCard}
+    />
+  );
+}
+
+describe('P5-3: the card stores what was typed, never a mangled version of it', () => {
+  it('typing "150.00" into sea pay stores "150.00" and the E-1 ladder shows $596', () => {
+    // JAGMAN 0111.i: base = basic pay + sea pay. E-1 over 4 months on the
+    // held table is 2407.20; 2407.20 + 150 = 2557.20; floor(2557.20 / 30 * 7)
+    // = 596.
+    render(
+      <Harness
+        initial={cpl({ accusedPayGrade: 'E1', accusedRankGrade: 'Pvt/E-1', accusedYearsOfService: '0' })}
+      />,
+    );
+    const input = screen.getByLabelText('Sea or hardship duty pay, per month');
+    fireEvent.change(input, { target: { value: '150.00' } });
+    expect(input).toHaveValue('150.00');
+    expect(screen.getByText('$596')).toBeInTheDocument();
+  });
+
+  it('typing "2.5" into years keeps "2" and prices the E-7 seven-day figure at $1,001', () => {
+    // E-7 Over-2 rate on the held table is 4291.50; floor(4291.50 / 30 * 7) = 1001.
+    render(
+      <Harness
+        initial={cpl({ accusedPayGrade: 'E7', accusedRankGrade: 'GySgt/E-7', accusedYearsOfService: '2' })}
+      />,
+    );
+    const input = screen.getByLabelText('Completed years of service, round down');
+    fireEvent.change(input, { target: { value: '2.5' } });
+    expect(input).toHaveValue('2');
+    expect(screen.getByText('$1,001')).toBeInTheDocument();
+    expect(screen.getByText(/whole years/i)).toBeInTheDocument();
+  });
+
+  it('rejects a third decimal place and a letter in sea pay, keeping the previous value', () => {
+    render(<Harness initial={cpl({ accusedSeaHardshipDutyPay: '150.0' } as Partial<FormData>)} />);
+    const input = screen.getByLabelText('Sea or hardship duty pay, per month');
+    fireEvent.change(input, { target: { value: '150.005' } });
+    expect(input).toHaveValue('150.0');
+    fireEvent.change(input, { target: { value: '150.0a' } });
+    expect(input).toHaveValue('150.0');
+    expect(screen.getByText(/dollars and cents/i)).toBeInTheDocument();
+  });
+
+  it('accepts a partial entry ending in a decimal point, since the clerk is mid-keystroke', () => {
+    render(<Harness initial={cpl()} />);
+    const input = screen.getByLabelText('Sea or hardship duty pay, per month');
+    fireEvent.change(input, { target: { value: '150.' } });
+    expect(input).toHaveValue('150.');
+    fireEvent.change(input, { target: { value: '' } });
+    expect(input).toHaveValue('');
+  });
+
+  it('rejects a third digit of years', () => {
+    render(<Harness initial={cpl({ accusedYearsOfService: '12' } as Partial<FormData>)} />);
+    const input = screen.getByLabelText('Completed years of service, round down');
+    fireEvent.change(input, { target: { value: '123' } });
+    expect(input).toHaveValue('12');
+  });
+});
+
+describe('P5-6: the item 7 period inputs are whole-number fields', () => {
+  it('months and days carry step="1" and min="0"', () => {
+    render(
+      <SuspensionSection
+        formData={
+          {
+            punishments: [{ code: 'N09', days: '10' }],
+            suspensions: [{ punishmentIndex: 0, months: '6' }],
+            punishmentDate: '2026-01-15',
+          } as unknown as FormData
+        }
+        setFormData={vi.fn()}
+        SectionCard={StubSectionCard}
+      />,
+    );
+    const months = screen.getByLabelText('Suspended for (months)');
+    const days = screen.getByLabelText('or days');
+    expect(months).toHaveAttribute('step', '1');
+    expect(months).toHaveAttribute('min', '0');
+    expect(days).toHaveAttribute('step', '1');
+    expect(days).toHaveAttribute('min', '0');
+  });
+});

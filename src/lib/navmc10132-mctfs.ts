@@ -49,6 +49,7 @@ import type { FormData } from '@/types';
 import type { Navmc10132PunishmentEntry, Navmc10132Suspension } from '@/types/navmc';
 import { NAVMC_10132_DEMAND } from '@/types/navmc';
 import { resolveArticle, resolvePunishment } from '@/lib/navmc10132-utils';
+import { parseDollars, parseWholeNumber } from '@/lib/navmc10132-money';
 import {
   renderTemplate,
   Navmc10132PunishmentRenderError,
@@ -140,6 +141,21 @@ export function mctfsDate(iso: string): string {
   return match ? `${match[1]}${match[2]}${match[3]}` : '';
 }
 
+/** Width of the PRIUM 70502.1 dollar field, whole-dollar digits before the ".00". */
+export const MCTFS_DOLLAR_BYTES = 5;
+
+/**
+ * Thrown when a figure cannot be stated in the PRIUM 70502.1 dollar field.
+ * The worksheet catches it and reports the figure as missing rather than
+ * printing a truncated one on a transaction that moves pay.
+ */
+export class MctfsDollarsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MctfsDollarsError';
+  }
+}
+
 /**
  * A dollar figure in the PRIUM's own shape.
  *
@@ -148,9 +164,31 @@ export function mctfsDate(iso: string): string {
  * 00018.00 to indicate 18 dollars. There must be leading zeros in the dollar
  * amount." The template already prints the ".00", so this returns the
  * zero-padded whole-dollar part alone.
+ *
+ * THROWS RATHER THAN TRUNCATES, since 2026-09 (P5-7). `Math.trunc` used to
+ * sit here, so $500.75 reported as 00500.00 and $123,456 as 123456, a
+ * six-byte value in a five-byte field. The field carries whole dollars and
+ * five digits; a figure outside that is not a smaller figure, it is one the
+ * transaction cannot state, and the caller must say so.
  */
 export function mctfsDollars(amount: number): string {
-  return String(Math.trunc(Math.abs(amount))).padStart(5, '0');
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new MctfsDollarsError(`"${amount}" is not a dollar figure the PRIUM can report.`);
+  }
+  if (!Number.isInteger(amount)) {
+    throw new MctfsDollarsError(
+      `$${amount} carries cents. PRIUM 70502.1 reports whole dollars followed by ".00"; ` +
+        'MCO 5800.16 Vol 14 para 010901 requires the forfeiture in whole dollars.',
+    );
+  }
+  const digits = String(amount);
+  if (digits.length > MCTFS_DOLLAR_BYTES) {
+    throw new MctfsDollarsError(
+      `$${amount} is ${digits.length} digits and the PRIUM 70502.1 dollar field holds ` +
+        `${MCTFS_DOLLAR_BYTES}.`,
+    );
+  }
+  return digits.padStart(MCTFS_DOLLAR_BYTES, '0');
 }
 
 /** Two-byte zero-padded count, for the MONTHS fields. */
@@ -188,8 +226,17 @@ function suspendedIndexes(formData: FormData): Set<number> {
 function suspensionPeriod(formData: FormData, index: number): string {
   const found = suspensionEntries(formData).find((s) => s.punishmentIndex === index);
   if (!found) return '';
-  if (found.months && found.months.trim() !== '') return `${twoByte(Number(found.months))} MO`;
-  if (found.days && found.days.trim() !== '') return `${found.days.trim()} DAYS`;
+  // A period that is not a whole count prints the placeholder, never a
+  // truncated figure: "6.5" through Number() and twoByte read as "06 MO",
+  // which is not the period item 7 states (P5-6).
+  if (found.months && found.months.trim() !== '') {
+    const months = parseWholeNumber(found.months);
+    return months === null ? '' : `${twoByte(months)} MO`;
+  }
+  if (found.days && found.days.trim() !== '') {
+    const days = parseWholeNumber(found.days);
+    return days === null ? '' : `${days} DAYS`;
+  }
   return '';
 }
 
@@ -715,7 +762,8 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
     }
 
     if (isForfeiture) {
-      const perMonth = Number((entry.dollarsPerMonth ?? entry.dollars ?? '').trim());
+      const rawAmount = (entry.dollarsPerMonth ?? entry.dollars ?? '').trim();
+      const parsedAmount = parseDollars(rawAmount);
 
       // MONTHS IS NOT DEFAULTED TO 1 WHERE THE CODE HAS A MONTHS PARAMETER.
       // N07 is a single forfeiture of days' pay and genuinely reports one
@@ -725,19 +773,41 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
       // half in a transaction that moves money.
       const needsMonths = code.parameters.includes('months');
       const rawMonths = (entry.months ?? '').trim();
-      const months = needsMonths ? Number(rawMonths) : 1;
+      const parsedMonths = needsMonths ? parseWholeNumber(rawMonths) : 1;
 
-      const validAmount = Number.isFinite(perMonth) && perMonth > 0;
-      const validMonths = Number.isFinite(months) && months > 0;
-      const valid = validAmount && validMonths;
-
-      if (!validAmount) {
-        missing.push(`the dollar amount for ${code.code}, needed for TTC 283 003`);
+      // THE FIGURE GOES THROUGH mctfsDollars BEFORE IT IS TRUSTED, and the
+      // TOTAL too, because a lawful monthly figure times its months can still
+      // outgrow the five-byte field. A figure the PRIUM cannot state prints
+      // as a placeholder and is reported, never truncated into the field.
+      let amountField = '';
+      let totalField = '';
+      let valid = false;
+      if (parsedAmount !== null && parsedAmount.dollars > 0 && parsedMonths !== null && parsedMonths > 0) {
+        try {
+          amountField = mctfsDollars(parsedAmount.dollars);
+          totalField = mctfsDollars(parsedAmount.dollars * parsedMonths);
+          valid = true;
+        } catch (err) {
+          if (!(err instanceof MctfsDollarsError)) throw err;
+          missing.push(
+            `a forfeiture for ${code.code} the PRIUM dollar field can carry. ${err.message} ` +
+              'Correct item 6 before entering TTC 283 003.',
+          );
+        }
       }
-      if (needsMonths && !validMonths) {
+      const months = parsedMonths ?? 0;
+
+      if (parsedAmount === null || parsedAmount.dollars <= 0) {
+        missing.push(
+          `the dollar amount for ${code.code}, needed for TTC 283 003` +
+            (rawAmount !== '' ? `. "${rawAmount}" is not a readable dollar figure.` : ''),
+        );
+      }
+      if (needsMonths && (parsedMonths === null || parsedMonths <= 0)) {
         missing.push(
           `the number of months for ${code.code}. TTC 283 003 reports a monthly figure and a ` +
-            'TOTAL, and the total cannot be computed without it.',
+            'TOTAL, and the total cannot be computed without it.' +
+            (rawMonths !== '' ? ` "${rawMonths}" is not a whole number of months.` : ''),
         );
       }
 
@@ -748,7 +818,7 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
           templateQuoted: false,
           text:
             `TTC HIS 000 HIST: NJP AWD ${njpDate || '[NJP DATE]'} FORF ` +
-            `$${valid ? mctfsDollars(perMonth) : '[AMT]'}` +
+            `$${valid ? amountField : '[AMT]'}` +
             `.00 FOR ${valid ? twoByte(months) : '[MO]'} MO SUSPENDED FOR ${period || '[MONTHS] MO'} |`,
           authority: 'MCTFSPRIUM 70502.f',
           notes: [
@@ -766,9 +836,9 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
           templateQuoted: false,
           text:
             `TTC 283 003 ${njpDate || '[NJP DATE]'} FORF ` +
-            `$${valid ? mctfsDollars(perMonth) : '[AMT]'}.00 FOR ` +
+            `$${valid ? amountField : '[AMT]'}.00 FOR ` +
             `${valid ? twoByte(months) : '[MO]'} MO NJP TOTAL $` +
-            `${valid ? mctfsDollars(perMonth * months) : '[TOTAL]'}.00 ED ${njpDate || '[NJP DATE]'} |`,
+            `${valid ? totalField : '[TOTAL]'}.00 ED ${njpDate || '[NJP DATE]'} |`,
           authority: 'MCTFSPRIUM 70502.a',
           notes: [
             'Forfeiture takes effect when imposed, so the ED is the NJP date (JAGMAN 0113.a).',
