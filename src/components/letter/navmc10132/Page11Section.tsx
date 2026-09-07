@@ -146,8 +146,9 @@ export function Page11Section({ formData, setFormData, SectionCard }: SectionPro
         </p>
 
         <div className="space-y-1">
-          <Label className="text-xs">Recommended corrective action</Label>
+          <Label className="text-xs" htmlFor="page11-corrective-action">Recommended corrective action</Label>
           <Textarea
+            id="page11-corrective-action"
             rows={2}
             placeholder="What the Marine is directed to do."
             value={input.correctiveAction}
@@ -159,8 +160,9 @@ export function Page11Section({ formData, setFormData, SectionCard }: SectionPro
         </div>
 
         <div className="space-y-1">
-          <Label className="text-xs">Assistance available</Label>
+          <Label className="text-xs" htmlFor="page11-assistance-available">Assistance available</Label>
           <Textarea
+            id="page11-assistance-available"
             rows={2}
             placeholder="What the unit offers: SACO, chaplain, MCCS counseling, mentorship."
             value={input.assistanceAvailable}
@@ -172,9 +174,9 @@ export function Page11Section({ formData, setFormData, SectionCard }: SectionPro
         </div>
 
         <div className="space-y-1">
-          <Label className="text-xs">Separation or judicial processing</Label>
+          <Label className="text-xs" htmlFor="page11-separation-intent">Separation or judicial processing</Label>
           <Select value={intent} onValueChange={set('page11SeparationIntent')}>
-            <SelectTrigger><SelectValue placeholder="Select what the commander intends" /></SelectTrigger>
+            <SelectTrigger id="page11-separation-intent"><SelectValue placeholder="Select what the commander intends" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="not-processing">
                 Not processing for separation over these deficiencies
@@ -195,8 +197,9 @@ export function Page11Section({ formData, setFormData, SectionCard }: SectionPro
 
         {intent === 'processing' && (
           <div className="space-y-1">
-            <Label className="text-xs">What the Marine is being processed for</Label>
+            <Label className="text-xs" htmlFor="page11-processing-detail">What the Marine is being processed for</Label>
             <Textarea
+              id="page11-processing-detail"
               rows={2}
               placeholder="e.g. administrative separation for a pattern of misconduct"
               value={input.processingDetail}

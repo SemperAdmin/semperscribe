@@ -238,7 +238,7 @@ export function GunnyBotSettings() {
           </div>
         )}
         <Select value={provider} onValueChange={handleProviderChange} disabled={edmsLocked}>
-          <SelectTrigger className="bg-background border-input">
+          <SelectTrigger className="bg-background border-input" aria-label="Provider">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -250,9 +250,9 @@ export function GunnyBotSettings() {
         </Select>
 
         <div className="space-y-2">
-          <Label className="text-xs font-medium text-muted-foreground">Model</Label>
+          <Label className="text-xs font-medium text-muted-foreground" htmlFor="gunnybot-model">Model</Label>
           <Select value={models.some(m => m.id === model) ? model : ''} onValueChange={setModel}>
-            <SelectTrigger className="bg-background border-input">
+            <SelectTrigger className="bg-background border-input" id="gunnybot-model">
               <SelectValue placeholder="Pick a model" />
             </SelectTrigger>
             <SelectContent>
@@ -262,6 +262,7 @@ export function GunnyBotSettings() {
             </SelectContent>
           </Select>
           <Input
+            aria-label="Model ID"
             value={model}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setModel(e.target.value)}
             placeholder="or type a model ID"
@@ -326,6 +327,7 @@ export function GunnyBotSettings() {
 
           <div className="flex gap-2">
             <Input
+              aria-label="Proxy URL"
               value={proxyInput}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setProxyInput(e.target.value); setRemoteAck(false); }}
               placeholder={proxySaved !== null ? 'Replace the proxy URL...' : 'http://127.0.0.1:8443'}
@@ -377,6 +379,7 @@ export function GunnyBotSettings() {
         <div className="flex gap-2">
           <Input
             type="password"
+            aria-label="API key"
             value={keyInput}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setKeyInput(e.target.value)}
             placeholder={keyPresent ? 'Replace the saved key...' : 'Paste your API key'}

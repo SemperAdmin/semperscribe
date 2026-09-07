@@ -347,9 +347,9 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
         <div className="space-y-2 rounded-md border border-dashed p-3">
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-[280px] flex-1 space-y-1">
-              <Label className="text-xs">Add a punishment</Label>
+              <Label className="text-xs" htmlFor="punishment-code-to-add">Add a punishment</Label>
               <Select value={codeToAdd} onValueChange={setCodeToAdd}>
-                <SelectTrigger>
+                <SelectTrigger id="punishment-code-to-add">
                   <SelectValue placeholder="Select a punishment code" />
                 </SelectTrigger>
                 <SelectContent>
@@ -558,10 +558,11 @@ function ParameterInputs({
           case 'days':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-days`}>
                   Days{code.maxDays !== undefined ? ` (max ${code.maxDays})` : ''}
                 </Label>
                 <Input
+                  id={`punishment-${code.code}-days`}
                   type="number"
                   min={1}
                   max={code.maxDays}
@@ -573,8 +574,9 @@ function ParameterInputs({
           case 'limits':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">Limits</Label>
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-limits`}>Limits</Label>
                 <Input
+                  id={`punishment-${code.code}-limits`}
                   type="text"
                   value={entry.limits ?? ''}
                   onChange={(e) => onChange({ limits: e.target.value })}
@@ -584,12 +586,13 @@ function ParameterInputs({
           case 'dollars':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-dollars`}>
                   Forfeiture{ceiling ? ` (max $${ceiling.sevenDaysPay})` : ''}
                 </Label>
                 <div className="flex items-center gap-1">
                   <span className="text-sm text-muted-foreground">$</span>
                   <Input
+                    id={`punishment-${code.code}-dollars`}
                     type="text"
                     inputMode="decimal"
                     value={entry.dollars ?? ''}
@@ -608,12 +611,13 @@ function ParameterInputs({
           case 'dollarsPerMonth':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-dollars-per-month`}>
                   Forfeiture per month{ceiling ? ` (max $${ceiling.halfMonthPay})` : ''}
                 </Label>
                 <div className="flex items-center gap-1">
                   <span className="text-sm text-muted-foreground">$</span>
                   <Input
+                    id={`punishment-${code.code}-dollars-per-month`}
                     type="text"
                     inputMode="decimal"
                     value={entry.dollarsPerMonth ?? ''}
@@ -636,10 +640,11 @@ function ParameterInputs({
           case 'months':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-months`}>
                   Months{code.maxMonths !== undefined ? ` (max ${code.maxMonths})` : ''}
                 </Label>
                 <Input
+                  id={`punishment-${code.code}-months`}
                   type="number"
                   min={1}
                   max={code.maxMonths}
@@ -660,7 +665,7 @@ function ParameterInputs({
             const targets = reducibleGrades(accusedPayGrade, { nextInferiorOnly: true });
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">Grade reduced to</Label>
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-grade-reduced-to`}>Grade reduced to</Label>
                 {accusedPayGrade === '' ? (
                   <p className="text-[11px] text-muted-foreground">
                     Set the accused&apos;s pay grade in item 19 first. The lawful target is
@@ -676,7 +681,7 @@ function ParameterInputs({
                     value={entry.gradeReducedTo ?? ''}
                     onValueChange={(value) => onChange({ gradeReducedTo: value })}
                   >
-                    <SelectTrigger><SelectValue placeholder="Select the target" /></SelectTrigger>
+                    <SelectTrigger id={`punishment-${code.code}-grade-reduced-to`}><SelectValue placeholder="Select the target" /></SelectTrigger>
                     <SelectContent>
                       {targets.flatMap((grade) => {
                         const ranks = ranksAtGrade(grade);
@@ -701,14 +706,14 @@ function ParameterInputs({
           case 'oralOrWritten':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">Delivered</Label>
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-delivered`}>Delivered</Label>
                 <Select
                   value={entry.oralOrWritten ?? ''}
                   onValueChange={(value) =>
                     onChange({ oralOrWritten: value as Navmc10132PunishmentEntry['oralOrWritten'] })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id={`punishment-${code.code}-delivered`}>
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
@@ -919,14 +924,14 @@ function ForfeitureBasisGrade({
       ) : (
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label className="text-xs">Computed on pay grade</Label>
+            <Label className="text-xs" htmlFor="forfeiture-basis-grade">Computed on pay grade</Label>
             <Select
               value={recorded}
               onValueChange={(value) =>
                 setFormData((prev) => ({ ...prev, forfeitureBasisGrade: value }))
               }
             >
-              <SelectTrigger><SelectValue placeholder="Select the basis" /></SelectTrigger>
+              <SelectTrigger id="forfeiture-basis-grade"><SelectValue placeholder="Select the basis" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={target}>{target} (reduced grade)</SelectItem>
                 {currentGrade !== '' && currentGrade !== target && (

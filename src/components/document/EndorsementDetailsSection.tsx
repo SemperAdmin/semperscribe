@@ -51,12 +51,12 @@ export function EndorsementDetailsSection({
       <CardContent className="space-y-6 pt-6">
         {/* Endorsement Level Selector */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Endorsement Level <span className="text-destructive">*</span></Label>
+          <Label className="text-sm font-medium" htmlFor="endorsement-level">Endorsement Level <span className="text-destructive">*</span></Label>
           <Select
             value={formData.endorsementLevel}
             onValueChange={(val) => setFormData(prev => ({ ...prev, endorsementLevel: val as any }))}
           >
-            <SelectTrigger>
+            <SelectTrigger id="endorsement-level">
               <SelectValue placeholder="Select endorsement level..." />
             </SelectTrigger>
             <SelectContent>
@@ -129,9 +129,9 @@ export function EndorsementDetailsSection({
                 </div>
                 {hostCandidates.length > 0 && (
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Or pick a letter from your library</Label>
+                    <Label className="text-xs text-muted-foreground" htmlFor="same-page-host-draft">Or pick a letter from your library</Label>
                     <Select onValueChange={(id) => onSelectHostDraft?.(id)}>
-                      <SelectTrigger aria-label="Letter from library">
+                      <SelectTrigger id="same-page-host-draft" aria-label="Letter from library">
                         <SelectValue placeholder="Select a saved letter..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -215,8 +215,9 @@ export function EndorsementDetailsSection({
               </h4>
 
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Last Page # of Previous Document</Label>
+                <Label className="text-xs text-muted-foreground" htmlFor="previous-package-page-count">Last Page # of Previous Document</Label>
                 <Input
+                  id="previous-package-page-count"
                   type="number"
                   min="0"
                   max="100"
@@ -253,12 +254,12 @@ export function EndorsementDetailsSection({
               </h4>
 
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Start References At Letter</Label>
+                <Label className="text-xs text-muted-foreground" htmlFor="starting-reference-level">Start References At Letter</Label>
                 <Select
                   value={formData.startingReferenceLevel}
                   onValueChange={(val) => setFormData(prev => ({ ...prev, startingReferenceLevel: val }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="starting-reference-level">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -273,8 +274,9 @@ export function EndorsementDetailsSection({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Start Enclosures At Number</Label>
+                <Label className="text-xs text-muted-foreground" htmlFor="starting-enclosure-number">Start Enclosures At Number</Label>
                 <Input
+                  id="starting-enclosure-number"
                   type="number"
                   min="1"
                   max="50"

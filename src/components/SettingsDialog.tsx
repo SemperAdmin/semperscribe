@@ -188,6 +188,7 @@ export function SettingsDialog({
                       </DialogTitle>
                     </DialogHeader>
                     <Input
+                      aria-label="Search units"
                       placeholder="Search by Name, RUC, or MCC..."
                       value={unitSearchQuery}
                       onChange={(e) => setUnitSearchQuery(e.target.value)}
@@ -240,8 +241,9 @@ export function SettingsDialog({
                 <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Identity</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground">Signature Name</Label>
+                    <Label className="text-xs font-medium text-muted-foreground" htmlFor="settings-full-name">Signature Name</Label>
                     <Input
+                      id="settings-full-name"
                       value={profile.fullName}
                       onChange={(e) => onUpdateProfile({ fullName: e.target.value.toUpperCase() })}
                       placeholder="F. M. LASTNAME"
@@ -250,8 +252,9 @@ export function SettingsDialog({
                     <p className="text-[10px] text-muted-foreground">Auto-fills the signature block</p>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground">From Title</Label>
+                    <Label className="text-xs font-medium text-muted-foreground" htmlFor="settings-from-title">From Title</Label>
                     <Input
+                      id="settings-from-title"
                       value={profile.fromTitle}
                       onChange={(e) => onUpdateProfile({ fromTitle: e.target.value })}
                       placeholder="e.g. Commanding Officer"
@@ -262,8 +265,9 @@ export function SettingsDialog({
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground">Originator Code</Label>
+                    <Label className="text-xs font-medium text-muted-foreground" htmlFor="settings-office-code">Originator Code</Label>
                     <Input
+                      id="settings-office-code"
                       value={profile.officeCode}
                       onChange={(e) => onUpdateProfile({ officeCode: e.target.value })}
                       placeholder="e.g. G-1"
@@ -271,8 +275,9 @@ export function SettingsDialog({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground">Rank</Label>
+                    <Label className="text-xs font-medium text-muted-foreground" htmlFor="settings-rank">Rank</Label>
                     <Input
+                      id="settings-rank"
                       value={profile.rank}
                       onChange={(e) => onUpdateProfile({ rank: e.target.value })}
                       placeholder="e.g. Major"
@@ -280,8 +285,9 @@ export function SettingsDialog({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground">Title</Label>
+                    <Label className="text-xs font-medium text-muted-foreground" htmlFor="settings-title">Title</Label>
                     <Input
+                      id="settings-title"
                       value={profile.title}
                       onChange={(e) => onUpdateProfile({ title: e.target.value })}
                       placeholder="e.g. Operations Officer"
@@ -332,12 +338,12 @@ export function SettingsDialog({
                 <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Document Defaults</h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground">Header Type</Label>
+                    <Label className="text-xs font-medium text-muted-foreground" htmlFor="settings-header-type">Header Type</Label>
                     <Select
                       value={profile.headerType}
                       onValueChange={(val) => onUpdateProfile({ headerType: val as 'USMC' | 'DON' | 'DLA' })}
                     >
-                      <SelectTrigger className="bg-background border-input">
+                      <SelectTrigger className="bg-background border-input" id="settings-header-type">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -348,12 +354,12 @@ export function SettingsDialog({
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground">Body Font</Label>
+                    <Label className="text-xs font-medium text-muted-foreground" htmlFor="settings-body-font">Body Font</Label>
                     <Select
                       value={profile.bodyFont}
                       onValueChange={(val) => onUpdateProfile({ bodyFont: val as 'times' | 'courier' })}
                     >
-                      <SelectTrigger className="bg-background border-input">
+                      <SelectTrigger className="bg-background border-input" id="settings-body-font">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -363,12 +369,12 @@ export function SettingsDialog({
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground">Header Color</Label>
+                    <Label className="text-xs font-medium text-muted-foreground" htmlFor="settings-accent-color">Header Color</Label>
                     <Select
                       value={profile.accentColor}
                       onValueChange={(val) => onUpdateProfile({ accentColor: val as 'black' | 'blue' })}
                     >
-                      <SelectTrigger className="bg-background border-input">
+                      <SelectTrigger className="bg-background border-input" id="settings-accent-color">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -386,12 +392,12 @@ export function SettingsDialog({
                 <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">AMHS Defaults</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground">Classification</Label>
+                    <Label className="text-xs font-medium text-muted-foreground" htmlFor="settings-amhs-classification">Classification</Label>
                     <Select
                       value={profile.amhsClassification}
                       onValueChange={(val) => onUpdateProfile({ amhsClassification: val })}
                     >
-                      <SelectTrigger className="bg-background border-input">
+                      <SelectTrigger className="bg-background border-input" id="settings-amhs-classification">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -402,12 +408,12 @@ export function SettingsDialog({
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground">Precedence</Label>
+                    <Label className="text-xs font-medium text-muted-foreground" htmlFor="settings-amhs-precedence">Precedence</Label>
                     <Select
                       value={profile.amhsPrecedence}
                       onValueChange={(val) => onUpdateProfile({ amhsPrecedence: val })}
                     >
-                      <SelectTrigger className="bg-background border-input">
+                      <SelectTrigger className="bg-background border-input" id="settings-amhs-precedence">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

@@ -237,12 +237,12 @@ export function AccusedElectionSection({ formData, setFormData, SectionCard, sta
         <>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
-              <Label className="text-xs">Item 2, election</Label>
+              <Label className="text-xs" htmlFor="accused-election">Item 2, election</Label>
               <Select
                 value={coercedDemand}
                 onValueChange={(value) => setFormData((prev) => ({ ...prev, demand: value }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="accused-election">
                   <SelectValue placeholder="Select the accused's election" />
                 </SelectTrigger>
                 <SelectContent>
@@ -270,7 +270,7 @@ export function AccusedElectionSection({ formData, setFormData, SectionCard, sta
                 setFormData((prev) => ({ ...prev, counselOpportunity: value as CounselOpportunity }))
               }
             >
-              <SelectTrigger className="h-7 w-28 px-2 text-sm">
+              <SelectTrigger className="h-7 w-28 px-2 text-sm" aria-label="Opportunity to consult with a military lawyer: have or have not">
                 <SelectValue placeholder="have / have not" />
               </SelectTrigger>
               <SelectContent>

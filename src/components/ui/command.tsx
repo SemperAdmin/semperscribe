@@ -2,11 +2,11 @@
 
 import * as React from "react"
 import { type DialogProps } from "@radix-ui/react-dialog"
-import { Command as CommandPrimitive } from "cmdk"
+import { Command as CommandPrimitive, useCommandState } from "cmdk"
 import { Search } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -23,12 +23,38 @@ const Command = React.forwardRef<
 ))
 Command.displayName = CommandPrimitive.displayName
 
-interface CommandDialogProps extends DialogProps {}
+interface CommandDialogProps extends DialogProps {
+  /** P8-8: the dialog's accessible name. Rendered visually hidden, since
+   *  the search input is the visual title. */
+  title?: string
+  description?: string
+}
 
-const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
+const CommandDialog = ({ children, title = "Command palette", description = "Type to search commands and document types.", ...props }: CommandDialogProps) => {
+  // P8-8: Radix restores focus to the dialog's trigger on close, and this
+  // dialog has none (it opens from Ctrl+K), so focus fell to body. Note
+  // what had focus when the dialog opened (FocusScope dispatches the
+  // open-autofocus event before it moves focus) and put it back.
+  const restoreFocusTo = React.useRef<HTMLElement | null>(null)
   return (
     <Dialog {...props}>
-      <DialogContent className="overflow-hidden p-0 shadow-lg">
+      <DialogContent
+        className="overflow-hidden p-0 shadow-lg"
+        onOpenAutoFocus={() => {
+          const active = document.activeElement
+          restoreFocusTo.current = active instanceof HTMLElement && active !== document.body ? active : null
+        }}
+        onCloseAutoFocus={(event) => {
+          const target = restoreFocusTo.current
+          restoreFocusTo.current = null
+          if (target && target.isConnected) {
+            event.preventDefault()
+            target.focus()
+          }
+        }}
+      >
+        <DialogTitle className="sr-only">{title}</DialogTitle>
+        <DialogDescription className="sr-only">{description}</DialogDescription>
         <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
           {children}
         </Command>
@@ -98,16 +124,29 @@ const CommandGroup = React.forwardRef<
 
 CommandGroup.displayName = CommandPrimitive.Group.displayName
 
+/**
+ * P8-8: cmdk's own Separator hard-codes role="separator", which is not a
+ * permitted child of the role="listbox" list (axe aria-required-children).
+ * This one keeps cmdk's behaviour (hidden while a search is typed unless
+ * alwaysRender) but is a purely visual rule the listbox does not expose.
+ */
 const CommandSeparator = React.forwardRef<
-  React.ElementRef<typeof CommandPrimitive.Separator>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.Separator
-    ref={ref}
-    className={cn("-mx-1 h-px bg-border", className)}
-    {...props}
-  />
-))
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { alwaysRender?: boolean }
+>(({ className, alwaysRender, ...props }, ref) => {
+  const searching: boolean = useCommandState((state: { search: string }) => !!state.search)
+  if (searching && !alwaysRender) return null
+  return (
+    <div
+      ref={ref}
+      role="presentation"
+      aria-hidden="true"
+      cmdk-separator=""
+      className={cn("-mx-1 h-px bg-border", className)}
+      {...props}
+    />
+  )
+})
 CommandSeparator.displayName = CommandPrimitive.Separator.displayName
 
 const CommandItem = React.forwardRef<

@@ -88,8 +88,9 @@ export function CoordinationPageForm({ formData, setFormData }: CoordinationPage
               <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
                 {/* STAFF/EXTERNAL AGENCY */}
                 <div className="space-y-2">
-                  <Label>Staff/External Agency *</Label>
+                  <Label htmlFor={`coord-${index}-office`}>Staff/External Agency *</Label>
                   <Input
+                    id={`coord-${index}-office`}
                     placeholder="e.g., AC/S G-3"
                     list={`office-suggestions-${index}`}
                     value={entry.office}
@@ -104,8 +105,9 @@ export function CoordinationPageForm({ formData, setFormData }: CoordinationPage
 
                 {/* NAME */}
                 <div className="space-y-2">
-                  <Label>Name</Label>
+                  <Label htmlFor={`coord-${index}-name`}>Name</Label>
                   <Input
+                    id={`coord-${index}-name`}
                     placeholder="Grade and name, or None Obtained"
                     value={entry.aoName}
                     onChange={e => updateField(index, 'aoName', e.target.value)}
@@ -123,12 +125,12 @@ export function CoordinationPageForm({ formData, setFormData }: CoordinationPage
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Position</Label>
+                    <Label htmlFor={`coord-${index}-position`}>Position</Label>
                     <Select
                       value={entry.concurrence || 'pending'}
                       onValueChange={val => updateField(index, 'concurrence', val)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id={`coord-${index}-position`}>
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -147,8 +149,9 @@ export function CoordinationPageForm({ formData, setFormData }: CoordinationPage
               {/* CONDITIONAL: w/comment text input */}
               {(entry.concurrence === 'concur-comment' || entry.concurrence === 'nonconcur-comment') && (
                 <div className="space-y-2">
-                  <Label>Comment Text</Label>
+                  <Label htmlFor={`coord-${index}-comment`}>Comment Text</Label>
                   <Input
+                    id={`coord-${index}-comment`}
                     placeholder="Enter comment text..."
                     value={entry.concurrenceCommentText || ''}
                     onChange={e => updateField(index, 'concurrenceCommentText', e.target.value)}
@@ -170,8 +173,9 @@ export function CoordinationPageForm({ formData, setFormData }: CoordinationPage
 
               {/* STAFFING COMMENT */}
               <div className="space-y-2">
-                <Label>Staffing Comment</Label>
+                <Label htmlFor={`coord-${index}-staffing-comment`}>Staffing Comment</Label>
                 <Textarea
+                  id={`coord-${index}-staffing-comment`}
                   placeholder="Optional staffing comment for this office..."
                   value={entry.staffingComment || ''}
                   onChange={e => updateField(index, 'staffingComment', e.target.value)}

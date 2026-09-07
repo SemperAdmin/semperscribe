@@ -12,8 +12,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  useFormField,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -149,6 +151,37 @@ function isoToLocalDate(value: string | undefined): Date | undefined {
 }
 function localDateToIso(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * P8-5: a checkbox field. FormControl is a Slot which hands the form
+ * item id to its single child, so wrapping the checkbox AND its text in
+ * a div put the id on the div: the FormLabel's htmlFor pointed at a div
+ * and the checkbox had no name. Here the Slot wraps the checkbox alone,
+ * and the placeholder text is a second label for the same id.
+ */
+function CheckboxControl({
+  text,
+  checked,
+  onCheckedChange,
+}: {
+  text?: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  const { formItemId } = useFormField();
+  return (
+    <div className="flex items-center space-x-2">
+      <FormControl>
+        <Checkbox checked={checked} onCheckedChange={(v) => onCheckedChange(v === true)} />
+      </FormControl>
+      {text && (
+        <Label htmlFor={formItemId} className="text-sm font-medium">
+          {text}
+        </Label>
+      )}
+    </div>
+  );
 }
 
 interface DynamicFormProps {
@@ -346,6 +379,13 @@ export function DynamicForm({
           // all render something other than a plain input.
           <FormItem className={field.className} data-field={field.name}>
             <FormLabel>{field.label} {field.required && <span className="text-destructive">*</span>}</FormLabel>
+            {field.type === 'checkbox' ? (
+              <CheckboxControl
+                text={field.placeholder}
+                checked={!!formField.value}
+                onCheckedChange={formField.onChange}
+              />
+            ) : (
             <FormControl>
               {field.type === 'combobox' ? (
                 <SSICCombobox value={formField.value ?? ''} onChange={formField.onChange} placeholder={field.placeholder} label={field.label} />
@@ -380,18 +420,11 @@ export function DynamicForm({
                     ))}
                   </SelectContent>
                 </Select>
-              ) : field.type === 'checkbox' ? (
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={formField.value}
-                    onCheckedChange={formField.onChange}
-                  />
-                  <span className="text-sm font-medium">{field.placeholder}</span>
-                </div>
               ) : (
                 <Input placeholder={field.placeholder} {...formField} value={formField.value ?? ''} />
               )}
             </FormControl>
+            )}
             {field.description && <FormDescription>{field.description}</FormDescription>}
             <FormMessage />
           </FormItem>

@@ -335,7 +335,7 @@ export function HeaderActions({
       {/* Templates Dialog */}
       <Dialog open={isTemplateOpen} onOpenChange={setIsTemplateOpen}>
         <DialogTrigger asChild>
-          <Button variant="ghost" size="sm" className="hidden md:flex text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="sm" className={buttonClass("hidden md:flex")}>
             <LayoutTemplate className="w-4 h-4 mr-2" />
             Templates
           </Button>
@@ -437,7 +437,7 @@ export function HeaderActions({
       {/* File Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="px-2 sm:px-3 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="sm" className={buttonClass("px-2 sm:px-3")}>
             <File className="w-4 h-4 mr-2 hidden sm:inline-flex" />
             File
             <ChevronDown className="w-3 h-3 ml-1 opacity-50" />
@@ -551,6 +551,7 @@ export function HeaderActions({
           <Button
             variant="ghost"
             size="sm"
+            aria-label="Review"
             className={cn(
               "flex px-2 sm:px-3",
               className ? "text-secondary-foreground hover:text-primary hover:bg-white/10" : "text-muted-foreground hover:text-foreground"

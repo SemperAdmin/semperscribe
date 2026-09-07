@@ -119,7 +119,7 @@ export function PreviewModal({
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                    <p className="text-xs text-muted-foreground">Generating preview...</p>
+                    <p className="text-xs text-foreground/70">Generating preview...</p>
                   </div>
                 </div>
               ) : previewUrl ? (
@@ -129,7 +129,7 @@ export function PreviewModal({
                   title="PDF Preview"
                 />
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-center text-muted-foreground/40">
+                <div className="absolute inset-0 flex items-center justify-center text-center text-foreground/70">
                   <div>
                     <FileText className="w-12 h-12 mx-auto mb-2 opacity-20" />
                     <p className="text-sm">Preview not available</p>

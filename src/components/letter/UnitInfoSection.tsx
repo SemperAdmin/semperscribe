@@ -119,6 +119,7 @@ export function UnitInfoSection({
             </DialogHeader>
             <div className="p-1">
               <Input
+                aria-label="Search units"
                 placeholder="Search by Name, RUC, or MCC..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -183,8 +184,9 @@ export function UnitInfoSection({
              
              <div className="space-y-2">
                <div className="space-y-1">
-                 <Label className="text-xs">Unit Name (Line 1)</Label>
+                 <Label className="text-xs" htmlFor="unit-line1">Unit Name (Line 1)</Label>
                  <Input
+                   id="unit-line1"
                    value={formData.line1}
                    onChange={(e) => setFormData(prev => ({ ...prev, line1: e.target.value.toUpperCase() }))}
                    placeholder="e.g. HEADQUARTERS BATTALION"
@@ -192,8 +194,9 @@ export function UnitInfoSection({
                </div>
                {showSubName && (
                  <div className="space-y-1">
-                   <Label className="text-xs">Unit Sub-Name (Line 2) <span className="text-muted-foreground font-normal">- optional</span></Label>
+                   <Label className="text-xs" htmlFor="unit-line1b">Unit Sub-Name (Line 2) <span className="text-muted-foreground font-normal">- optional</span></Label>
                    <Input
+                     id="unit-line1b"
                      value={formData.line1b || ''}
                      onChange={(e) => setFormData(prev => ({ ...prev, line1b: e.target.value.toUpperCase() }))}
                      placeholder="e.g. MARINE CORPS BASE"
@@ -201,16 +204,18 @@ export function UnitInfoSection({
                  </div>
                )}
                <div className="space-y-1">
-                 <Label className="text-xs">Street Address (Line {showSubName ? 3 : 2})</Label>
+                 <Label className="text-xs" htmlFor="unit-line2">Street Address (Line {showSubName ? 3 : 2})</Label>
                  <Input
+                   id="unit-line2"
                    value={formData.line2}
                    onChange={(e) => setFormData(prev => ({ ...prev, line2: e.target.value.toUpperCase() }))}
                    placeholder="e.g. 3250 CATLIN AVENUE"
                  />
                </div>
                <div className="space-y-1">
-                 <Label className="text-xs">City, State Zip (Line {showSubName ? 4 : 3})</Label>
+                 <Label className="text-xs" htmlFor="unit-line3">City, State Zip (Line {showSubName ? 4 : 3})</Label>
                  <Input
+                   id="unit-line3"
                    value={formData.line3}
                    onChange={(e) => setFormData(prev => ({ ...prev, line3: e.target.value.toUpperCase() }))}
                    placeholder="e.g. QUANTICO VA 22134-5001"

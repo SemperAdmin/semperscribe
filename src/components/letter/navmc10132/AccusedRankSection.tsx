@@ -173,12 +173,12 @@ export function AccusedRankSection({
         ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="space-y-1">
-            <Label className="text-xs">Service</Label>
+            <Label className="text-xs" htmlFor="accused-service">Service</Label>
             <Select
               value={service}
               onValueChange={(value) => write({ accusedService: value, accusedRankGrade: '' })}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger id="accused-service"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="USMC">Marine Corps</SelectItem>
                 <SelectItem value="USN">Navy</SelectItem>
@@ -188,9 +188,9 @@ export function AccusedRankSection({
 
           {service === 'USMC' ? (
             <div className="space-y-1">
-              <Label className="text-xs">Rank</Label>
+              <Label className="text-xs" htmlFor="accused-rank">Rank</Label>
               <Select value={rankAbbrev} onValueChange={pickUsmcRank}>
-                <SelectTrigger><SelectValue placeholder="Select a rank" /></SelectTrigger>
+                <SelectTrigger id="accused-rank"><SelectValue placeholder="Select a rank" /></SelectTrigger>
                 <SelectContent>
                   {NAVMC_10132_USMC_ENLISTED_RANKS.map((rank) => (
                     <SelectItem key={rank.abbreviation} value={rank.abbreviation}>
@@ -202,9 +202,10 @@ export function AccusedRankSection({
             </div>
           ) : (
             <div className="space-y-1">
-              <Label className="text-xs">{isPettyOfficer ? 'Rating' : 'Community'}</Label>
+              <Label className="text-xs" htmlFor="accused-rating">{isPettyOfficer ? 'Rating' : 'Community'}</Label>
               {isPettyOfficer ? (
                 <Input
+                  id="accused-rating"
                   list="usn-ratings"
                   value={rating}
                   placeholder="HM"
@@ -212,7 +213,7 @@ export function AccusedRankSection({
                 />
               ) : (
                 <Select value={community} onValueChange={(v) => setNavy({ community: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="accused-rating"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {NAVMC_10132_USN_APPRENTICESHIPS.map((a) => (
                       <SelectItem key={a.community} value={a.community}>{a.community}</SelectItem>
@@ -229,14 +230,14 @@ export function AccusedRankSection({
           )}
 
           <div className="space-y-1">
-            <Label className="text-xs">Pay grade</Label>
+            <Label className="text-xs" htmlFor="accused-pay-grade">Pay grade</Label>
             <Select
               value={payGrade}
               onValueChange={(value) =>
                 service === 'USMC' ? pickPayGrade(value) : setNavy({ grade: value })
               }
             >
-              <SelectTrigger><SelectValue placeholder="E1 to E9" /></SelectTrigger>
+              <SelectTrigger id="accused-pay-grade"><SelectValue placeholder="E1 to E9" /></SelectTrigger>
               <SelectContent>
                 {NAVMC_10132_ENLISTED_PAY_GRADES.map((grade) => (
                   <SelectItem key={grade} value={grade}>{grade}</SelectItem>

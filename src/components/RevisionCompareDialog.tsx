@@ -137,7 +137,7 @@ export function RevisionCompareDialog({ open, onOpenChange, letters, onRestore }
             <div className="space-y-1">
               <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Older</p>
               <Select value={beforeId} onValueChange={setBeforeId}>
-                <SelectTrigger className="w-full text-xs h-9"><SelectValue placeholder="Select a revision" /></SelectTrigger>
+                <SelectTrigger className="w-full text-xs h-9" aria-label="Older revision"><SelectValue placeholder="Select a revision" /></SelectTrigger>
                 <SelectContent>
                   {letters.map((l) => (
                     <SelectItem key={l.id} value={l.id} className="text-xs">{label(l)}</SelectItem>
@@ -148,7 +148,7 @@ export function RevisionCompareDialog({ open, onOpenChange, letters, onRestore }
             <div className="space-y-1">
               <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Newer</p>
               <Select value={afterId} onValueChange={setAfterId}>
-                <SelectTrigger className="w-full text-xs h-9"><SelectValue placeholder="Select a revision" /></SelectTrigger>
+                <SelectTrigger className="w-full text-xs h-9" aria-label="Newer revision"><SelectValue placeholder="Select a revision" /></SelectTrigger>
                 <SelectContent>
                   {letters.map((l) => (
                     <SelectItem key={l.id} value={l.id} className="text-xs">{label(l)}</SelectItem>

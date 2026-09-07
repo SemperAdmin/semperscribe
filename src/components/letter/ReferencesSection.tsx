@@ -99,12 +99,12 @@ export function ReferencesSection({ references, setReferences, formData, setForm
                 </Alert>
 
                 <div className="flex items-center gap-3">
-                  <Label className="whitespace-nowrap">Starting Reference:</Label>
+                  <Label className="whitespace-nowrap" htmlFor="ref-starting-letter">Starting Reference:</Label>
                   <Select
                     value={formData.startingReferenceLevel}
                     onValueChange={(val) => setFormData({ ...formData, startingReferenceLevel: val })}
                   >
-                    <SelectTrigger className="w-[200px]">
+                    <SelectTrigger className="w-[200px]" id="ref-starting-letter">
                       <SelectValue placeholder="Select starting letter" />
                     </SelectTrigger>
                     <SelectContent>

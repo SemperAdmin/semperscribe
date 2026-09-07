@@ -219,12 +219,12 @@ export function RemarksSection({ formData, setFormData, SectionCard, stage }: Se
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Kind</Label>
+                  <Label className="text-xs" htmlFor={`remark-${index}-kind`}>Kind</Label>
                   <Select
                     value={remark.kind}
                     onValueChange={(value) => updateRemark(index, { kind: value as Navmc10132RemarkKind })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id={`remark-${index}-kind`}>
                       <SelectValue placeholder="Select a rule" />
                     </SelectTrigger>
                     <SelectContent>
@@ -248,17 +248,19 @@ export function RemarksSection({ formData, setFormData, SectionCard, stage }: Se
               </div>
 
               <div className="mt-2">
-                <Label className="text-xs">
+                <Label className="text-xs" htmlFor={`remark-${index}-detail`}>
                   {isStayKind ? 'Submission date (d Mmm yy)' : 'Detail'}
                 </Label>
                 {meta.multiline ? (
                   <Textarea
+                    id={`remark-${index}-detail`}
                     value={remark.detail}
                     onChange={(e) => updateRemark(index, { detail: e.target.value })}
                     rows={3}
                   />
                 ) : (
                   <Input
+                    id={`remark-${index}-detail`}
                     value={remark.detail}
                     onChange={(e) => updateRemark(index, { detail: e.target.value })}
                     placeholder={isStayKind ? 'e.g. 4 Mar 26' : undefined}
@@ -277,8 +279,9 @@ export function RemarksSection({ formData, setFormData, SectionCard, stage }: Se
       </div>
 
       <div className="mt-6">
-        <Label className="text-xs">Free text</Label>
+        <Label className="text-xs" htmlFor="remarks-free-text">Free text</Label>
         <Textarea
+          id="remarks-free-text"
           value={freeText}
           onChange={(e) => setFormData((prev) => ({ ...prev, remarksFreeText: e.target.value }))}
           rows={3}
@@ -307,8 +310,9 @@ export function RemarksSection({ formData, setFormData, SectionCard, stage }: Se
         <>
           <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <Label className="text-xs">Item 16, unit diary (UD)</Label>
+              <Label className="text-xs" htmlFor="final-admin-ud">Item 16, unit diary (UD)</Label>
               <Input
+                id="final-admin-ud"
                 value={(formData.finalAdminUd as string) ?? ''}
                 onChange={(e) => setFormData((prev) => ({ ...prev, finalAdminUd: e.target.value }))}
                 className="w-40"
@@ -316,8 +320,9 @@ export function RemarksSection({ formData, setFormData, SectionCard, stage }: Se
               />
             </div>
             <div>
-              <Label className="text-xs">Item 16, date (DTD)</Label>
+              <Label className="text-xs" htmlFor="final-admin-dtd">Item 16, date (DTD)</Label>
               <Input
+                id="final-admin-dtd"
                 value={(formData.finalAdminDtd as string) ?? ''}
                 onChange={(e) => setFormData((prev) => ({ ...prev, finalAdminDtd: e.target.value }))}
                 className="w-40"

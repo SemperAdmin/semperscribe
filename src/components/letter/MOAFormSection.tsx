@@ -79,26 +79,30 @@ export function MOAFormSection({ formData, setFormData }: MOAFormSectionProps) {
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Participating Activities</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Junior Activity (Activity B)</Label>
+              <Label htmlFor="moa-activity-b">Junior Activity (Activity B)</Label>
               <Input
+                id="moa-activity-b"
                 value={moaData.activityB}
                 onChange={(e) => updateMoaData('activityB', e.target.value)}
                 placeholder="Full Name (e.g. NAVAL SUPPORT ACTIVITY)"
               />
               <div className="grid grid-cols-4 gap-2 mt-2">
                 <Input
+                  aria-label="Junior activity symbol"
                   value={moaData.juniorSigner.activitySymbol || ''}
                   onChange={(e) => updateMoaData('juniorSigner.activitySymbol', e.target.value)}
                   placeholder="Symbol (e.g. NSA)"
                   className="h-8 text-xs"
                 />
                 <Input 
+                  aria-label="Junior activity SSIC"
                   placeholder="SSIC (e.g. 5216)" 
                   value={moaData.activityBHeader?.ssic || ''} 
                   onChange={(e) => updateMoaData('activityBHeader.ssic', e.target.value)} 
                   className="h-8 text-xs" 
                 />
                 <Input 
+                  aria-label="Junior activity serial"
                   placeholder="Serial (e.g. Ser N02/234)" 
                   value={moaData.activityBHeader?.serial || ''} 
                   onChange={(e) => updateMoaData('activityBHeader.serial', e.target.value)} 
@@ -114,26 +118,30 @@ export function MOAFormSection({ formData, setFormData }: MOAFormSectionProps) {
               <p className="text-xs text-muted-foreground">Appears second in header, signs on LEFT.</p>
             </div>
             <div className="space-y-2">
-              <Label>Senior Activity (Activity A)</Label>
+              <Label htmlFor="moa-activity-a">Senior Activity (Activity A)</Label>
               <Input
+                id="moa-activity-a"
                 value={moaData.activityA}
                 onChange={(e) => updateMoaData('activityA', e.target.value)}
                 placeholder="Full Name (e.g. NAVAL DISTRICT WASHINGTON)"
               />
               <div className="grid grid-cols-4 gap-2 mt-2">
                 <Input
+                  aria-label="Senior activity symbol"
                   value={moaData.seniorSigner.activitySymbol || ''}
                   onChange={(e) => updateMoaData('seniorSigner.activitySymbol', e.target.value)}
                   placeholder="Symbol (e.g. NDW)"
                   className="h-8 text-xs"
                 />
                 <Input 
+                  aria-label="Senior activity SSIC"
                   placeholder="SSIC (e.g. 5216)" 
                   value={moaData.activityAHeader?.ssic || ''} 
                   onChange={(e) => updateMoaData('activityAHeader.ssic', e.target.value)} 
                   className="h-8 text-xs" 
                 />
                 <Input 
+                  aria-label="Senior activity serial"
                   placeholder="Serial (e.g. Ser N02/234)" 
                   value={moaData.activityAHeader?.serial || ''} 
                   onChange={(e) => updateMoaData('activityAHeader.serial', e.target.value)} 
@@ -161,16 +169,18 @@ export function MOAFormSection({ formData, setFormData }: MOAFormSectionProps) {
               <div className="font-medium text-center border-b pb-2 mb-2">Junior Official (Signs Left)</div>
               
               <div className="space-y-2">
-                <Label>Name</Label>
+                <Label htmlFor="moa-junior-name">Name</Label>
                 <Input
+                  id="moa-junior-name"
                   value={moaData.juniorSigner.name}
                   onChange={(e) => updateMoaData('juniorSigner.name', e.target.value)}
                   placeholder="I. M. JUNIOR"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Title</Label>
+                <Label htmlFor="moa-junior-title">Title</Label>
                 <Input
+                  id="moa-junior-title"
                   value={moaData.juniorSigner.title}
                   onChange={(e) => updateMoaData('juniorSigner.title', e.target.value)}
                   placeholder="Commanding Officer"
@@ -183,16 +193,18 @@ export function MOAFormSection({ formData, setFormData }: MOAFormSectionProps) {
               <div className="font-medium text-center border-b pb-2 mb-2">Senior Official (Signs Right)</div>
               
               <div className="space-y-2">
-                <Label>Name</Label>
+                <Label htmlFor="moa-senior-name">Name</Label>
                 <Input
+                  id="moa-senior-name"
                   value={moaData.seniorSigner.name}
                   onChange={(e) => updateMoaData('seniorSigner.name', e.target.value)}
                   placeholder="I. M. SENIOR"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Title</Label>
+                <Label htmlFor="moa-senior-title">Title</Label>
                 <Input
+                  id="moa-senior-title"
                   value={moaData.seniorSigner.title}
                   onChange={(e) => updateMoaData('seniorSigner.title', e.target.value)}
                   placeholder="Commanding General"

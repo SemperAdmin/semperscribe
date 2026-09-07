@@ -237,6 +237,7 @@ export function DecisionGridSection({ data, mode, onDataChange, onModeChange }: 
                 {(safeData.coas || []).map((coa, idx) => (
                     <div key={idx} className="flex gap-2">
                         <Input 
+                            aria-label={`Course of action ${idx + 1}`}
                             value={coa} 
                             onChange={(e) => updateCoa(idx, e.target.value)}
                             placeholder={`COA ${idx + 1}`}
@@ -264,6 +265,7 @@ export function DecisionGridSection({ data, mode, onDataChange, onModeChange }: 
                     <div key={item.id} className="flex gap-2 items-start">
                         <span className="mt-3 text-sm font-mono font-bold text-muted-foreground">{String.fromCharCode(97 + idx)}.</span>
                         <Textarea 
+                            aria-label={`Recommendation item ${String.fromCharCode(97 + idx)}`}
                             value={item.text} 
                             onChange={(e) => updateRecItem(idx, e.target.value)}
                             placeholder="Enter recommendation text..."
@@ -293,8 +295,9 @@ export function DecisionGridSection({ data, mode, onDataChange, onModeChange }: 
           {safeData.recommenders.map((rec, index) => (
             <div key={rec.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start bg-muted/20 p-4 rounded-md border border-border">
               <div className="md:col-span-5 space-y-2">
-                <Label className="text-xs">Role / Position</Label>
+                <Label className="text-xs" htmlFor={`recommender-${rec.id}-role`}>Role / Position</Label>
                 <Input
+                  id={`recommender-${rec.id}-role`}
                   value={rec.role}
                   onChange={(e) => updateRecommender(index, 'role', e.target.value)}
                   placeholder="e.g. Dir Ops, DC PP&O"
@@ -343,8 +346,9 @@ export function DecisionGridSection({ data, mode, onDataChange, onModeChange }: 
           <Label className="text-base font-medium">Final Decision Authority</Label>
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-md border border-blue-100 dark:border-blue-900/30">
             <div className="md:col-span-5 space-y-2">
-              <Label className="text-xs">Role / Position</Label>
+              <Label className="text-xs" htmlFor="final-decision-role">Role / Position</Label>
               <Input
+                id="final-decision-role"
                 value={safeData.finalDecision.role}
                 onChange={(e) => updateFinalDecision('role', e.target.value)}
                 placeholder="e.g. CMC, ACMC"
@@ -353,10 +357,11 @@ export function DecisionGridSection({ data, mode, onDataChange, onModeChange }: 
             </div>
             
             <div className="md:col-span-7 space-y-2">
-              <Label className="text-xs">Options (Comma separated)</Label>
+              <Label className="text-xs" htmlFor="final-decision-options">Options (Comma separated)</Label>
               {mode === 'MULTIPLE_CHOICE' ? (
                  <div className="space-y-2">
                     <Input
+                        id="final-decision-options"
                         value={safeData.finalDecision.options.join(', ')}
                         onChange={(e) => updateFinalDecision('options', e.target.value.split(',').map(s => s.trim()))}
                         placeholder="COA 1, COA 2, Other"
@@ -368,6 +373,7 @@ export function DecisionGridSection({ data, mode, onDataChange, onModeChange }: 
                  </div>
               ) : (
                   <Input
+                    id="final-decision-options"
                     value={safeData.finalDecision.options.join(', ')}
                     onChange={(e) => updateFinalDecision('options', e.target.value.split(',').map(s => s.trim()))}
                     placeholder="Approved, Disapproved"

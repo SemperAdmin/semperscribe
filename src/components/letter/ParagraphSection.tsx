@@ -183,16 +183,18 @@ export function ParagraphSection({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-base font-medium">Records Management</Label>
+                    <Label className="text-base font-medium" htmlFor="admin-records-management-show">Records Management</Label>
                     <p className="text-xs text-muted-foreground">Mandatory for all Orders (MCO 5210.1)</p>
                   </div>
                   <Switch
+                    id="admin-records-management-show"
                     checked={adminSubsections.recordsManagement.show}
                     onCheckedChange={(checked) => onUpdateAdminSubsection('recordsManagement', 'show', checked)}
                   />
                 </div>
                 {adminSubsections.recordsManagement.show && (
                   <Textarea
+                    aria-label="Records Management text"
                     value={adminSubsections.recordsManagement.content}
                     onChange={(e) => onUpdateAdminSubsection('recordsManagement', 'content', e.target.value)}
                     className="min-h-[100px] text-sm bg-background"
@@ -207,16 +209,18 @@ export function ParagraphSection({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-base font-medium">Privacy Act Statement</Label>
+                    <Label className="text-base font-medium" htmlFor="admin-privacy-act-show">Privacy Act Statement</Label>
                     <p className="text-xs text-muted-foreground">Required if PII is collected/handled</p>
                   </div>
                   <Switch
+                    id="admin-privacy-act-show"
                     checked={adminSubsections.privacyAct.show}
                     onCheckedChange={(checked) => onUpdateAdminSubsection('privacyAct', 'show', checked)}
                   />
                 </div>
                 {adminSubsections.privacyAct.show && (
                   <Textarea
+                    aria-label="Privacy Act Statement text"
                     value={adminSubsections.privacyAct.content}
                     onChange={(e) => onUpdateAdminSubsection('privacyAct', 'content', e.target.value)}
                     className="min-h-[100px] text-sm bg-background"
@@ -231,16 +235,18 @@ export function ParagraphSection({
                <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-base font-medium">Reports Required</Label>
+                    <Label className="text-base font-medium" htmlFor="admin-reports-required-show">Reports Required</Label>
                     <p className="text-xs text-muted-foreground">List any reports required by this directive</p>
                   </div>
                   <Switch
+                    id="admin-reports-required-show"
                     checked={adminSubsections.reportsRequired.show}
                     onCheckedChange={(checked) => onUpdateAdminSubsection('reportsRequired', 'show', checked)}
                   />
                 </div>
                 {adminSubsections.reportsRequired.show && (
                   <Textarea
+                    aria-label="Reports Required text"
                     value={adminSubsections.reportsRequired.content}
                     onChange={(e) => onUpdateAdminSubsection('reportsRequired', 'content', e.target.value)}
                     className="min-h-[60px] text-sm bg-background"
