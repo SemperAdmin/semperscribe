@@ -188,16 +188,26 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
           );
         }
       } else {
-        // E.5: Word takes no PDF host and the DOCX emitter renders one
-        // document, so the two-half same-page endorsement has no Word
-        // form. Say so rather than export the letter half as the whole.
+        // E.5 in Word. Written from scratch, the two halves go into one
+        // document with Figure 9-1's rule between them. Onto an
+        // attached letter, Word takes no PDF host, so the endorsement
+        // exports as a page of its own, and the toast says which.
         if (isSamePageEndorsement(formData) && formData.samePageEndorsement) {
-          toast?.({
-            title: 'Word export is not available for a same-page endorsement',
-            description: 'The letter and its endorsement are composed onto one page in the PDF. Export the PDF.',
-          });
-          return;
-        }
+          const attached = formData.samePageHost ? await resolveSamePageHost?.() : null;
+          if (attached) {
+            const { endorsementContext } = await import('@/lib/same-page-composite');
+            const { generateDocxBlob } = await import('@/lib/docx-generator');
+            const block = endorsementContext({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+            blob = await generateDocxBlob(block.formData, block.vias, block.references, block.enclosures, block.copyTos, block.paragraphs, block.distList);
+            toast?.({
+              title: 'Word carries the endorsement on a page of its own',
+              description: 'The letter being endorsed is a PDF, which Word does not take as a host. The PDF export composes the two.',
+            });
+          } else {
+            const { generateSamePageCompositeDocxBlob } = await import('@/lib/docx-generator');
+            blob = await generateSamePageCompositeDocxBlob({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+          }
+        } else {
         const features = DOCUMENT_TYPES[formData.documentType]?.features;
         const paragraphsToRender = features?.isDirective
           ? mergeAdminSubsections(paragraphs, formData.adminSubsections)
@@ -205,6 +215,7 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
 
         const { generateDocxBlob } = await import('@/lib/docx-generator');
         blob = await generateDocxBlob(formData, vias, references, enclosures, copyTos, paragraphsToRender, distList);
+        }
       }
 
       // ENC: merge bound enclosure files into the export (PDF only; the

@@ -5,6 +5,46 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.12.0] - 2026-09-07
+
+### Added
+
+- Word export of the same-page endorsement written from scratch
+  (`generateSamePageCompositeDocxBlob`). The letter half is built as
+  the basic letter and the endorsement half as the bare block, and the
+  two are joined in the letter's section with Figure 9-1's rule between
+  them, an empty line carrying a 0.75 pt bottom border, so the block
+  follows the letter's last line, the continuation header and page
+  numbers run on, and Word paginates the pair as one document. When the
+  block does not fit under the signature, Word carries it to the next
+  page. Measured through LibreOffice: Figure 9-1 lands on one page with
+  both signers, as the PDF does. Reverses the 0.10.0 note.
+- A same-page endorsement onto an ATTACHED letter exports to Word as
+  the endorsement on a page of its own, since Word takes no PDF host,
+  and the toast says so. Before this the export was refused outright.
+- Counseling Worksheet: a provisional JEPES benchmark under Step 5 for
+  Marines in the grades Pvt through Cpl (docs/COUNSELING_JEPES_BENCHMARK_PLAN.md),
+  with the MCO 1616.1 Figure 1-2 rubric, the para 3.a band rules as
+  suggestions, a Start at 2.5 control, prior marks with a delta, and
+  Section VI-A on the record. Hidden for E-5 and above. Descriptors are
+  editor-only.
+- Counseling Worksheet: the occasion "JEPES evaluation (formerly
+  proficiency and conduct marks)", citing MCO 1616.1.
+
+### Fixed
+
+- Counseling Worksheet PDF: a word wider than its cell breaks inside the
+  cell; a check label wider than its column wraps under its box; a row
+  taller than a page splits across pages with "(continued)" labels
+  instead of running through the footer marking.
+
+### Changed
+
+- `generateDocxBlob` is a thin wrapper over `buildDocxParts`, which
+  returns the section and any structural sections rather than the
+  packed document, so a composer assembles more than one render into
+  one file.
+
 ## [0.11.1] - 2026-09-06
 
 ### Changed
