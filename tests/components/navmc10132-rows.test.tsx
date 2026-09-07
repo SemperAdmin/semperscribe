@@ -25,7 +25,7 @@ function form(extra: Record<string, unknown> = {}): FormData {
 
 describe('OffensesSection', () => {
   it('shows one blank row when no offense is recorded', () => {
-    render(<OffensesSection formData={form()} setFormData={vi.fn()} SectionCard={SectionCard} />);
+    render(<OffensesSection formData={form()} setFormData={vi.fn()} SectionCard={SectionCard} stage={1} />);
     expect(screen.getAllByPlaceholderText(OFFENSE_PLACEHOLDER)).toHaveLength(1);
     expect(screen.getByRole('button', { name: /Add offense/ })).toBeInTheDocument();
   });
@@ -35,13 +35,13 @@ describe('OffensesSection', () => {
       { ...NAVMC_10132_EMPTY_OFFENSE, summary: 'Art 86, UA 0600-0800, 12 Jan 26' },
       { ...NAVMC_10132_EMPTY_OFFENSE, summary: 'Art 92, disobeyed order, 13 Jan 26' },
     ];
-    render(<OffensesSection formData={form({ offenses })} setFormData={vi.fn()} SectionCard={SectionCard} />);
+    render(<OffensesSection formData={form({ offenses })} setFormData={vi.fn()} SectionCard={SectionCard} stage={1} />);
     expect(screen.getAllByPlaceholderText(OFFENSE_PLACEHOLDER)).toHaveLength(2);
   });
 
   it('adds a blank row without touching form data', () => {
     const setFormData = vi.fn();
-    render(<OffensesSection formData={form()} setFormData={setFormData} SectionCard={SectionCard} />);
+    render(<OffensesSection formData={form()} setFormData={setFormData} SectionCard={SectionCard} stage={1} />);
     fireEvent.click(screen.getByRole('button', { name: /Add offense/ }));
     expect(screen.getAllByPlaceholderText(OFFENSE_PLACEHOLDER)).toHaveLength(2);
     expect(setFormData).not.toHaveBeenCalled();
@@ -49,7 +49,7 @@ describe('OffensesSection', () => {
 
   it('grows when a template load populates more rows than are visible', () => {
     const { rerender } = render(
-      <OffensesSection formData={form()} setFormData={vi.fn()} SectionCard={SectionCard} />,
+      <OffensesSection formData={form()} setFormData={vi.fn()} SectionCard={SectionCard} stage={1} />,
     );
     expect(screen.getAllByPlaceholderText(OFFENSE_PLACEHOLDER)).toHaveLength(1);
     const offenses = [
@@ -57,7 +57,7 @@ describe('OffensesSection', () => {
       { ...NAVMC_10132_EMPTY_OFFENSE, summary: 'two' },
       { ...NAVMC_10132_EMPTY_OFFENSE, summary: 'three' },
     ];
-    rerender(<OffensesSection formData={form({ offenses })} setFormData={vi.fn()} SectionCard={SectionCard} />);
+    rerender(<OffensesSection formData={form({ offenses })} setFormData={vi.fn()} SectionCard={SectionCard} stage={1} />);
     expect(screen.getAllByPlaceholderText(OFFENSE_PLACEHOLDER)).toHaveLength(3);
   });
 
@@ -67,17 +67,17 @@ describe('OffensesSection', () => {
       { ...NAVMC_10132_EMPTY_OFFENSE, summary: 'two' },
     ];
     const { rerender } = render(
-      <OffensesSection formData={form({ offenses })} setFormData={vi.fn()} SectionCard={SectionCard} />,
+      <OffensesSection formData={form({ offenses })} setFormData={vi.fn()} SectionCard={SectionCard} stage={1} />,
     );
     fireEvent.click(screen.getByRole('button', { name: /Add offense/ }));
     expect(screen.getAllByPlaceholderText(OFFENSE_PLACEHOLDER)).toHaveLength(3);
-    rerender(<OffensesSection formData={form({ offenses: [offenses[0]] })} setFormData={vi.fn()} SectionCard={SectionCard} />);
+    rerender(<OffensesSection formData={form({ offenses: [offenses[0]] })} setFormData={vi.fn()} SectionCard={SectionCard} stage={1} />);
     // Collapse never removes rows the user opened in this session.
     expect(screen.getAllByPlaceholderText(OFFENSE_PLACEHOLDER)).toHaveLength(3);
   });
 
   it('hides the add button once all five rows are open', () => {
-    render(<OffensesSection formData={form()} setFormData={vi.fn()} SectionCard={SectionCard} />);
+    render(<OffensesSection formData={form()} setFormData={vi.fn()} SectionCard={SectionCard} stage={1} />);
     for (let i = 0; i < 4; i++) {
       fireEvent.click(screen.getByRole('button', { name: /Add offense/ }));
     }

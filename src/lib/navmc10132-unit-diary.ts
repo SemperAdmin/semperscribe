@@ -58,6 +58,26 @@ export interface UnitDiaryBlock {
   excluded: UnitDiaryExclusion[];
   /** Non-null when item 16 already carries a UD number, meaning this NJP has been reported. */
   alreadyReported: UnitDiaryAlreadyReported | null;
+  /**
+   * TRUE when item 12 records an intent to appeal and item 14 carries no
+   * decision yet, so the figures below can still move.
+   *
+   * WHY THIS EXISTS AT ALL. The panel used to appear only once item 16 had
+   * closed the form, at which point nothing could change and no such caveat
+   * was possible. Stephen opened it at the item 12 signature on 2026-08-26,
+   * which is BEFORE the appeal is decided. Article 15(e), UCMJ and MCM Part
+   * V para 7.f let the reviewing authority set aside, mitigate, remit or
+   * suspend the punishment on appeal, so a diary entry typed from this block
+   * while an appeal is pending can be posting a punishment that no longer
+   * exists in that form.
+   *
+   * NOT A BLOCK. A pending appeal does not suspend the punishment by itself
+   * (MCM Part V para 7.d(2): punishment is effective when imposed and an
+   * appeal does not stay it unless the authority orders it), so there are
+   * real cases where the entry is made while the appeal is out. This reports
+   * the risk and leaves the judgement with the clerk.
+   */
+  appealPending: boolean;
 }
 
 /** The row letters the form actually prints for item 1 and item 5, same order navmc10132-acroform.ts uses. */
@@ -70,7 +90,6 @@ const OFFENSE_CODE_WIDTH = 8;
 /** Column width for a punishment code or the CONCURRENT marker. */
 const PUNISHMENT_LABEL_WIDTH = 11;
 
-const NOT_CAPTURED = '[not captured in SemperScribe]';
 
 // ---------------------------------------------------------------------------
 // Narrowing accessors, copied from navmc10132-acroform.ts's pattern.
@@ -172,6 +191,15 @@ export function unitDiaryBlock(formData: FormData): UnitDiaryBlock {
   // so presence of the number alone is what flips this, not the pair.
   const alreadyReported: UnitDiaryAlreadyReported | null =
     finalAdminUd === '' ? null : { ud: finalAdminUd, dtd: finalAdminDtd };
+
+  // An appeal is PENDING when the accused said they intend one and item 14
+  // has not ruled. The item 12 wording is the form's own, matched here on
+  // the affirmative option only: "the accused refuses to sign" is a refusal
+  // to sign the election, not a statement of intent, and reading it as an
+  // appeal would caveat every refusal case for no reason. See
+  // `UnitDiaryBlock.appealPending`.
+  const appealDecision = readString(formData, 'appealDecision') ?? '';
+  const appealPending = intendAppeal.trim() === 'I do intend to appeal.' && appealDecision.trim() === '';
 
   // --- Offenses: resolve every row, sort each into reportable or excluded ---
   const offenseRows = readRows(formData, 'offenses');
@@ -292,7 +320,7 @@ export function unitDiaryBlock(formData: FormData): UnitDiaryBlock {
         lines.push(`  ${ex.row}   ${ex.label} - ${ex.reason}`);
       }
     }
-    return { text: lines.join('\n'), reportable: false, missing, excluded, alreadyReported };
+    return { text: lines.join('\n'), reportable: false, missing, excluded, alreadyReported, appealPending };
   }
 
   lines.push('');
@@ -300,11 +328,15 @@ export function unitDiaryBlock(formData: FormData): UnitDiaryBlock {
   lines.push(requiredLine('GRADE', accusedRankGrade, 'accused rank/grade (item 19)', missing));
   lines.push(requiredLine('EDIPI', accusedEdipi, 'accused EDIPI (item 20)', missing));
   lines.push(requiredLine('UNIT', unit, 'unit (item 17)', missing));
-  // RUC has no field on Navmc10132Data at all (src/types/navmc.ts). No
-  // amount of filling out this form produces it, so unlike every other
-  // blank line above, it is not added to `missing`, that list is for data
-  // the form COULD still carry.
-  lines.push(`${label('RUC', LABEL_WIDTH)}${NOT_CAPTURED}`);
+  // NO RUC LINE. Stephen, 2026-08-26: take it off the panel and the export.
+  //
+  // It used to print `RUC  [not captured in SemperScribe]`, which was true
+  // and useless. The NAVMC 10132 has no RUC field, so no amount of filling
+  // out this form produces one, and the clerk reading this block is entering
+  // it in their OWN unit's diary and already knows the RUC. A permanent
+  // placeholder for something that was never going to arrive reads as a gap
+  // in the handoff rather than as a fact about the form, and it took a line
+  // on every printed worksheet to say nothing.
   lines.push('');
   lines.push(
     requiredLine('NJP DATE', punishmentDate, 'punishment imposition date (item 6 date)', missing)
@@ -321,8 +353,18 @@ export function unitDiaryBlock(formData: FormData): UnitDiaryBlock {
   lines.push('');
   lines.push('PUNISHMENT');
   if (punishmentLines.length === 0) {
-    lines.push('  [MISSING]');
-    missing.push('punishment (item 6)');
+    // THE FILE'S OWN SENTENCE, where a load could not read item 6 back into
+    // codes. Printing [MISSING] under a form that plainly states a
+    // punishment is what Stephen reported on 2026-08-26, and it sent a clerk
+    // to the diary terminal with nothing to enter.
+    const fromFile = readString(formData, 'punishmentImposedFromFile') ?? '';
+    if (fromFile.trim() === '') {
+      lines.push('  [MISSING]');
+      missing.push('punishment (item 6)');
+    } else {
+      lines.push(`  ${fromFile.trim()}`);
+      lines.push('  [as the signed form states it; not read back into MCTFS codes]');
+    }
   } else {
     lines.push(...punishmentLines);
   }
@@ -340,9 +382,10 @@ export function unitDiaryBlock(formData: FormData): UnitDiaryBlock {
   );
   // The UD number does not exist until AFTER the clerk acts on this very
   // block (see the alreadyReported comment above), so an empty item 16 is
-  // the same class of gap as RUC, something no amount of filling out THIS
-  // form produces, not the same class as EDIPI, something the form could
-  // carry right now. It is never added to `missing` for that reason.
+  // not the same class of gap as EDIPI, which the form could carry right
+  // now. It is never added to `missing` for that reason. It still PRINTS,
+  // unlike the RUC line removed above, because this one is filled in by the
+  // clerk's own action and is the round trip back into item 16.
   lines.push(
     `${label('UD ENTRY', LABEL_WIDTH)}${alreadyReported ? alreadyReported.ud : '[not yet recorded]'}`
   );
@@ -355,5 +398,5 @@ export function unitDiaryBlock(formData: FormData): UnitDiaryBlock {
     }
   }
 
-  return { text: lines.join('\n'), reportable: true, missing, excluded, alreadyReported };
+  return { text: lines.join('\n'), reportable: true, missing, excluded, alreadyReported, appealPending };
 }

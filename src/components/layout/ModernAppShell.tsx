@@ -9,7 +9,7 @@ import { ComplianceBanner, type PreviewIssue } from './ComplianceBanner';
 import { ParagraphData, SavedLetter, FormData } from '@/types';
 import { getExportFilename } from '@/lib/naval-format-utils';
 import { requiredFieldStatus, isDocumentUnstarted } from '@/lib/required-fields';
-import { FEEDBACK_URL } from '@/lib/app-links';
+import { FEEDBACK_URL, PORTAL_URL } from '@/lib/app-links';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useCommandPaletteHint } from '@/hooks/useCommandPaletteHint';
 import { pickerTypeFor } from '@/lib/document-type-options';
@@ -159,8 +159,42 @@ export function ModernAppShell({
         aria-live="polite"
         className="bg-yellow-400 text-black border-b-2 border-yellow-600 px-4 py-1.5 text-xs sm:text-sm shrink-0 z-30 text-center"
       >
+        {/* REWRITTEN 2026-08-26, Stephen's ruling, and the reason is that the
+            old line was false in both directions.
+ 
+            It said "Do not enter CUI, PII, or other sensitive information" on
+            an app whose whole purpose is a unit punishment book: the accused's
+            name, EDIPI, offenses and punishment. The workflow it was built for
+            violates it on the first upload. A warning everybody walks past is
+            a warning nobody reads, and it also misdescribed the app.
+ 
+            The proposal it replaced was worse. Moving from "do not enter" to
+            "you are responsible for its use" does not relocate the obligation:
+            for CUI the duty attaches to the system under 32 CFR 2002 and DoDI
+            5200.48, and for PII to the agency under 5 USC 552a. Consent does
+            not create an ATO, a SORN, or a PIA. It would have been an
+            invitation to put CUI in an unaccredited system.
+ 
+            SO IT NOW STATES WHAT THE APP DOES, which is a true sentence and a
+            stronger position. There is no server and no transmission. Every
+            fetch in this codebase is same-origin: bundled blanks, templates,
+            the app's own assets. What the user types is written to IndexedDB
+            and localStorage on their own machine, so the machine is what has
+            to be approved for the content, and a government workstation
+            already is.
+ 
+            NOT "stores no data", which was the first draft and is false. The
+            uploaded signed UPB is five megabytes in the enclosureFiles store
+            (navmc10132-base-file.ts) until Clear Form removes it. Telling a
+            user nothing persists gets them to close a tab on a shared
+            workstation with a Marine's signed record still in the browser.
+ 
+            The two egress paths are deliberately NOT in this line. GunnyBot
+            warns in its own panel and settings, and the share dialog warns at
+            the point a link is made. A caveat crammed in here would be read
+            by nobody and would make this sentence hedge instead of state. */}
         <strong className="font-bold uppercase mr-2">Warning</strong>
-        Non-official Proof of Concept. Do not enter CUI, PII, or other sensitive information. Outputs constitute Federal records under 44 USC 3301 when used in official business. Route through your CDRM.
+        Non-official Proof of Concept with no CUI authorization of its own. No server and no transmission: your documents are saved in this browser on this computer and stay there until you clear them. Never enter classified information. Enter CUI only if your authorizing official has approved this application for it on your system. PII is at your discretion and risk and is scanned before export. Outputs constitute Federal records under 44 USC 3301 when used in official business. Route through your CDRM.
         <Link href="/privacy" className="ml-2 underline font-semibold hover:no-underline">Privacy and Security Notice</Link>
       </div>
       {/* Top Header / Toolbar */}
@@ -176,16 +210,24 @@ export function ModernAppShell({
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-3">
-            <div className="relative h-10 w-10 overflow-hidden rounded-full border-2 border-primary/50 shadow-sm bg-white/10">
+            {/* The seal is the way back to the Semper Admin portal. A linked
+                image takes its accessible name from the alt text (WCAG H30),
+                so alt names the destination, not the picture. */}
+            <a
+              href={PORTAL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative block h-10 w-10 overflow-hidden rounded-full border-2 border-primary/50 shadow-sm bg-white/10 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element -- static export with images.unoptimized; next/image would render the same <img> with no optimisation */}
               <img
                 src={logoSrc}
-                alt="USMC Seal"
+                alt="Semper Admin Portal (opens in a new tab)"
                 width={40}
                 height={40}
                 className="object-cover w-full h-full"
               />
-            </div>
+            </a>
             
             {/* Wordmark hidden on phones: the actions row needs the width,
                 and the seal + page hero carry the brand there. */}

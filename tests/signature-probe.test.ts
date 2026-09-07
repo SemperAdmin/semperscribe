@@ -44,7 +44,10 @@ describe('S2 url-state v2 routing slip', () => {
 
   it('generateShareableUrl stamps the current version', () => {
     const { url } = generateShareableUrl({ formData: FIXTURE_FORM_DATA as never, routing, version: 0 }, 'https://x.test/app');
-    const encoded = new URL(url).searchParams.get('share')!;
+    // The payload moved out of the query string on 26 August 2026, see
+    // url-state.ts. A query string reaches the host's logs and this link
+    // carries the whole document.
+    const encoded = url.slice(url.indexOf('#s=') + 3);
     expect(decodeStateFromUrl(encoded)?.version).toBe(2);
   });
 });

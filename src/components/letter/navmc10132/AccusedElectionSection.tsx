@@ -21,6 +21,18 @@
  * to sign an acceptance, so a clerk reading only the demand dropdown can be
  * looking at a value the form is about to overwrite. coerceDemand reproduces
  * that rewrite here, in the open, with a note explaining why it happened.
+ *
+ * STAGE-GATED AT PASS 1 (NOTIFICATION). Per section 13.2 of the spec and
+ * decision row D-41, item 2 belongs to the member filling the exported PDF
+ * in Acrobat, not to this app: the form's own on-blur scripts compose the
+ * Booker statement from the member's elections, so the app's job on
+ * re-upload is to VERIFY that composition, never to author it ahead of
+ * time. At pass 1 this component therefore shows only the two facts the
+ * app genuinely owns before the document goes out: the vessel exception,
+ * which is app state deciding which rights advisement applies, and the
+ * advisement itself. Every other control here (the election, the counsel
+ * sentence, the refusal checkbox, the derived Booker preview, and the item
+ * 3 CO certification date) stays hidden until a later stage.
  */
 
 import React from 'react';
@@ -30,6 +42,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { IsoDatePicker } from '@/components/letter/navmc10132/IsoDatePicker';
+import { isNavmc10132KeyLocked } from '@/lib/navmc10132-locks';
+import { LockedBadge, ReadOnlyValue } from '@/components/letter/navmc10132/OffensesSection';
 import { FormData } from '@/types';
 import { Gavel, FileDown, Ship, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -39,7 +53,7 @@ import {
   maximumPunishmentStatus,
 } from '@/lib/njp-package';
 import { bookerStatement, coerceDemand } from '@/lib/navmc10132-utils';
-import { NAVMC_10132_DEMAND, type Navmc10132Demand } from '@/types/navmc';
+import { NAVMC_10132_DEMAND, type Navmc10132Demand, type Navmc10132Stage } from '@/types/navmc';
 import { NJP_AUTHORITY_LEVEL_LABEL } from '@/lib/njp-maximum-punishment';
 
 type SectionCardProps = { icon: React.ReactNode; title: string; children: React.ReactNode };
@@ -48,6 +62,8 @@ interface SectionProps {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   SectionCard: React.ComponentType<SectionCardProps>;
+  /** See the stage-gating note above: pass 1 shows a reduced view. */
+  stage: Navmc10132Stage;
 }
 
 type CounselOpportunity = '' | 'have' | 'have not';
@@ -69,7 +85,27 @@ function bookerBranchName(
   return 'unset';
 }
 
-export function AccusedElectionSection({ formData, setFormData, SectionCard }: SectionProps) {
+export function AccusedElectionSection({ formData, setFormData, SectionCard, stage }: SectionProps) {
+  const showFullElection = stage !== 1;
+
+  /**
+   * ITEM 2 IS THE ACCUSED'S OWN SIGNATURE BLOCK, so on a loaded file it is
+   * closed before anything else is. Measured on a real pass-2 file: all five
+   * of `2 DEMAND`, `2 COUNSELOPP`, `2 ACC REFUSE TO SIGN`,
+   * `2 ACC ELECTION AND RIGHTS DATE` and `2 BOOKER` are closed by the item 2
+   * signature itself.
+   *
+   * Reported by Stephen 2026-08-26 as still editable, which it was: this
+   * section knew about the STAGE and not about the LOCKS. An editable
+   * election over a signed one is a promise the export cannot keep, and on
+   * this field it is worse than most, because what it would appear to let a
+   * clerk change is what the accused personally elected and signed for.
+   *
+   * ONE CONTROL IS DELIBERATELY NOT LOCKED. `vesselException` is APP STATE,
+   * not a form field, and it selects which rights advisement gets served. It
+   * has no lock because it has nothing on the form to be locked by.
+   */
+  const electionLocked = isNavmc10132KeyLocked(formData, 'demand');
   const demand = ((formData.demand as string) ?? '') as Navmc10132Demand;
   const counselOpportunity = ((formData.counselOpportunity as string) ?? '') as CounselOpportunity;
   const refused = Boolean(formData.accusedRefusedToSign);
@@ -115,12 +151,23 @@ export function AccusedElectionSection({ formData, setFormData, SectionCard }: S
 
   return (
     <SectionCard icon={<Gavel className="mr-2 h-5 w-5" />} title="Item 2, Accused Election">
-      <p className="text-[11px] text-muted-foreground">
-        The Booker statement below is derived, not typed. It comes straight from the three
-        identical on-blur scripts the official blank attaches to the demand, counsel, and
-        refusal fields, reproduced here so the clerk sees what those scripts would have written
-        instead of trusting whatever text the blank shipped with.
-      </p>
+      {showFullElection ? (
+        <p className="text-[11px] text-muted-foreground">
+          The Booker statement below is derived, not typed. It comes straight from the three
+          identical on-blur scripts the official blank attaches to the demand, counsel, and
+          refusal fields, reproduced here so the clerk sees what those scripts would have written
+          instead of trusting whatever text the blank shipped with.
+        </p>
+      ) : (
+        <p className="text-[11px] text-muted-foreground">
+          At notification, item 2 belongs to the member, not to this app. The election, the
+          counsel opportunity, the refusal to sign, and the Booker statement they compose are
+          filled by the accused on the exported PDF in Acrobat, and this app's job on re-upload
+          is to verify that composition, not to author it ahead of time. What the app owns before
+          the document goes out is only the vessel exception below, since it decides which rights
+          advisement applies, and the advisement itself.
+        </p>
+      )}
 
       <div className="mt-3 flex items-start gap-2 rounded-md border p-3">
         <Ship className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -146,105 +193,149 @@ export function AccusedElectionSection({ formData, setFormData, SectionCard }: S
         </div>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <div>
-          <Label className="text-xs">Item 2, election</Label>
-          <Select
-            value={coercedDemand}
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, demand: value }))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select the accused's election" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NAVMC_10132_DEMAND.ACCEPT}>{NAVMC_10132_DEMAND.ACCEPT}</SelectItem>
-              <SelectItem value={NAVMC_10132_DEMAND.REFUSE}>{NAVMC_10132_DEMAND.REFUSE}</SelectItem>
-              <SelectItem value={NAVMC_10132_DEMAND.VESSEL}>{NAVMC_10132_DEMAND.VESSEL}</SelectItem>
-            </SelectContent>
-          </Select>
+      {showFullElection && electionLocked && (
+        <div className="mt-3 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">
+                Item 2, election
+                <LockedBadge />
+              </Label>
+              <ReadOnlyValue value={coercedDemand} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">
+                Item 2, date of election
+                <LockedBadge />
+              </Label>
+              <ReadOnlyValue value={electionDate} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">
+                Opportunity to consult a military lawyer
+                <LockedBadge />
+              </Label>
+              <ReadOnlyValue value={counselOpportunity} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">
+                Accused refused to sign
+                <LockedBadge />
+              </Label>
+              <ReadOnlyValue value={refused ? 'Yes' : 'No'} />
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            The accused signed item 2, and that signature closed this block. What is shown is
+            what they elected. Nothing here can be changed in the app, and the export will not
+            write any of it.
+          </p>
         </div>
-
-        <div>
-          <Label className="text-xs">Item 2, date of election</Label>
-          <IsoDatePicker
-            value={electionDate}
-            onChange={(value: string) => setFormData((prev) => ({ ...prev, electionDate: value }))}
-          />
-        </div>
-      </div>
-
-      <p className="mt-3 flex flex-wrap items-center gap-1 text-sm">
-        <span>I further certify that I</span>
-        <Select
-          value={counselOpportunity}
-          onValueChange={(value) =>
-            setFormData((prev) => ({ ...prev, counselOpportunity: value as CounselOpportunity }))
-          }
-        >
-          <SelectTrigger className="h-7 w-28 px-2 text-sm">
-            <SelectValue placeholder="have / have not" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="have">have</SelectItem>
-            <SelectItem value="have not">have not</SelectItem>
-          </SelectContent>
-        </Select>
-        <span>been given the opportunity to consult with a military lawyer.</span>
-      </p>
-
-      <div className="mt-3 flex items-center gap-2">
-        <Checkbox
-          id="accused-refused-to-sign"
-          checked={refused}
-          onCheckedChange={(checked) =>
-            setFormData((prev) => ({ ...prev, accusedRefusedToSign: Boolean(checked) }))
-          }
-        />
-        <Label htmlFor="accused-refused-to-sign" className="text-sm font-normal">
-          Accused refused to sign
-        </Label>
-      </div>
-
-      {wasCoerced && (
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          The election was changed to &quot;{NAVMC_10132_DEMAND.REFUSE}&quot; because the
-          accused refused to sign. The form's own on-blur script does the same rewrite when an
-          acceptance is on record at the moment of refusal, so this app matches it rather than
-          leaving a stale acceptance behind an unchecked box.
-        </p>
       )}
 
-      <div className="mt-4 rounded-md border border-border bg-muted/40 p-3">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Item 2, Booker statement (derived)</Label>
-          <span className="text-[11px] text-muted-foreground">Branch: {branchName}</span>
-        </div>
-        {booker ? (
-          <p className="mt-1 whitespace-pre-wrap font-mono text-[12px] leading-relaxed">
-            {booker}
-          </p>
-        ) : (
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            No branch of the form's script matches the current election yet, so this field will
-            be written empty. Left alone, the blank form would instead keep the acceptance
-            sentence it ships with, which would misstate that the accused accepted NJP. Select
-            an election above to derive the correct statement.
-          </p>
-        )}
-      </div>
+      {showFullElection && !electionLocked && (
+        <>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="text-xs">Item 2, election</Label>
+              <Select
+                value={coercedDemand}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, demand: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select the accused's election" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NAVMC_10132_DEMAND.ACCEPT}>{NAVMC_10132_DEMAND.ACCEPT}</SelectItem>
+                  <SelectItem value={NAVMC_10132_DEMAND.REFUSE}>{NAVMC_10132_DEMAND.REFUSE}</SelectItem>
+                  <SelectItem value={NAVMC_10132_DEMAND.VESSEL}>{NAVMC_10132_DEMAND.VESSEL}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-      <div className="mt-4 border-t border-border pt-3">
-        <Label className="text-xs">Item 3, CO certification of rights, date</Label>
-        <IsoDatePicker
-          value={rightsAttestDate}
-          onChange={(value: string) => setFormData((prev) => ({ ...prev, rightsAttestDate: value }))}
-        />
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Must be dated on or before the date punishment is imposed, per the form's item 3
-          instruction, because the certification of rights necessarily precedes the imposition
-          of punishment.
-        </p>
-      </div>
+            <div>
+              <Label className="text-xs">Item 2, date of election</Label>
+              <IsoDatePicker
+                value={electionDate}
+                onChange={(value: string) => setFormData((prev) => ({ ...prev, electionDate: value }))}
+              />
+            </div>
+          </div>
+
+          <p className="mt-3 flex flex-wrap items-center gap-1 text-sm">
+            <span>I further certify that I</span>
+            <Select
+              value={counselOpportunity}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, counselOpportunity: value as CounselOpportunity }))
+              }
+            >
+              <SelectTrigger className="h-7 w-28 px-2 text-sm">
+                <SelectValue placeholder="have / have not" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="have">have</SelectItem>
+                <SelectItem value="have not">have not</SelectItem>
+              </SelectContent>
+            </Select>
+            <span>been given the opportunity to consult with a military lawyer.</span>
+          </p>
+
+          <div className="mt-3 flex items-center gap-2">
+            <Checkbox
+              id="accused-refused-to-sign"
+              checked={refused}
+              onCheckedChange={(checked) =>
+                setFormData((prev) => ({ ...prev, accusedRefusedToSign: Boolean(checked) }))
+              }
+            />
+            <Label htmlFor="accused-refused-to-sign" className="text-sm font-normal">
+              Accused refused to sign
+            </Label>
+          </div>
+
+          {wasCoerced && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              The election was changed to &quot;{NAVMC_10132_DEMAND.REFUSE}&quot; because the
+              accused refused to sign. The form's own on-blur script does the same rewrite when an
+              acceptance is on record at the moment of refusal, so this app matches it rather than
+              leaving a stale acceptance behind an unchecked box.
+            </p>
+          )}
+
+          <div className="mt-4 rounded-md border border-border bg-muted/40 p-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Item 2, Booker statement (derived)</Label>
+              <span className="text-[11px] text-muted-foreground">Branch: {branchName}</span>
+            </div>
+            {booker ? (
+              <p className="mt-1 whitespace-pre-wrap font-mono text-[12px] leading-relaxed">
+                {booker}
+              </p>
+            ) : (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                No branch of the form's script matches the current election yet, so this field will
+                be written empty. Left alone, the blank form would instead keep the acceptance
+                sentence it ships with, which would misstate that the accused accepted NJP. Select
+                an election above to derive the correct statement.
+              </p>
+            )}
+          </div>
+
+          <div className="mt-4 border-t border-border pt-3">
+            <Label className="text-xs">Item 3, CO certification of rights, date</Label>
+            <IsoDatePicker
+              value={rightsAttestDate}
+              onChange={(value: string) => setFormData((prev) => ({ ...prev, rightsAttestDate: value }))}
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Must be dated on or before the date punishment is imposed, per the form's item 3
+              instruction, because the certification of rights necessarily precedes the imposition
+              of punishment.
+            </p>
+          </div>
+        </>
+      )}
 
       <RightsElectionButton formData={formData} />
     </SectionCard>

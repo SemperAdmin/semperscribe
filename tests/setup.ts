@@ -16,6 +16,20 @@ if (!('withResolvers' in Promise)) {
   };
 }
 
+// jsdom has no ResizeObserver. Several Radix primitives (Checkbox among
+// them, via @radix-ui/react-use-size) call it in a layout effect on mount,
+// which throws ReferenceError in any test that renders one, whether or not
+// the test cares about sizing. No test exercised that mount path before the
+// NAVMC 10132 stage-visibility tests, which are the first to render the
+// appeal section's checkbox field.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  globalThis.ResizeObserver = ResizeObserverStub;
+}
 // Static assets (fonts, seals, form blanks, NAVMC template pages) are
 // fetched from the origin in the browser. Node has no origin to fetch
 // from, so the suite reads public/ from disk through the asset seam in

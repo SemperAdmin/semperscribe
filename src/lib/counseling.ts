@@ -102,7 +102,11 @@ export const COUNSELING_OCCASIONS: readonly CounselingOccasion[] = [
   { value: 'event-related', label: 'Event-related', kind: 'event', citation: 'NAVMC 2795 para 2001.4' },
   { value: 'rs-mro', label: 'Establishment of the RS and MRO relationship', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2)' },
   { value: 'fitness-report', label: 'Issuance of a fitness report', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2)' },
-  { value: 'pro-con', label: 'Assignment of proficiency and conduct marks', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2)' },
+  // MCO 1500.61 para 4.b(2) says "assignment of proficiency and conduct
+  // marks". JEPES replaced those marks for junior enlisted (MCO 1616.1,
+  // 25 Nov 2020), so the occasion is named for the system a Marine sees.
+  // The value stays 'pro-con' so saved documents and templates still load.
+  { value: 'pro-con', label: 'JEPES evaluation (formerly proficiency and conduct marks)', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2); MCO 1616.1' },
   { value: 'promotion-eligibility', label: 'Eligibility for promotion', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2)' },
   { value: 'new-unit', label: 'Joining a new unit', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2)' },
   { value: 'pcs', label: 'Permanent change of station', kind: 'baseline', citation: 'MCO 1500.61 para 4.b(2)' },
@@ -556,8 +560,8 @@ export function counselingSuggestions(formData: FormData): CounselingSuggestion[
   if (occasionValue === 'fitness-report' || occasionValue === 'pro-con') {
     out.push({
       id: 'fitrep-procon', step: 3,
-      text: 'Tie the marks to the targets set and met this period, so the evaluation and the counseling say the same thing.',
-      citation: 'MCO 1500.61 para 4.b(2); NAVMC 2795 para 4002',
+      text: 'Tie the fitness report or JEPES marks to the targets set and met this period, so the evaluation and the counseling say the same thing.',
+      citation: 'MCO 1500.61 para 4.b(2); MCO 1616.1; NAVMC 2795 para 4002',
     });
   }
 
@@ -717,6 +721,8 @@ export function counselingSuggestions(formData: FormData): CounselingSuggestion[
     citation: 'NAVMC 2795 para 3005.1.i; MCO 1500.61 para 5.c',
   });
 
+  out.push(...benchmarkSuggestions(formData));
+
   const dismissed = new Set(dismissedSuggestions(formData));
   return out.filter((s) => !dismissed.has(s.id));
 }
@@ -738,6 +744,239 @@ export function runCounselingValidators(formData: FormData): ValidationIssue[] {
       detail: `Suggestion for step ${s.step}. Nothing on this worksheet blocks an export.`,
       field: s.field,
     }));
+}
+
+// --- JEPES benchmark (MCO 1616.1 encl (1) Figure 1-2, para 3.a; docs/COUNSELING_JEPES_BENCHMARK_PLAN.md) ---
+
+/**
+ * A PROVISIONAL mark, never the mark of record. JEPES command input is
+ * entered by the reporting chain in JEPES at period end with its own
+ * directed comments. What the worksheet keeps is the senior's benchmark
+ * at this session, so the period-end mark rests on a trail of documented
+ * counseling instead of six months of recall (para 3.a(5)).
+ *
+ * JEPES covers Private through Corporal (MCO 1616.1 para 1). Everything
+ * here is keyed off the grade typed on this worksheet: the app keeps no
+ * per-Marine history (owner decision, 2026-09-06).
+ */
+export type JepesAttributeId = 'character' | 'mos' | 'leadership';
+
+export interface JepesBand {
+  id: 'adverse' | 'below' | 'working' | 'meets' | 'exceeds' | 'exceptional';
+  label: string;
+  /** Inclusive, one decimal, as the figure prints them. */
+  min: number;
+  max: number;
+}
+
+export const JEPES_BANDS: readonly JepesBand[] = [
+  { id: 'adverse', label: 'Non Rec / Adverse', min: 0, max: 0 },
+  { id: 'below', label: 'Below Expectations', min: 0.1, max: 0.9 },
+  { id: 'working', label: 'Working Toward Expectations', min: 1.0, max: 1.9 },
+  { id: 'meets', label: 'Meets Expectations', min: 2.0, max: 3.0 },
+  { id: 'exceeds', label: 'Exceeds Expectations', min: 3.1, max: 4.0 },
+  { id: 'exceptional', label: 'Exceptional', min: 4.1, max: 5.0 },
+];
+
+export interface JepesAttribute {
+  id: JepesAttributeId;
+  title: string;
+  /** The figure's descriptor paragraph. Editor only (owner decision). */
+  description: string;
+  /** Band descriptors in JEPES_BANDS order, one list per band. */
+  bands: Record<JepesBand['id'], readonly string[]>;
+}
+
+export const JEPES_CITATION = 'MCO 1616.1 encl (1) Figure 1-2, para 3.a';
+export const JEPES_BASELINE = '2.5';
+
+export const JEPES_ATTRIBUTES: readonly JepesAttribute[] = [
+  {
+    id: 'character',
+    title: 'Individual Character',
+    description: 'Positively displaying qualities in attributes such as courage, initiative, honor, and commitment. These help distinguish the Marine as an individual and form the picture of the "whole Marine" concept. Marine is creative; favors taking initiative and displays a bias for action. Proactive in the absence of specific direction and effectively performs under all conditions. Physical and emotional strength overcome difficulty, danger, and fear all the while consciously transforming opportunity into action. Demonstrates mental flexibility and agility.',
+    bands: {
+      adverse: ['MRO has one or more NJPs or Courts Martial during the reporting period.', 'MRO has recent or pending legal action.', 'Documented counselings show a complete inability to display qualities of honor, courage and commitment.'],
+      below: ['Maintains minimum level of acceptable behavior and conduct.', 'Documented counselings show difficulty maintaining the transformation as a Marine and upholding Marine Corps Values.', 'Requires specific direction when confronted with situations that require character.'],
+      working: ['Continuing the transformation towards embodying the Core Values.', 'Occasionally proactive in absence of specific direction.', 'Occasionally demonstrates inner strength and maturity.'],
+      meets: ['Upholds Core Values of Honor, Courage and Commitment.', 'Exhibits a bias for action, integrity and military bearing with minimal direction.', 'Conduct is guided with a moral compass.'],
+      exceeds: ['Consistently displays a maturity of higher rank and grade.', 'Frequently self-motivated in absence of specific direction.', 'Individually recognized in front of Marines for strength of character during the reporting period.'],
+      exceptional: ['Demonstrated presence of mind or composure under demanding circumstances.', 'Consistently proactive. Guided by mature and ethical decisions.', 'Received formal commendatory material during the reporting period or maintains exceptional performance highlighted previously in grade.'],
+    },
+  },
+  {
+    id: 'mos',
+    title: 'MOS Proficiency and/or Mission Accomplishment',
+    description: "Demonstrates technical knowledge and practical skill in the execution of the Marine's overall duties. Combines training, education, and experience. Grade dependent in relation to MOS T&R Manual. Translates skills into actions which contribute to accomplishing tasks and missions. Understands and articulates the basic functions it took to successfully achieve mission accomplishment in and out of MOS. Efficiency with resources was evident and aided the Marine's ability to successfully get the job done.",
+    bands: {
+      adverse: ['MRO was the subject of a Competency Review Board (CRB).', 'Documented counselings show inability of MRO to perform the most basic MOS skills.', 'Documented counselings show MRO is unable to perform most basic tasks required to accomplish the mission, even with guidance and supervision.'],
+      below: ['Documented counselings addressing deficiencies in MOS.', 'Accomplishes assigned tasks only with direct supervision.', 'Produces barely acceptable work in most aspects of job or tasks.', 'Minimal MOS progression beyond PMOS school training.'],
+      working: ['Developing abilities with mentorship.', 'Needs close supervision and assistance in accomplishing jobs and tasks.', 'Performs acceptable work in some aspects of job or tasks.', 'Slowly increasing capacity to perform within grade through training.', 'Meets MOS specific T&R events; grade and MOS level MarineNet courses and/or similar training.'],
+      meets: ['Solid and consistent performance.', 'Dependable to accomplish jobs and tasks with minimal supervision and assistance.', 'Acceptable level of quality and competence demonstrated.', 'Exhibits abilities commensurate for grade for MOS specific T&R events; grade and MOS level MarineNet courses and/or similar training are in progress or complete.'],
+      exceeds: ['Performance stands out well above peers.', 'Can be counted on to execute advanced tasks with minimal supervision.', 'Displays above average work in all aspects of assigned job and tasks.', 'Exhibits abilities beyond grade in reference to MOS specific T&R events. PME is complete for grade.', 'Individually recognized in front of Marines for MOS proficiency and/or contributions to mission accomplishment.'],
+      exceptional: ['Exceptionally dependable, reliable and effective.', 'Can be counted on to execute very challenging tasks with little or no supervision.', 'Displays excellent work in all aspects of assigned job and tasks.', 'Exhibits abilities well beyond grade in reference to MOS specific T&R events. PME complete for grade.', 'Received formal commendatory material during the reporting period or maintains exceptional proficiency/mission accomplishment highlighted previously in grade.'],
+    },
+  },
+  {
+    id: 'leadership',
+    title: 'Leadership',
+    description: 'Exhibits a natural and instinctive interest in the well-being of all Marines, regardless of race, religion, ethnic background, or gender. Visibly sets the example and serves as a role model for all others while demonstrating the highest standards of conduct, ethical behavior, fitness, and appearance. Remains authentic, compassionate, and earns the trust of their subordinates. Maintains a positive attitude in all situations. Embodies continual "Body, Mind, Spirit Improvement".',
+    bands: {
+      adverse: ['Documented counselings show complete lack of leadership far below the minimum expected of grade.', "Documented counselings show that lack of maturity inhibits MRO's fitness for advancement to the next grade.", 'Documented counselings show a complete lack of initiative.', 'MRO has one or more NJPs or Courts Martial that demonstrate a lack of leadership.'],
+      below: ['Documented counselings concerning leadership abilities.', 'Decision-making is slow and un-compelling.', 'Frequently sets a poor example for others to emulate.'],
+      working: ['Learning how to lead with guidance and/or in the presence of senior leadership.', 'Knows self and seeks improvement.', 'Occasionally displays poor example for others to emulate.'],
+      meets: ["Competent at making appropriate decisions and leading IAW commander's intent.", 'Dependable to discharge regular jobs and tasks with some supervision and assistance.', 'Sustains required level of fitness and appearance.'],
+      exceeds: ['Leadership abilities far exceed most peers.', 'Achieves a highly effective balance between direction and delegation.', 'Level of fitness and appearance exceeds that of peers.', 'Individually recognized in front of Marines for outstanding leadership during the reporting period.'],
+      exceptional: ['Exceptional leader who sets an outstanding example and holds others to that same standard.', 'Physical, mental, and/or moral courage inspires others into action.', 'Model Marine: inspires subordinates, peers, and seniors.', 'Received formal commendatory material during the reporting period or maintains exceptional proficiency/mission accomplishment highlighted previously in grade.'],
+    },
+  },
+];
+
+/** The guidance of para 3.a, one line per band, shown above the cards. */
+export const JEPES_GUIDANCE: readonly { band: JepesBand['id']; text: string }[] = [
+  { band: 'exceptional', text: '4.1 to 5.0: only the highest levels of character, proficiency and leadership. Requires a justification supported by formal commendatory material. Should be a rarity; each point above 4.1 increases in difficulty at an exponential rate.' },
+  { band: 'exceeds', text: '3.1 to 4.0: solid performers whose accomplishments did not rate formal commendatory material.' },
+  { band: 'meets', text: '2.0 to 3.0: meets expectations for grade. Until proven otherwise, a Marine begins at 2.5 in all three.' },
+  { band: 'working', text: '1.0 to 1.9: struggling but making concerted efforts, for example behind peers in learning a new job. Not adverse. Does not require a NOT REC.' },
+  { band: 'below', text: '0.1 to 0.9: struggles as evidenced by counseling, documented or informal, during the period. Requires a justification. Not adverse and does not by itself NOT REC.' },
+  { band: 'adverse', text: '0.0: NJP or court-martial in the period, pending legal action, a Competency Review Board, or counselings showing complete inability. A reason is recorded.' },
+];
+
+export const JEPES_ADVERSE_REASONS: readonly { value: string; label: string }[] = [
+  { value: 'njp', label: 'NJP or court-martial during the reporting period' },
+  { value: 'legal', label: 'Recent or pending legal action' },
+  { value: 'crb', label: 'Competency Review Board' },
+  { value: 'counseling', label: 'Documented counselings show complete inability' },
+  { value: 'other', label: 'Other (state it in the justification)' },
+];
+
+export interface JepesMark {
+  /** One decimal as text ("2.5"); empty when not yet marked. */
+  mark: string;
+  justification: string;
+  /** Formal commendatory material on file, required at 4.1 and above. */
+  commendatory: boolean;
+  /** One of JEPES_ADVERSE_REASONS, required at 0.0. */
+  adverseReason: string;
+}
+
+export type JepesBenchmark = Record<JepesAttributeId, JepesMark>;
+
+export interface JepesPriorBenchmark {
+  character: string;
+  mos: string;
+  leadership: string;
+  /** The date of the session the prior marks came from. */
+  date: string;
+}
+
+export function emptyJepesMark(): JepesMark {
+  return { mark: '', justification: '', commendatory: false, adverseReason: '' };
+}
+
+export function isJepesGrade(grade: string): boolean {
+  return /^E-[1234]$/.test(grade.trim());
+}
+
+/** A mark as a number, or null for blank or unparseable text. */
+export function jepesMarkValue(mark: string): number | null {
+  const text = mark.trim();
+  if (!/^\d(\.\d)?$/.test(text)) return null;
+  const n = Number(text);
+  return n >= 0 && n <= 5 ? n : null;
+}
+
+/** The band a mark falls in, by the inclusive ranges of Figure 1-2. */
+export function jepesBand(mark: string): JepesBand | null {
+  const n = jepesMarkValue(mark);
+  if (n === null) return null;
+  const tenths = Math.round(n * 10);
+  return JEPES_BANDS.find((b) => tenths >= Math.round(b.min * 10) && tenths <= Math.round(b.max * 10)) ?? null;
+}
+
+export function counselingBenchmark(formData: FormData): JepesBenchmark {
+  const raw = (formData as Record<string, unknown>).counselingBenchmark;
+  const source = (raw && typeof raw === 'object' ? raw : {}) as Partial<Record<JepesAttributeId, Partial<JepesMark>>>;
+  const one = (id: JepesAttributeId): JepesMark => ({ ...emptyJepesMark(), ...(source[id] ?? {}) });
+  return { character: one('character'), mos: one('mos'), leadership: one('leadership') };
+}
+
+export function counselingPriorBenchmark(formData: FormData): JepesPriorBenchmark {
+  const raw = (formData as Record<string, unknown>).counselingPriorBenchmark;
+  const source = (raw && typeof raw === 'object' ? raw : {}) as Partial<JepesPriorBenchmark>;
+  return { character: source.character ?? '', mos: source.mos ?? '', leadership: source.leadership ?? '', date: source.date ?? '' };
+}
+
+/** True when any of the three carries a mark. */
+export function benchmarkHasMarks(benchmark: JepesBenchmark): boolean {
+  return JEPES_ATTRIBUTES.some((a) => jepesMarkValue(benchmark[a.id].mark) !== null);
+}
+
+/** All three at the para 3.a(3) baseline, blanks and marks alike. */
+export function benchmarkAtBaseline(benchmark: JepesBenchmark): JepesBenchmark {
+  const out = { ...benchmark };
+  for (const a of JEPES_ATTRIBUTES) out[a.id] = { ...benchmark[a.id], mark: JEPES_BASELINE };
+  return out;
+}
+
+/**
+ * The benchmark's own suggestions, in the engine's shape, all under step
+ * 5 where the section lives. Silent for grades JEPES does not cover.
+ */
+export function benchmarkSuggestions(formData: FormData): CounselingSuggestion[] {
+  const grade = counselingField(formData, 'counselingMarineGrade');
+  if (!isJepesGrade(grade)) return [];
+  const benchmark = counselingBenchmark(formData);
+  const prior = counselingPriorBenchmark(formData);
+  const out: CounselingSuggestion[] = [];
+
+  if (!benchmarkHasMarks(benchmark)) {
+    out.push({
+      id: 'benchmark-start', step: 5, field: 'counselingBenchmark.character.mark',
+      text: 'Start each attribute at 2.5 and move from there. Until proven otherwise, a Marine begins at 2.5 in all three categories.',
+      citation: 'MCO 1616.1 encl (1) para 3.a(3)',
+      action: { label: 'Start at 2.5', apply: (fd) => ({ counselingBenchmark: benchmarkAtBaseline(counselingBenchmark(fd)) } as Partial<FormData>) },
+    });
+    return out;
+  }
+
+  for (const a of JEPES_ATTRIBUTES) {
+    const m = benchmark[a.id];
+    const band = jepesBand(m.mark);
+    if (!band) continue;
+    const field = `counselingBenchmark.${a.id}`;
+    if ((band.id === 'exceptional' || band.id === 'below' || band.id === 'adverse') && !m.justification.trim()) {
+      out.push({
+        id: `benchmark-justify-${a.id}`, step: 5, field: `${field}.justification`,
+        text: `${a.title}: a mark in the ${band.label} band requires a justification.`,
+        citation: band.id === 'exceptional' ? 'MCO 1616.1 encl (1) para 3.a(1)' : 'MCO 1616.1 encl (1) para 3.a(5)',
+      });
+    }
+    if (band.id === 'exceptional' && !m.commendatory) {
+      out.push({
+        id: `benchmark-commendatory-${a.id}`, step: 5, field: `${field}.commendatory`,
+        text: `${a.title}: an Exceptional mark is supported by formal commendatory material visible in JEPES. Confirm it is on file.`,
+        citation: 'MCO 1616.1 encl (1) para 3.a(1)',
+      });
+    }
+    if (band.id === 'adverse' && !m.adverseReason) {
+      out.push({
+        id: `benchmark-adverse-${a.id}`, step: 5, field: `${field}.adverseReason`,
+        text: `${a.title}: a 0.0 mark records the reason from the Non Rec / Adverse column.`,
+        citation: 'MCO 1616.1 encl (1) Figure 1-2',
+      });
+    }
+    const priorValue = jepesMarkValue(prior[a.id]);
+    const value = jepesMarkValue(m.mark);
+    if (priorValue !== null && value !== null && Math.abs(value - priorValue) > 1.0 + 1e-9 && !m.justification.trim()) {
+      out.push({
+        id: `benchmark-swing-${a.id}`, step: 5, field: `${field}.justification`,
+        text: `${a.title}: the mark moved from ${prior[a.id].trim()} to ${m.mark.trim()} since the last session. A move of more than a full point needs the reason written here.`,
+        citation: 'docs/COUNSELING_JEPES_BENCHMARK_PLAN.md section 4',
+      });
+    }
+  }
+  return out;
 }
 
 // --- The record's own text ---

@@ -50,6 +50,7 @@ import {
   punishmentPresenceIssues,
   suspensionTermsIssues,
   suspensionIndexBoundsIssues,
+  suspensionDuplicateTargetIssues,
   punishmentAuthorizationIssues,
   punishmentFieldCapacityIssues,
   appealDecisionIncreaseIssues,
@@ -370,7 +371,13 @@ describe('V-08, item 13 is a date XOR the Not Appealed checkbox', () => {
   });
 
   it('trips with neither an appeal date nor Not Appealed set', () => {
-    const form = baseForm({ appealDate: '', notAppealed: false });
+    // stage: 6 — item 13 is a pass-6 field (D-43, D-46, spec section 13.1);
+    // the "-neither" branch is stage-scoped and stays silent before pass 6,
+    // so this fixture has to be AT pass 6 to prove the rule still trips
+    // once the document has actually reached it. See the export-gate stage
+    // tests (tests/navmc10132-export-gate.test.ts) for the pass-1 case
+    // proving this same rule stays SILENT on a fresh document.
+    const form = baseForm({ appealDate: '', notAppealed: false, stage: 6 });
     const issues = v08AppealDateExclusiveOfNotAppealed(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toBe('navmc10132-v08-item13-neither');
@@ -459,7 +466,13 @@ describe('W-11, item 2 shows a demand or refusal alongside item 6 punishment', (
 
 describe('V-04, item 6 punishment must not be empty', () => {
   it('trips when there are no punishment entries', () => {
-    const form = baseForm({ punishments: [] });
+    // stage: 3 — item 6 is a pass-3 field (D-43, D-46, spec section 13.1);
+    // this rule is stage-scoped and stays silent before pass 3, so the
+    // fixture has to be AT pass 3 to prove it still trips once the
+    // document has reached the field it is checking. See the export-gate
+    // stage tests (tests/navmc10132-export-gate.test.ts) for the pass-1
+    // case proving this same rule stays SILENT on a fresh document.
+    const form = baseForm({ punishments: [], stage: 3 });
     const issues = punishmentPresenceIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toBe('navmc10132-v04-punishment-empty');
@@ -473,8 +486,33 @@ describe('V-04, item 6 punishment must not be empty', () => {
 });
 
 describe('V-05, item 7 suspension must be NONE or a specific suspension with terms', () => {
+  // The other half of the same rule: no punishment, no complaint about the
+  // suspension of one.
+  it('stays silent on an empty item 7 while item 6 is empty', () => {
+    const form = baseForm({ suspension: '', stage: 3, punishments: [] });
+    expect(suspensionTermsIssues(form)).toEqual([]);
+  });
+
   it('trips block when item 7 is empty', () => {
-    const form = baseForm({ suspension: '' });
+    // stage: 3 — item 7 is a pass-3 field (D-43, D-46, spec section 13.1),
+    // the same pass as item 6. The empty-item-7 branch is stage-scoped and
+    // stays silent before pass 3, so the fixture has to be AT pass 3 to
+    // prove it still trips once the document has reached the field. See
+    // the export-gate stage tests (tests/navmc10132-export-gate.test.ts)
+    // for the pass-1 case proving this same branch stays SILENT on a
+    // fresh document.
+    //
+    // A PUNISHMENT IS PART OF THE FIXTURE NOW, from 2026-08-26. V-05's empty
+    // branch is silent while item 6 is empty: it told the clerk to "Enter
+    // the literal word NONE", which on a document with nothing imposed
+    // instructs the exact predetermination Stephen ruled out, and it fired
+    // beside the empty-item-6 blocker, stating one fact twice. Its real
+    // subject is a punishment imposed with item 7 left blank.
+    const form = baseForm({
+      suspension: '',
+      stage: 3,
+      punishments: [{ code: 'N09', days: '10' }],
+    });
     const issues = suspensionTermsIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toBe('navmc10132-v05-suspension-empty');
@@ -536,6 +574,80 @@ describe('V-05 addendum, a structured suspension must name a punishment imposed 
   it('does not trip when there are no suspensions', () => {
     const form = baseForm({ punishments: [{ code: 'N09', days: '10' }], suspensions: [] });
     expect(suspensionIndexBoundsIssues(form)).toEqual([]);
+  });
+});
+
+describe('V-31, only one suspension may target a given item 6 punishment', () => {
+  it('trips block on both entries when two suspensions share a punishmentIndex', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '6' },
+        { punishmentIndex: 0, months: '3' },
+      ],
+    });
+    const issues = suspensionDuplicateTargetIssues(form);
+    expect(issues).toHaveLength(2);
+    expect(issues.every((i) => i.severity === 'block')).toBe(true);
+    expect(issues.every((i) => i.id.startsWith('navmc10132-v31-'))).toBe(true);
+  });
+
+  it('keys the id on each duplicate entry\'s OWN position, so two duplicates get DIFFERENT ids', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '6' },
+        { punishmentIndex: 0, months: '3' },
+      ],
+    });
+    const issues = suspensionDuplicateTargetIssues(form);
+    expect(issues.map((i) => i.id)).toEqual(['navmc10132-v31-0', 'navmc10132-v31-1']);
+    // Different ids, not merely different array entries with the same id.
+    expect(new Set(issues.map((i) => i.id)).size).toBe(2);
+  });
+
+  it('does not trip when every suspension targets a distinct punishmentIndex', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }, { code: 'N16', oralOrWritten: 'orally' }],
+      suspensions: [
+        { punishmentIndex: 0, months: '6' },
+        { punishmentIndex: 1, months: '3' },
+      ],
+    });
+    expect(suspensionDuplicateTargetIssues(form)).toEqual([]);
+  });
+
+  it('does not trip on an empty suspensions array', () => {
+    const form = baseForm({ punishments: [{ code: 'N09', days: '14' }], suspensions: [] });
+    expect(suspensionDuplicateTargetIssues(form)).toEqual([]);
+  });
+
+  it('does not trip on a single-entry suspensions array', () => {
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+    });
+    expect(suspensionDuplicateTargetIssues(form)).toEqual([]);
+  });
+
+  it('stays silent on a shared out-of-bounds punishmentIndex, leaving that to V-05', () => {
+    // Both entries name index 5, which is out of bounds (only index 0
+    // exists). suspensionIndexBoundsIssues (V-05) owns flagging an
+    // out-of-bounds index; this rule must not also fire on it, even though
+    // the two entries technically "share" the same bad index.
+    const form = baseForm({
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [
+        { punishmentIndex: 5, months: '6' },
+        { punishmentIndex: 5, months: '3' },
+      ],
+    });
+    expect(suspensionDuplicateTargetIssues(form)).toEqual([]);
+    // Confirm V-05 is the one actually catching the bad index, so this
+    // fixture is proven to trip *something*, not silently miscoded.
+    const boundsIssues = suspensionIndexBoundsIssues(form);
+    expect(boundsIssues).toHaveLength(2);
+    expect(boundsIssues.every((i) => i.severity === 'block')).toBe(true);
   });
 });
 
@@ -687,16 +799,31 @@ describe('W-07, a forfeiture amount must be whole dollars', () => {
   });
 });
 
-describe('W-08, a reduction imposed on an E-6 or above accused', () => {
-  it('trips when the accused is E-6 and a reduction code is selected', () => {
+/**
+ * PROMOTED FROM W-08 (advisory) TO V-35 (blocking) on 2026-08-26, on
+ * Stephen's ruling: "we should block the reduction punishment for Marine
+ * SSgt and above and navy chiefs and above." SSgt is E-6 and a Navy chief
+ * is E-7, the pair MCO 5800.16 Vol 14 para 010302.C already names.
+ *
+ * "May not be reduced" is a prohibition, not guidance, and the app was
+ * rendering it as a warning a clerk could export straight past onto a
+ * signed legal record. A warning is right where the app cannot tell a
+ * lawful case from an unlawful one. Here it reads the grade from item 19
+ * and the floor from the service, both out of one sentence of the order.
+ *
+ * The id moved with the severity, w08 to v35, because the id prefix is how
+ * the export-gate meta guards tell a blocker from a warning.
+ */
+describe('V-35, a reduction imposed on an accused barred from reduction', () => {
+  it('blocks when the accused is E-6 and a reduction code is selected', () => {
     const form = baseForm({
       accusedPayGrade: 'E6',
       punishments: [{ code: 'N08', gradeReducedTo: 'E5' }],
     });
     const issues = reductionPayGradeIssues(form);
     expect(issues).toHaveLength(1);
-    expect(issues[0].id).toBe('navmc10132-w08-reduction-e6-plus');
-    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].id).toBe('navmc10132-v35-reduction-barred-grade');
+    expect(issues[0].severity).toBe('block');
   });
 
   it('does not trip when the accused is below E-6', () => {
@@ -727,7 +854,7 @@ describe('W-08, a reduction imposed on an E-6 or above accused', () => {
       });
       const issues = reductionPayGradeIssues(form);
       expect(issues).toHaveLength(1);
-      expect(issues[0].id).toBe('navmc10132-w08-reduction-e6-plus');
+      expect(issues[0].id).toBe('navmc10132-v35-reduction-barred-grade');
       expect(issues[0].detail).toContain('Marines');
       expect(issues[0].detail).toContain('E-6');
     });
@@ -749,7 +876,7 @@ describe('W-08, a reduction imposed on an E-6 or above accused', () => {
       });
       const issues = reductionPayGradeIssues(form);
       expect(issues).toHaveLength(1);
-      expect(issues[0].id).toBe('navmc10132-w08-reduction-e6-plus');
+      expect(issues[0].id).toBe('navmc10132-v35-reduction-barred-grade');
       expect(issues[0].detail).toContain('Sailors');
       expect(issues[0].detail).toContain('E-7');
     });

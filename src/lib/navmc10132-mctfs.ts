@@ -49,17 +49,45 @@ import type { FormData } from '@/types';
 import type { Navmc10132PunishmentEntry, Navmc10132Suspension } from '@/types/navmc';
 import { NAVMC_10132_DEMAND } from '@/types/navmc';
 import { resolveArticle, resolvePunishment } from '@/lib/navmc10132-utils';
+import {
+  renderTemplate,
+  Navmc10132PunishmentRenderError,
+} from '@/lib/navmc10132-punishment-render';
 
 /** One transaction, ready to be read and typed. */
 export interface MctfsStatement {
   /** Transaction and sequence, e.g. 'TTC 268 000'. */
   ttc: string;
-  /** The statement exactly as it should be entered. */
+  /**
+   * The WHOLE statement line, transaction number included.
+   *
+   * IT USED TO START AT THE DATE, with the transaction number carried only
+   * in `ttc` beside it. Stephen asked on 2026-08-26 why the app showed
+   * "20260825 NJP AWD VESSEL OPT A LAWYER OPT A ED 20260825 |" rather than
+   * the actual transaction, and he was right to: the PRIUM writes its
+   * templates as one line beginning with the TTC and its sequence, for
+   * instance "TTC 056 000 [A] REDUCED [B] DOR [C] ED [D] | HIST: [E] |",
+   * and a body that drops the head of that line is not a line anybody can
+   * key. `ttc` stays as the short label a panel or a worksheet indexes by;
+   * this is the string.
+   */
   text: string;
   /** The PRIUM paragraph this comes from. */
   authority: string;
   /** Anything the clerk must know before entering it. */
   notes: string[];
+  /**
+   * TRUE only where `text` is built against a PRIUM template this codebase
+   * has the words of, field for field.
+   *
+   * FALSE MEANS THE LAYOUT IS THIS APP'S, and a clerk entering a legal
+   * record is owed that distinction. The DATA in a composed statement is
+   * still derived from cited PRIUM rules, the vessel option letters and the
+   * punishment code bytes among them; what is unverified is the ORDER, the
+   * prompt names and the punctuation. `cautionUnlessQuoted` below puts that
+   * on the statement itself so it cannot be lost between here and the page.
+   */
+  templateQuoted: boolean;
 }
 
 export interface MctfsReport {
@@ -272,6 +300,138 @@ function slots(values: string[], count: number): string[] {
  * (70502.g note 1), not the date of the NJP. Where the two can diverge the
  * statement carries a note saying so rather than quietly assuming.
  */
+/**
+ * What a history statement says a Marine was awarded.
+ *
+ * Renders the punishment's own item 6 template against the entry, uppercased
+ * for a transaction line and stripped of the sentence period item 6 needs
+ * and a diary statement does not. Returns null when item 6 has not collected
+ * the parameters the template needs, which is ordinary mid-entry state
+ * rather than a bug: the caller says so on the statement instead of printing
+ * a number nobody entered.
+ */
+export function historyPunishmentText(
+  punishment: Parameters<typeof renderTemplate>[0],
+  entry: Navmc10132PunishmentEntry,
+): string | null {
+  let rendered: string;
+  try {
+    rendered = renderTemplate(punishment, entry);
+  } catch (err) {
+    if (err instanceof Navmc10132PunishmentRenderError) return null;
+    throw err;
+  }
+  return rendered.replace(/\.\s*$/, '').toUpperCase();
+}
+
+/**
+ * The note every statement whose layout this app composed has to carry.
+ *
+ * GENERATED, NOT TYPED AT EACH SITE, so a new statement cannot be added
+ * without it. `tests/navmc10132-mctfs.test.ts` asserts every statement that
+ * declares `templateQuoted: false` carries this sentence.
+ */
+export const COMPOSED_FORMAT_CAUTION =
+  'The LAYOUT of this line is SemperScribe\'s, not a PRIUM template this app holds the words ' +
+  'of. Its values come from cited PRIUM rules; the prompt order and punctuation do not. Check ' +
+  'it against the paragraph above before entering it.';
+
+/** Adds the caution to a composed statement, and nothing to a quoted one. */
+function cautionUnlessQuoted(statement: MctfsStatement): MctfsStatement {
+  if (statement.templateQuoted) return statement;
+  return { ...statement, notes: [...statement.notes, COMPOSED_FORMAT_CAUTION] };
+}
+
+/**
+ * A pay grade abbreviation in the shape TTC 056 wants.
+ *
+ * PRIUM 70507.4 field [B]: "6-byte abbreviation for pay grade to which
+ * reduced". Uppercased because a transaction line is uppercase throughout,
+ * and NEVER truncated: a pay grade cut to six characters on a transaction
+ * that moves a Marine's pay is worse than one the clerk is told to check.
+ * Every Marine Corps rank abbreviation this app offers fits, SgtMaj and
+ * MGySgt being the longest at six, so an over-length value means the picker
+ * changed or the value came from somewhere else.
+ */
+export const TTC_056_GRADE_BYTES = 6;
+
+export function reducedGradeField(gradeReducedTo: string): {
+  value: string;
+  overLength: boolean;
+} {
+  const value = gradeReducedTo.trim().toUpperCase();
+  return { value, overLength: value.length > TTC_056_GRADE_BYTES };
+}
+
+/**
+ * The history statement the TTC 268 line carries.
+ *
+ * MCTFSPRIUM 70503 does not give this one a bracketed placeholder the way
+ * 70507.4 gives TTC 056 its `[E]`. It writes the requirement into the
+ * template itself: "HIST: History statement should include statistical
+ * information (That is, Violation Article 92) and all punishment awarded."
+ * So the SHAPE is quoted and the CONTENT is prescribed rather than
+ * positional, and both halves of what it prescribes are on the form.
+ *
+ * THE STATISTICAL INFORMATION is the article violated, which the paragraph's
+ * own parenthetical settles by example. Every guilty finding's article, in
+ * row order, deduplicated the same way the TTC 212 slots are, because two
+ * offense labels can be one punitive article.
+ *
+ * ALL PUNISHMENT AWARDED is item 6, rendered through its own template so the
+ * history statement and the form say the same words, exactly as the
+ * standalone history statements below do.
+ *
+ * WHY THIS IS NOT A POINTER TO THE TRANSCRIPTION AID. The aid is a multi
+ * line block with labels and columns; a transaction line is one string. The
+ * aid remains what a clerk reads for the fuller picture, and this is what
+ * goes in the entry.
+ */
+export function njpHistoryStatement(formData: FormData): string {
+  const parts: string[] = [];
+
+  const articles = guiltyArticles(formData).articles;
+  if (articles.length > 0) {
+    parts.push(articles.map((article) => `VIOLATION ARTICLE ${article.code}`).join(', '));
+  }
+
+  const awarded: string[] = [];
+  for (const entry of punishmentEntries(formData)) {
+    const punishment = resolvePunishment(entry.code);
+    if (!punishment) continue;
+
+    // A REDUCTION IS SAID THE WAY THE PRIUM SAYS IT, not the way item 6 does.
+    //
+    // Item 6's template is written for a 123-character field and renders
+    // "To be red to LCpl", which uppercases to "TO BE RED TO LCPL". In a
+    // remark MCTFS retains permanently, "RED" reads as a colour. MCTFSPRIUM
+    // 70507.4 gives this app the words for a reduction, "REDUCED" followed
+    // by the 6-byte grade abbreviation, and the TTC 056 on the same sheet
+    // already prints exactly that. So the two agree, and they agree on the
+    // vocabulary of the record rather than on an abbreviation invented for a
+    // narrow box.
+    //
+    // ONLY THE REDUCTION. Every other punishment keeps item 6's wording,
+    // because for those the PRIUM gives this app no vocabulary of its own
+    // and item 6 is the only source there is. The rule is: prefer the
+    // paragraph's words where the paragraph has been supplied.
+    if (punishment.parameters.includes('gradeReducedTo')) {
+      const grade = reducedGradeField(entry.gradeReducedTo ?? '');
+      awarded.push(`REDUCED ${grade.value || '[GRADE]'}`);
+      continue;
+    }
+
+    const text = historyPunishmentText(punishment, entry);
+    // A punishment item 6 has not finished collecting is named without its
+    // amount rather than dropped. Dropping it would understate the record in
+    // the remark MCTFS retains permanently.
+    awarded.push(text ?? `${punishment.description} [AMOUNT]`);
+  }
+  if (awarded.length > 0) parts.push(awarded.join(', '));
+
+  return parts.join('. ');
+}
+
 export function mctfsNjpStatements(formData: FormData): MctfsReport {
   const statements: MctfsStatement[] = [];
   const blockers: string[] = [];
@@ -344,15 +504,43 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
   }
 
   // --- TTC 268 000, the NJP itself -------------------------------------
+  // BUILT AGAINST THE TEMPLATE, supplied by Stephen on 2026-08-26:
+  //
+  //   TTC 268 000 [A] NJP AWD VESSEL OPT [B] LAWYER OPT [C] ED [D] | HIST: ...
+  //
+  //   [A] 8-byte Date of Action (YYYYMMDD)
+  //   [B] VESSEL OPT
+  //   [C] LAWYER OPT
+  //   [D] 8-byte Effective Date (YYYYMMDD) of the nonjudicial punishment
+  //
+  // THE LINE USED TO STOP AT THE PIPE. The HIST segment is part of the
+  // template, not advice about it, and the app carried it only as a note
+  // telling the clerk to go and find the text somewhere else. A clerk keying
+  // what the sheet showed entered a TTC 268 with no history statement, and
+  // 70503 says this posts to the Marine's record and is retained permanently
+  // in the MCTFS 119 remark. See njpHistoryStatement for what fills it.
+  //
+  // NO TRAILING PIPE, and the difference from TTC 056 is in the source
+  // rather than in a decision here. 70507.4 writes "| HIST: [E] |" with a
+  // bracketed field and a closing delimiter; 70503 writes "| HIST:" and then
+  // runs the requirement in as prose with no closing delimiter and no
+  // placeholder. Adding one would be inventing a delimiter the paragraph
+  // does not show.
+  const historyStatement = njpHistoryStatement(formData);
   statements.push({
     ttc: 'TTC 268 000',
+    templateQuoted: true,
     text:
-      `${njpDate || '[NJP DATE]'} NJP AWD VESSEL OPT ${vesselOpt || '[?]'} ` +
-      `LAWYER OPT ${lawyerOpt || '[?]'} ED ${njpDate || '[NJP DATE]'} |`,
+      `TTC 268 000 ${njpDate || '[NJP DATE]'} NJP AWD VESSEL OPT ${vesselOpt || '[?]'} ` +
+      `LAWYER OPT ${lawyerOpt || '[?]'} ED ${njpDate || '[NJP DATE]'} | ` +
+      `HIST: ${historyStatement || '[VIOLATION ARTICLE AND ALL PUNISHMENT AWARDED]'}`,
     authority: 'MCTFSPRIUM 70503',
     notes: [
-      'The HIST statement on this entry should carry the statistical information and all ' +
-        'punishment awarded (PRIUM 70503). Use the transcription aid block for that text.',
+      'The HIST segment carries the statistical information and all punishment awarded ' +
+        '(PRIUM 70503), which is the article violated and item 6. It is built from this form, ' +
+        'so check it against items 1, 5 and 6 before entering.',
+      'This posts to the Marine\'s record and is retained permanently in the MCTFS 119 remark ' +
+        '(PRIUM 70503).',
       'Do NOT also report TTC 053. A three-month promotion restriction posts AUTOMATICALLY ' +
         'when TTC 268 is reported (PRIUM 70503 note 1, 70702).',
       ...(electionDate !== '' && electionDate !== njpDate
@@ -379,10 +567,11 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
     Math.min(Math.max(punishmentCodes.length, 1), TTC_212_MAX_PUNISHMENTS),
   );
 
-  statements.push({
+  statements.push(cautionUnlessQuoted({
     ttc: 'TTC 212 000',
+    templateQuoted: false,
     text:
-      `${njpDate || '[NJP DATE]'} CM-NJP CD N CA-CO EDIPI ${authorityEdipi || '[EDIPI]'} ` +
+      `TTC 212 000 ${njpDate || '[NJP DATE]'} CM-NJP CD N CA-CO EDIPI ${authorityEdipi || '[EDIPI]'} ` +
       articleSlots.map((code, i) => `ART${i + 1} ${code}`).join(' ') +
       ' ' +
       punishmentSlots.map((code, i) => `PUN${i + 1} ${code}`).join(' ') +
@@ -401,7 +590,7 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
           'slot. The article crosswalk is many-to-one, so two labels can be one article.',
       ),
     ],
-  });
+  }));
 
   // --- TTC 212 001, one per victim --------------------------------------
   const victims: unknown = formData.victims;
@@ -412,10 +601,11 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
       const race = typeof record.race === 'string' ? record.race.trim() : '';
       const ethnicity = typeof record.ethnicity === 'string' ? record.ethnicity.trim() : '';
       if (sex === '' && race === '' && ethnicity === '') return;
-      statements.push({
+      statements.push(cautionUnlessQuoted({
         ttc: 'TTC 212 001',
+        templateQuoted: false,
         text:
-          `${njpDate || '[NJP DATE]'} CM-NJP VICTIM SEQ [SEQ] NUM ${twoByte(index + 1)} ` +
+          `TTC 212 001 ${njpDate || '[NJP DATE]'} CM-NJP VICTIM SEQ [SEQ] NUM ${twoByte(index + 1)} ` +
           `SEX ${sex || 'U'} RACE ${race || 'U'} ETHNICITY ${ethnicity || 'U'} |`,
         authority: 'MCTFSPRIUM 70508',
         notes: [
@@ -423,7 +613,7 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
             'above. MCTFS assigns it, so SemperScribe cannot supply it (PRIUM 70508 note 1).',
           'Unknown sex, race, or ethnicity is reported as U, not left blank.',
         ],
-      });
+      }));
     });
   }
 
@@ -444,11 +634,16 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
       if (isSuspended) {
         // PRIUM 70504.3. A suspended reduction changes no pay grade, so it is
         // a history statement and NOT a TTC 056.
-        statements.push({
+        statements.push(cautionUnlessQuoted({
           ttc: 'TTC HIS 000',
+          // The ROUTING is quoted, the wording is not. 70507.4: "When the
+          // reduction is suspended, report the occurrence as a historical
+          // statement per Paragraph 70504". What that statement reads is
+          // not a template this app holds.
+          templateQuoted: false,
           text:
-            `HIST: NJP AWD ${njpDate || '[NJP DATE]'} REDUCED TO ${target || '[GRADE]'} ` +
-            `SUSP FOR ${period || '[MONTHS] MO'} |`,
+            `TTC HIS 000 HIST: NJP AWD ${njpDate || '[NJP DATE]'} REDUCED TO ` +
+            `${target || '[GRADE]'} SUSP FOR ${period || '[MONTHS] MO'} |`,
           authority: 'MCTFSPRIUM 70504.3',
           notes: [
             'A SUSPENDED reduction is reported as history only. Do not report TTC 056 for it, ' +
@@ -456,20 +651,63 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
             'If the suspension is later vacated, report TTC HIS 000 HIST: VACATION OF SUSP ' +
               'REDUCED NJP AWD (date vacated) and then the TTC 056 (PRIUM 70504.4).',
           ],
-        });
+        }));
       } else {
+        // THE ONE STATEMENT BUILT AGAINST A TEMPLATE THIS CODEBASE HOLDS THE
+        // WORDS OF. Stephen supplied MCTFSPRIUM 70507 on 2026-08-26. Its
+        // paragraph 4 covers a reduction awarded at nonjudicial punishment,
+        // and gives the line field for field:
+        //
+        //   TTC 056 000 [A] REDUCED [B] DOR [C] ED [D] | HIST: [E] |
+        //
+        //   [A] DOA, 8 bytes YYYYMMDD, never 00000000
+        //   [B] 6-byte abbreviation for pay grade to which reduced
+        //   [C] 8-byte effective date, the DOR for that pay grade
+        //   [D] 8-byte effective date of the reduction
+        //   [E] HIST: input authority, the CO's letter info
+        //
+        // Sequence 000 is the punitive one. 001 is an administrative
+        // reduction and 002 corrects an erroneous promotion (70507.2 and
+        // 70507.3); neither is an NJP and neither is emitted here. A
+        // reduction by sentence of a court-martial is TTC 257 or TTC 262
+        // (70507.4), which this app never reaches.
+        //
+        // [D] IS NOT THE SAME FIELD AS [C], even though both default to the
+        // NJP date here. [C] is the date of rank in the new grade and [D] is
+        // the date the reduction takes effect. The PRIUM lists them
+        // separately because they can differ, so both carry a note rather
+        // than one standing for the other.
+        const grade = reducedGradeField(target);
+        if (grade.overLength) {
+          missing.push(
+            `a pay grade abbreviation for the reduction that fits ${TTC_056_GRADE_BYTES} bytes. ` +
+              `"${grade.value}" is ${grade.value.length}. TTC 056 field [B] is six bytes and ` +
+              'this app will not truncate a pay grade on a transaction that moves pay.',
+          );
+        }
         statements.push({
           ttc: 'TTC 056 000',
+          templateQuoted: true,
           text:
-            `${njpDate || '[NJP DATE]'} REDUCED ${target || '[GRADE]'} DOR ` +
+            `TTC 056 000 ${njpDate || '[NJP DATE]'} REDUCED ${grade.value || '[GRADE]'} DOR ` +
             `${njpDate || '[DOR]'} ED ${njpDate || '[NJP DATE]'} | HIST: [CO’S LETTER INFO] |`,
           authority: 'MCTFSPRIUM 70507.4',
           notes: [
-            'The pay grade field is 6 bytes. SemperScribe supplies the rank abbreviation item 6 ' +
-              'recorded; confirm your unit diary expects the abbreviation rather than the grade.',
-            'DOR is the date of rank for the grade reduced to. It is defaulted to the NJP date ' +
-              'here, which is the usual case, but check it.',
-            'JEPES marks must be reported on reductions of Corporals and below (PRIUM 70504 note).',
+            'Field [B] is a 6-byte abbreviation for the pay grade reduced to (PRIUM 70507.4), ' +
+              'which is the rank abbreviation item 6 recorded, uppercased. It is the ' +
+              'abbreviation the transaction wants, not the pay grade.',
+            'DOR, field [C], is the date of rank in the new grade. ED, field [D], is the date ' +
+              'the reduction takes effect. Both default to the NJP date here, which is the ' +
+              'usual case, and the PRIUM lists them separately because they need not agree.',
+            'HIST, field [E], is the input authority: the commanding officer\'s letter info. ' +
+              'SemperScribe does not carry it, so it is left as a placeholder.',
+            'JEPES marks must be reported on reductions of Corporals and below (PRIUM 70507.1).',
+            ...(grade.overLength
+              ? [
+                  `The pay grade "${grade.value}" is ${grade.value.length} bytes and field [B] ` +
+                    'holds six. Nothing has been truncated. Fix item 6 before entering this.',
+                ]
+              : []),
           ],
         });
       }
@@ -505,10 +743,12 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
 
       if (isSuspended) {
         // PRIUM 70502.f. A wholly suspended forfeiture is history only.
-        statements.push({
+        statements.push(cautionUnlessQuoted({
           ttc: 'TTC HIS 000',
+          templateQuoted: false,
           text:
-            `HIST: NJP AWD ${njpDate || '[NJP DATE]'} FORF $${valid ? mctfsDollars(perMonth) : '[AMT]'}` +
+            `TTC HIS 000 HIST: NJP AWD ${njpDate || '[NJP DATE]'} FORF ` +
+            `$${valid ? mctfsDollars(perMonth) : '[AMT]'}` +
             `.00 FOR ${valid ? twoByte(months) : '[MO]'} MO SUSPENDED FOR ${period || '[MONTHS] MO'} |`,
           authority: 'MCTFSPRIUM 70502.f',
           notes: [
@@ -519,12 +759,14 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
             'If the suspension is later vacated, report TTC 283 004 VACATE FORF, with the ED as ' +
               'the date the forfeiture was vacated (PRIUM 70502.g note 1).',
           ],
-        });
+        }));
       } else {
-        statements.push({
+        statements.push(cautionUnlessQuoted({
           ttc: 'TTC 283 003',
+          templateQuoted: false,
           text:
-            `${njpDate || '[NJP DATE]'} FORF $${valid ? mctfsDollars(perMonth) : '[AMT]'}.00 FOR ` +
+            `TTC 283 003 ${njpDate || '[NJP DATE]'} FORF ` +
+            `$${valid ? mctfsDollars(perMonth) : '[AMT]'}.00 FOR ` +
             `${valid ? twoByte(months) : '[MO]'} MO NJP TOTAL $` +
             `${valid ? mctfsDollars(perMonth * months) : '[TOTAL]'}.00 ED ${njpDate || '[NJP DATE]'} |`,
           authority: 'MCTFSPRIUM 70502.a',
@@ -533,7 +775,7 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
             'To mitigate it later, report TTC 318 001 FORF RED TO. To remit it entirely, report ' +
               'TTC 315 001 FORF RED TO NONE NJP.',
           ],
-        });
+        }));
       }
       return;
     }
@@ -541,23 +783,61 @@ export function mctfsNjpStatements(formData: FormData): MctfsReport {
     // PRIUM 70503 note 2. Restriction, extra duties, correctional custody,
     // admonition, and reprimand touch no pay or personnel data item, so they
     // ride the history statement rather than an action transaction.
-    statements.push({
+    //
+    // THE IMPOSED PUNISHMENT, NOT THE CODE'S DESCRIPTION. Until 2026-08-26
+    // this line printed `code.description`, which for N09 reads "EXTRA
+    // DUTIES, INCLUDING FATIGUE OR OTHER DUTIES, FOR NOT MORE THAN 14
+    // CONSECUTIVE DAYS". That is the STATUTORY CEILING out of 10 U.S.C.
+    // 815(b)(2)(E), not what the commander awarded, so a clerk typing it
+    // recorded a punishment nobody imposed, permanently, in the one place
+    // this punishment is reported at all. The reduction and forfeiture
+    // branches above always used the entry's own values; this one did not.
+    //
+    // It renders through the SAME template item 6 prints from, so the
+    // history statement and the form say the same words. A clerk holding
+    // the sheet beside the NAVMC 10132 is comparing like with like.
+    const imposed = historyPunishmentText(code, entry);
+    if (imposed === null) {
+      missing.push(
+        `the parameters for ${code.code}, needed for its history statement. The statement ` +
+          "below names the punishment but not the amount awarded.",
+      );
+    }
+    statements.push(cautionUnlessQuoted({
       ttc: 'TTC HIS 000',
+      // 70503 note 2 is quoted in this module's header and decides that this
+      // punishment rides a history statement. What the statement READS is
+      // this app's wording.
+      templateQuoted: false,
       text:
-        `HIST: NJP AWD ${njpDate || '[NJP DATE]'} ${code.description}` +
+        `TTC HIS 000 HIST: NJP AWD ${njpDate || '[NJP DATE]'} ` +
+        `${imposed ?? `${code.description} [AMOUNT]`}` +
         `${isSuspended ? ` SUSPENDED FOR ${period || '[MONTHS] MO'}` : ''} |`,
       authority: 'MCTFSPRIUM 70503 note 2',
       notes: [
         'Reported as history because this punishment affects no pay, pay grade, or other ' +
           'personnel data item.',
+        ...(imposed === null
+          ? [
+              'Item 6 does not carry the amount awarded for this punishment yet, so the ' +
+                'statement above names the punishment only. Do not enter it as it stands.',
+            ]
+          : [
+              'The wording is item 6\'s own, so this statement and the form agree. It states ' +
+                'what was AWARDED, which is not the statutory ceiling in the code description.',
+            ]),
       ],
-    });
+    }));
   });
 
   // --- Follow-on actions -------------------------------------------------
   reminders.push(
+    // 70503 note 3 as Stephen supplied it on 2026-08-26 points at Section
+    // 50100, not at the 50101.8.c this line used to cite. The narrower cite
+    // came from an earlier reading and is not in the paragraph's own words,
+    // so the paragraph's own words are what it says.
     'Report a new Good Conduct Medal commencement date with TTC 140 001. Any NJP breaks the ' +
-      'GCM period (PRIUM 70503 note 3, 50101.8.c).',
+      'GCM period (PRIUM 70503 note 3, which points at Section 50100).',
   );
   reminders.push(
     'Do NOT report TTC 053. The three-month promotion restriction posts automatically from ' +

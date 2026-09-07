@@ -18,11 +18,13 @@
  */
 
 import type { FormData } from '@/types';
+import { paginateItem21 } from '@/lib/navmc10132-item21-continuation';
 import {
   bookerStatement,
   coerceDemand,
   renderPunishment,
   Navmc10132PunishmentRenderError,
+  resolvePunishment,
   renderSuspension,
   Navmc10132SuspensionRenderError,
   composeRemarks,
@@ -31,6 +33,7 @@ import type {
   Navmc10132PunishmentEntry,
   Navmc10132Remark,
   Navmc10132Suspension,
+  Navmc10132Vacation,
 } from '@/types/navmc';
 
 /** What one AcroForm field accepts: text/dropdown export value, or a
@@ -117,6 +120,14 @@ function readSuspensions(formData: FormData): Navmc10132Suspension[] {
   return Array.isArray(value) ? (value as Navmc10132Suspension[]) : [];
 }
 
+/** Reads `formData.vacations` as Navmc10132Vacation[]. Same runtime-checked
+ * pattern as readPunishments, readRemarks and readSuspensions above.
+ * Decision row D-60. */
+function readVacations(formData: FormData): Navmc10132Vacation[] {
+  const value = readUnknown(formData, 'vacations');
+  return Array.isArray(value) ? (value as Navmc10132Vacation[]) : [];
+}
+
 // ---------------------------------------------------------------------------
 // Item 6 punishment text, with the overflow escape hatch checked FIRST so a
 // flagged-overflow row never even reaches renderPunishment.
@@ -137,7 +148,17 @@ function computePunishmentImposed(formData: FormData): string | undefined {
 
 function rawPunishmentImposed(formData: FormData): string | undefined {
   const punishments = readPunishments(formData);
-  if (punishments.length === 0) return undefined;
+  if (punishments.length === 0) {
+    // THE FILE'S OWN SENTENCE, where a load could not read it back into
+    // codes. Four groups of punishment codes share a template byte for
+    // byte, so some signed item 6 text names no single code (see
+    // navmc10132-item6-parse.ts). Returning undefined here is what put
+    // Stephen's signed file in the state he reported on 2026-08-26: the
+    // form said "Forf of $100 pay.", the app said nothing, and the export
+    // wrote an empty item 6 over a punishment a commander had signed.
+    const fromFile = readString(formData, 'punishmentImposedFromFile');
+    return fromFile === '' ? undefined : fromFile;
+  }
   // Concurrency is a property of the SET of punishments, not of any one code,
   // because MCM Part V para 5.d governs how punishments combine. It lives on
   // the model as punishmentsConcurrent and is written by PunishmentSection.
@@ -228,6 +249,198 @@ function overflowRemarks(formData: FormData): Navmc10132Remark[] {
   }
 
   return carried;
+}
+
+/**
+ * The punishment text a vacated suspension's target names, for the
+ * vacation remark's "<punishment> susp on <NJP date>" clause.
+ *
+ * MIRRORS `suspendedPunishmentText` in njp-vacation-handoff.ts rather than
+ * importing it: that function is module-local there, and this table's own
+ * header restricts it to SELECTION and DERIVATION ORDER over the same
+ * runtime-checked accessor pattern already used above, not a dependency on
+ * the letter-generation module. renderPunishment THROWS on an incomplete
+ * entry, which is normal mid-edit state, so the fallback is the code's own
+ * description rather than an empty string — an empty target would leave
+ * the derived remark reading "susp on ..." with nothing named as vacated.
+ */
+function vacationTargetText(formData: FormData, punishmentIndex: number): string {
+  const entry = readPunishments(formData)[punishmentIndex];
+  if (!entry) return '';
+  const code = resolvePunishment(entry.code);
+  if (!code) return '';
+  try {
+    return renderPunishment([entry]).text;
+  } catch {
+    return code.description;
+  }
+}
+
+/**
+ * One vacation record's own remark-derivation result: the remark it
+ * produces, or null when the record does not (or should not) produce one.
+ *
+ * `gapReason` is populated ONLY when `remark` is null AND the record's own
+ * `status` is `'vacated-full'` or `'vacated-part'` — i.e. exactly the case
+ * V-34 (navmc10132-validators-punishment.ts) treats as a defect: a record
+ * that says a vacation happened, feeding an export that says nothing about
+ * it. It stays null for `'pending'` and `'not-vacated'`, which correctly
+ * produce no remark and are not gaps at all. See `deriveVacationRemarkGap`
+ * below for what it does and does not promise.
+ */
+export interface VacationRemarkOutcome {
+  remark: Navmc10132Remark | null;
+  gapReason: string | null;
+}
+
+/**
+ * THE single derivation this file uses to decide whether one vacation
+ * record produces an item 21 remark. `vacationRemarks` below and V-34
+ * (navmc10132-validators-punishment.ts, via `vacationRemarkOutcomes`) both
+ * read this function's result rather than re-implementing any part of it,
+ * on purpose: a rule that re-derived "should this record have a remark"
+ * from its own copy of these checks would silently fall out of sync with
+ * this function the first time a guard is added here and not there. That
+ * drift is exactly the failure class this codebase exists to catch, so it
+ * must not be reintroduced one level up in the rule that closes the
+ * previous instance of it.
+ *
+ * SILENT ON 'pending' AND 'not-vacated', ON PURPOSE. Nothing was vacated in
+ * either state: MCO 5800.16 Vol 14 para 011201 requires the accused be
+ * given an opportunity to respond before a suspension may be vacated, and
+ * Figure 14-1 paragraph 2 offers FULL/PART as the commander's election
+ * only after that response, so a commander can also decide not to vacate.
+ * A remark reading "... vacated." for a record that vacated nothing would
+ * misstate the UPB. This is also why nothing here, or in V-34, warns on
+ * the ABSENCE of a vacation record: most suspensions are never vacated at
+ * all (MCM Part V para 6.a(3), remitted without further action), so a rule
+ * that fired on every un-vacated suspension would fire constantly on
+ * correct forms.
+ *
+ * SKIPPED, NOT EMITTED MALFORMED, when the NJP date, the outcome date, the
+ * targeted suspension, or the punishment it names is missing or
+ * unresolvable. isPrescribedFormat (navmc10132-remarks.ts) requires this
+ * remark's line to open with a YYYY-MM-DD date and to contain a "susp on"
+ * clause; a derived remark that fails the app's own format check would be
+ * worse than none, so an incomplete record is left for the clerk to finish
+ * rather than rendered with a hole in it. `navmc10132-v32-` and
+ * `navmc10132-v33-` (navmc10132-validators-punishment.ts) already block
+ * export on two of the ways this can happen; V-34 is what catches the
+ * remaining ones, by checking THIS OUTCOME rather than re-listing them.
+ *
+ * THE REMARK'S OWN DATE IS `outcomeDate`, NEVER `noticeServedDate`. The
+ * remark records that a vacation HAPPENED, so it is dated by when the
+ * vacating decision was made, not by when the notice that preceded it went
+ * out — matching how every other item 21 kind here is dated by its own
+ * event (`appeal-denied` by the decision date, not the appeal date).
+ */
+function deriveVacationRemark(
+  vacation: Navmc10132Vacation,
+  njpDate: string,
+  suspensions: Navmc10132Suspension[],
+  formData: FormData,
+): Navmc10132Remark | null {
+  if (njpDate === '') return null;
+  if (vacation.status !== 'vacated-full' && vacation.status !== 'vacated-part') return null;
+
+  const outcomeDate = (vacation.outcomeDate ?? '').trim();
+  if (outcomeDate === '') return null;
+
+  const suspension = suspensions[vacation.suspensionIndex];
+  if (!suspension) return null;
+
+  const target = vacationTargetText(formData, suspension.punishmentIndex);
+  if (target === '') return null;
+
+  const base = `${target} susp on ${njpDate}`;
+  const vacatedDetail = (vacation.vacatedDetail ?? '').trim();
+  const detail =
+    vacation.status === 'vacated-part' && vacatedDetail !== ''
+      ? `${base}, in part: ${vacatedDetail}`
+      : base;
+
+  return { date: outcomeDate, kind: 'suspension-vacated-njp', detail };
+}
+
+/**
+ * Best-effort prose naming WHICH input `deriveVacationRemark` above found
+ * missing, for an executed vacation (`'vacated-full'` or `'vacated-part'`)
+ * whose remark came back null. Called only from `vacationRemarkOutcomes`,
+ * only in that case.
+ *
+ * DELIBERATELY NOT THE GATE. Whether V-34 fires is decided entirely by
+ * `deriveVacationRemark`'s outcome (null or not); this function only
+ * explains a gap that outcome already established, so a clerk can fix the
+ * cause rather than hunt for it. Its own checks mirror
+ * `deriveVacationRemark`'s in order, which is unavoidable duplication for a
+ * plain-language explanation, but it is duplication that can only make the
+ * MESSAGE stale, never the GATE: a future guard added to
+ * `deriveVacationRemark` without a matching branch added here still
+ * produces a null remark, V-34 still fires, and this function falls
+ * through to the generic closing line below rather than mis-describing the
+ * gap.
+ */
+function deriveVacationRemarkGap(
+  vacation: Navmc10132Vacation,
+  njpDate: string,
+  suspensions: Navmc10132Suspension[],
+  formData: FormData,
+): string {
+  if (njpDate === '') {
+    return 'item 6 punishment date is blank, which suppresses every derived vacation remark on the form';
+  }
+  const outcomeDate = (vacation.outcomeDate ?? '').trim();
+  if (outcomeDate === '') {
+    return 'this record has no outcome date recorded';
+  }
+  const suspension = suspensions[vacation.suspensionIndex];
+  if (!suspension) {
+    return `this record names suspensionIndex ${vacation.suspensionIndex}, which item 7 does not carry`;
+  }
+  const target = vacationTargetText(formData, suspension.punishmentIndex);
+  if (target === '') {
+    return 'the suspended punishment this record targets could not be rendered';
+  }
+  return 'the app could not determine why';
+}
+
+/**
+ * Every vacation record's own remark-derivation outcome, in `vacations`
+ * array order. Decision row D-60 built the derivation
+ * (`deriveVacationRemark`, which closes the gap between
+ * njp-vacation-handoff.ts, which generates the Figure 14-1 notice, and
+ * navmc10132-remarks.ts, which carries the remark kind that records the
+ * vacation); this export exists so V-34
+ * (navmc10132-validators-punishment.ts) can check, per record, whether
+ * that derivation actually produced something, instead of importing or
+ * re-deriving any part of the check itself. See `VacationRemarkOutcome`
+ * above for the shape and `deriveVacationRemark`'s own JSDoc for why this
+ * is the one place that decision gets made.
+ */
+export function vacationRemarkOutcomes(formData: FormData): VacationRemarkOutcome[] {
+  const njpDate = (readString(formData, 'punishmentDate') ?? '').trim();
+  const suspensions = readSuspensions(formData);
+
+  return readVacations(formData).map((vacation): VacationRemarkOutcome => {
+    const remark = deriveVacationRemark(vacation, njpDate, suspensions, formData);
+    if (remark) return { remark, gapReason: null };
+
+    const executed = vacation.status === 'vacated-full' || vacation.status === 'vacated-part';
+    return {
+      remark: null,
+      gapReason: executed ? deriveVacationRemarkGap(vacation, njpDate, suspensions, formData) : null,
+    };
+  });
+}
+
+/**
+ * The flattened list of remarks `vacationRemarkOutcomes` above actually
+ * produced, i.e. every non-null `remark`, in `vacations` array order. This
+ * is the shape `composeRemarks` (below) needs; see `vacationRemarkOutcomes`
+ * for the per-record derivation and gap reasoning this filters down from.
+ */
+function vacationRemarks(formData: FormData): Navmc10132Remark[] {
+  return vacationRemarkOutcomes(formData).flatMap((outcome) => (outcome.remark ? [outcome.remark] : []));
 }
 
 /**
@@ -356,9 +569,26 @@ export function navmc10132Values(formData: FormData): Record<string, FieldValue>
   // --- Item 21: remarks ---------------------------------------------------
   const remarks = readRemarks(formData);
   const remarksFreeText = readString(formData, 'remarksFreeText') ?? '';
-  // The overflow carriers go in WITH the clerk's own remarks so composeRemarks
-  // sorts the whole set chronologically, as the page 3 instruction requires.
-  set('21 REMARKS', composeRemarks([...remarks, ...overflowRemarks(formData)], remarksFreeText));
+  // The overflow carriers and the derived vacation remarks go in WITH the
+  // clerk's own remarks so composeRemarks sorts the whole set
+  // chronologically, as the page 3 instruction requires. See
+  // vacationRemarks above for what it derives and why (decision row D-60).
+  // PAGINATED, NOT WRITTEN WHOLE. Item 21 renders 55 lines and clips the
+  // rest with nothing on screen to say so, which is silent data loss on the
+  // form the page 3 instruction sends every other overflow to. paginateItem21
+  // keeps what the widget holds, ends it with a pointer to the supplement,
+  // and hands the remainder to the caller. See
+  // navmc10132-item21-continuation.ts, and item21Overflow below for the
+  // lines the export renders as a separate sheet.
+  set(
+    '21 REMARKS',
+    paginateItem21(
+      composeRemarks(
+        [...remarks, ...overflowRemarks(formData), ...vacationRemarks(formData)],
+        remarksFreeText,
+      ),
+    ).onForm,
+  );
 
   // --- Item 22, row A only: victim demographics ---------------------------
   // Rows B through E are DELIBERATELY never written. The printed form's own
@@ -404,3 +634,22 @@ export const NAVMC_10132_UNLOCK_READ_ONLY: readonly string[] = [
   '24 ACCUSED RANK/GRADE',
   '25 ACCUSED EDIPI',
 ];
+
+/**
+ * The item 21 lines that do not fit the widget, for the supplemental sheet.
+ *
+ * COMPOSED THE SAME WAY THE FIELD IS, through the same three sources and the
+ * same composeRemarks call. A second composition here would be a second
+ * chance to sort the entries differently, and the page 3 instruction requires
+ * one chronological order across the whole set.
+ */
+export function navmc10132Item21Overflow(formData: FormData): string[] {
+  const remarks = readRemarks(formData);
+  const remarksFreeText = readString(formData, 'remarksFreeText') ?? '';
+  return paginateItem21(
+    composeRemarks(
+      [...remarks, ...overflowRemarks(formData), ...vacationRemarks(formData)],
+      remarksFreeText,
+    ),
+  ).overflow;
+}

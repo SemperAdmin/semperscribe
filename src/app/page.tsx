@@ -15,6 +15,7 @@ import {
   filePut, fileGet, fileDeleteIfOwnedBy, fileDeleteForDoc, fileReparentByIds,
   WORKING_COPY_DOC_ID,
 } from '@/lib/document-library';
+import { putNavmc10132Base } from '@/lib/navmc10132-base-file';
 import { backupDocument } from '@/lib/auto-backup';
 import { runLetterValidators } from '@/lib/letter-validators';
 import type { ValidationIssue } from '@/lib/letter-validators';
@@ -611,6 +612,17 @@ function NavalLetterGeneratorInner() {
     setFormData(prev => ({
       ...prev,
       documentType: newType as FormData['documentType'],
+      // SEED THE NAVMC 10132 STAGE ON FIRST SWITCH. The export gate reads an
+      // ABSENT `stage` as `'complete'` on purpose (see
+      // navmc10132ExportGateStage): a document saved before the field existed
+      // is likelier finished than freshly started, and treating a finished one
+      // as pass 1 would silently drop real blockers. That default is only safe
+      // if a NEW document actually carries the field. It did not, because
+      // createEmptyNavmc10132Data is a test helper this path never calls, so
+      // every fresh UPB read as `'complete'` and fired every later pass's
+      // blockers while the selector displayed "Notification". Preserve an
+      // existing value so re-selecting the type never rewinds the stage.
+      stage: newType === 'navmc10132' ? ((prev as FormData).stage ?? 1) : (prev as FormData).stage,
       // E.3: an endorsement opens as a FIRST endorsement unless the
       // drafter has chosen a level; the line is missing until one is set.
       endorsementLevel: newType === 'endorsement'
@@ -786,7 +798,16 @@ function NavalLetterGeneratorInner() {
             amhsOfficeCode: '',
             amhsPocs: [],
             amhsReferences: [],
-            amhsTextBody: ''
+            amhsTextBody: '',
+            // SEEDED HERE TOO, and this is the hole the D-43 guard could
+            // not see. That guard scans for setFormData calls producing a
+            // LITERAL 'navmc10132'; this one uses a variable, so it passed
+            // the scan while leaving `stage` undefined. An absent stage is
+            // read as 1 for display and as 'complete' by the export gate,
+            // so Clear Form on a UPB produced a blank document that fired
+            // every later-pass blocker at once. Undefined for every other
+            // document type, which is what those types expect.
+            ...(currentType === 'navmc10132' ? { stage: 1 } : {}),
         });
         setParagraphs([{ id: 1, level: 1, content: '', acronymError: '' }]);
         setVias(['']);
@@ -821,7 +842,63 @@ function NavalLetterGeneratorInner() {
     handleImport(payload);
   };
 
-  const documentImport = useDocumentImport({ applyImport: applyDocumentImport, toast });
+  /**
+   * A NAVMC 10132 read out of a PDF MERGES, it does not replace.
+   *
+   * `applyDocumentImport` above calls `resetDocumentState` first, which is
+   * right for a text import: the document in front of you replaces the one
+   * behind you. It is wrong here. Loading a signed UPB is the return leg of
+   * a case the clerk is already working, so the file adds what has been
+   * signed and the app keeps what has not been entered on paper yet. That
+   * is Stephen's rule, 2026-08-25: the app updates what is not updated yet
+   * and does not preload anything.
+   */
+  const applyNavmc10132Load = useCallback(
+    (patch: Record<string, unknown>, report: unknown, bytes: ArrayBuffer, fileName: string) => {
+      setFormData(prev => ({ ...prev, ...patch, navmc10132LoadReport: report }));
+
+      // REMOUNT EVERY DYNAMICFORM, and this line is the whole of Stephen's
+      // 2026-08-26 report: "on inport it did not pull the Unit and Accused
+      // (Items 17-20) ... data". They were pulled. RHF then wrote its own
+      // stale defaults straight back over them.
+      //
+      // DynamicForm calls useForm once per mount and never resets, so a load
+      // that only writes formData leaves every mounted form holding the
+      // values it seeded BEFORE the file arrived, and its next debounced
+      // sync clobbers the patch. Item 17, item 18 and item 20 live in the
+      // accused DynamicForm, which is exactly the set that came back blank.
+      // Every other path replacing document state already bumps this;
+      // this one did not.
+      setFormKey(prev => prev + 1);
+
+      // THE FILE ITSELF IS KEPT, not just what was read out of it. Every
+      // later export writes an incremental update INTO these bytes so the
+      // CAC signatures stay valid, and the live preview renders them, so a
+      // loaded document previews as itself rather than as a fresh blank.
+      // Five megabytes, so IndexedDB rather than document state, which is
+      // JSON-serialized on every autosave. See navmc10132-base-file.ts.
+      //
+      // FIRE AND FORGET, DELIBERATELY. The form is already populated and
+      // usable; a storage failure costs the incremental path, not the load,
+      // and the export degrades to filling the blank rather than failing.
+      putNavmc10132Base(bytes, fileName).catch((error) =>
+        console.error('Storing the uploaded NAVMC 10132 failed; exports will fill the blank instead:', error),
+      );
+
+      debugFormChange('NAVMC 10132 Loaded From PDF', patch);
+    },
+    [],
+  );
+
+  const documentImport = useDocumentImport({
+    applyImport: applyDocumentImport,
+    toast,
+    // So the review modal can name what confirming DESTROYS, not only what
+    // it creates. See replacementWarning in the hook.
+    currentDocumentType: formData.documentType,
+    currentFormData: formData as unknown as Record<string, unknown>,
+    applyNavmc10132: applyNavmc10132Load,
+  });
 
   /**
    * D.7: whether the document on screen holds work worth protecting.
@@ -1141,6 +1218,7 @@ function NavalLetterGeneratorInner() {
         formData={formData}
         setFormData={setFormData}
         formKey={formKey}
+        onClearForm={handleClearForm}
         setCurrentUnitCode={setCurrentUnitCode}
         setCurrentUnitName={setCurrentUnitName}
         vias={vias}

@@ -1,6 +1,57 @@
 /**
  * The NJP appeal package forwarded to higher authority.
  *
+ * VACATION IS A DIFFERENT ACTION WITH A DIFFERENT ANSWER. MCO 5800.16 Vol 14
+ * para 011201, quoted verbatim:
+ *
+ *   "Vacation of suspended punishment is not itself NJP, and subsequent
+ *   action to impose NJP for the offense(s) upon which the vacation action
+ *   is based is authorized. If only suspended punishment is vacated, an
+ *   accused has no right of appeal. If additional punishment is imposed,
+ *   the right to appeal applies."
+ *
+ * JAGMAN (JAGINST 5800.7G CH-2) para 0118.d supplies the remedy 011201
+ * leaves out: the vacation decision itself "is not itself subject to
+ * appeal...but is a proper subject of an Article 138, UCMJ, complaint."
+ *
+ * THE FACT THAT DECIDES IT IS NOT ON THIS FORM. A vacation is recorded on
+ * this UPB as a structured item 21 remark (kind 'suspension-vacated-njp',
+ * see navmc10132-remarks.ts), so the app CAN see that a vacation happened.
+ * But "additional punishment is imposed" means a SUBSEQUENT NJP, and 011201
+ * says outright that imposing it is a new "action", meaning a SEPARATE
+ * proceeding on a SEPARATE UPB, one this module has never seen and has no
+ * way to reach. A vacation remark on this form proves a vacation happened;
+ * it says nothing about whether that other proceeding exists.
+ *
+ * SO THE CALLER STATES IT, AND "NOT STATED" IS A REAL ANSWER, NOT A GAP TO
+ * DEFAULT AWAY. `appealPackage` takes an optional second argument,
+ * `additionalPunishment`, for exactly this fact. Three things can happen
+ * when a vacation remark is present:
+ *
+ *   - `'not-imposed'`: no right of appeal from the vacation. The 011107
+ *     checklist would be assembling a package around a right that does not
+ *     exist, so it is not built. The caller gets the 011201 citation and
+ *     the JAGMAN 0118.d Article 138 remedy instead.
+ *   - `'imposed'`: 011201's own words, "the right to appeal applies", so
+ *     the ordinary 011107 checklist below is exactly right and is what
+ *     this returns.
+ *   - omitted: the caller does not know yet. Defaulting to `'imposed'`
+ *     would build a checklist around a right that may not exist, telling a
+ *     clerk to chase a signature on block 14 for an appeal nobody may
+ *     bring. Defaulting to `'not-imposed'` is worse: it tells a Marine who
+ *     may hold a real right of appeal that they have none, which this
+ *     codebase's standing rule against inventing a legal figure it cannot
+ *     verify treats as the more dangerous of the two wrong answers. So
+ *     neither branch is picked. The result reports BOTH outcomes in full,
+ *     under `ifAdditionalPunishmentImposed` and `ifVacationOnly`, plus
+ *     `decidingFact` naming the one thing that resolves it, so the caller
+ *     can act on whichever branch turns out to be true without this module
+ *     ever having guessed.
+ *
+ * When no vacation remark is present at all, `additionalPunishment` is
+ * irrelevant and this is an ordinary appeal from NJP: the 011107 checklist
+ * applies exactly as it always has.
+ *
  * MCO 5800.16 Vol 14 para 011107, quoted verbatim:
  *
  *   "When an appeal from NJP is forwarded to higher authority for decision,
@@ -44,7 +95,7 @@
  */
 
 import type { FormData } from '@/types';
-import { NAVMC_10132_APPEAL_INTENT } from '@/types/navmc';
+import { NAVMC_10132_APPEAL_INTENT, type Navmc10132Remark } from '@/types/navmc';
 
 export type AppealItemState = 'satisfied' | 'unsatisfied' | 'unverifiable' | 'not-applicable';
 
@@ -57,7 +108,20 @@ export interface AppealPackageItem {
   detail: string;
 }
 
-export interface AppealPackage {
+/**
+ * Whether additional NJP punishment was imposed, on a SEPARATE UPB, for the
+ * offense(s) a vacation action here was based on. This is the one fact
+ * MCO 011201 conditions the right of appeal on, and this module cannot see
+ * it. See the module-level comment for why. Pass it when the caller
+ * actually knows; omit it otherwise. Omitting it is a legitimate answer.
+ */
+export type AdditionalPunishmentImposed = 'imposed' | 'not-imposed';
+
+/** The ordinary case: an appeal from NJP itself, or a vacation on which
+ * additional punishment was also imposed. 011201: "the right to appeal
+ * applies", so the 011107 checklist is the right answer. */
+export interface AppealRightsPackage {
+  kind: 'appeal-rights';
   /** True when the accused has elected to appeal, so the package applies. */
   applies: boolean;
   items: AppealPackageItem[];
@@ -66,6 +130,34 @@ export interface AppealPackage {
   /** Items actively failing, as distinct from unverifiable. */
   unsatisfiedCount: number;
 }
+
+/** Only the suspended punishment was vacated. MCO 011201: no right of
+ * appeal from the vacation. JAGMAN 0118.d: the remedy that survives is an
+ * Article 138 complaint, not an appeal. */
+export interface VacationOnlyPackage {
+  kind: 'vacation-only';
+  applies: false;
+  /** No right of appeal from the vacation. Cites MCO 5800.16 Vol 14 para 011201. */
+  noAppealRight: string;
+  /** The remedy that remains. Cites JAGMAN (JAGINST 5800.7G CH-2) para 0118.d. */
+  article138Remedy: string;
+}
+
+/** A vacation remark is present and the caller has not said whether
+ * additional punishment was imposed. Both outcomes are reported in full,
+ * unresolved, alongside the one fact that decides between them. */
+export interface UnstatedActionPackage {
+  kind: 'unstated';
+  applies: false;
+  /** The one fact this module cannot see that decides which branch applies. */
+  decidingFact: string;
+  /** What follows if additional NJP punishment was imposed for the same offense(s). */
+  ifAdditionalPunishmentImposed: AppealRightsPackage;
+  /** What follows if only the suspended punishment was vacated. */
+  ifVacationOnly: VacationOnlyPackage;
+}
+
+export type AppealPackage = AppealRightsPackage | VacationOnlyPackage | UnstatedActionPackage;
 
 function str(formData: FormData, key: string): string {
   const value: unknown = formData[key];
@@ -78,6 +170,40 @@ function enlistedGrade(payGrade: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
+/** `formData.remarks` as Navmc10132Remark[], the same runtime-checked
+ * pattern navmc10132-acroform.ts uses: an `unknown` binding narrowed by an
+ * Array.isArray check, never a straight cast off the `any`-typed index. */
+function readRemarks(formData: FormData): Navmc10132Remark[] {
+  const value: unknown = formData.remarks;
+  return Array.isArray(value) ? (value as Navmc10132Remark[]) : [];
+}
+
+/** True when item 21 carries a structured vacation-of-suspended-NJP remark.
+ * This is a fact the app CAN see on this very form; it says nothing about
+ * whether additional punishment was later imposed elsewhere. See the
+ * module-level comment. */
+function hasVacationRemark(formData: FormData): boolean {
+  return readRemarks(formData).some((r) => r.kind === 'suspension-vacated-njp');
+}
+
+const NO_APPEAL_RIGHT =
+  'Vacation of suspended punishment is not itself NJP (MCO 5800.16 Vol 14 para 011201). ' +
+  'Because only the suspended punishment was vacated, with no additional NJP imposed for the ' +
+  'offense(s) the vacation was based on, the accused has no right of appeal from this action.';
+
+const ARTICLE_138_REMEDY =
+  'The vacation decision is not itself appealable, but it is a proper subject of an Article ' +
+  '138, UCMJ, complaint (JAGMAN (JAGINST 5800.7G CH-2) para 0118.d).';
+
+function vacationOnlyPackage(): VacationOnlyPackage {
+  return {
+    kind: 'vacation-only',
+    applies: false,
+    noAppealRight: NO_APPEAL_RIGHT,
+    article138Remedy: ARTICLE_138_REMEDY,
+  };
+}
+
 /**
  * The 011107 checklist for this case.
  *
@@ -85,7 +211,7 @@ function enlistedGrade(payGrade: string): number | null {
  * 13 records an appeal date. Presenting the checklist on a case with no
  * appeal would be noise.
  */
-export function appealPackage(formData: FormData): AppealPackage {
+function appealRightsPackage(formData: FormData): AppealRightsPackage {
   const intent = str(formData, 'intendAppeal');
   const appealDate = str(formData, 'appealDate');
   const applies = intent === NAVMC_10132_APPEAL_INTENT.WILL || appealDate !== '';
@@ -213,9 +339,61 @@ export function appealPackage(formData: FormData): AppealPackage {
   ];
 
   return {
+    kind: 'appeal-rights',
     applies,
     items,
     unverifiableCount: items.filter((i) => i.state === 'unverifiable').length,
     unsatisfiedCount: items.filter((i) => i.state === 'unsatisfied').length,
+  };
+}
+
+const DECIDING_FACT =
+  'Item 21 records that a suspended punishment was vacated. MCO 5800.16 Vol 14 para 011201 ' +
+  'makes the right of appeal turn on one fact this UPB cannot show: whether additional NJP ' +
+  'punishment was also imposed, on a separate UPB, for the offense(s) the vacation was based ' +
+  'on. That fact decides which of the two outcomes below applies. Confirm it, then call this ' +
+  "again passing 'imposed' or 'not-imposed'.";
+
+/**
+ * The NJP appeal package for this case.
+ *
+ * When item 21 carries no vacation remark, this is an ordinary appeal from
+ * NJP and `additionalPunishment` is not used: the 011107 checklist applies.
+ *
+ * When item 21 DOES carry a vacation remark, MCO 011201 governs instead,
+ * and `additionalPunishment` is the fact that decides the outcome:
+ *
+ *   - `'not-imposed'` returns the vacation-only result: no right of
+ *     appeal, cited to 011201, with the Article 138 remedy from JAGMAN
+ *     0118.d.
+ *   - `'imposed'` returns the ordinary 011107 checklist, because 011201
+ *     says the right to appeal applies once additional punishment is
+ *     imposed.
+ *   - omitted returns BOTH outcomes, unresolved, plus the one fact
+ *     (`decidingFact`) that would resolve them. See the module-level
+ *     comment for why this module will not guess between the two.
+ */
+export function appealPackage(
+  formData: FormData,
+  additionalPunishment?: AdditionalPunishmentImposed,
+): AppealPackage {
+  if (!hasVacationRemark(formData)) {
+    return appealRightsPackage(formData);
+  }
+
+  if (additionalPunishment === 'imposed') {
+    return appealRightsPackage(formData);
+  }
+
+  if (additionalPunishment === 'not-imposed') {
+    return vacationOnlyPackage();
+  }
+
+  return {
+    kind: 'unstated',
+    applies: false,
+    decidingFact: DECIDING_FACT,
+    ifAdditionalPunishmentImposed: appealRightsPackage(formData),
+    ifVacationOnly: vacationOnlyPackage(),
   };
 }

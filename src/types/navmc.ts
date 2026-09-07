@@ -1,5 +1,5 @@
 import type { Navmc10132Service } from '@/lib/navmc10132-ranks';
-import { ParagraphData } from './index';
+import { ParagraphData, FormData } from './index';
 
 export interface Navmc10274Data {
   actionNo: string;
@@ -411,6 +411,198 @@ export interface Navmc10132Suspension {
   days?: string;
 }
 
+/**
+ * The outcome of one Figure 14-1 notice. NOT a boolean.
+ *
+ * MCO 5800.16 Vol 14 Figure 14-1 paragraph 2 reads "It is my intent to
+ * vacate your previously suspended punishment in: FULL/PART", and para
+ * 011201 requires the accused be given an opportunity to respond BEFORE
+ * the suspension may be vacated. That opportunity has to have an
+ * "unresolved yet" state (`pending`) and can end in a decision NOT to
+ * vacate (`not-vacated`) as well as in the two elections the figure itself
+ * offers. Collapsing this to "vacated / not vacated" would misrepresent a
+ * notice still awaiting the accused's response as either a vacation that
+ * has not happened or one that has, when in truth nothing has been decided.
+ */
+export type Navmc10132VacationStatus = 'pending' | 'vacated-full' | 'vacated-part' | 'not-vacated';
+
+/**
+ * One vacation record against a suspended punishment. Decision row D-60.
+ *
+ * WHY THIS EXISTS. `njp-vacation-handoff.ts` generates the Figure 14-1
+ * notice; `navmc10132-remarks.ts` carries the `suspension-vacated-njp`
+ * remark kind that records a vacation on item 21. Nothing connected the
+ * two, so a vacation reached the UPB only if a clerk remembered to
+ * hand-add the remark. This record is the missing link: it is what
+ * `vacationRemarks` (navmc10132-acroform.ts) derives the item 21 remark
+ * from, so the remark no longer depends on anyone remembering it.
+ *
+ * WHY IT IS NOT "did this suspension get vacated: yes/no". Most
+ * suspensions are never vacated at all; they run out and remit under MCM
+ * Part V para 6.a(3). A model that only recorded yes/no would have no way
+ * to distinguish "never noticed" from "noticed, and still pending" from
+ * "noticed, and the commander decided not to vacate" — three different
+ * facts the app must not conflate, since only the derivation reading this
+ * record (not the mere existence of a suspension) can tell whether
+ * anything was actually vacated. See `Navmc10132VacationStatus`.
+ *
+ * TARGETS A SUSPENSION BY `suspensionIndex`, NEVER `punishmentIndex`. V-31
+ * (navmc10132-validators-punishment.ts) now blocks export on two item 7
+ * suspensions naming the same punishmentIndex, so a suspension's own
+ * position in `Navmc10132Data.suspensions` is what identifies it
+ * unambiguously; `punishmentIndex` identifies a punishment, not a
+ * suspension of it. See the identical note on `SuspensionPeriod` in
+ * njp-suspension-period.ts.
+ */
+export interface Navmc10132Vacation {
+  /**
+   * This vacation's target: the index of the suspension in
+   * `Navmc10132Data.suspensions` (equivalently, `SuspensionPeriod.suspensionIndex`
+   * from njp-suspension-period.ts) that Figure 14-1 was served against.
+   */
+  suspensionIndex: number;
+  /**
+   * ISO. The date the Figure 14-1 notice was SERVED on the accused.
+   *
+   * THIS IS NOT "the commencement of the vacation proceedings" from JAGMAN
+   * 0118.c/0118.d, and is deliberately never named or documented as such.
+   * JAGMAN 0118.c interrupts a suspension's running period on
+   * "commencement of proceedings to vacate", and 0118.d requires the
+   * vacating order within ten working days of "the commencement of the
+   * vacation proceedings" — but no source in this codebase equates
+   * "commencement of proceedings" with "the date the notice was served",
+   * and it would be easy but wrong to assume Figure 14-1 going out IS the
+   * commencement date. This field records only the fact it is named for.
+   * A future rule that needs "commencement of proceedings" must state that
+   * assumption explicitly at its own call site; it must not read this
+   * field and treat it as already having done so.
+   */
+  noticeServedDate: string;
+  /** See `Navmc10132VacationStatus`. */
+  status: Navmc10132VacationStatus;
+  /**
+   * ISO. The date `status` was decided, i.e. the date the commander acted
+   * on the accused's response (or non-response) to the notice. Unset while
+   * `status` is `'pending'`, since nothing has been decided yet to date.
+   */
+  outcomeDate?: string;
+  /**
+   * What was actually vacated. REQUIRED, in substance, when `status` is
+   * `'vacated-part'` — "in part" with nothing named is an incomplete
+   * record, and `navmc10132-v32-` (navmc10132-validators-punishment.ts)
+   * blocks export on a partial vacation missing this. Unused, and ignored
+   * by the derivation, for the other three statuses: a full vacation
+   * already names the whole suspended punishment through `suspensionIndex`,
+   * and neither `pending` nor `not-vacated` vacated anything to describe.
+   */
+  vacatedDetail?: string;
+  /**
+   * ISO. The date Article 31, UCMJ rights were read to the accused for THIS
+   * vacation action. Decision row D-54.
+   *
+   * NOT A FIGURE 14-1 FIELD. JAGMAN (JAGINST 5800.7G CH-2) para 0118.d
+   * requires the reading but Figure 14-1 prints no line for it and this
+   * codebase never adds content a source figure does not carry (see D-48).
+   * The fact still has to live somewhere or the app cannot check the one
+   * thing 0118.d actually orders checked: SEQUENCE. So it lives here, on
+   * the record of the vacation action itself, app-side and unprinted, the
+   * same posture as `accusedYearsOfService` and `forfeitureBasisGrade`
+   * above.
+   *
+   * WHY THIS FIELD MAKES W-18 ACTIONABLE RATHER THAN PERMANENT NOISE. Before
+   * D-60, a rights-advisement warning with nothing to record against and no
+   * way to clear it was rejected outright as training clerks to ignore
+   * warnings. This field is the acknowledgment: enter the date rights were
+   * read, and `navmc10132-w18-rights-not-recorded-*`
+   * (navmc10132-validators-punishment.ts) stops firing for this record. A
+   * second, distinct rule then checks what this field actually says: 0118.d
+   * requires the reading BEFORE the commander asks whether the accused
+   * wishes to make a statement, and Figure 14-1, the notice of intent, IS
+   * that ask, so `navmc10132-w18-rights-after-notice-*` compares this date
+   * against `noticeServedDate` and warns when rights were read on or after
+   * it rather than before.
+   *
+   * WHY BOTH SIDES OF THIS ARE 'warn', NEVER 'block'. Per D-49 the app
+   * gates only on the suspension DATE WINDOW; it has no way to know whether
+   * a given vacation's basis is misconduct (JAGMAN 0118.d's trigger) or a
+   * bare condition-of-suspension violation that JAGMAN 0118.d does not
+   * reach at all. Both W-18 sub-rules therefore name the condition rather
+   * than assert it. And even where 0118.d plainly applies, the app is
+   * recording HISTORY: blocking export on a wrong-order or unrecorded
+   * reading would trap a clerk from memorializing what already happened,
+   * and refusing the export cannot un-read the rights either way. See W-19
+   * in docs/NAVMC_10132_SPEC.md for the identical reasoning applied to the
+   * ten-working-day order deadline.
+   *
+   * Unset is the ordinary state for most existing records, including every
+   * fixture in tests/navmc10132-vacation.test.ts predating this field; nothing
+   * here treats an unset value as anything other than "not yet recorded."
+   */
+  article31RightsReadDate?: string;
+  /**
+   * ISO. The date the UCMJ offense, or JAGMAN 0118.d "violation of the
+   * conditions of suspension," that triggers THIS vacation was committed.
+   * Decision row D-49.
+   *
+   * MCO 5800.16 Vol 14 para 011201, verbatim: "Vacation of suspension may
+   * only be based on an offense under the UCMJ committed during the period
+   * of suspension." JAGMAN (JAGINST 5800.7G CH-2) para 0118.d words the
+   * same window more broadly, over "a violation of the conditions of
+   * suspension." Both sources word the WINDOW identically; they disagree
+   * only on the NATURE of what may trigger a vacation inside it, and this
+   * codebase cannot tell a UCMJ offense apart from a bare conditions
+   * violation from the data it holds. So this field records only the DATE,
+   * never a characterization of what happened, and `navmc10132-v29-`
+   * (navmc10132-validators-punishment.ts) and its W-21 companion test only
+   * the date window, per D-49's ruling. Naming the nature of the basis is
+   * left to `vacatedDetail` or the record's own free text, never inferred
+   * from this field.
+   *
+   * NOT `noticeServedDate`. That field is when Figure 14-1 was served on
+   * the accused, an action the commander takes; this field is when the
+   * accused's own triggering conduct occurred, ordinarily well before the
+   * notice. Comparing the wrong one against the suspension window would
+   * silently test the wrong fact.
+   *
+   * Unset is the ordinary state for a record predating this field, same
+   * posture as `article31RightsReadDate`: nothing here treats an unset
+   * value as anything other than "not yet recorded," and both
+   * `navmc10132-v29-` and its W-21 companion stay silent rather than guess.
+   */
+  offenceDate?: string;
+  /**
+   * Pay grade, e.g. 'O5', of the commander who actually vacates this
+   * suspension. Decision row D-56.
+   *
+   * MCO 5800.16 Vol 14 para 011201, verbatim: "A suspended NJP may be
+   * vacated by any commander authorized to impose upon the accused
+   * punishment of the kind and amount to be vacated." THE VACATING
+   * COMMANDER IS NOT NECESSARILY THE IMPOSING COMMANDER, so item 8A
+   * (`njpAuthorityGrade` / `njpAuthorityPayGrade`) is the WRONG source for
+   * this fact and must never be read in its place. JAGMAN (JAGINST
+   * 5800.7G CH-2) para 0118.a defines "successor in command" by reference
+   * to U.S. Navy Regulation 1026 and expressly does NOT limit it to the
+   * next succeeding officer, so this is a grade recorded on the vacation
+   * record itself, free text over a rank, not a pick from a chain of
+   * command this app knows or can compute.
+   *
+   * FEEDS `navmc10132-v30-` (navmc10132-validators-punishment.ts), which
+   * checks this grade against the suspended punishment's own required
+   * authority using the identical `authoritySatisfies` machinery W-05 uses
+   * for item 8A. That rule, and its W-22 "cannot determine" companion,
+   * apply ONLY to a `'vacated-full'` record: for `'vacated-part'`,
+   * `vacatedDetail` names what was vacated as free text this codebase
+   * cannot parse into a legal figure, so no rule reading this field may
+   * treat the whole punishment's requirement as a stand-in for a partial
+   * one. See both rules' own JSDoc for the full reasoning.
+   *
+   * Unset is the ordinary state for a record predating this field. Neither
+   * V-30 nor W-22 treats an unset value as anything other than "not yet
+   * recorded" or "cannot yet be checked."
+   */
+  vacatingAuthorityGrade?: string;
+}
+
 /** A structured item 21 entry. Phase 2's composer renders these. */
 export interface Navmc10132Remark {
   /** ISO. Rendered YYYY-MM-DD, matching the instruction's own prefix. */
@@ -420,7 +612,147 @@ export interface Navmc10132Remark {
   detail: string;
 }
 
+/**
+ * Which of the form's seven signature-locked passes the document is
+ * currently at, per docs/NAVMC_10132_SPEC.md section 13. `'complete'` is the
+ * state after pass 7's `16 FINAL ADMIN INIT` signature locks every field
+ * (`/Action /All`), a state the seven numbered passes never reach on their
+ * own, so it is a distinct value rather than an eighth pass number.
+ */
+export const NAVMC_10132_STAGE_VALUES = [1, 2, 3, 4, 5, 6, 7, 'complete'] as const;
+export type Navmc10132Stage = (typeof NAVMC_10132_STAGE_VALUES)[number];
+
+/**
+ * Clerk-facing name and explanation for each stage, keyed off what the stage
+ * unlocks rather than its pass number. Decision row D-46: the app shows
+ * sections derived from what the form itself still has open, so a clerk
+ * reads "punishment imposed," never "pass 3," which the form's own
+ * signature names never do either.
+ */
+export const NAVMC_10132_STAGE_INFO: Record<
+  Navmc10132Stage,
+  { label: string; description: string }
+> = {
+  1: {
+    label: 'Notification',
+    description:
+      "The charge sheet is being prepared and served. Opens the accused's information, the offenses, victims when the offenses involve one, and the NJP authority block. Findings and punishment stay closed, because the hearing has not happened yet.",
+  },
+  2: {
+    label: 'Awaiting the certifying officer',
+    description:
+      'The accused has signed the item 2 election and rights acknowledgment. The document is with the certifying officer for item 3. Nothing new opens at this stage.',
+  },
+  3: {
+    label: 'Punishment imposed',
+    description:
+      'The commander has heard the case and recorded findings and punishment. Opens the finding on each offense, the punishment builder, and any suspension of punishment.',
+  },
+  4: {
+    label: 'Appeal advisement given',
+    description:
+      'The accused has been advised of the right to appeal. Opens the appeal block.',
+  },
+  5: {
+    label: 'Appeal election recorded',
+    description:
+      'The accused has stated whether they intend to appeal. Nothing new opens at this stage.',
+  },
+  6: {
+    label: 'Appeal decided',
+    description:
+      'The reviewing authority has ruled on the appeal. Nothing new opens at this stage.',
+  },
+  7: {
+    label: 'Final action recorded',
+    description:
+      'The last entries, item 16 and any remaining remarks, are being made. Signing this pass locks the rest of the form.',
+  },
+  complete: {
+    label: 'Closed out',
+    description:
+      'The form is fully signed and every field is locked. Opens the unit diary transcription aid, so the punishment can be posted to the record.',
+  },
+};
+
+/**
+ * Reads `Navmc10132Data.stage` off a loose FormData bag, defaulting to pass 1
+ * exactly like `createEmptyNavmc10132Data` does for a fresh document. An
+ * unrecognized or missing value (a document from before this field existed,
+ * or a plain object built without it) falls back the same way.
+ */
+export function navmc10132Stage(formData: FormData): Navmc10132Stage {
+  const value = formData.stage;
+  return (NAVMC_10132_STAGE_VALUES as readonly unknown[]).includes(value)
+    ? (value as Navmc10132Stage)
+    : 1;
+}
+
+/**
+ * True once `stage` has reached `threshold` or later. Sections are additive
+ * (docs/NAVMC_10132_SPEC.md section 13.2): a pass's fields, once open, stay
+ * visible at every later stage, so callers gate visibility on this rather
+ * than an exact match. `'complete'` sorts after every numbered pass.
+ */
+export function navmc10132StageAtLeast(
+  stage: Navmc10132Stage,
+  threshold: 1 | 2 | 3 | 4 | 5 | 6 | 7,
+): boolean {
+  return stage === 'complete' ? true : stage >= threshold;
+}
+
+/**
+ * Reads `Navmc10132Data.stage` for the EXPORT GATE only (D-43, D-46). This is
+ * deliberately NOT `navmc10132Stage` above, and the two must not be merged:
+ * they answer different questions and default oppositely on purpose.
+ *
+ * `navmc10132Stage` answers "which sections does the UI show," and defaults
+ * a missing or unrecognized value to pass 1, matching what
+ * `createEmptyNavmc10132Data` sets on a brand new document. That default is
+ * safe for the UI precisely because it is what a FRESH document actually is.
+ *
+ * The export gate cannot reuse that default. `stage` is app state, never
+ * written to the AcroForm (see `Navmc10132Data.stage`'s own JSDoc), so a
+ * document saved before this field existed has no `stage` key at all, and
+ * that silence means "predates the field," never "just started." Defaulting
+ * such a document to pass 1 here would run every later-pass blocker
+ * (V-04, V-05, V-08, and whatever is added after them) as if the fields
+ * those rules check were still untouched, silently dropping real blockers
+ * on a document that is more likely complete than not. The two wrong
+ * defaults are not symmetric: defaulting an unrecognized value to
+ * `'complete'` merely runs every rule, exactly what the export gate already
+ * did before stage scoping existed, so the worst case is a false complaint
+ * on a genuinely early document, the same complaint a clerk already knows
+ * how to read past today. Defaulting it to pass 1 instead risks the opposite,
+ * an incomplete document exporting clean. Only a `stage` key that is present
+ * AND a recognized value (explicitly including the numeral `1`, which
+ * `createEmptyNavmc10132Data` sets, so a genuinely fresh document is still
+ * scoped to pass 1 here, not swept into `'complete'`) is trusted as-is.
+ */
+export function navmc10132ExportGateStage(formData: FormData): Navmc10132Stage {
+  const value = (formData as { stage?: unknown }).stage;
+  if (value === undefined) return 'complete';
+  return (NAVMC_10132_STAGE_VALUES as readonly unknown[]).includes(value)
+    ? (value as Navmc10132Stage)
+    : 'complete';
+}
+
 export interface Navmc10132Data {
+  /**
+   * Which pass the document is at. See `Navmc10132Stage`.
+   *
+   * APP STATE, NOT A FORM FIELD, exactly like `vesselException` below: it
+   * decides which sections this app shows, not a fact the form itself
+   * records, and it must never be written to the AcroForm. The app cannot
+   * yet read a signed PDF back to detect the pass on its own, that round
+   * trip is unbuilt, so a clerk sets this by hand today, and a fresh
+   * document defaults to pass 1. Typed as ordinary data rather than wired
+   * to a human-only control on purpose: once the round trip lands, an
+   * imported signed file sets this instead of the clerk, per decision row
+   * D-46, without any change to what reads it.
+   */
+  stage: Navmc10132Stage;
+
   // Items 17 to 20 - accused and unit
   unit: string;
   accusedName: string;
@@ -549,6 +881,23 @@ export interface Navmc10132Data {
    * punishmentOverflowToItem21 for item 6.
    */
   suspensionOverflowToItem21?: boolean;
+  /**
+   * Vacation records against item 7 suspensions. Decision row D-60. See
+   * `Navmc10132Vacation`. Not printed directly: `vacationRemarks`
+   * (navmc10132-acroform.ts) derives the item 21 `suspension-vacated-njp`
+   * remark from an EXECUTED entry here (`status` `'vacated-full'` or
+   * `'vacated-part'`); a `'pending'` or `'not-vacated'` entry derives
+   * nothing, because nothing was vacated.
+   *
+   * OWNED BY A FUTURE CUSTOM COMPONENT, NOT DynamicForm, matching every
+   * other structured array on this form (`punishments`, `suspensions`,
+   * `remarks`, `victims`). See the exclusion list on `Navmc10132Definition`
+   * in schemas.ts. No such component exists yet; this field has no writer
+   * in Phase 1 or Phase 3, and is reachable only by direct FormData
+   * manipulation (tests, import) until the panel is built and browser
+   * tested.
+   */
+  vacations?: Navmc10132Vacation[];
 
   // Item 8 - NJP authority
   njpAuthorityName: string;
@@ -600,6 +949,7 @@ export const NAVMC_10132_EMPTY_VICTIM: Navmc10132Victim = {
 
 export function createEmptyNavmc10132Data(): Navmc10132Data {
   return {
+    stage: 1,
     unit: '',
     accusedName: '',
     accusedService: 'USMC',
@@ -620,6 +970,7 @@ export function createEmptyNavmc10132Data(): Navmc10132Data {
     suspension: '',
     suspensions: [],
     suspensionOverflowToItem21: false,
+    vacations: [],
     njpAuthorityName: '',
     njpAuthorityGrade: '',
     njpAuthorityEdipi: '',

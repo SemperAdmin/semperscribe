@@ -37,6 +37,12 @@
  *    and enlisted 60-day restriction routes to N14 or N15.
  */
 
+import {
+  reductionBarred,
+  NAVMC_10132_REDUCTION_BAR_FLOOR,
+  type Navmc10132Service,
+} from '@/lib/navmc10132-ranks';
+
 /** Who the punishment may be imposed upon. */
 export type PunishmentAppliesTo = 'officer' | 'enlisted' | 'either';
 
@@ -368,7 +374,14 @@ export const NJP_AUTHORITY_LEVEL_LABEL: Readonly<Record<NjpAuthorityLevel, strin
  * claim a level", and every caller honors that rather than defaulting.
  */
 export function resolveAuthorityLevel(payGrade: string): NjpAuthorityLevel | null {
-  const match = /^O(\d+)$/i.exec(payGrade.trim().replace(/-/g, ''));
+  // THE E VARIANTS RESOLVE THE SAME WAY. O1E, O2E and O3E are the rates paid
+  // to an officer with prior enlisted service, and the page 3 note lists all
+  // three as pay grades this form accepts. An O3E is exactly as much a
+  // company-grade officer as an O3, and before this an item 8A recorded as
+  // O3E returned null here, printing a BLANK maximum punishment on A-1-d and
+  // reporting the grade as unreadable. Found while building the item 8A
+  // picker, 2026-08-26, because the picker offers what the form allows.
+  const match = /^O(\d+)E?$/i.exec(payGrade.trim().replace(/-/g, ''));
   if (!match) return null;
   const grade = Number(match[1]);
   if (!Number.isFinite(grade) || grade < 1 || grade > 10) return null;
@@ -480,8 +493,40 @@ export interface PunishmentAvailability {
  * preparation order. Those options come back with `unverified` true so the
  * caller can say the check has not run rather than implying it passed.
  */
-export function releaseOnePunishmentsFor(authorityPayGrade: string): PunishmentAvailability[] {
+export function releaseOnePunishmentsFor(
+  authorityPayGrade: string,
+  accused: { payGrade?: string; service?: Navmc10132Service } = {},
+): PunishmentAvailability[] {
+  /**
+   * THE ACCUSED'S OWN GRADE BARS A REDUCTION, whatever the authority holds.
+   * MCO 5800.16 Vol 14 para 010302.C: "Marines in the grade of E-6 or above
+   * and Sailors in the grade of E-7 or above may not be reduced in
+   * paygrade." Stephen, 2026-08-26: "we should block the reduction
+   * punishment for Marine SSgt and above and navy chiefs and above."
+   *
+   * OFFERED AND DISABLED, NOT HIDDEN, matching D-21's ruling for the
+   * authority-grade codes. A hidden code reads as one the app cannot
+   * produce; the real fact is that THIS accused may not receive it, and the
+   * reason is worth naming where the clerk is choosing.
+   */
+  const accusedGrade = (accused.payGrade ?? '').trim();
+  const service = accused.service ?? 'USMC';
+  const barred = accusedGrade !== '' && reductionBarred(accusedGrade, service);
+
   return NAVMC_10132_RELEASE_ONE_PUNISHMENTS.map((punishment) => {
+    if (barred && punishment.parameters.includes('gradeReducedTo')) {
+      const floor = NAVMC_10132_REDUCTION_BAR_FLOOR[service];
+      const who = service === 'USN' ? 'Sailors' : 'Marines';
+      return {
+        punishment,
+        available: false,
+        unverified: false,
+        reason:
+          `${who} in the grade of E-${floor} or above may not be reduced in paygrade ` +
+          `(MCO 5800.16 Vol 14 para 010302.C). Item 19 is ${accusedGrade}.`,
+      };
+    }
+
     const result = authoritySatisfies(punishment.requiredAuthority, authorityPayGrade);
 
     if (result === true) {

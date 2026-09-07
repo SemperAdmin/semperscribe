@@ -21,6 +21,10 @@ import {
   selectRightsAppendix,
   type NjpRightsCase,
 } from '@/lib/njp-a1-rights';
+import { renderNjpScript, type NjpScriptCase } from '@/lib/njp-a1-script';
+import { APPENDIX_A_1_F } from '@/lib/jagman-appendix-a1';
+import { renderPunishment, Navmc10132PunishmentRenderError } from '@/lib/navmc10132-utils';
+import type { Navmc10132PunishmentEntry } from '@/types/navmc';
 import {
   NJP_AUTHORITY_LEVEL_LABEL,
   maximumPunishment,
@@ -29,6 +33,12 @@ import {
 } from '@/lib/njp-maximum-punishment';
 import type { Navmc10132Service } from '@/lib/navmc10132-ranks';
 import { renderAppendixPdf, type AppendixPdfResult } from '@/lib/jagman-a1-pdf';
+import { punishmentMenu, forfeitureCeilingBlock } from '@/lib/njp-hearing-worksheet';
+import {
+  forfeitureLadder,
+  formForfeitureLadder,
+  type ForfeitureLadder,
+} from '@/lib/navmc10132-forfeiture-ladder';
 
 export interface PackageReadiness {
   ready: boolean;
@@ -169,6 +179,8 @@ export function maximumPunishmentStatus(formData: FormData): MaximumPunishmentSt
     authorityPayGrade,
     accusedPayGrade: str(formData, 'accusedPayGrade'),
     accusedService: formData.accusedService as Navmc10132Service | undefined,
+    accusedYearsOfService: str(formData, 'accusedYearsOfService'),
+    forfeiture: advisementForfeitureLadder(formData),
   });
 
   return {
@@ -199,6 +211,11 @@ export function buildRightsCase(formData: FormData): NjpRightsCase {
     authorityPayGrade: str(formData, 'njpAuthorityPayGrade'),
     accusedPayGrade: str(formData, 'accusedPayGrade'),
     accusedService: formData.accusedService as Navmc10132Service | undefined,
+    accusedYearsOfService: str(formData, 'accusedYearsOfService'),
+    // Stephen, 2026-08-26: "We should list the max based on the rank and
+    // times of service." Declines to nothing whenever the app cannot price
+    // it, and paragraph 3 then prints the statutory fractions alone.
+    forfeiture: advisementForfeitureLadder(formData),
   };
 }
 
@@ -241,4 +258,235 @@ function slug(value: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 40) || 'accused';
+}
+
+// ---------------------------------------------------------------------------
+// A-1-f, the commanding officer's NJP proceeding script
+// ---------------------------------------------------------------------------
+
+/**
+ * THE SCRIPT WAS BUILT AND WIRED TO NOTHING, which Stephen noticed on
+ * 2026-08-26: "We never added in the script." `njp-a1-script.ts` had been
+ * complete and tested since an earlier session and was imported by no
+ * component, only by tests. Exactly the state `njp-a1-rights.ts` was in
+ * before its button landed. This is the wiring.
+ *
+ * WHAT IT NEEDS AND WHAT IT DELIBERATELY LEAVES BLANK. A-1-f is read ALOUD
+ * at the hearing, so it is filled with what is known going in (the
+ * violations) and what is announced coming out (the findings and the
+ * punishment). Every ACC: and WIT: response line is left untouched, because
+ * those are the accused's and the witnesses' actual words, written by hand
+ * in real time. The appeal authority and advisor rules are left blank for
+ * the same reason: neither is a field on the NAVMC 10132, so the app has
+ * nothing truthful to put there and the printed appendix already carries a
+ * rule for hand completion.
+ */
+
+/**
+ * A-1-f needs less than the rights advisement does, and the difference is
+ * the point. The advisement identifies the Marine it is served ON, so it
+ * requires rank, name and unit. The script is read TO a Marine already
+ * standing there, so it needs only the offenses that will be read out.
+ *
+ * FINDINGS AND PUNISHMENT ARE NOT REQUIRED. The commanding officer reads
+ * the script in order to REACH them: requiring them first would mean the
+ * script could only be generated after the hearing it exists to conduct.
+ * Both print blank when unset, exactly as the paper appendix does.
+ */
+export function njpScriptReadiness(formData: FormData): PackageReadiness {
+  const missing: string[] = [];
+  if (chargedOffenses(formData).length === 0) {
+    missing.push('at least one offense with an article selected (item 1)');
+  }
+  return { ready: missing.length === 0, missing };
+}
+
+/**
+ * Item 5's findings, worded as the script reads them aloud.
+ *
+ * ONE PASS OVER THE RAW ROWS, NOT TWO. The first version of this function
+ * walked chargedOffenses() and indexed formData.offenses by the position in
+ * the FILTERED list. chargedOffenses drops any row with no article, so a
+ * blank or mid-entry row above a charged one shifted every finding down by
+ * one and the commander would have announced the wrong Marine's offense as
+ * guilty. Caught by this module's own test before it shipped. A finding
+ * belongs to its row, so the row is the only thing either value is read
+ * from.
+ */
+export function announcedFindings(formData: FormData): string[] {
+  const rows = Array.isArray(formData.offenses) ? (formData.offenses as Navmc10132Offense[]) : [];
+  return rows
+    .filter((row) => typeof row?.articleLabel === 'string' && row.articleLabel.trim() !== '')
+    // Only a GUILTY finding is read out here. The anchor line reads "I find
+    // that you have committed the following offenses", and listing an offense
+    // the accused was found NOT guilty of under that sentence would have the
+    // commander announce the opposite of the finding.
+    .filter((row) => (typeof row.finding === 'string' ? row.finding.trim() : '') === 'Guilty')
+    .map((row) => `${String(row.articleLabel).trim()}. ${typeof row.summary === 'string' ? row.summary.trim() : ''}`);
+}
+
+/** Item 6 as it will print, or empty when it cannot be rendered yet. */
+export function announcedPunishment(formData: FormData): string {
+  const entries = Array.isArray(formData.punishments)
+    ? (formData.punishments as Navmc10132PunishmentEntry[])
+    : [];
+  if (entries.length === 0) return '';
+  try {
+    return renderPunishment(entries).text;
+  } catch (err) {
+    // Mid-entry state, not a bug: an incomplete punishment row throws, and
+    // the script still has to generate with the rule blank.
+    if (err instanceof Navmc10132PunishmentRenderError) return '';
+    throw err;
+  }
+}
+
+/**
+ * The forfeiture ladder for this accused, priced on the item 6 date.
+ *
+ * READ FROM ITEM 19 AND ITEM 6, not from the punishment entries. At the
+ * moment the hearing script prints, item 6 is empty and no reduction has
+ * been chosen, so every rung is a "what if" and none is operative yet. Once
+ * a reduction IS recorded, `gradeReducedTo` names the operative rung and the
+ * same function serves the app's own display.
+ */
+/**
+ * The ladder as the RIGHTS ADVISEMENT needs it, priced on the advisement's
+ * own date.
+ *
+ * WHY NOT THE ITEM 6 DATE. A-1-c and A-1-d are served BEFORE the hearing, so
+ * item 6 carries no date and `scriptForfeitureLadder` would decline on every
+ * advisement ever generated. The date that matters here is the day the
+ * accused is advised, because that is the day he decides whether to refuse
+ * NJP on the strength of the figure. Item 2's election date is that day;
+ * item 3's attestation is the same sitting; item 6 is the fallback for a
+ * record copy produced after the fact.
+ *
+ * NO REDUCTION TARGET IS PASSED, on purpose. Nothing has been imposed when
+ * an advisement is served, so the accused's present grade is the operative
+ * basis and the reduced rung is the "if a reduction is imposed as well"
+ * case, which njp-maximum-punishment.ts states separately.
+ */
+export function advisementForfeitureLadder(formData: FormData): ForfeitureLadder {
+  const when =
+    str(formData, 'electionDate') ||
+    str(formData, 'rightsAttestDate') ||
+    str(formData, 'punishmentDate');
+
+  return forfeitureLadder({
+    payGrade: str(formData, 'accusedPayGrade'),
+    yearsOfService: str(formData, 'accusedYearsOfService'),
+    seaHardshipDutyPay: str(formData, 'accusedSeaHardshipDutyPay'),
+    punishmentDate: when,
+  });
+}
+
+export function scriptForfeitureLadder(formData: FormData): ForfeitureLadder {
+  // DELEGATES rather than assembling its own input bag. See
+  // formForfeitureLadder: the script, the punishment builder and the
+  // pay-and-service card must print one set of figures, and they only do
+  // that if they read one function.
+  return formForfeitureLadder(formData as unknown as { [key: string]: unknown });
+}
+
+/**
+ * What the worksheet cannot print yet, and what to set to fix it.
+ *
+ * SEPARATE FROM READINESS ON PURPOSE. None of these stops the script being
+ * generated: A-1-f without a menu is still the appendix, with a blank rule
+ * for hand completion, and Stephen's commanding officer still needs the
+ * paper. These are things the clerk can improve before printing, so they
+ * belong in the panel as advice rather than in `njpScriptReadiness` as a
+ * gate.
+ */
+export function scriptWorksheetGaps(formData: FormData): string[] {
+  const gaps: string[] = [];
+  if (
+    punishmentMenu(str(formData, 'njpAuthorityPayGrade'), {
+      payGrade: str(formData, 'accusedPayGrade'),
+    }).length === 0
+  ) {
+    gaps.push(
+      "set item 8A's pay grade to print the menu of punishments this commander may impose",
+    );
+  }
+  const ladder = scriptForfeitureLadder(formData);
+  // ONE GAP NOW, NOT TWO. The date branch is gone because the date no longer
+  // stops the figures printing: forfeitureCeiling reads the cell from the
+  // grade and the length of service alone and flags whether the table governs
+  // the punishment date. Stephen, 2026-08-27: "calculating the possibly max
+  // forf from the table based on the YOS and the grade should not require
+  // anything but the two elements." Telling a clerk to set item 6's date
+  // before printing a script generated BEFORE the hearing was advice he could
+  // not take.
+  if (ladder.rungs.length === 0) {
+    gaps.push("set item 19's pay grade and years of service to print the forfeiture ceilings");
+  }
+  // NOT A GAP, A CAVEAT. The ceilings print either way, so this does not
+  // belong with the things that stop them printing. It is listed because a
+  // clerk who can set the date should, and the printed block says the same.
+  const undated = ladder.rungs.some((rung) => !rung.ceiling.tableGovernsDate);
+  if (undated) {
+    gaps.push(
+      'set the item 6 punishment date to confirm the ceilings are priced on the governing ' +
+        'pay table; they print as a planning maximum until then',
+    );
+  }
+  return gaps;
+}
+
+export function buildScriptCase(formData: FormData): NjpScriptCase {
+  const readiness = njpScriptReadiness(formData);
+  if (!readiness.ready) {
+    throw new NjpPackageError(
+      `Cannot build the hearing script yet. Still needed: ${readiness.missing.join(', ')}.`,
+    );
+  }
+  const imposed = announcedPunishment(formData);
+
+  return {
+    offenses: chargedOffenses(formData),
+    findings: announcedFindings(formData),
+    punishmentImposed: imposed,
+    // COMPUTED ONLY WHERE NOTHING IS IMPOSED. A record copy of a completed
+    // proceeding states what was imposed, and a menu of unchosen options
+    // printed beneath that sentence would contradict it.
+    punishmentOptions:
+      imposed === ''
+        ? punishmentMenu(str(formData, 'njpAuthorityPayGrade'), {
+            payGrade: str(formData, 'accusedPayGrade'),
+          })
+        : [],
+    ceilingBlock:
+      imposed === '' ? forfeitureCeilingBlock(scriptForfeitureLadder(formData)) : [],
+    // NOT ON THE NAVMC 10132, either of them. Left blank so the printed rule
+    // is completed by hand, rather than inventing a superior authority.
+    appealAuthority: '',
+    appealAdvisor: '',
+  };
+}
+
+/** Renders A-1-f to PDF from the current form state. */
+export async function renderNjpProceedingScript(formData: FormData): Promise<PackageDocument> {
+  const input = buildScriptCase(formData);
+  const { lines, report } = renderNjpScript(input);
+
+  if (report.unmatched.length > 0) {
+    throw new NjpPackageError(
+      `The ${APPENDIX_A_1_F.designator} template did not fill cleanly: ` +
+        `${report.unmatched.map(([id]) => id).join(', ')}. The appendix text was ` +
+        'likely regenerated and an anchor went stale.',
+    );
+  }
+
+  const caption = `${captionName(accusedRankAbbreviation(formData), str(formData, 'accusedName'))}   ${str(formData, 'unit')}`;
+  const rendered = await renderAppendixPdf(APPENDIX_A_1_F, lines, { caption });
+
+  return {
+    ...rendered,
+    designator: APPENDIX_A_1_F.designator,
+    filename: `${APPENDIX_A_1_F.designator}-njp-proceeding-script-${slug(
+      captionName(accusedRankAbbreviation(formData), str(formData, 'accusedName')),
+    )}.pdf`,
+  };
 }

@@ -99,7 +99,7 @@ export const APPENDIX_A_1_C: JagmanAppendix = {
     'right to appear personally before the commanding officer, you',
     'will be entitled to the following rights at the proceeding:',
     '',
-    '        (1)    To be informed of your rights under Article 31,',
+    '        (1) To be informed of your rights under Article 31,',
     'UCMJ;',
     '',
     '        (2) To be informed of the information against you',
@@ -108,7 +108,6 @@ export const APPENDIX_A_1_C: JagmanAppendix = {
     '        (3) To be accompanied by a spokesperson provided or',
     'arranged for you. A spokesperson is not entitled to travel or',
     'similar expenses, and the proceedings will not be delayed to',
-    '',
     'permit the presence of a spokesperson. The spokesperson may',
     'speak on your behalf, but may not question witnesses except as',
     'the commanding officer may permit as a matter of discretion.',
@@ -122,6 +121,7 @@ export const APPENDIX_A_1_C: JagmanAppendix = {
     '',
     '        (5) To present matters in defense, extenuation, and',
     'mitigation orally, in writing, or both;',
+    '',
     '        (6) To have witnesses attend the proceeding, including',
     'those who may be witness(es) against you, if their statements',
     'will be relevant and the witness(es) are reasonably available.',
@@ -156,7 +156,6 @@ export const APPENDIX_A_1_C: JagmanAppendix = {
     '    ______ I wish to consult with a military lawyer before',
     'completing the remainder of this form.',
     '   ______ I wish to consult with a civilian lawyer before',
-    '',
     'completing the remainder of this form.',
     '',
     '    ______ I hereby voluntarily, knowingly, and intelligently',
@@ -170,24 +169,40 @@ export const APPENDIX_A_1_C: JagmanAppendix = {
     'evidence in aggravation at a later court-martial of the accused',
     'for other offenses.)',
     '',
+    // SIGNATURE AND DATE ON ONE LINE, Stephen 2026-08-26: "This will remove
+    // the date placeholders and allow then to write it on the same line as
+    // teh signature". A DELIBERATE DEPARTURE from the printed appendix's
+    // layout, and the only one in this file. The words are unchanged and no
+    // blank is removed: the same two signatures and the same two dates are
+    // still collected. A-1-g already prints "(Signature of Accused and Date)"
+    // on one line, so the pattern is the appendix set's own.
     '_______________________________ _______________________________',
-    '(Signature of witness)                  (Signature of Accused)',
-    '',
-    '    (Date)                                   (Date)',
+    '(Signature of witness) (Date)   (Signature of Accused) (Date)',
     '',
     '    (Note: If the accused wishes to consult with a lawyer, and',
     'consultation is operationally feasible, the remainder of this',
     'form will not be completed until the accused has been given a',
     'reasonable opportunity to do so.)',
     '',
-    '   _____ I consulted with _________________________________, a',
+    // SAME ARTIFACT, SAME FIX, and then squared to the rule below it.
+    // Stephen, 2026-08-26: "make a more semetrical and better spaced
+    // whitness listing the last three lines are good but teh first to are
+    // off". The blank split one sentence at ", a / lawyer, on", and the two
+    // rules ran to different columns while the signature rules beneath them
+    // both end at column 62. Both now end there too, so the four lines read
+    // as one block.
+    '   _____ I consulted with __________________________________, a',
+    '   lawyer, on ________________________________________________.',
     '',
-    'lawyer, on __________________________________.',
-    '',
+    // SIGNATURE AND DATE ON ONE LINE, Stephen 2026-08-26: "This will remove
+    // the date placeholders and allow then to write it on the same line as
+    // teh signature". A DELIBERATE DEPARTURE from the printed appendix's
+    // layout, and the only one in this file. The words are unchanged and no
+    // blank is removed: the same two signatures and the same two dates are
+    // still collected. A-1-g already prints "(Signature of Accused and Date)"
+    // on one line, so the pattern is the appendix set's own.
     '_______________________________ _______________________________',
-    '     (Signature of witness)             (Signature of Accused)',
-    '',
-    '    (Date)                                   (Date)',
+    '(Signature of witness) (Date)   (Signature of Accused) (Date)',
     '',
     '   b.   Personal appearance. (Check one)',
     '',
@@ -200,7 +215,6 @@ export const APPENDIX_A_1_C: JagmanAppendix = {
     '    ________ I do not desire to submit any written matters for',
     'consideration.',
     '   ________ I desire to submit written matters for',
-    '',
     'consideration by the NJP authority.   Written matters',
     'are/are not (circle one) attached.',
     '',
@@ -210,21 +224,28 @@ export const APPENDIX_A_1_C: JagmanAppendix = {
     '    ________ I request that the following witnesses be present',
     'at my NJP proceeding:',
     '',
+    // The same unevenness in A-1-c, one blank short between the last two.
     '         __________________________________________________',
     '',
     '         __________________________________________________',
     '',
     '         __________________________________________________',
+    '',
     '         __________________________________________________',
     '',
     '    ________ I request that my NJP proceeding be open to the',
     'public.',
     '',
-    '_______________________      _ ___________________________    _',
+    // A RULE WITH HOLES IN IT, from the extraction: 23 underscores, a gap, a
+    // stray single underscore, 27 more, another gap, another stray. It reads
+    // as a broken line above a signature. Stephen, 2026-08-26: these "need
+    // to match teh same length as those below them". They now are the same
+    // 31 + 31 rule the name block below already used.
+    '_______________________________ _______________________________',
     '(Signature of Accused and Date) (Signature of Witness and Date)',
     '',
-    '______________________________   _______________________________',
-    '(Name of Accused)                   (Name of witness)',
+    '_______________________________ _______________________________',
+    '(Name of Accused)               (Name of witness)',
   ],
 };
 
@@ -283,8 +304,13 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     'the right to submit any written matters you desire for the',
     'commanding officer’s consideration in determining whether or',
     'not you committed the offenses alleged, and, if so, in',
+    // NO BLANK HERE. The extraction turned a page break inside paragraph
+    // 4.a into a blank line, splitting one sentence across what read as two
+    // paragraphs: "You are hereby informed" then white space then "that you
+    // have the right to remain silent". Stephen, 2026-08-26: "Para 4.a is
+    // broken and shouild wrap properly." The lines themselves were already
+    // wrapped correctly, so removing the blank is the whole fix.
     'determining an appropriate punishment. You are hereby informed',
-    '',
     'that you have the right to remain silent and that anything you',
     'do submit for consideration may be used against you in a trial',
     'by court-martial.',
@@ -293,11 +319,18 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     'right to appear personally before the commanding officer, you',
     'will be entitled to the following rights at the proceeding:',
     '',
-    '        (1)   To be informed of your rights under Article 31,',
+    '        (1) To be informed of your rights under Article 31,',
     'UCMJ;',
     '',
     '        (2) To be informed of the information against you',
     'relating to the offenses alleged;',
+    // ONE BLANK LINE, ADDED 2026-08-26 on Stephen's report: "we need a hard
+    // space betwen (2) and (3)". Every other numbered right in this list is
+    // separated by one, and A-1-c carries the blank at this exact position
+    // in the same paragraph. The extraction dropped it here alone, so this
+    // restores parity between the two appendices rather than inventing a
+    // layout. No word of JAGMAN text changes.
+    '',
     '        (3) To be accompanied by a spokesperson provided or',
     'arranged by you. A spokesperson is not entitled to travel or',
     'similar expenses, and the proceedings will not be delayed to',
@@ -334,7 +367,10 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     'or not to exercise any of the rights explained above, you may',
     'obtain the advice of a lawyer before any decision. If you wish',
     'to consult with a lawyer, when operationally feasible, a',
-    '',
+    // FOURTH INSTANCE of the page-break artifact, and A-1-c proves it
+    // again: the identical paragraph there runs "...operationally feasible,
+    // a" straight into "military lawyer will be made available", with no
+    // blank. Stephen, 2026-08-26: "We need to remove the break betwen ...".
     'military lawyer will be made available to you, either in person',
     'or by telephone, free of charge, or you may obtain advice from',
     'a civilian lawyer at your own expense. Consultation with a',
@@ -363,24 +399,40 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     'evidence in aggravation during the sentencing proceedings of a',
     'later court-martial of the accused for other offenses.)',
     '',
+    // SIGNATURE AND DATE ON ONE LINE, Stephen 2026-08-26: "This will remove
+    // the date placeholders and allow then to write it on the same line as
+    // teh signature". A DELIBERATE DEPARTURE from the printed appendix's
+    // layout, and the only one in this file. The words are unchanged and no
+    // blank is removed: the same two signatures and the same two dates are
+    // still collected. A-1-g already prints "(Signature of Accused and Date)"
+    // on one line, so the pattern is the appendix set's own.
     '_______________________________ _______________________________',
-    '(Signature of witness)                  (Signature of Accused)',
-    '',
-    '    (Date)                                    (Date)',
+    '(Signature of witness) (Date)   (Signature of Accused) (Date)',
     '',
     '    (Note: If the accused wishes to consult with a lawyer, and',
     'the consultation is operationally feasible, the remainder of',
     'this form will not be completed until the accused has been',
     'given a reasonable opportunity to do so.)',
     '',
-    '   _____ I consulted with _________________________________, a',
+    // SAME ARTIFACT, SAME FIX, and then squared to the rule below it.
+    // Stephen, 2026-08-26: "make a more semetrical and better spaced
+    // whitness listing the last three lines are good but teh first to are
+    // off". The blank split one sentence at ", a / lawyer, on", and the two
+    // rules ran to different columns while the signature rules beneath them
+    // both end at column 62. Both now end there too, so the four lines read
+    // as one block.
+    '   _____ I consulted with __________________________________, a',
+    '   lawyer, on ________________________________________________.',
     '',
-    'lawyer, on __________________________________.',
-    '',
+    // SIGNATURE AND DATE ON ONE LINE, Stephen 2026-08-26: "This will remove
+    // the date placeholders and allow then to write it on the same line as
+    // teh signature". A DELIBERATE DEPARTURE from the printed appendix's
+    // layout, and the only one in this file. The words are unchanged and no
+    // blank is removed: the same two signatures and the same two dates are
+    // still collected. A-1-g already prints "(Signature of Accused and Date)"
+    // on one line, so the pattern is the appendix set's own.
     '_______________________________ _______________________________',
-    '     (Signature of witness)             (Signature of Accused)',
-    '',
-    '    (Date)                                    (Date)',
+    '(Signature of witness) (Date)   (Signature of Accused) (Date)',
     '',
     '  b.    Right to refuse NJP. (Check one)',
     '',
@@ -422,8 +474,15 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     '    ________ I request that the following witnesses be present',
     'at my NJP proceeding:',
     '',
-    '                ______________________________________',
-    '                ______________________________________',
+    // THE FIVE WITNESS RULES ARE ONE GRID. Stephen, 2026-08-26: "we now have
+    // 5 lines ... however they are not even and teh same. the last three are
+    // speced and place correctly. I want all 5 to be the same." The first
+    // two sat one column further right, ran a character longer, and had no
+    // blank between them. The last three were the correct geometry, so they
+    // are the pattern the other two now follow.
+    '               ______________________________________',
+    '',
+    '               ______________________________________',
     '',
     '               ______________________________________',
     '',
@@ -434,11 +493,16 @@ export const APPENDIX_A_1_D: JagmanAppendix = {
     '    ________ I request that my nonjudicial punishment',
     'proceeding be open to the public.',
     '',
-    '_______________________      _ ___________________________    _',
+    // A RULE WITH HOLES IN IT, from the extraction: 23 underscores, a gap, a
+    // stray single underscore, 27 more, another gap, another stray. It reads
+    // as a broken line above a signature. Stephen, 2026-08-26: these "need
+    // to match teh same length as those below them". They now are the same
+    // 31 + 31 rule the name block below already used.
+    '_______________________________ _______________________________',
     '(Signature of Accused and Date) (Signature of Witness and Date)',
     '',
     '_______________________________ _______________________________',
-    '(Name of Accused)                  (Name of witness)',
+    '(Name of Accused)               (Name of witness)',
   ],
 };
 
@@ -653,6 +717,7 @@ export const APPENDIX_A_1_G: JagmanAppendix = {
     '',
     '        (2) The punishment was disproportionate to the',
     'offense(s) for which it was imposed.',
+    '',
     '    f. If the punishment imposed included reduction from the',
     'pay grade of E-4 or above, or was in excess of: arrest in',
     'quarters for seven days, correctional custody for seven days,',
@@ -661,7 +726,12 @@ export const APPENDIX_A_1_G: JagmanAppendix = {
     'military lawyer for consideration and advice before action is',
     'taken on my appeal.',
     '',
-    '_______________________      _ ___________________________    _',
+    // A RULE WITH HOLES IN IT, from the extraction: 23 underscores, a gap, a
+    // stray single underscore, 27 more, another gap, another stray. It reads
+    // as a broken line above a signature. Stephen, 2026-08-26: these "need
+    // to match teh same length as those below them". They now are the same
+    // 31 + 31 rule the name block below already used.
+    '_______________________________ _______________________________',
     '(Signature of Accused and Date) (Signature of Witness and Date)',
   ],
 };
@@ -720,8 +790,8 @@ export const APPENDIX_A_1_H: JagmanAppendix = {
     'detecting and avoiding danger from collision as required by USS',
     '_________________ Standing Night Orders and the U.S. Navy',
     'Regulations.',
-    '   c.    Inform your commanding officer when you made a course',
     '',
+    '   c.    Inform your commanding officer when you made a course',
     'and speed change at about 6 minutes before the collision as',
     'required by the U.S. Navy Regulations.',
     '',

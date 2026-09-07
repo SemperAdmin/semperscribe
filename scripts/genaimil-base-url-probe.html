@@ -1,0 +1,202 @@
+<title>GenAI.mil base URL probe</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 14px/1.5 "Segoe UI", system-ui, sans-serif; margin: 0; padding: 24px; background:#0f1115; color:#e6e8ec; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 24px 0 8px; color:#9aa4b2; text-transform: uppercase; letter-spacing:.06em; }
+  .sub { color:#9aa4b2; margin: 0 0 20px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #262b34; vertical-align: top; }
+  th { color:#9aa4b2; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing:.05em; }
+  td.id { font-family: Consolas, monospace; white-space: nowrap; color:#9aa4b2; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-weight:700; font-size:12px; font-family: Consolas, monospace; }
+  .OPAQUE  { background:#14532d; color:#bbf7d0; }
+  .OK      { background:#065f46; color:#a7f3d0; }
+  .REJECTED{ background:#7f1d1d; color:#fecaca; }
+  .TIMEOUT { background:#78350f; color:#fed7aa; }
+  .PENDING { background:#1e293b; color:#94a3b8; }
+  .detail { font-family: Consolas, monospace; font-size: 12px; color:#c3c9d4; word-break: break-word; }
+  .verdict { border:1px solid #2b313c; border-radius:8px; padding:16px; margin: 20px 0; background:#151922; }
+  .verdict b { color:#fff; }
+  button { font: inherit; padding: 8px 16px; border-radius:6px; border:1px solid #3a424f; background:#1c2230; color:#e6e8ec; cursor:pointer; margin-right:8px; }
+  button:hover { background:#252d3d; }
+  textarea { width:100%; height:240px; margin-top:12px; background:#0b0e13; color:#c3c9d4; border:1px solid #2b313c; border-radius:6px; font-family: Consolas, monospace; font-size:12px; padding:10px; }
+  .warn { border-left:3px solid #b45309; padding-left:12px; color:#fcd34d; margin:16px 0; }
+  code { background:#1c2230; padding:1px 5px; border-radius:3px; }
+</style>
+
+<h1>GenAI.mil base URL probe</h1>
+<p class="sub">Which base URL speaks CORS: <code>api.genai.mil</code> or <code>genai.mil/stark/api</code>? Ten seconds, no console needed.</p>
+
+<div class="warn">
+  <b>Read this before reading the results.</b> On the <code>cors</code> rows, RESOLVED is a PASS even when the status is 401, 403 or 404. A resolved promise proves the server sent <code>Access-Control-Allow-Origin</code> and the browser was willing to expose the response. Whether the path exists is a separate question and does not matter here. Only a REJECTED row means the CORS headers are missing.
+</div>
+
+<div class="warn">
+  <b>Read the controls first.</b> C1 must be OPAQUE and C2 must be REJECTED. If either misbehaves the run is VOID and every other row is meaningless.
+</div>
+
+<div class="warn">
+  Opened from disk this page sends <code>Origin: null</code>. A REJECTED cors row is conclusive. A RESOLVED cors row proves the host emits CORS headers permissive enough for a null origin, which is strong evidence and not final proof for the deployed origin. Re-run from the app origin to close that gap.
+</div>
+
+<div>
+  <button id="run">Re-run all probes</button>
+  <button id="copy">Copy results</button>
+</div>
+
+<h2>Controls</h2>
+<table><thead><tr><th style="width:56px">ID</th><th style="width:120px">Result</th><th style="width:70px">ms</th><th>Test and detail</th></tr></thead><tbody id="controls"></tbody></table>
+
+<h2>Base A: api.genai.mil (what SemperScribe calls today)</h2>
+<table><thead><tr><th style="width:56px">ID</th><th style="width:120px">Result</th><th style="width:70px">ms</th><th>Test and detail</th></tr></thead><tbody id="baseA"></tbody></table>
+
+<h2>Base B: genai.mil/stark/api (what the documentation points at)</h2>
+<table><thead><tr><th style="width:56px">ID</th><th style="width:120px">Result</th><th style="width:70px">ms</th><th>Test and detail</th></tr></thead><tbody id="baseB"></tbody></table>
+
+<div class="verdict" id="verdict">Running.</div>
+
+<h2>Copyable report</h2>
+<textarea id="report" readonly></textarea>
+
+<script>
+const A = 'https://api.genai.mil';
+const B = 'https://genai.mil/stark/api';
+
+async function probe(url, init) {
+  const isCors = init && init.mode === 'cors';
+  const t0 = performance.now();
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 10000);
+  try {
+    const res = await fetch(url, Object.assign({ signal: ctl.signal }, init));
+    clearTimeout(timer);
+    const ms = Math.round(performance.now() - t0);
+    if (res.type === 'opaque') {
+      return { cls: 'OPAQUE', ms,
+        detail: 'RESOLVED opaque. status=0 ok=false by design. The request reached the network and a response came back. Transport is healthy. Says NOTHING about CORS.' };
+    }
+    let acao = '(unreadable)';
+    try { acao = res.headers.get('access-control-allow-origin') || '(absent)'; } catch (e) {}
+    return { cls: 'OK', ms,
+      detail: 'RESOLVED. type=' + res.type + ' status=' + res.status + ' ok=' + res.ok +
+              ' access-control-allow-origin=' + acao +
+              '. The browser exposed this response, so the server DID send usable CORS headers. A 401/403/404 here is still a CORS PASS.' };
+  } catch (err) {
+    clearTimeout(timer);
+    const ms = Math.round(performance.now() - t0);
+    if (err && err.name === 'AbortError') {
+      return { cls: 'TIMEOUT', ms, detail: 'No answer within 10000 ms. A hang, not a refusal.' };
+    }
+    return { cls: 'REJECTED', ms,
+      detail: 'REJECTED. ' + (err && err.name) + ': ' + (err && err.message) +
+              (isCors
+                ? '. This is a cors row. Where the matching no-cors row proved transport healthy, the only remaining cause is a response carrying no usable Access-Control-Allow-Origin.'
+                : '. This is a no-cors row, so CORS is not involved. The cause is transport: DNS, TLS, routing, or a proxy refusal.') };
+  }
+}
+
+const NOCORS = { method:'GET', mode:'no-cors', cache:'no-store' };
+const CORSGET = { method:'GET', mode:'cors', cache:'no-store' };
+const CORSPOST = { method:'POST', mode:'cors', cache:'no-store',
+  headers:{ 'content-type':'application/json' }, body:'{"probe":true}' };
+
+const TESTS = [
+  { g:'controls', id:'C1', d:'Control, reachable host. no-cors GET to generativelanguage.googleapis.com. Expect OPAQUE.',
+    run: () => probe('https://generativelanguage.googleapis.com/', NOCORS) },
+  { g:'controls', id:'C2', d:'Control, unroutable host. no-cors GET to an .invalid name. Expect REJECTED.',
+    run: () => probe('https://probe-control-does-not-exist.invalid/', NOCORS) },
+
+  { g:'baseA', id:'A1', d:'no-cors GET ' + A + '/ . Transport check only.',
+    run: () => probe(A + '/', NOCORS) },
+  { g:'baseA', id:'A2', d:'cors GET ' + A + '/ . No preflight generated. Tests ONLY whether the response carries Access-Control-Allow-Origin.',
+    run: () => probe(A + '/', CORSGET) },
+  { g:'baseA', id:'A3', d:'cors POST ' + A + '/v1/chat/completions with application/json. Forces a preflight.',
+    run: () => probe(A + '/v1/chat/completions', CORSPOST) },
+
+  { g:'baseB', id:'B1', d:'no-cors GET https://genai.mil/ . Transport check for the application host.',
+    run: () => probe('https://genai.mil/', NOCORS) },
+  { g:'baseB', id:'B2', d:'cors GET ' + B + '/ . THE DECIDING ROW. No preflight. Any resolved status means this host speaks CORS.',
+    run: () => probe(B + '/', CORSGET) },
+  { g:'baseB', id:'B3', d:'cors GET ' + B + '/v1/models . The documented GET endpoint shape. A 401 here is a PASS for the CORS question.',
+    run: () => probe(B + '/v1/models', CORSGET) },
+  { g:'baseB', id:'B4', d:'cors POST ' + B + '/v1/chat/completions with application/json. Forces a preflight on the documented base.',
+    run: () => probe(B + '/v1/chat/completions', CORSPOST) },
+];
+
+const R = {};
+
+function render() {
+  for (const g of ['controls','baseA','baseB']) {
+    document.getElementById(g).innerHTML = TESTS.filter(t => t.g === g).map(t => {
+      const r = R[t.id];
+      const cls = r ? r.cls : 'PENDING';
+      return '<tr><td class="id">' + t.id + '</td>' +
+        '<td><span class="tag ' + cls + '">' + cls + '</span></td>' +
+        '<td class="detail">' + (r ? r.ms : '') + '</td>' +
+        '<td><div>' + t.d + '</div><div class="detail">' + (r ? r.detail : '') + '</div></td></tr>';
+    }).join('');
+  }
+}
+
+function verdict() {
+  const c = id => R[id] && R[id].cls;
+  const v = document.getElementById('verdict');
+  if (c('C1') !== 'OPAQUE' || c('C2') !== 'REJECTED') {
+    v.innerHTML = '<b>VOID.</b> The controls did not behave. C1 must be OPAQUE and C2 must be REJECTED. This browser has no general egress right now, or something is intercepting every request. Ignore every other row.';
+    return;
+  }
+  const bReach = c('B1') === 'OPAQUE';
+  const bCors  = ['B2','B3','B4'].some(id => c(id) === 'OK');
+  const aCors  = ['A2','A3'].some(id => c(id) === 'OK');
+
+  if (!bReach) {
+    v.innerHTML = '<b>genai.mil IS NOT REACHABLE from this browser.</b> B1 did not return opaque while control C1 did. Resolve that before reading any other Base B row. Check the row detail for a hang versus a refusal.';
+    return;
+  }
+  if (bCors && !aCors) {
+    v.innerHTML = '<b>WRONG BASE URL. THE APP IS CALLING THE WRONG HOST.</b> genai.mil/stark/api returns usable CORS headers and api.genai.mil does not. There is no gateway defect to report and NO PROXY IS NEEDED. Point the adapter at the documented base, confirm the exact paths against the swagger schema, and re-test. Do not send the defect report.';
+    return;
+  }
+  if (bCors && aCors) {
+    v.innerHTML = '<b>BOTH BASES SPEAK CORS.</b> Something changed since the 11 August run. Re-run the original transport probe and re-check the defect report before sending anything.';
+    return;
+  }
+  if (!bCors && aCors) {
+    v.innerHTML = '<b>UNEXPECTED.</b> api.genai.mil speaks CORS and the documented base does not. Report both rows verbatim before acting.';
+    return;
+  }
+  v.innerHTML = '<b>NEITHER BASE SPEAKS CORS. The defect report stands and now covers both hosts.</b> genai.mil is reachable (B1 opaque) yet every cors row on both bases was refused. The base URL was not the problem. Add these rows to the report, keep the proxy work, and send it.';
+}
+
+function report() {
+  const L = ['GENAI.MIL BASE URL PROBE',
+    'page origin : ' + window.location.origin,
+    'page url    : ' + window.location.href,
+    'user agent  : ' + navigator.userAgent,
+    'run at      : ' + new Date().toISOString(), ''];
+  for (const t of TESTS) {
+    const r = R[t.id];
+    L.push(t.id + '  ' + (r ? r.cls : 'PENDING') + '  ' + (r ? r.ms + 'ms' : ''));
+    L.push('    test   : ' + t.d);
+    L.push('    result : ' + (r ? r.detail : ''));
+  }
+  L.push('', 'VERDICT: ' + document.getElementById('verdict').innerText);
+  document.getElementById('report').value = L.join('\n');
+}
+
+async function runAll() {
+  for (const k of Object.keys(R)) delete R[k];
+  render();
+  document.getElementById('verdict').innerHTML = 'Running.';
+  await Promise.all(TESTS.map(async t => { R[t.id] = await t.run(); render(); }));
+  verdict();
+  report();
+}
+
+document.getElementById('run').addEventListener('click', runAll);
+document.getElementById('copy').addEventListener('click', () => {
+  const ta = document.getElementById('report'); ta.select(); document.execCommand('copy');
+});
+runAll();
+</script>

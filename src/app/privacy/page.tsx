@@ -30,7 +30,7 @@ export default function PrivacyAndSecurityNoticePage() {
         <section>
           <h2 className="text-lg font-semibold mb-2">1. Status of This Application</h2>
           <p>
-            SemperScribe is a non-official Proof of Concept (PoC) maintained on a personal basis. It is not official USMC, DON, or DoD software. It does not carry an Authority to Operate (ATO). Use is at the user's discretion and risk.
+            SemperScribe is a non-official Proof of Concept (PoC) maintained on a personal basis. It is not official USMC, DON, or DoD software. It does not carry an Authority to Operate (ATO) and holds no CUI authorization of its own. Use is at the user's discretion and risk.
           </p>
         </section>
 
@@ -47,18 +47,44 @@ export default function PrivacyAndSecurityNoticePage() {
             The following statements describe the document formatter. The optional GunnyBot assistant is the single exception and is covered in Section 5A.
           </p>
           <ul className="list-disc list-inside space-y-1 pl-2">
-            <li>The formatter does not collect, store, or transmit Personally Identifiable Information (PII).</li>
-            <li>The formatter does not collect, process, or transmit Controlled Unclassified Information (CUI).</li>
+            <li>The formatter transmits nothing. No document, and no part of one, reaches any system the operator controls.</li>
             <li>The application emits no telemetry, no analytics, and no usage beacons to any third-party host at runtime.</li>
             <li>The formatter calls no backend, database, or external API at runtime. GunnyBot, when the user enables it, calls the user's chosen provider directly, per Section 5A.</li>
-            <li>The application sets no third-party cookies. Local browser storage is used only for the user's own draft persistence. The GunnyBot API key is held in session memory, not local storage, and clears when the tab closes.</li>
+            <li>The application sets no third-party cookies. The GunnyBot API key is held in session memory, not local storage, and clears when the tab closes.</li>
           </ul>
+          <p className="mt-2">
+            Two claims left this list on 26 August 2026 because they were not true. It said the formatter does not <em>store</em> PII and does not <em>process</em> CUI. It does both, on the user&apos;s own machine: what the user enters is written to browser storage, and the application reads and formats it. What it does not do is send any of it anywhere. Section 3A states what persists and where.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold mb-2">3A. What Persists, and Where</h2>
+          <p className="mb-2">
+            Everything below is written to the browser profile on the computer the application is opened on. None of it leaves that computer.
+          </p>
+          <ul className="list-disc list-inside space-y-1 pl-2">
+            <li>Saved drafts, in the IndexedDB database named <code>semperscribe</code>, object store <code>documents</code>. Each carries the full contents of the document.</li>
+            <li>Files bound to a document, in the <code>enclosureFiles</code> store. This includes an uploaded NAVMC 10132, retained in full so later exports write into the signed original rather than a copy of it. A signed unit punishment book runs to several megabytes and carries the accused&apos;s name and DoD ID.</li>
+            <li>Application settings and the unit profile, in the <code>settings</code> store and in local storage.</li>
+          </ul>
+          <p className="mt-2">
+            Clearing the form, or starting a new case, deletes the uploaded file and resets the document. Deleting a document from the library removes it and its bound files. Neither reaches any other copy the user has made, including exported PDFs saved elsewhere on the computer.
+          </p>
+          <p className="mt-2">
+            Because this persists on the user&apos;s own machine, the machine is what has to be approved for the information entered. A government furnished workstation already accredited for a Marine&apos;s service record is approved for a document drawn from it. A personally owned computer is not.
+          </p>
         </section>
 
         <section>
           <h2 className="text-lg font-semibold mb-2">4. User Responsibilities</h2>
+          <p className="mb-2">
+            The application has no technical mechanism to recognize or reject sensitive input, and does not attempt one. The user decides what to enter, on a computer approved for it, and bears sole responsibility for the content they enter and the use they make of generated output.
+          </p>
           <p>
-            The application has no technical mechanism to recognize or reject sensitive input. Users must not enter CUI, PII, Protected Health Information (PHI), classified material, or any other sensitive data into the form fields. The user bears sole responsibility for the content they enter and the use they make of generated output.
+            Classified material is never permitted. CUI is governed by the system, not by this application: DoDI 5200.48 paragraph 3.3.c requires CUI to be processed on a DoD information system at the moderate confidentiality level, and paragraph 3.10.b bars non-DoD information systems for official business involving CUI unless approved. Whether this application, served from a non-DoD host and run in a browser on your system, is permitted for CUI is your authorizing official's decision. Until your command has granted that approval, do not enter CUI. Personally Identifiable Information (PII) such as names and EDIPI, and Protected Health Information (PHI), may be entered at the user's discretion and risk: the formatter never transmits it, and every export is scanned for SSN and EDIPI patterns and PHI keyword clusters before the file is written (Section 5B). The user bears sole responsibility for the content they enter, for any Privacy Act obligation it creates (Section 7), and for the use they make of generated output.
+          </p>
+          <p>
+            Two features move a document off the computer, and each warns where it is used rather than here. GunnyBot sends what the user submits to the provider the user configured, per Section 5A. A share link carries the whole document inside the link itself, so the document travels wherever the link travels.
           </p>
         </section>
 
@@ -83,6 +109,16 @@ export default function PrivacyAndSecurityNoticePage() {
         </section>
 
         <section>
+          <h2 className="text-lg font-semibold mb-2">5B. The Pre-Export Scan</h2>
+          <p>
+            Before any PDF, DOCX, official-form, or batch ZIP download, the application scans the document in the browser for the Social Security number digit pattern, the ten-digit EDIPI, and clusters of medical keywords. A match opens a dialog naming the finding, and the file is written only if the user acknowledges it. The scan never leaves the browser and records nothing.
+          </p>
+          <p className="mt-2">
+            This scan is the control behind Section 4. Several document types exist to carry identifiers, among them the NAVMC 10132 Unit Punishment Book, the NAVMC 118(11) Page 11, the NAVMC 10274 Administrative Action form, and the Counseling Worksheet, each of which asks for a Marine&apos;s EDIPI. The scan does not block those exports. It makes the user say, at the moment of export, that a file carrying a personal identifier is leaving the browser and is now subject to their command&apos;s handling rules. It is a tripwire, not a certification: it does not detect CUI, classification markings, or any identifier outside those patterns, and it produces occasional false matches on unrelated ten-digit numbers.
+          </p>
+        </section>
+
+        <section>
           <h2 className="text-lg font-semibold mb-2">6. Output as Federal Record</h2>
           <p>
             When a user takes a document generated by SemperScribe and uses it to transact official business, that document becomes a Federal record under 44 USC 3301. Records management is the user's responsibility through their Command Designated Records Manager per MCO 5210.11F. SemperScribe does not perform records-management functions and is not registered as an Electronic Information System (EIS).
@@ -99,7 +135,10 @@ export default function PrivacyAndSecurityNoticePage() {
         <section>
           <h2 className="text-lg font-semibold mb-2">8. Security Posture</h2>
           <p>
-            The application is statically exported and hosted on GitHub Pages. It has no backend. There is no authentication, no session management, and no server-side state. Browser security is the user's first and last line of defense. For vulnerability reporting, see the SECURITY.md document at the repository root.
+            The application is statically exported and hosted on GitHub Pages. It has no backend. There is no authentication, no session management, and no server-side state. Browser security is the user&apos;s first and last line of defense. For vulnerability reporting, see the SECURITY.md document at the repository root.
+          </p>
+          <p className="mt-2">
+            Having no backend is not the same as nothing being logged. GitHub serves the pages and sees the request for each one, including the full address requested. Anything placed in a URL by this application therefore reaches a third party&apos;s logs. Share links are built so the document rides in the fragment after the <code>#</code>, which browsers do not send to the server, rather than in the query string, which they do. Links created before 26 August 2026 used the query string and their contents reached those logs.
           </p>
         </section>
 

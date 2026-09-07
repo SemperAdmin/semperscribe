@@ -27,6 +27,8 @@
 
 import React from 'react';
 import { Label } from '@/components/ui/label';
+import { isNavmc10132KeyLocked } from '@/lib/navmc10132-locks';
+import { LockedBadge, ReadOnlyValue } from '@/components/letter/navmc10132/OffensesSection';
 import { Input } from '@/components/ui/input';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -48,6 +50,15 @@ import {
 interface SectionProps {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
+  /**
+   * Suppress the read-only echo of item 19 when the caller already shows it.
+   * The parent collapses items 17-20 to a summary when a signature closes
+   * every one of them, and that summary states the rank and pay grade. This
+   * card still renders in that case, because years of service and sea pay
+   * are not on the form and no signature closes them, so without this flag
+   * item 19 would be printed twice on the same screen.
+   */
+  item19ShownByCaller?: boolean;
   SectionCard: React.ComponentType<{
     icon: React.ReactNode;
     title: string;
@@ -61,7 +72,12 @@ function str(formData: FormData, key: string): string {
   return typeof value === 'string' ? value : '';
 }
 
-export function AccusedRankSection({ formData, setFormData, SectionCard }: SectionProps) {
+export function AccusedRankSection({
+  formData,
+  setFormData,
+  SectionCard,
+  item19ShownByCaller = false,
+}: SectionProps) {
   const service = str(formData, 'accusedService') || 'USMC';
   const payGrade = str(formData, 'accusedPayGrade');
   const rankGrade = str(formData, 'accusedRankGrade');
@@ -115,6 +131,23 @@ export function AccusedRankSection({ formData, setFormData, SectionCard }: Secti
   const diverges = service === 'USMC' && rankGradeDiverges(rankAbbrev, payGrade);
   const isPettyOfficer = NAVMC_10132_ENLISTED_PAY_GRADES.indexOf(payGrade as never) >= 3;
 
+  /**
+   * ITEM 19 IS ON THE FORM AND CAN BE CLOSED BY A SIGNATURE; THE TWO FIELDS
+   * BELOW IT ARE NOT AND CANNOT.
+   *
+   * Stephen, 2026-08-26: item 19's data "should have been blocked as it is on
+   * the form", but completed years of service and sea or hardship duty pay
+   * should not, because they are not on it. Measured on his signed file:
+   * `19 ACCUSED RANK/GRADE` is one of the 45 closed fields, and there is no
+   * AcroForm field for either of the other two anywhere on the form.
+   *
+   * So the lock covers service, rank and pay grade, which together COMPOSE
+   * item 19, and stops there. Years of service and sea pay feed the
+   * forfeiture ceiling, which is app-side arithmetic a clerk may still need
+   * to correct on a signed document.
+   */
+  const item19Locked = isNavmc10132KeyLocked(formData, 'accusedRankGrade');
+
   return (
     <SectionCard icon={<BadgeCheck className="mr-2 h-5 w-5" />} title="Rank and Pay Grade (Item 19)">
       <div className="space-y-4">
@@ -125,6 +158,19 @@ export function AccusedRankSection({ formData, setFormData, SectionCard }: Secti
           corpsman is HM2.
         </p>
 
+        {item19Locked ? (
+          <div className="space-y-1">
+            <Label className="text-xs">
+              Item 19, as it prints on the signed form
+              <LockedBadge />
+            </Label>
+            {!item19ShownByCaller && <ReadOnlyValue value={rankGrade} />}
+            <p className="text-[11px] text-muted-foreground">
+              Service, rank and pay grade compose this one field, and a signature has closed
+              it. Correcting it means a corrected copy and a new signature, not an edit here.
+            </p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="space-y-1">
             <Label className="text-xs">Service</Label>
@@ -199,6 +245,7 @@ export function AccusedRankSection({ formData, setFormData, SectionCard }: Secti
             </Select>
           </div>
         </div>
+        )}
 
         {service === 'USN' && !isPettyOfficer && (
           <p className="text-[11px] text-muted-foreground">
@@ -219,81 +266,20 @@ export function AccusedRankSection({ formData, setFormData, SectionCard }: Secti
           </div>
         )}
 
-        {/*
-          Years of service sits BESIDE item 19 because it belongs to the same
-          fact as the pay grade: MCM Part V para 5.c(8) defines basic pay as
-          "the basic pay fixed by statute for the grade and length of service
-          of the person concerned." Grade alone names no rate, so a forfeiture
-          cannot be computed without both, and separating them across two cards
-          invites the clerk to fill one and forget the other.
-
-          IT DOES NOT PRINT, and the layout says so rather than implying
-          otherwise by sitting next to a field that does. The blank form
-          carries 74 AcroForm fields and none of them is years of service:
-          items 17 through 20 are UNIT, ACCUSED FULL NAME, ACCUSED RANK/GRADE,
-          and ACCUSED EDIPI. Composing it into the item 19 string instead would
-          break the page 3 note, which fixes exactly what that box may contain.
-          If a future revision of the form adds a box, map it in the acroform
-          writer, do not smuggle it into item 19.
-        */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="space-y-1 rounded-md border p-3">
+        {/* ITEM 19'S PREVIEW, and nothing else. Years of service and sea
+            or hardship duty pay used to sit here as a second column, on the
+            reasoning that length of service belongs with the grade it prices.
+            Stephen moved them into a card of their own on 2026-08-27, after
+            the 2026-08-25 demo showed the cost of tying two off-form inputs
+            to the lifecycle of an on-form one. See AccusedPayFactsSection. */}
+        {!item19Locked && (
+          <div className="space-y-1 rounded-md border p-3 sm:max-w-sm">
             <Label className="text-xs">Item 19, as it will print</Label>
             <div className="rounded border bg-muted/40 px-2 py-2 text-sm">
               {rankGrade || <span className="text-muted-foreground">Nothing selected yet.</span>}
             </div>
           </div>
-
-          <div className="space-y-1 rounded-md border border-dashed p-3">
-            {/*
-              "Completed years, round down" is not decoration. bracketIndex
-              treats the entry as completed years, and a Marine at 1 year 10
-              months entered as "2" jumps a bracket. One bracket is worth $42
-              on a seven days' pay forfeiture at the E-3 "Over 2" boundary and
-              $468 across two months at the E-7 "Over 26" boundary.
-            */}
-            <Label className="text-xs" htmlFor="accused-years-of-service">
-              Completed years of service, round down
-            </Label>
-            <Input
-              id="accused-years-of-service"
-              inputMode="numeric"
-              placeholder="4"
-              value={str(formData, 'accusedYearsOfService')}
-              onChange={(e) =>
-                write({ accusedYearsOfService: e.target.value.replace(/[^0-9]/g, '').slice(0, 2) })
-              }
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Does not print. The form has no box for it. Held because basic pay is fixed by
-              grade <em>and length of service</em> (MCM Part V para 5.c(8)), which is what the
-              forfeiture ceilings in item 6 are computed from.
-            </p>
-
-            <Label className="mt-2 block text-xs" htmlFor="accused-sea-hardship-pay">
-              Sea or hardship duty pay, per month
-            </Label>
-            <div className="flex items-center gap-1">
-              <span className="text-sm text-muted-foreground">$</span>
-              <Input
-                id="accused-sea-hardship-pay"
-                inputMode="numeric"
-                placeholder="0"
-                value={str(formData, 'accusedSeaHardshipDutyPay')}
-                onChange={(e) =>
-                  write({
-                    accusedSeaHardshipDutyPay: e.target.value.replace(/[^0-9]/g, '').slice(0, 6),
-                  })
-                }
-              />
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              Does not print. Blank for most Marines. JAGMAN 0111.i: pay subject to forfeiture
-              is basic pay <em>plus sea duty or hardship duty pay</em>. Leaving it blank
-              computes a ceiling LOWER than the lawful one for a Marine who draws it.
-            </p>
-          </div>
-        </div>
+        )}
       </div>
     </SectionCard>
   );

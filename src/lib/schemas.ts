@@ -9,6 +9,7 @@ import {
   NAVMC_10132_VICTIM_SEX,
   NAVMC_10132_VICTIM_RACE,
   NAVMC_10132_VICTIM_ETHNICITY,
+  NAVMC_10132_STAGE_VALUES,
 } from '@/types/navmc';
 
 // --- UI Schema Definitions ---
@@ -1393,6 +1394,34 @@ const Navmc10132SuspensionRow = z.object({
   days: z.string().optional(),
 });
 
+// Decision row D-60. Structured vacation records against item 7
+// suspensions; see Navmc10132Vacation in src/types/navmc.ts for the full
+// shape rationale, in particular why `status` is a four-state union rather
+// than a boolean and why `noticeServedDate` is never treated as the JAGMAN
+// 0118.c/0118.d "commencement of proceedings" date. `suspensionIndex` is
+// required (not optional) for the same reason Navmc10132SuspensionRow's
+// `punishmentIndex` above is required: an unset target is not a legal
+// draft state for a record whose entire purpose is naming one.
+// `article31RightsReadDate` is decision row D-54, JAGMAN 0118.d. See its own
+// JSDoc on Navmc10132Vacation (src/types/navmc.ts) for why it lives here
+// rather than on Figure 14-1 (D-48's rule against inventing figure content)
+// and how it feeds W-18 (navmc10132-validators-punishment.ts).
+// `offenceDate` is decision row D-49 (MCO 011201 / JAGMAN 0118.d's shared
+// date window; see Navmc10132Vacation's own JSDoc) and `vacatingAuthorityGrade`
+// is decision row D-56 (MCO 011201's "kind and amount" authority test; see
+// Navmc10132Vacation's own JSDoc for why item 8A cannot supply it). Both feed
+// navmc10132-validators-punishment.ts (V-29/W-21 and V-30/W-22 respectively).
+const Navmc10132VacationRow = z.object({
+  suspensionIndex: z.number(),
+  noticeServedDate: z.string().optional().default(''),
+  status: z.enum(['pending', 'vacated-full', 'vacated-part', 'not-vacated']),
+  outcomeDate: z.string().optional(),
+  vacatedDetail: z.string().optional(),
+  article31RightsReadDate: z.string().optional(),
+  offenceDate: z.string().optional(),
+  vacatingAuthorityGrade: z.string().optional(),
+});
+
 const Navmc10132RemarkRow = z.object({
   date: z.string().optional().default(''),
   kind: z.enum([
@@ -1413,13 +1442,62 @@ const Navmc10132RemarkRow = z.object({
 const edipiField = () =>
   z.string().regex(/^\d{10}$/, 'EDIPI is the 10-digit DOD ID number').or(z.literal(''));
 
+// Built off NAVMC_10132_STAGE_VALUES (src/types/navmc.ts) rather than a
+// second hardcoded literal list, so the two cannot drift. z.union needs a
+// literal tuple, which a plain `.map` loses, hence the cast.
+const Navmc10132StageSchema = z.union(
+  NAVMC_10132_STAGE_VALUES.map((value) => z.literal(value)) as [
+    z.ZodLiteral<(typeof NAVMC_10132_STAGE_VALUES)[number]>,
+    z.ZodLiteral<(typeof NAVMC_10132_STAGE_VALUES)[number]>,
+    ...z.ZodLiteral<(typeof NAVMC_10132_STAGE_VALUES)[number]>[],
+  ],
+);
+
 export const Navmc10132Schema = z.object({
   documentType: z.literal('navmc10132'),
+
+  // Which pass the document is at. APP STATE, never written to the
+  // AcroForm; see `stage`'s JSDoc on Navmc10132Data (src/types/navmc.ts).
+  stage: Navmc10132StageSchema.optional(),
 
   // Items 17 to 20
   unit: z.string().optional(),
   accusedName: z.string().min(1, 'Accused name is required (Last, First Middle)'),
   accusedService: z.enum(['USMC', 'USN']).optional(),
+  /** Item 8A's picker only. 'USMC' selects the page 3 note's closed officer
+   *  list; anything else takes the free-text abbreviation the note calls for
+   *  on other services. Never printed on its own: item 8A prints the composed
+   *  `njpAuthorityGrade`. */
+  njpAuthorityService: z.string().optional(),
+
+  // --- The NAVMC 118(11) entries this NJP produces ------------------------
+  // Owned exclusively by Page11Section, so ABSENT from the section list
+  // below by the clobber rule. IRAM 4006.2r requires a recommendation for
+  // corrective action and the assistance available in the counseling entry,
+  // and no field on the NAVMC 10132 carries either: they are the
+  // commander's and the unit's, not the charge sheet's.
+  /**
+   * Item 6 exactly as an uploaded signed file states it.
+   *
+   * Set by the loader, never by a section. It is the fallback for a
+   * punishment sentence this app could not read back into codes, so a signed
+   * item 6 survives a load whether or not it parses. See
+   * navmc10132-item6-parse.ts.
+   */
+  punishmentImposedFromFile: z.string().optional(),
+
+  page11CorrectiveAction: z.string().optional(),
+  page11AssistanceAvailable: z.string().optional(),
+  /** '' | 'processing' | 'not-processing'. See SeparationIntent. */
+  page11SeparationIntent: z.string().optional(),
+  page11ProcessingDetail: z.string().optional(),
+  /**
+   * The date the MCO P1400.32D par 1204.4q clock starts: laboratory
+   * confirmation, or the drug incident. NOT on the NAVMC 10132 and not
+   * derivable from it, and NOT the NJP date, which falls later. See
+   * drugRestrictionStart in navmc10132-page11.ts.
+   */
+  drugRestrictionStartDate: z.string().optional(),
   accusedRankGrade: z.string().optional(),
   accusedEdipi: edipiField().optional(),
   accusedPayGrade: z.string().optional(),
@@ -1454,6 +1532,12 @@ export const Navmc10132Schema = z.object({
   suspension: z.string().optional(),
   suspensions: z.array(Navmc10132SuspensionRow).optional(),
   suspensionOverflowToItem21: z.boolean().optional(),
+  // Decision row D-60. Deliberately absent from Navmc10132Definition's
+  // `sections` below, matching every other structured array on this form
+  // (punishments, suspensions, remarks, victims): see the exclusion list
+  // comment there. Zod keeps the field for validation and import even
+  // though no DynamicForm field, and no custom component yet, writes it.
+  vacations: z.array(Navmc10132VacationRow).optional(),
 
   // Item 8
   njpAuthorityName: z.string().optional(),
@@ -1516,6 +1600,25 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
     // The official form carries its own CUI artwork. The app adds no
     // markings, consistent with the 10922 decision.
     showClassification: false,
+    /**
+     * NO SIGNATURE-FIELD PLACEMENT ON THIS FORM. Stephen, 2026-08-26:
+     * "remove the Configure Signature Fields section".
+     *
+     * The section exists to place NEW CAC signature fields onto a generated
+     * PDF, which is right for a naval letter the app authors from nothing.
+     * The NAVMC 10132 already CARRIES its signature fields: seven of them,
+     * `2 ACC ELECTION AND RIGHTS SIGNATURE` through `16 FINAL ADMIN INIT`,
+     * built into the official AcroForm. Those are the fields a signer signs
+     * and the ones navmc10132-pdf-read.ts reads back to decide the pass and
+     * the locks. Placing a further field on top would produce a signature
+     * no part of this app looks at, over a form whose own fields were left
+     * empty.
+     *
+     * SCOPED TO THIS DOCUMENT TYPE, not removed from the app. Every other
+     * type still inherits `showSignature: true` from
+     * STANDARD_LETTER_FEATURES.
+     */
+    showSignature: false,
     category: 'forms',
     pdfPipeline: 'navmc10132',
     exportFormats: ['pdf'],
@@ -1526,19 +1629,38 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
   // build twice.
   //
   // Deliberately absent, and owned by Phase 3 custom components:
+  //   stage                   - NOBODY SETS THIS BY HAND any more. It comes
+  //                             from the signatures on an uploaded file,
+  //                             through navmc10132-pdf-to-form.ts, and a
+  //                             document with no file behind it sits at the
+  //                             seeded pass 1. It stays off this list for
+  //                             the same clobber reason as everything else
+  //                             on it: RHF would stomp the load's write on
+  //                             its next sync if the field ever appeared in
+  //                             `sections`.
   //   unit                    - UNITS search dialog writes it
   //   offenses[]              - OffensesSection grid
   //   demand, counselOpportunity, accusedRefusedToSign, electionDate,
   //   bookerStatement         - AccusedElectionSection, which also coerces
   //                             demand when the refusal box is checked
   //   accusedYearsOfService, accusedSeaHardshipDutyPay
-  //                           - AccusedRankSection, beside item 19
+  //                           - AccusedPayFactsSection, its own card
   //   punishments[], punishmentDate, punishmentImposed,
   //   dispositionNoticeDate, forfeitureBasisGrade
   //                           - PunishmentSection builder
   //   remarks[], remarksFreeText, remarksComposed,
   //   finalAdminUd, finalAdminDtd - RemarksSection composer
   //   victims[]               - VictimsSection grid
+  //   vacations[]             - Decision row D-60. No custom component
+  //                             exists yet (owner is away from his machine
+  //                             and this codebase's working agreement is
+  //                             that every UI phase is browser-tested
+  //                             before it ships; the panel is a later
+  //                             change). Listed here now, ahead of that
+  //                             component, so nobody "fixes" the absence
+  //                             by adding a plain field to `sections`
+  //                             below and reintroduces the exact RHF
+  //                             clobber this list exists to prevent.
   // Zod keeps every one of them for validation and import.
   sections: [
     {
@@ -1612,28 +1734,15 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
     // survives as the DERIVED string, written by renderSuspension exactly
     // as `punishmentImposed` is written by renderPunishment, so a text box
     // bound to it would be silently discarded at export. Do not re-add it.
-    {
-      id: 'authority',
-      title: 'NJP Authority (Items 8, 8A, 8B)',
-      fields: [
-        {
-          name: 'njpAuthorityName',
-          label: 'Name, title, service branch if other than USMC',
-          type: 'text',
-          className: 'md:col-span-2',
-        },
-        { name: 'njpAuthorityGrade', label: 'Rank / Grade', type: 'text', placeholder: 'LtCol, O5' },
-        { name: 'njpAuthorityEdipi', label: 'EDIPI', type: 'text' },
-        {
-          name: 'njpAuthorityPayGrade',
-          label: 'Pay grade only',
-          type: 'text',
-          placeholder: 'O5',
-          description:
-            'Not printed. Decides whether the selected punishment codes require field-grade authority (10 U.S.C. 815(b)(2)(H)).',
-        },
-      ],
-    },
+    // ITEMS 8, 8A AND 8B ARE GONE FROM HERE, and must not come back.
+    // NjpAuthoritySection.tsx owns them now, for the reason its own header
+    // gives: this section carried TWO free-text grade fields with nothing
+    // tying them together, `njpAuthorityGrade` printing in item 8A and
+    // `njpAuthorityPayGrade` driving the punishment picker, the A-1-d
+    // ceiling and V-20. A clerk could type "Capt, O3" in one and "O5" in the
+    // other and every consequence split down the middle. One picker feeds
+    // both now, and RHF would stomp its writes on the next debounced sync if
+    // these fields ever reappeared in `sections`.
     {
       id: 'appeal',
       title: 'Appeal (Items 11-15)',
@@ -3300,6 +3409,7 @@ export const Dd368Definition: DocumentTypeDefinition = {
 // fields for the required-field and unstarted checks; the guided editor
 // in src/components/counseling renders the record itself.
 const counselingText = () => z.string().optional();
+const counselingJepesMark = () => z.object({ mark: z.string(), justification: z.string(), commendatory: z.boolean(), adverseReason: z.string() }).partial();
 
 export const CounselingSchema = z.object({
   documentType: z.literal('counseling'),
@@ -3344,6 +3454,11 @@ export const CounselingSchema = z.object({
   counselingSeniorSignedDate: counselingText(),
   counselingMarineSignedDate: counselingText(),
   counselingDismissed: z.array(z.string()).optional(),
+  // Provisional JEPES benchmark (docs/COUNSELING_JEPES_BENCHMARK_PLAN.md). Optional throughout, so every saved document and template still parses.
+  counselingBenchmark: z.object({
+    character: counselingJepesMark(), mos: counselingJepesMark(), leadership: counselingJepesMark(),
+  }).partial().optional(),
+  counselingPriorBenchmark: z.object({ character: z.string(), mos: z.string(), leadership: z.string(), date: z.string() }).partial().optional(),
 });
 
 export const CounselingDefinition: DocumentTypeDefinition = {

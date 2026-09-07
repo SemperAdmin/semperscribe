@@ -33,8 +33,10 @@ import {
   TARGET_ACTIONS, TARGET_CITATION, computedNextSessionDate, counselingAreaEntries, counselingField, counselingIcsObjectives,
   counselingLifeEvents, counselingOccasion, counselingPriorTargets, counselingSubjects, counselingSuggestions, counselingTargets,
   dismissedSuggestions, emptyTarget, nextSessionInterval, targetSentence,
+  JEPES_ADVERSE_REASONS, JEPES_ATTRIBUTES, JEPES_BANDS, JEPES_CITATION, JEPES_GUIDANCE, benchmarkAtBaseline,
+  counselingBenchmark, counselingPriorBenchmark, isJepesGrade, jepesBand, jepesMarkValue,
   type CounselingAreaId, type CounselingAreaStatus, type CounselingStep, type CounselingSuggestion, type CounselingTarget,
-  type PriorTargetStatus, type StandardKind,
+  type JepesAttribute, type JepesBenchmark, type JepesMark, type JepesPriorBenchmark, type PriorTargetStatus, type StandardKind,
 } from '@/lib/counseling';
 
 interface CounselingSectionsProps {
@@ -88,6 +90,9 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
   const interval = nextSessionInterval(get('counselingMarineGrade'), get('counselingMarineComponent'), get('counselingOccasion'));
   const computedNext = computedNextSessionDate(formData);
   const includeMarineComments = (formData as Record<string, unknown>).counselingIncludeMarineComments === true;
+  const benchmark = counselingBenchmark(formData);
+  const priorBenchmark = counselingPriorBenchmark(formData);
+  const showBenchmark = isJepesGrade(get('counselingMarineGrade'));
 
   const done: Record<CounselingStep, boolean> = {
     1: !!get('counselingOccasion').trim(),
@@ -110,6 +115,9 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
   const setTarget = (index: number, change: Partial<CounselingTarget>) => setTargets(targets.map((t, i) => (i === index ? { ...t, ...change } : t)));
   const setSubjects = (next: typeof subjects) => set('counselingSubjects', next);
   const setPriorTargets = (next: typeof priorTargets) => set('counselingPriorTargets', next);
+  const setBenchmark = (next: JepesBenchmark) => set('counselingBenchmark', next);
+  const setMark = (id: JepesAttribute['id'], change: Partial<JepesMark>) => setBenchmark({ ...benchmark, [id]: { ...benchmark[id], ...change } });
+  const setPriorBenchmark = (change: Partial<JepesPriorBenchmark>) => set('counselingPriorBenchmark', { ...priorBenchmark, ...change });
   const toggleLifeEvent = (value: string, on: boolean) =>
     set('counselingLifeEvents', on ? [...lifeEvents.filter((v) => v !== value), value] : lifeEvents.filter((v) => v !== value));
   const toggleObjective = (id: string, on: boolean) =>
@@ -307,6 +315,15 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
           <AreaField name="counselingStrengths" label="Strengths" value={get('counselingStrengths')} onChange={(v) => set('counselingStrengths', v)} />
           <AreaField name="counselingDeficiencies" label="Deficiencies" value={get('counselingDeficiencies')} onChange={(v) => set('counselingDeficiencies', v)} />
         </div>
+        {showBenchmark && (
+          <BenchmarkBlock
+            benchmark={benchmark}
+            prior={priorBenchmark}
+            onMark={setMark}
+            onPrior={setPriorBenchmark}
+            onBaseline={() => setBenchmark(benchmarkAtBaseline(benchmark))}
+          />
+        )}
       </StepCard>
 
       {/* Step 6 */}
@@ -393,6 +410,120 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
 }
 
 // --- pieces ---
+
+/**
+ * The provisional JEPES benchmark (docs/COUNSELING_JEPES_BENCHMARK_PLAN.md).
+ * Shown only while the grade typed on this worksheet is E-1 to E-4. The
+ * descriptors from Figure 1-2 live here and nowhere on the export
+ * (owner decision, 2026-09-06). Marks start blank; the one button
+ * applies the para 3.a(3) baseline.
+ */
+function BenchmarkBlock({ benchmark, prior, onMark, onPrior, onBaseline }: {
+  benchmark: JepesBenchmark;
+  prior: JepesPriorBenchmark;
+  onMark: (id: JepesAttribute['id'], change: Partial<JepesMark>) => void;
+  onPrior: (change: Partial<JepesPriorBenchmark>) => void;
+  onBaseline: () => void;
+}) {
+  const hasPrior = JEPES_ATTRIBUTES.some((a) => jepesMarkValue(prior[a.id]) !== null);
+  return (
+    <section className="space-y-4 rounded-md border p-3" aria-labelledby="counseling-benchmark-heading" data-testid="counseling-benchmark">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h4 id="counseling-benchmark-heading" className="font-semibold">JEPES benchmark (provisional)</h4>
+          <p className="text-sm text-muted-foreground">
+            The senior&apos;s mark at this session, not the mark of record. The reporting chain enters JEPES command input at period end; this is the trail it rests on. Pvt through Cpl only.
+          </p>
+          <p className="text-[11px] text-muted-foreground">{JEPES_CITATION}</p>
+        </div>
+        <Button type="button" variant="secondary" size="sm" onClick={onBaseline} data-testid="benchmark-baseline">Start at 2.5</Button>
+      </div>
+
+      <details className="text-sm">
+        <summary className="cursor-pointer text-muted-foreground">Marking guidance (para 3.a)</summary>
+        <ul className="mt-2 space-y-1 pl-4 list-disc">
+          {JEPES_GUIDANCE.map((g) => <li key={g.band}>{g.text}</li>)}
+        </ul>
+        <p className="mt-2 text-muted-foreground">About 80 percent of a unit lands between 2.0 and 4.0. That is a statement about a unit, not a rule for one Marine.</p>
+      </details>
+
+      <div className="grid gap-2 sm:grid-cols-4 rounded-md bg-muted/40 p-2">
+        <p className="sm:col-span-4 text-xs text-muted-foreground">Prior session&apos;s benchmark, if one exists. Typed by the senior; the app keeps no history.</p>
+        {JEPES_ATTRIBUTES.map((a) => (
+          <TextField key={a.id} name={`counselingPriorBenchmark.${a.id}`} label={`Prior: ${a.title}`} value={prior[a.id]} onChange={(v) => onPrior({ [a.id]: v })} placeholder="0.0 to 5.0" />
+        ))}
+        <TextField name="counselingPriorBenchmark.date" label="Prior session date" value={prior.date} onChange={(v) => onPrior({ date: v })} placeholder="D MMM YY" />
+      </div>
+
+      {JEPES_ATTRIBUTES.map((a) => {
+        const m = benchmark[a.id];
+        const band = jepesBand(m.mark);
+        const value = jepesMarkValue(m.mark);
+        const priorValue = jepesMarkValue(prior[a.id]);
+        const delta = value !== null && priorValue !== null ? Math.round((value - priorValue) * 10) / 10 : null;
+        const needsJustification = band?.id === 'exceptional' || band?.id === 'below' || band?.id === 'adverse';
+        return (
+          <div key={a.id} className="rounded-md border p-3 space-y-3" data-testid={`benchmark-${a.id}`}>
+            <div>
+              <h5 className="font-medium">{a.title}</h5>
+              <p className="text-xs text-muted-foreground">{a.description}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
+              <Field name={`counselingBenchmark.${a.id}.mark`} label="Mark (0.0 to 5.0)">
+                <Input
+                  id={`counselingBenchmark.${a.id}.mark`}
+                  inputMode="decimal"
+                  value={m.mark}
+                  onChange={(e) => onMark(a.id, { mark: e.target.value })}
+                  placeholder="blank"
+                  aria-describedby={`counselingBenchmark.${a.id}.band`}
+                />
+              </Field>
+              <div id={`counselingBenchmark.${a.id}.band`} className="text-sm">
+                {band ? (
+                  <>
+                    <p className="flex items-center gap-2">
+                      <Badge variant="outline">{band.label}</Badge>
+                      {hasPrior && delta !== null && (
+                        <span className="text-xs text-muted-foreground">prior {prior[a.id].trim()}, {delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)}</span>
+                      )}
+                    </p>
+                    <ul className="mt-1 list-disc pl-4 text-xs text-muted-foreground">
+                      {a.bands[band.id].map((line) => <li key={line}>{line}</li>)}
+                    </ul>
+                  </>
+                ) : m.mark.trim() ? (
+                  <p className="text-xs text-destructive">Enter one decimal between 0.0 and 5.0.</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No mark yet. Bands: {JEPES_BANDS.map((b) => `${b.label} ${b.min.toFixed(1)}${b.max !== b.min ? ` to ${b.max.toFixed(1)}` : ''}`).join('; ')}.</p>
+                )}
+              </div>
+            </div>
+            {band?.id === 'adverse' && (
+              <Field name={`counselingBenchmark.${a.id}.adverseReason`} label="Reason for 0.0 (Non Rec / Adverse column)">
+                <Select value={m.adverseReason} onValueChange={(v) => onMark(a.id, { adverseReason: v })}>
+                  <SelectTrigger id={`counselingBenchmark.${a.id}.adverseReason`}><SelectValue placeholder="Choose the reason" /></SelectTrigger>
+                  <SelectContent>
+                    {JEPES_ADVERSE_REASONS.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
+            {band?.id === 'exceptional' && (
+              <div className="flex items-center gap-2" {...{ [FIELD_ATTRIBUTE]: `counselingBenchmark.${a.id}.commendatory` }}>
+                <Checkbox id={`counselingBenchmark.${a.id}.commendatory`} checked={m.commendatory} onCheckedChange={(v) => onMark(a.id, { commendatory: v === true })} />
+                <Label htmlFor={`counselingBenchmark.${a.id}.commendatory`}>Formal commendatory material on file (visible in JEPES under Adversity/Commendatory)</Label>
+              </div>
+            )}
+            <Field name={`counselingBenchmark.${a.id}.justification`} label={needsJustification ? 'Justification (required in this band)' : 'Justification (optional)'}>
+              <Textarea id={`counselingBenchmark.${a.id}.justification`} rows={2} value={m.justification} onChange={(e) => onMark(a.id, { justification: e.target.value })} />
+            </Field>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
 
 function StepRail({ done }: { done: Record<CounselingStep, boolean> }) {
   return (

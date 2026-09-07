@@ -12,6 +12,11 @@
  * clobber-rule concern here, unitDiaryBlock() is a pure read over the same
  * FormData every other section already owns.
  *
+ * VISIBLE FROM THE ITEM 12 SIGNATURE, not from item 16 (Navmc10132Sections,
+ * Stephen's 2026-08-26 ruling). That is early enough that the punishment can
+ * still change on appeal, which is what the appealPending branch below warns
+ * about. Nothing else about the panel moved.
+ *
  * The alreadyReported branch renders first and is the most prominent thing
  * in the section, per unitDiaryBlock's own doc comment, item 16 IS the unit
  * diary entry, and a non-null alreadyReported means this NJP has already
@@ -23,10 +28,11 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ClipboardList, Copy, AlertTriangle } from 'lucide-react';
+import { ClipboardList, Copy, AlertTriangle, FileDown } from 'lucide-react';
 import { FormData } from '@/types';
 import { unitDiaryBlock } from '@/lib/navmc10132-unit-diary';
 import { mctfsNjpStatements } from '@/lib/navmc10132-mctfs';
+import { renderUnitDiaryWorksheetPdf } from '@/lib/navmc10132-unit-diary-worksheet';
 import { copyToClipboard } from '@/lib/url-state';
 import { useToast } from '@/hooks/use-toast';
 
@@ -40,6 +46,8 @@ interface SectionProps {
 
 export function UnitDiarySection({ formData, SectionCard }: SectionProps) {
   const { toast } = useToast();
+  const [downloading, setDownloading] = React.useState(false);
+  const [downloadError, setDownloadError] = React.useState<string | null>(null);
   const block = React.useMemo(() => unitDiaryBlock(formData), [formData]);
   // The TTC statements are a separate read over the same data. The prose
   // block above remains the HIST: text PRIUM 70503 asks for, so the two are
@@ -62,6 +70,43 @@ export function UnitDiarySection({ formData, SectionCard }: SectionProps) {
     }
   };
 
+  /**
+   * The worksheet download.
+   *
+   * STEPHEN, 2026-08-26: the panel stays a preview and there is an export
+   * "that will have the transactions completed with the proper data based on
+   * the PRIUM". The sheet is built by navmc10132-unit-diary-worksheet.ts from
+   * the same two derivations this panel renders, so the print and the screen
+   * cannot disagree.
+   *
+   * NOT GATED ON BLOCKERS. A blocker means "do not enter what is below", and
+   * the clerk has to be holding the sheet to read it. The panel already shows
+   * them above; the sheet repeats them at the top of page one.
+   */
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const sheet = await renderUnitDiaryWorksheetPdf(formData);
+      const url = window.URL.createObjectURL(
+        new Blob([new Uint8Array(sheet.bytes)], { type: 'application/pdf' }),
+      );
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = sheet.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(
+        err instanceof Error ? err.message : 'Could not build the unit diary worksheet.',
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <SectionCard icon={<ClipboardList className="mr-2 h-5 w-5" />} title="Unit Diary Handoff">
       <div className="space-y-4">
@@ -72,6 +117,18 @@ export function UnitDiarySection({ formData, SectionCard }: SectionProps) {
               This NJP has already been reported to the unit diary as UD {block.alreadyReported.ud}
               {block.alreadyReported.dtd === '' ? '' : `, dated ${block.alreadyReported.dtd}`}.
               Entering it again creates a duplicate unit diary entry.
+            </p>
+          </div>
+        )}
+
+        {block.appealPending && (
+          <div className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <p className="text-sm font-medium text-amber-800">
+              Item 12 records an intent to appeal and item 14 carries no decision yet. The
+              reviewing authority can still set aside, mitigate, remit or suspend this
+              punishment, so anything entered from the block below may have to be corrected
+              once item 14 is signed.
             </p>
           </div>
         )}
@@ -110,10 +167,35 @@ export function UnitDiarySection({ formData, SectionCard }: SectionProps) {
           {block.text}
         </pre>
 
-        <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
-          <Copy className="mr-1 h-4 w-4" />
-          Copy unit diary text
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
+            <Copy className="mr-1 h-4 w-4" />
+            Copy unit diary text
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={handleDownload}
+            disabled={downloading}
+          >
+            <FileDown className="mr-1 h-4 w-4" />
+            {downloading ? 'Building...' : 'Download worksheet'}
+          </Button>
+        </div>
+
+        <p className="text-[11px] text-muted-foreground">
+          The worksheet is this whole panel as a printable page: the HIST text, every
+          transaction with its PRIUM citation and notes, a check box against each one, and a
+          line at the foot for the UD number that goes back into item 16.
+        </p>
+
+        {downloadError && (
+          <p className="flex items-start gap-1 text-[11px] text-destructive">
+            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+            {downloadError}
+          </p>
+        )}
 
         {/*
           The MCTFS statements themselves. Kept BELOW the prose block on

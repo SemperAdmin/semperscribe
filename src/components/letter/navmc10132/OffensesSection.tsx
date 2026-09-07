@@ -22,6 +22,27 @@
  *    Phase 2 engine), not by character count. Every widget on this form is a
  *    fixed-width, non-shrinking field, and a proportional font overflows a
  *    field long before a naive character cap would warn anyone.
+ *
+ * TWO DIFFERENT THINGS CLOSE A CONTROL HERE, and they are not the same
+ * question. The STAGE says which pass the document is at, and hides a
+ * control whose pass has not arrived. A LOCK says a signature on a loaded
+ * file has already closed that field, and shows the control as closed with
+ * the value still visible. A fresh document has stage gating and no locks;
+ * a loaded pass-2 file has both.
+ *
+ * THE OFFENSE ROW IS WHERE THAT DISTINCTION IS SHARPEST, measured on a real
+ * signed file: the item 2 signature closes `1A ARTICLE` and `1A SUMMARY`
+ * while `1A FINDING` stays OPEN, because the finding is the commander's
+ * determination at pass 3. One row, two answers. A row-level lock would
+ * either freeze a finding that still has to be made or offer an edit to an
+ * article that is signed.
+ *
+ * THE FINDING CONTROL IS STAGE-GATED, hidden before "Punishment imposed"
+ * (pass 3). Item 5 findings close at the item 9 NJP authority signature, and
+ * a finding is the commander's determination made AFTER the election and
+ * the hearing, so showing it at notification invites recording one before
+ * either has happened, a process defect per decision row D-39. Item 1
+ * (article and summary) has no such gate; it belongs to pass 1.
  */
 
 import React from 'react';
@@ -40,16 +61,41 @@ import {
   resolveArticle, NAVMC_10132_ARTICLES, NAVMC_10132_ARTICLE_GROUPS,
 } from '@/lib/navmc10132-utils';
 import {
-  NAVMC_10132_EMPTY_OFFENSE, type Navmc10132Offense,
+  NAVMC_10132_EMPTY_OFFENSE, navmc10132StageAtLeast, type Navmc10132Offense, type Navmc10132Stage,
 } from '@/types/navmc';
-import { Gavel, Search, ShieldAlert, Plus } from 'lucide-react';
+import { Gavel, Search, ShieldAlert, Plus, Lock, Trash2 } from 'lucide-react';
+import { navmc10132ChargesClosed, navmc10132OffenseRowLocks } from '@/lib/navmc10132-locks';
 
 type SectionCardProps = { icon: React.ReactNode; title: string; children: React.ReactNode };
+
+/**
+ * SIGNED, AND SO NOT EDITABLE HERE. Shown beside the label rather than as a
+ * disabled cursor, because a greyed box with no explanation reads as a bug.
+ */
+export function LockedBadge() {
+  return (
+    <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+      <Lock className="h-3 w-3" />
+      signed
+    </span>
+  );
+}
+
+/** A closed field's value, still readable, in the same place the input was. */
+export function ReadOnlyValue({ value }: { value: string }) {
+  return (
+    <div className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground min-h-[2.5rem]">
+      {value || <span className="italic">blank on the signed file</span>}
+    </div>
+  );
+}
 
 interface SectionProps {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   SectionCard: React.ComponentType<SectionCardProps>;
+  /** See the stage-gating note above the finding control below. */
+  stage: Navmc10132Stage;
 }
 
 /** The engine's own article row shape, borrowed rather than redeclared. */
@@ -72,8 +118,17 @@ function isOffenseActive(offense: Navmc10132Offense): boolean {
   return Boolean(offense.articleLabel || offense.summary || offense.finding);
 }
 
-export function OffensesSection({ formData, setFormData, SectionCard }: SectionProps) {
+export function OffensesSection({ formData, setFormData, SectionCard, stage }: SectionProps) {
   const offenses = fiveOffenses(formData);
+  const showFinding = navmc10132StageAtLeast(stage, 3);
+
+  /**
+   * NO SIXTH OFFENSE OVER A SIGNED ITEM 3. Stephen, 2026-08-26. The field
+   * locks close each FILLED row; an empty row carried no lock, because the
+   * form has none to place on a field with no value, so row F stayed addable
+   * over a certified charge sheet. See navmc10132ChargesClosed.
+   */
+  const chargesClosed = navmc10132ChargesClosed(formData);
 
   const lastActive = offenses.reduce(
     (acc, offense, index) => (isOffenseActive(offense) ? index : acc),
@@ -92,6 +147,37 @@ export function OffensesSection({ formData, setFormData, SectionCard }: SectionP
     });
   };
 
+  /**
+   * Remove one offense row, closing the gap.
+   *
+   * REPORTED MISSING BY STEPHEN 2026-08-26, and it had never existed: rows
+   * could be added and never taken away, so a mis-picked article had to be
+   * blanked field by field and still left an empty row behind.
+   *
+   * IT SHUFFLES RATHER THAN BLANKS, which matters on this form. The item 1
+   * instruction letters offenses A, B, C in order and item 5's findings are
+   * keyed to those same letters, so a hole at B would print a finding for an
+   * offense that is not there. Splicing keeps the letters contiguous.
+   *
+   * THE LAST ROW CANNOT BE REMOVED. A UPB with no offense row is not a
+   * cleared form, it is a charge sheet with no charge, and the export gate
+   * blocks on it anyway. Clearing the row is what the clerk means.
+   *
+   * A ROW A SIGNATURE HAS CLOSED CANNOT BE REMOVED EITHER. Deleting it would
+   * shuffle a signed article into another letter's position, and the export
+   * would then refuse to write the change, leaving the app and the file
+   * disagreeing about which offense is which.
+   */
+  const removeOffense = (index: number) => {
+    setFormData((prev) => {
+      const rows = fiveOffenses(prev);
+      rows.splice(index, 1);
+      rows.push({ ...NAVMC_10132_EMPTY_OFFENSE });
+      return { ...prev, offenses: rows };
+    });
+    setVisible((v) => Math.max(1, v - 1));
+  };
+
   return (
     <SectionCard icon={<Gavel className="mr-2 h-5 w-5" />} title="Offenses and findings (items 1 and 5)">
       <div className="space-y-4">
@@ -101,10 +187,13 @@ export function OffensesSection({ formData, setFormData, SectionCard }: SectionP
             letter={letter}
             offense={offenses[index]}
             onChange={(patch) => updateOffense(index, patch)}
+            showFinding={showFinding}
+            onRemove={visible > 1 ? () => removeOffense(index) : undefined}
+            {...navmc10132OffenseRowLocks(formData, index)}
           />
         ))}
 
-        {visible < 5 && (
+        {visible < 5 && !chargesClosed && (
           <Button
             type="button"
             variant="outline"
@@ -114,6 +203,15 @@ export function OffensesSection({ formData, setFormData, SectionCard }: SectionP
             <Plus className="mr-1 h-3.5 w-3.5" />
             Add offense
           </Button>
+        )}
+
+        {chargesClosed && (
+          <p className="flex items-start gap-1 text-[11px] text-muted-foreground">
+            <Lock className="mt-0.5 h-3 w-3 shrink-0" />
+            The charge sheet is closed. Item 3 certifies the accused was advised of the
+            offenses as they stood when it was signed, so an offense added now is one the
+            accused was never advised of. A further offense needs a new proceeding.
+          </p>
         )}
 
         <p className="text-[11px] text-muted-foreground">
@@ -131,10 +229,21 @@ function OffenseRow({
   letter,
   offense,
   onChange,
+  showFinding,
+  onRemove,
+  offenceLocked,
+  findingLocked,
 }: {
   letter: (typeof ROW_LETTERS)[number];
   offense: Navmc10132Offense;
   onChange: (patch: Partial<Navmc10132Offense>) => void;
+  showFinding: boolean;
+  /** Undefined on the last remaining row, which cannot be removed. */
+  onRemove?: () => void;
+  /** Item 1 on this row is closed by a signature on the loaded file. */
+  offenceLocked: boolean;
+  /** Item 5 on this row is closed. Separate: see the header note. */
+  findingLocked: boolean;
 }) {
   const summaryField = `1${letter} SUMMARY`;
   const selectedArticle = offense.articleLabel ? resolveArticle(offense.articleLabel) : undefined;
@@ -152,20 +261,45 @@ function OffenseRow({
           {letter}
         </div>
 
+        {onRemove && !offenceLocked && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="order-last shrink-0"
+            aria-label={`Remove offense ${letter}`}
+            onClick={onRemove}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
+
         <div className="min-w-[220px] space-y-1">
-          <Label className="text-[11px] text-muted-foreground">Article, item 1{letter}</Label>
-          <ArticlePicker
-            value={offense.articleLabel}
-            onSelect={(entry) => onChange({ articleLabel: entry.formLabel, mctfsCode: entry.mctfsCode })}
-          />
+          <Label className="text-[11px] text-muted-foreground">
+            Article, item 1{letter}
+            {offenceLocked && <LockedBadge />}
+          </Label>
+          {offenceLocked ? (
+            <ReadOnlyValue value={offense.articleLabel} />
+          ) : (
+            <ArticlePicker
+              value={offense.articleLabel}
+              onSelect={(entry) => onChange({ articleLabel: entry.formLabel, mctfsCode: entry.mctfsCode })}
+            />
+          )}
         </div>
 
         <div className="flex-1 min-w-[260px] space-y-1">
-          <Label className="text-[11px] text-muted-foreground">Summary, item 1{letter}</Label>
+          <Label className="text-[11px] text-muted-foreground">
+            Summary, item 1{letter}
+            {offenceLocked && <LockedBadge />}
+          </Label>
           <Input
             value={offense.summary}
             onChange={(e) => onChange({ summary: e.target.value })}
             placeholder="Article, specific offense, date, and place"
+            readOnly={offenceLocked}
+            className={offenceLocked ? 'bg-muted text-muted-foreground' : undefined}
           />
           <div className="flex items-center gap-2">
             <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
@@ -185,27 +319,54 @@ function OffenseRow({
           )}
         </div>
 
-        <div className="w-40 space-y-1">
-          <Label className="text-[11px] text-muted-foreground">Finding, item 5{letter}</Label>
-          <Select
-            value={offense.finding || undefined}
-            onValueChange={(value) => onChange({ finding: value as Navmc10132Offense['finding'] })}
-            disabled={!offense.articleLabel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Blank" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Guilty">Guilty (G)</SelectItem>
-              <SelectItem value="Not Guilty">Not Guilty (NG)</SelectItem>
-            </SelectContent>
-          </Select>
-          {!offense.articleLabel && (
+        {showFinding ? (
+          <div className="w-40 space-y-1">
+            <Label className="text-[11px] text-muted-foreground">
+              Finding, item 5{letter}
+              {findingLocked && <LockedBadge />}
+            </Label>
+            <Select
+              value={offense.finding || undefined}
+              onValueChange={(value) => onChange({ finding: value as Navmc10132Offense['finding'] })}
+              disabled={findingLocked || !offense.articleLabel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Blank" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Guilty">Guilty (G)</SelectItem>
+                <SelectItem value="Not Guilty">Not Guilty (NG)</SelectItem>
+              </SelectContent>
+            </Select>
+            {!offense.articleLabel && (
+              <p className="text-[11px] text-muted-foreground">
+                Blank until item 1{letter} has an article, per the item 5 instruction.
+              </p>
+            )}
+            {/* WHY THIS ONE IS STILL OPEN NEXT TO TWO CLOSED ONES, and it is
+                worth saying rather than leaving a clerk to wonder. Stephen
+                read the row as "already signed, so all of it should be
+                blocked" on 2026-08-26. The offense IS signed; the FINDING is
+                not, and cannot be: item 5 closes at the item 9 NJP authority
+                signature, which is pass 3, and making it is the work in front
+                of him. Measured on his own file, `1A FINDING` is in the open
+                set while `1A ARTICLE` and `1A SUMMARY` are closed. */}
+            {offenceLocked && !findingLocked && offense.articleLabel && (
+              <p className="text-[11px] text-muted-foreground">
+                The offense above is signed and closed. This finding is not: item 5 closes at
+                the item 9 signature, so it is yours to make.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="w-40 space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Finding, item 5{letter}</Label>
             <p className="text-[11px] text-muted-foreground">
-              Blank until item 1{letter} has an article, per the item 5 instruction.
+              Not yet. A finding is the commander's determination after the election and the
+              hearing, so this opens at the Punishment imposed stage.
             </p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {selectedArticle?.notOrdinarilyMinor && (

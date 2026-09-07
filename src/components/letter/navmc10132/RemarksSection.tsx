@@ -14,6 +14,15 @@
  *
  * Item 16 locks the form once signed, see the helper text below the two
  * final administrative action fields.
+ *
+ * THE ITEM 16 CONTROLS ARE STAGE-GATED, hidden before "Final action
+ * recorded" (pass 7). Item 16 is the LAST thing entered on this form: its
+ * signature carries the form's own FINAL ADMIN INIT lock, which closes every
+ * remaining field in Adobe. A unit diary number typed at notification is a
+ * number for an entry that has not been made, and it would export into a
+ * document the clerk still has six passes of work left on. Item 21 above has
+ * no such gate, remarks accrue throughout the case. See OffensesSection's
+ * `stage` prop for the same pattern on item 5.
  */
 
 import React from 'react';
@@ -27,8 +36,18 @@ import {
 import { IsoDatePicker } from '@/components/letter/navmc10132/IsoDatePicker';
 import { FileText, Plus, Trash2 } from 'lucide-react';
 import { FormData } from '@/types';
-import { type Navmc10132Remark, type Navmc10132RemarkKind } from '@/types/navmc';
+import {
+  navmc10132StageAtLeast,
+  type Navmc10132Remark,
+  type Navmc10132RemarkKind,
+  type Navmc10132Stage,
+} from '@/types/navmc';
 import { composeRemarks, fitsInField } from '@/lib/navmc10132-utils';
+import { navmc10132Item21Overflow } from '@/lib/navmc10132-acroform';
+import {
+  renderItem21Continuation,
+  item21LineCapacity,
+} from '@/lib/navmc10132-item21-continuation';
 
 type SectionCardProps = { icon: React.ReactNode; title: string; children: React.ReactNode };
 
@@ -36,6 +55,8 @@ interface SectionProps {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   SectionCard: React.ComponentType<SectionCardProps>;
+  /** See the stage-gating note above the item 16 controls below. */
+  stage: Navmc10132Stage;
 }
 
 /**
@@ -131,7 +152,7 @@ function remarksOf(formData: FormData): Navmc10132Remark[] {
   return Array.isArray(formData.remarks) ? (formData.remarks as Navmc10132Remark[]) : [];
 }
 
-export function RemarksSection({ formData, setFormData, SectionCard }: SectionProps) {
+export function RemarksSection({ formData, setFormData, SectionCard, stage }: SectionProps) {
   const remarks = remarksOf(formData);
   const freeText = (formData.remarksFreeText as string) ?? '';
 
@@ -282,30 +303,107 @@ export function RemarksSection({ formData, setFormData, SectionCard }: SectionPr
         )}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <Label className="text-xs">Item 16, unit diary (UD)</Label>
-          <Input
-            value={(formData.finalAdminUd as string) ?? ''}
-            onChange={(e) => setFormData((prev) => ({ ...prev, finalAdminUd: e.target.value }))}
-            className="w-40"
-            maxLength={20}
-          />
+      {navmc10132StageAtLeast(stage, 7) ? (
+        <>
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="text-xs">Item 16, unit diary (UD)</Label>
+              <Input
+                value={(formData.finalAdminUd as string) ?? ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, finalAdminUd: e.target.value }))}
+                className="w-40"
+                maxLength={20}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Item 16, date (DTD)</Label>
+              <Input
+                value={(formData.finalAdminDtd as string) ?? ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, finalAdminDtd: e.target.value }))}
+                className="w-40"
+                maxLength={20}
+              />
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Signing item 16 locks the entire form in Adobe. The unit diary entry
+            that follows must comply with MCTFSPRIUM.
+          </p>
+        </>
+      ) : (
+        <div className="mt-6">
+          <Label className="text-xs">Item 16, final administrative action</Label>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Not yet. Item 16 records the unit diary entry made after the case is
+            closed, and signing it locks the entire form in Adobe, so it opens at
+            the Final action recorded stage.
+          </p>
         </div>
-        <div>
-          <Label className="text-xs">Item 16, date (DTD)</Label>
-          <Input
-            value={(formData.finalAdminDtd as string) ?? ''}
-            onChange={(e) => setFormData((prev) => ({ ...prev, finalAdminDtd: e.target.value }))}
-            className="w-40"
-            maxLength={20}
-          />
-        </div>
-      </div>
-      <p className="text-[11px] text-muted-foreground mt-1">
-        Signing item 16 locks the entire form in Adobe. The unit diary entry
-        that follows must comply with MCTFSPRIUM.
-      </p>
+      )}
+      <Item21ContinuationPanel formData={formData} />
     </SectionCard>
+  );
+}
+
+/**
+ * The supplemental sheet, offered only when item 21 actually overflows.
+ *
+ * WITHOUT THIS THE FIX WOULD BE WORSE THAN THE DEFECT. paginateItem21 ends
+ * the widget on "Continued on the attached item 21 supplemental page", so a
+ * form that promises a sheet nobody can produce is a form that points at
+ * nothing. The button and the field value ship together or neither ships.
+ *
+ * A SEPARATE FILE, not an appended page. See renderItem21Continuation for
+ * why: the signed export path writes an incremental update into the clerk's
+ * own file and touches no earlier byte, which is what keeps their CAC
+ * signatures valid, and appending a page means rewriting the page tree.
+ */
+function Item21ContinuationPanel({ formData }: { formData: FormData }) {
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const overflow = navmc10132Item21Overflow(formData);
+  if (overflow.length === 0) return null;
+
+  const capacity = item21LineCapacity();
+
+  const generate = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const { blob } = await renderItem21Continuation(overflow, {
+        name: (formData.accusedName as string) ?? '',
+        edipi: (formData.accusedEdipi as string) ?? '',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'navmc10132-item21-continuation.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not build the continuation sheet.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-6 space-y-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3">
+      <p className="text-[11px] font-medium text-amber-800">
+        Item 21 runs past the box. {overflow.length}{' '}
+        {overflow.length === 1 ? 'line does' : 'lines do'} not fit.
+      </p>
+      <p className="text-[11px] text-amber-800">
+        The field renders {capacity} lines and clips the rest with nothing on the page to say
+        so. The export now fills it to {capacity} lines, ends on a pointer to a supplement, and
+        carries the remainder here. Generate the sheet and file it with the UPB.
+      </p>
+      <Button type="button" variant="outline" size="sm" onClick={generate} disabled={busy}>
+        <FileText className="mr-1 h-4 w-4" />
+        {busy ? 'Building...' : 'Download the item 21 continuation'}
+      </Button>
+      {error && <p className="text-[11px] text-destructive">{error}</p>}
+    </div>
   );
 }

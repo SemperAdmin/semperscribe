@@ -28,6 +28,13 @@ import {
 } from '@/components/ui/select';
 import { IsoDatePicker } from '@/components/letter/navmc10132/IsoDatePicker';
 import { FormData } from '@/types';
+import { LockedBadge, ReadOnlyValue } from '@/components/letter/navmc10132/OffensesSection';
+import {
+  isNavmc10132KeyLocked,
+  isNavmc10132SectionLocked,
+} from '@/lib/navmc10132-locks';
+import { formForfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
+import { ForfeitureLadderPanel } from '@/components/letter/navmc10132/ForfeitureLadderPanel';
 import {
   Gavel, Plus, Trash2, AlertTriangle, HelpCircle, Info,
 } from 'lucide-react';
@@ -72,13 +79,33 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
   const punishments = currentPunishments(formData);
   const [codeToAdd, setCodeToAdd] = React.useState('');
 
+  /**
+   * D-45, defect 3.9. The form's own lock list for `9 NJP AUTHORITY
+   * SIGNATURE` names fields under names the form no longer uses, so once the
+   * imposing officer signs, Acrobat closes nothing and every field of this
+   * section stays writable over a signature. The app closes them instead,
+   * per Stephen's ruling of 2026-08-26: at the item 9 signature, not before.
+   *
+   * ONE QUESTION PER CONTROL, because the three do not move together. Item 6
+   * is rendered from structure, so its lock closes the whole builder; the two
+   * dates are ordinary fields with their own locks; and a blank field on the
+   * signed file is never locked at all, so a clerk who has still to record
+   * the item 10 notice date can.
+   */
+  const buildLocked = isNavmc10132SectionLocked(formData, 'punishments');
+  const item6DateLocked = isNavmc10132KeyLocked(formData, 'punishmentDate');
+  const item10Locked = isNavmc10132KeyLocked(formData, 'dispositionNoticeDate');
+
   // The picker's contents follow item 8A. MCM Part V para 5.b(2) splits the
   // enlisted ceiling on the GRADE of the imposing officer, so a company-grade
   // authority is offered a strictly smaller list than a field-grade one.
   // Derived on every render from a pure function of one string, so there is
   // nothing to memoise and nothing to keep in sync.
   const authorityGrade = (formData.njpAuthorityPayGrade as string) ?? '';
-  const options = releaseOnePunishmentsFor(authorityGrade);
+  const options = releaseOnePunishmentsFor(authorityGrade, {
+    payGrade: typeof formData.accusedPayGrade === 'string' ? formData.accusedPayGrade : '',
+    service: formData.accusedService === 'USN' ? 'USN' : 'USMC',
+  });
 
   // Forfeiture ceilings. Computed on the BASIS grade, which V-18 has already
   // forced to the reduction target whenever a reduction is imposed, falling
@@ -109,6 +136,29 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
   const ceiling = ceilingResult.kind === 'ceiling' ? ceilingResult.ceiling : null;
   const ceilingDetail =
     ceilingResult.kind === 'ceiling' ? payTable.detail : ceilingResult.detail;
+
+  /**
+   * The same ceiling at every grade a reduction could reach, so the clerk
+   * sees what the reduction costs rather than one number in isolation.
+   *
+   * STEPHEN, 2026-08-26: show the max at the current rank and years of
+   * service, and if reduced. MCM Part V para 5.c(8) makes the reduced grade
+   * the LAWFUL basis whenever a reduction is imposed, and it is always the
+   * smaller figure, so a clerk working from the current grade alone errs
+   * toward an unlawful forfeiture every time.
+   *
+   * READ FROM ITEM 19, not from the basis grade the inputs above use. The
+   * point of the panel is the comparison, and pricing the top rung on the
+   * basis grade would collapse both rows onto the same number.
+   *
+   * BUILT BY formForfeitureLadder, not here. This component used to assemble
+   * the five inputs itself, and so did the A-1-f script, and so would the
+   * pay-and-service card added on 2026-08-27. Three assemblies of the same
+   * bag is three chances for one of them to pick a different date or miss
+   * the reduction target, which would put two ceilings for one Marine on one
+   * screen.
+   */
+  const ladder = formForfeitureLadder(formData as unknown as { [key: string]: unknown });
 
   // A code selected before item 8A was set can become unavailable once it is.
   // DERIVED, not cleared by an effect: the pending selection is read through
@@ -224,6 +274,19 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
   return (
     <SectionCard icon={<Gavel className="mr-2 h-5 w-5" />} title="Punishment (Items 6 and 10)">
       <div className="space-y-4">
+        {buildLocked && (
+          <p className="text-[11px] text-muted-foreground">
+            Item 6 was signed by the imposing officer (item 9). The punishment below is shown as
+            it stands on the signed file and is no longer editable
+            <LockedBadge />
+          </p>
+        )}
+        {/* The whole builder, closed as one. Item 6 prints from structure, so
+            there is no single input a lock could sit on: the codes, their
+            parameters, the add control and the remove buttons all feed the
+            one signed string, and closing any less would offer an edit the
+            export refuses to write. */}
+        <fieldset disabled={buildLocked} className="space-y-4">
         <div className="space-y-3">
           {punishments.length === 0 && (
             <p className="text-[11px] text-muted-foreground">
@@ -266,7 +329,13 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
                       ceiling={ceiling}
                       ceilingDetail={ceilingDetail}
                     />
-                    <EntryWarnings code={code} entry={entry} authorityGrade={(formData.njpAuthorityPayGrade as string) ?? ''} />
+                    <EntryWarnings
+                      code={code}
+                      entry={entry}
+                      authorityGrade={(formData.njpAuthorityPayGrade as string) ?? ''}
+                      ceiling={ceiling}
+                      ceilingDetail={ceilingDetail}
+                    />
                   </CardContent>
                 )}
               </Card>
@@ -376,6 +445,10 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
           )}
         </div>
 
+        </fieldset>
+
+        <ForfeitureLadderPanel ladder={ladder} />
+
         <ForfeitureBasisGrade
           formData={formData}
           setFormData={setFormData}
@@ -384,20 +457,34 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label className="text-xs">Item 6 punishment date</Label>
-            <IsoDatePicker
-              value={(formData.punishmentDate as string) ?? ''}
-              onChange={(value: string) => setFormData((prev) => ({ ...prev, punishmentDate: value }))}
-            />
+            <Label className="text-xs">
+              Item 6 punishment date
+              {item6DateLocked && <LockedBadge />}
+            </Label>
+            {item6DateLocked ? (
+              <ReadOnlyValue value={(formData.punishmentDate as string) ?? ''} />
+            ) : (
+              <IsoDatePicker
+                value={(formData.punishmentDate as string) ?? ''}
+                onChange={(value: string) => setFormData((prev) => ({ ...prev, punishmentDate: value }))}
+              />
+            )}
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Item 10 disposition notice date</Label>
-            <IsoDatePicker
-              value={(formData.dispositionNoticeDate as string) ?? ''}
-              onChange={(value: string) =>
-                setFormData((prev) => ({ ...prev, dispositionNoticeDate: value }))
-              }
-            />
+            <Label className="text-xs">
+              Item 10 disposition notice date
+              {item10Locked && <LockedBadge />}
+            </Label>
+            {item10Locked ? (
+              <ReadOnlyValue value={(formData.dispositionNoticeDate as string) ?? ''} />
+            ) : (
+              <IsoDatePicker
+                value={(formData.dispositionNoticeDate as string) ?? ''}
+                onChange={(value: string) =>
+                  setFormData((prev) => ({ ...prev, dispositionNoticeDate: value }))
+                }
+              />
+            )}
             <p className="flex items-start gap-1 text-[11px] text-muted-foreground">
               <HelpCircle className="mt-0.5 h-3 w-3 shrink-0" />
               Normally the same date as item 6, except where notice is given by mail.
@@ -635,10 +722,16 @@ function EntryWarnings({
   code,
   entry,
   authorityGrade,
+  ceiling,
+  ceilingDetail,
 }: {
   code: NonNullable<ReturnType<typeof resolvePunishment>>;
   entry: Navmc10132PunishmentEntry;
   authorityGrade: string;
+  /** The computed forfeiture ceiling, or null when nothing could be priced. */
+  ceiling: ForfeitureCeiling | null;
+  /** Why, when it is null. The pay table's own line when it is not. */
+  ceilingDetail: string;
 }) {
   const warnings: string[] = [];
 
@@ -659,16 +752,33 @@ function EntryWarnings({
     }
   }
   if (code.maxDaysPay !== undefined) {
-    // The ceiling here is stated in days of pay, but the only value this
-    // form collects is a dollar figure, and converting dollars to days
-    // needs the member's daily rate of pay, which this app does not have.
-    // So this cannot be a live threshold check like the two above, it is
-    // shown every time the code declares maxDaysPay, as a standing
-    // reminder carrying the citation rather than a conditional warning.
-    warnings.push(
-      `Ceiling for ${code.code} is ${code.maxDaysPay} days pay (${code.statute}). Confirm the ` +
-        `dollar figure against the member's rate of pay, this app cannot convert dollars to days.`
-    );
+    // THIS MESSAGE USED TO END "this app cannot convert dollars to days",
+    // which stopped being true when the DFAS basic pay table went in. It
+    // does convert: forfeitureCeiling prices the ceiling from item 19's pay
+    // grade and the length of service, the amount box carries it as a max,
+    // and validator V-19 blocks an export above it. Telling a clerk the app
+    // cannot do a thing it does, two lines under the figure it just did it
+    // with, invites them to disregard the figure.
+    //
+    // WHAT IS STILL TRUE, and is what the message now says: the figure is
+    // computed from a published TABLE, not from the member's own leave and
+    // earnings statement, and sea or hardship duty pay raises the lawful
+    // base (JAGMAN 0111.i) while the four-month E-1 rate lowers it. The
+    // confirmation this asks for is against the member's rate of pay, which
+    // was always the point.
+    if (ceiling === null) {
+      warnings.push(
+        `Ceiling for ${code.code} is ${code.maxDaysPay} days pay (${code.statute}), and this ` +
+          `document does not price it: ${ceilingDetail} Work the dollar figure from the ` +
+          `member's rate of pay before imposing.`,
+      );
+    } else {
+      warnings.push(
+        `Ceiling for ${code.code} is ${code.maxDaysPay} days pay (${code.statute}), which at ` +
+          `${ceiling.payGrade} is $${ceiling.sevenDaysPay}. That comes from the published pay ` +
+          `table, not from the member's LES, so confirm it against their actual rate of pay.`,
+      );
+    }
   }
 
   const authorityResult = authoritySatisfies(code.requiredAuthority, authorityGrade);

@@ -11,6 +11,7 @@ import {
   COUNSELING_AREAS, COUNSELING_GRADES, COUNSELING_OCCASIONS, ICS_OBJECTIVES, HANDLING_STATEMENT, PRIVACY_MARKING,
   computedNextSessionDate, counselingSuggestions, emptyTarget, isLcplOrBelow, nextSessionInterval, parseNavalDate,
   runCounselingValidators, targetIsWellFormed, targetSentence, toNavalDate,
+  JEPES_ATTRIBUTES, JEPES_BANDS, counselingBenchmark, isJepesGrade, jepesBand, type JepesAttributeId, type JepesMark,
 } from '@/lib/counseling';
 import { counselingFormModel, generateCounseling } from '@/services/pdf/counselingGenerator';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
@@ -271,5 +272,205 @@ describe('the record', () => {
     const bytes = await generateCounseling(long);
     const items = await extractPdfTextLayout(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
     expect(Math.max(...items.map((i) => i.page))).toBeGreaterThanOrEqual(2);
+  });
+});
+
+/**
+ * Containers grow with their text and never let it escape. Measured
+ * defects, 2026-09-06, from a stress render: a name typed without spaces
+ * ran through the cell border into item 8; a long life-event label ran
+ * off the page; a comment longer than a page ran through the footer
+ * marking. Every assertion here is on the PDF text layer's positions.
+ */
+describe('containers expand and text stays inside them', () => {
+  const LONG = 'This is a deliberately long entry which keeps going so the cell must wrap across several lines and the row must grow to hold it. ';
+  const NOSPACE = 'https://example.mil/a/very/long/path/without/any/spaces/at/all/which/cannot/wrap/normally/1234567890';
+  const PAGE_W = 612;
+  const MARGIN = 36;
+  const BOTTOM = 44;
+
+  async function layout(overrides: Partial<FormData>) {
+    const bytes = await generateCounseling(form(overrides));
+    return extractPdfTextLayout(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
+  }
+
+  it('breaks a word wider than its cell instead of running through the border', async () => {
+    const items = await layout({ counselingMarineLastName: 'VERYLONGLASTNAMEWITHOUTSPACESXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' });
+    // Item 7 is 200pt wide from the left margin. Every fragment of the name
+    // starts inside it, and none is the whole unbroken string.
+    const fragments = items.filter((i) => i.page === 1 && /WITHOUTSPACES|X{5,}/.test(i.text));
+    expect(fragments.length).toBeGreaterThanOrEqual(2);
+    for (const f of fragments) expect(f.x).toBeLessThan(MARGIN + 200);
+    expect(fragments.some((f) => f.text.includes('VERYLONGLASTNAMEWITHOUTSPACESXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'))).toBe(false);
+  });
+
+  it('wraps a check label wider than its column under the checkbox', async () => {
+    const items = await layout({ counselingLifeEvents: ['other'], counselingLifeEventsOther: LONG + LONG });
+    const words = items.filter((i) => i.page === 1 && i.text.includes('deliberately'));
+    expect(words.length).toBeGreaterThanOrEqual(2);
+    // Nothing starts past the right margin, and the wrapped lines share the
+    // right-hand column's x.
+    for (const w of words) expect(w.x).toBeLessThan(PAGE_W - MARGIN);
+  });
+
+  it('splits a comment longer than a page across pages with a continued label, above the footer', async () => {
+    const items = await layout({ counselingSeniorComments: LONG.repeat(45), counselingIncludeMarineComments: true, counselingMarineComments: LONG.repeat(3) });
+    const body = items.filter((i) => i.text.includes('deliberately'));
+    for (const b of body) expect(b.y, `text on page ${b.page} below the bottom margin`).toBeGreaterThanOrEqual(BOTTOM);
+    expect(items.some((i) => i.text.includes("27. SENIOR'S COMMENTS (continued)"))).toBe(true);
+    // The Marine's comments finished on their first page and are not marked continued.
+    expect(items.some((i) => i.text.includes("28. MARINE'S COMMENTS (optional) (continued)"))).toBe(false);
+    // The certification block still follows, on the last page.
+    const last = Math.max(...items.map((i) => i.page));
+    expect(items.some((i) => i.page === last && i.text.includes('SECTION X. CERTIFICATION'))).toBe(true);
+  });
+
+  it('keeps a target with an unbreakable URL inside its column', async () => {
+    const items = await layout({ counselingOccasion: 'follow-on', counselingPriorTargets: [{ text: NOSPACE, status: 'not-met', note: '' }] as never });
+    const pieces = items.filter((i) => /example\.mil|\/[a-z]+\/|1234567890/.test(i.text));
+    expect(pieces.length).toBeGreaterThanOrEqual(2);
+    for (const p of pieces) expect(p.x).toBeLessThan(MARGIN + 30 + 380);
+  });
+});
+
+/**
+ * The provisional JEPES benchmark (docs/COUNSELING_JEPES_BENCHMARK_PLAN.md).
+ * Band edges from Figure 1-2, rules from para 3.a, grade scope from
+ * MCO 1616.1 para 1.
+ */
+describe('JEPES benchmark: bands, scope, suggestions', () => {
+  const cpl = (extra: Partial<FormData> = {}) => form({ counselingMarineGrade: 'E-4', ...extra });
+  const bench = (marks: Partial<Record<JepesAttributeId, Partial<JepesMark>>>) =>
+    ({ counselingBenchmark: marks } as unknown as Partial<FormData>);
+  const ids = (fd: FormData) => counselingSuggestions(fd).map((s) => s.id);
+
+  it('places every band edge of Figure 1-2', () => {
+    const at = (m: string) => jepesBand(m)?.id;
+    expect(at('0.0')).toBe('adverse');
+    expect(at('0.1')).toBe('below');
+    expect(at('0.9')).toBe('below');
+    expect(at('1.0')).toBe('working');
+    expect(at('1.9')).toBe('working');
+    expect(at('2.0')).toBe('meets');
+    expect(at('2.5')).toBe('meets');
+    expect(at('3.0')).toBe('meets');
+    expect(at('3.1')).toBe('exceeds');
+    expect(at('4.0')).toBe('exceeds');
+    expect(at('4.1')).toBe('exceptional');
+    expect(at('5.0')).toBe('exceptional');
+    expect(jepesBand('')).toBeNull();
+    expect(jepesBand('5.1')).toBeNull();
+    expect(jepesBand('abc')).toBeNull();
+    expect(jepesBand('2.55')).toBeNull();
+  });
+
+  it('covers Private through Corporal only (MCO 1616.1 para 1)', () => {
+    expect(isJepesGrade('E-1')).toBe(true);
+    expect(isJepesGrade('E-4')).toBe(true);
+    expect(isJepesGrade('E-5')).toBe(false);
+    expect(isJepesGrade('W-1')).toBe(false);
+    expect(isJepesGrade('')).toBe(false);
+  });
+
+  it('carries three attributes with six band lists each, in figure order', () => {
+    expect(JEPES_ATTRIBUTES.map((a) => a.title)).toEqual(['Individual Character', 'MOS Proficiency and/or Mission Accomplishment', 'Leadership']);
+    for (const a of JEPES_ATTRIBUTES) for (const b of JEPES_BANDS) expect(a.bands[b.id].length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('offers the 2.5 baseline when all three are blank, and applies it to all three', () => {
+    const fd = cpl();
+    const start = counselingSuggestions(fd).find((s) => s.id === 'benchmark-start');
+    expect(start).toBeDefined();
+    const applied = { ...fd, ...start!.action!.apply(fd) };
+    const b = counselingBenchmark(applied);
+    expect([b.character.mark, b.mos.mark, b.leadership.mark]).toEqual(['2.5', '2.5', '2.5']);
+    expect(ids(applied)).not.toContain('benchmark-start');
+  });
+
+  it('is silent for a Sergeant', () => {
+    expect(ids(form({ counselingMarineGrade: 'E-5' })).some((id) => id.startsWith('benchmark'))).toBe(false);
+    expect(ids(form({ counselingMarineGrade: 'E-5', ...bench({ mos: { mark: '4.5' } }) })).some((id) => id.startsWith('benchmark'))).toBe(false);
+  });
+
+  it('requires a justification at 4.1 and above and at 0.9 and below, not in between (para 3.a(1), 3.a(5))', () => {
+    expect(ids(cpl(bench({ mos: { mark: '4.1' } })))).toContain('benchmark-justify-mos');
+    expect(ids(cpl(bench({ mos: { mark: '0.9' } })))).toContain('benchmark-justify-mos');
+    expect(ids(cpl(bench({ mos: { mark: '0.0' } })))).toContain('benchmark-justify-mos');
+    expect(ids(cpl(bench({ mos: { mark: '4.0' } })))).not.toContain('benchmark-justify-mos');
+    expect(ids(cpl(bench({ mos: { mark: '1.0' } })))).not.toContain('benchmark-justify-mos');
+    expect(ids(cpl(bench({ mos: { mark: '4.1', justification: 'MUC and a NAM this period.' } })))).not.toContain('benchmark-justify-mos');
+  });
+
+  it('asks for commendatory material at 4.1 and above only (para 3.a(1))', () => {
+    expect(ids(cpl(bench({ leadership: { mark: '4.1' } })))).toContain('benchmark-commendatory-leadership');
+    expect(ids(cpl(bench({ leadership: { mark: '4.0' } })))).not.toContain('benchmark-commendatory-leadership');
+    expect(ids(cpl(bench({ leadership: { mark: '4.1', commendatory: true } })))).not.toContain('benchmark-commendatory-leadership');
+  });
+
+  it('asks for the adverse reason at 0.0 only', () => {
+    expect(ids(cpl(bench({ character: { mark: '0.0' } })))).toContain('benchmark-adverse-character');
+    expect(ids(cpl(bench({ character: { mark: '0.1' } })))).not.toContain('benchmark-adverse-character');
+    expect(ids(cpl(bench({ character: { mark: '0.0', adverseReason: 'njp' } })))).not.toContain('benchmark-adverse-character');
+  });
+
+  it('flags a move of more than a full point from the prior session when unexplained', () => {
+    const prior = { counselingPriorBenchmark: { character: '2.5', mos: '2.5', leadership: '2.5', date: '1 Mar 26' } } as unknown as Partial<FormData>;
+    expect(ids(cpl({ ...prior, ...bench({ mos: { mark: '3.6' } }) }))).toContain('benchmark-swing-mos');
+    expect(ids(cpl({ ...prior, ...bench({ mos: { mark: '3.5' } }) }))).not.toContain('benchmark-swing-mos');
+    expect(ids(cpl({ ...prior, ...bench({ mos: { mark: '1.4' } }) }))).toContain('benchmark-swing-mos');
+    expect(ids(cpl({ ...prior, ...bench({ mos: { mark: '3.6', justification: 'Ran the section for six weeks during the SNCOIC gap.' } }) }))).not.toContain('benchmark-swing-mos');
+    expect(ids(cpl(bench({ mos: { mark: '3.6' } })))).not.toContain('benchmark-swing-mos');
+  });
+
+  it('parses a document with the benchmark and one without', () => {
+    expect(CounselingSchema.safeParse({ ...cpl(), counselingBenchmark: { mos: { mark: '2.5', justification: '', commendatory: false, adverseReason: '' } } }).success).toBe(true);
+    expect(CounselingSchema.safeParse(cpl()).success).toBe(true);
+  });
+});
+
+describe('JEPES benchmark on the record', () => {
+  const bench = (marks: Record<string, Partial<JepesMark>>) => ({ counselingBenchmark: marks } as unknown as Partial<FormData>);
+  async function text(overrides: Partial<FormData>) {
+    const bytes = await generateCounseling(form(overrides));
+    const items = await extractPdfTextLayout(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
+    return { items, all: items.map((i) => i.text).join(' ') };
+  }
+
+  it('prints nothing for a blank benchmark, and nothing for a Sergeant even when marked', async () => {
+    expect((await text({ counselingMarineGrade: 'E-4' })).all).not.toContain('SECTION VI-A');
+    expect((await text({ counselingMarineGrade: 'E-5', ...bench({ mos: { mark: '4.5', justification: 'x' } }) })).all).not.toContain('SECTION VI-A');
+    expect(counselingFormModel(form({ counselingMarineGrade: 'E-5', ...bench({ mos: { mark: '4.5' } }) })).benchmark).toBeNull();
+  });
+
+  it('prints attribute, prior, mark, band and justification, and never the rubric descriptors', async () => {
+    const { all } = await text({
+      counselingMarineGrade: 'E-4',
+      counselingPriorBenchmark: { character: '2.5', mos: '2.5', leadership: '2.5', date: '8 Jun 26' },
+      ...bench({
+        character: { mark: '2.8' },
+        mos: { mark: '4.2', justification: 'NAM for the field exercise.', commendatory: true },
+        leadership: { mark: '0.0', adverseReason: 'njp', justification: 'NJP on 3 Aug 26 for UA.' },
+      }),
+    } as Partial<FormData>);
+    expect(all).toContain('SECTION VI-A. JEPES BENCHMARK (provisional, not the mark of record');
+    expect(all).toContain('PRIOR (8 Jun 26)');
+    expect(all).toContain('Individual Character');
+    expect(all).toContain('Meets Expectations');
+    expect(all).toContain('4.2');
+    expect(all).toContain('Exceptional');
+    expect(all).toContain('NAM for the field exercise. Formal commendatory material on file.');
+    expect(all).toContain('Non Rec / Adverse');
+    expect(all).toContain('NJP or court-martial during the reporting period NJP on 3 Aug 26 for UA.');
+    expect(all).toContain('not adverse and do not by themselves NOT REC');
+    // Descriptors are editor-only (owner decision).
+    expect(all).not.toContain('bias for action');
+    expect(all).not.toContain('Competency Review Board (CRB). Documented');
+  });
+
+  it('places the section between Performance and the targets review', () => {
+    const model = counselingFormModel(form({ counselingMarineGrade: 'E-4', ...bench({ mos: { mark: '2.5' } }) }));
+    expect(model.benchmark).toHaveLength(3);
+    expect(model.benchmark![1]).toMatchObject({ attribute: 'MOS Proficiency and/or Mission Accomplishment', mark: '2.5', band: 'Meets Expectations', prior: '', justification: '' });
+    expect(model.benchmark![0].mark).toBe('');
   });
 });
