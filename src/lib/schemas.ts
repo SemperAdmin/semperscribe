@@ -169,6 +169,12 @@ const ssicFieldDirective = () => z.string().superRefine((val, ctx) => {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "SSIC is required" });
     return;
   }
+  // P4-1: the validators cut the field at 64 before scanning it; a
+  // longer value is noise, never an identifier.
+  if (val.length > 64) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "SSIC too long (max 64 characters)" });
+    return;
+  }
   // Must contain a 4-5 digit SSIC code somewhere
   if (!/\d{4,5}/.test(val)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "SSIC must contain a 4-5 digit code (e.g., 5216.3K)" });

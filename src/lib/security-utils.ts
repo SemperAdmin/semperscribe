@@ -7,7 +7,13 @@
 export const SECURITY_PATTERNS = {
   // SSN: AAA-GG-SSSS or AAA GG SSSS
   SSN: /\b\d{3}[-\s]\d{2}[-\s]\d{4}\b/,
-  
+
+  // P2-8: an SSN typed without separators. Exactly nine digits with no
+  // digit on either side, so a ten-digit EDIPI, a longer document or
+  // account number, or a digit run never trips it. Lower confidence
+  // than the separated form; reported under its own label.
+  SSN_UNSEPARATED: /(?<!\d)\d{9}(?!\d)/,
+
   // EDIPI: 10 digits
   EDIPI: /\b\d{10}\b/,
   
@@ -46,6 +52,12 @@ export function scanForSensitiveData(data: any): SecurityScanResult {
   if (SECURITY_PATTERNS.SSN.test(rawContent)) {
     result.hasPII = true;
     result.piiMatches.push("Possible SSN detected");
+  }
+
+  // Check unseparated SSN (P2-8)
+  if (SECURITY_PATTERNS.SSN_UNSEPARATED.test(rawContent)) {
+    result.hasPII = true;
+    result.piiMatches.push("Possible SSN (nine digits, unseparated)");
   }
 
   // Check EDIPI

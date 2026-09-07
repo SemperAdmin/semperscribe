@@ -15,6 +15,7 @@ import {
   validateEndorsementContinuation,
   runLetterValidators,
   validateRevisionSuffix,
+  validateSecnavSchema,
   validateSubjectLine,
   validateEnclosureOrder,
   validateSamePageEndorsementExport } from '@/lib/letter-validators';
@@ -661,5 +662,54 @@ describe('same-page endorsement exported alone (E.1, M-5216.5 9-1)', () => {
     expect(blockers.map((i) => i.id)).not.toContain('same-page-endorsement-alone');
     const all = runLetterValidators(SAME_PAGE, [], [], [p(1, 1, 'Forwarded, recommending approval.')]);
     expect(all.map((i) => i.id)).toContain('same-page-endorsement-alone');
+  });
+});
+
+describe('P4-1 SSIC "w/ ch" strip (linear rewrite parity)', () => {
+  const mco = (ssic: string) => ({ documentType: 'mco', ssic } as never);
+  const notice = (ssic: string) =>
+    validateSecnavSchema({ documentType: 'secnav-notice', ssic } as never, [])
+      .map((i) => i.id)
+      .filter((id) => id === 'secnav-notice-no-point-number');
+
+  it('strips the annotation and its leading whitespace, any case', () => {
+    expect(validateRevisionSuffix(mco('5215.1Q W/ CH 2')).map((i) => i.id)).toContain('revision-suffix-q');
+    expect(validateRevisionSuffix(mco('5215.1Q\tw/ch 2')).map((i) => i.id)).toContain('revision-suffix-q');
+    expect(validateRevisionSuffix(mco('5215.1K   w/ ch 2'))).toHaveLength(0);
+  });
+
+  it('strips from the first "w/" onward', () => {
+    // Only the text before the first w/ is examined: "5215.1Q" survives.
+    expect(validateRevisionSuffix(mco('5215.1Q w/ ch 1 w/ ch 2')).map((i) => i.id)).toContain('revision-suffix-q');
+  });
+
+  it('leaves an SSIC with no annotation alone', () => {
+    expect(validateRevisionSuffix(mco('  5215.1Q  ')).map((i) => i.id)).toContain('revision-suffix-q');
+    expect(notice('5215.1')).toContain('secnav-notice-no-point-number');
+    expect(notice('5215')).toEqual([]);
+  });
+
+  it('notice: the change annotation never reads as a point number', () => {
+    expect(notice('5215 w/ ch 1')).toEqual([]);
+    expect(notice('5215.1 w/ ch 1')).toContain('secnav-notice-no-point-number');
+  });
+
+  it('caps the examined length so a runaway field cannot stall the validator', () => {
+    const long = `5215.1Q${' '.repeat(300)}w/ ch 1`;
+    expect(validateRevisionSuffix(mco(long)).map((i) => i.id)).toContain('revision-suffix-q');
+  });
+});
+
+describe('P4-1 SSIC schema length cap', () => {
+  it('directive SSIC rejects a value longer than 64 characters', async () => {
+    const { MCOSchema, SecnavNoticeSchema, BasicLetterSchema } = await import('@/lib/schemas');
+    const ssic = (schema: { shape: { ssic: { safeParse: (v: unknown) => { success: boolean } } } }, v: string) =>
+      schema.shape.ssic.safeParse(v).success;
+    expect(ssic(MCOSchema, 'C5216R.3K w/ ch 1')).toBe(true);
+    expect(ssic(MCOSchema, '5215.1K' + ' '.repeat(58))).toBe(false);
+    expect(ssic(SecnavNoticeSchema, '5215' + ' '.repeat(61))).toBe(false);
+    // The basic-letter field was already capped at 5 digits.
+    expect(ssic(BasicLetterSchema, '123456')).toBe(false);
+    expect(ssic(BasicLetterSchema, '12345')).toBe(true);
   });
 });

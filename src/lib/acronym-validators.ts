@@ -67,16 +67,27 @@ export function expansionIndexFor(dictionary: readonly DictionaryEntry[]): Map<s
 }
 
 /**
- * True when the text defines the acronym at or before `index`:
- * a parenthesized "(ACRO)" preceded by at least one word.
+ * A definition is a parenthesized "(ACRO)" preceded by at least one
+ * word character. Same shape as the ACRONYM token so the two agree.
  */
-function definedBefore(text: string, acronym: string, index: number): boolean {
-  const defPattern = new RegExp(`\\w\\s*\\(${acronym}\\)`, 'g');
+const DEFINITION = /\w\s*\(([A-Z]{2,6})\)/g;
+
+/**
+ * acronym -> index of its first definition match (the preceding word
+ * character, as `\w\s*\(ACRO\)` reports it). One pass over the text;
+ * the former per-acronym rescan made 40 000 distinct tokens take 20 s
+ * (P4-2). Matches cannot overlap - each ends on ")" which is never the
+ * leading `\w` of the next - so the union of the per-acronym scans is
+ * exactly this one scan.
+ */
+function definitionIndex(text: string): Map<string, number> {
+  const first = new Map<string, number>();
+  const pattern = new RegExp(DEFINITION.source, 'g');
   let m: RegExpExecArray | null;
-  while ((m = defPattern.exec(text)) !== null) {
-    if (m.index <= index) return true;
+  while ((m = pattern.exec(text)) !== null) {
+    if (!first.has(m[1])) first.set(m[1], m.index);
   }
-  return false;
+  return first;
 }
 
 /**
@@ -96,6 +107,7 @@ export function validateAcronyms(
   if (!text.trim()) return issues;
 
   const seen = new Set<string>();
+  const definedAt = definitionIndex(text);
   let m: RegExpExecArray | null;
   const pattern = new RegExp(ACRONYM.source, 'g');
 
@@ -107,7 +119,10 @@ export function validateAcronyms(
     // A parenthesized first occurrence IS the definition.
     const isParenthesized = text.slice(Math.max(0, m.index - 1), m.index) === '(';
     if (isParenthesized) continue;
-    if (definedBefore(text, acronym, m.index)) continue;
+    // Defined at or before this use: a definition match starts on the
+    // word character ahead of the paren, hence the <= comparison.
+    const defAt = definedAt.get(acronym);
+    if (defAt !== undefined && defAt <= m.index) continue;
 
     const expansions = expansionIndex?.get(acronym) ?? [];
     const suggestion =

@@ -97,3 +97,34 @@ describe('suggestions (dictionary supplied by the caller, B.5)', () => {
     expect(spy).toEqual(['iterate']);
   });
 });
+
+describe('P4-2 definition index (single-pass rewrite parity)', () => {
+  it('a definition needs a preceding word character', () => {
+    // "(MCTFS)" as the very first token is skipped as parenthesized; a
+    // later bare use is then fine either way. The definition-index path
+    // matters when a bare use precedes the parenthesized one.
+    expect(ids('MCTFS then Marine Corps Total Force System (MCTFS).')).toContain('acronym-undefined-MCTFS');
+  });
+
+  it('a definition glued to its word still counts', () => {
+    expect(ids('Marine Corps Total Force System(MCTFS) then MCTFS again.')).toEqual([]);
+  });
+
+  it('adjacent parenthesised acronyms: the second has no preceding word', () => {
+    // "(AB)(CD)" - CD's paren is preceded by ")" not a word char; its
+    // first occurrence is still parenthesized, so it is skipped.
+    expect(ids('Alpha Bravo (AB)(CD) then AB and CD.')).toEqual([]);
+  });
+
+  it('many acronyms each defined once are all accepted', () => {
+    const body = Array.from({ length: 200 }, (_, i) => {
+      const a = `Q${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(65 + Math.floor(i / 26))}`;
+      return `Some Words (${a}) then ${a} again.`;
+    }).join(' ');
+    expect(ids(body)).toEqual([]);
+  });
+
+  it('definitions found in a later paragraph do not rescue an earlier bare use', () => {
+    expect(ids('Use AWOL here.', 'Absent Without Leave (AWOL) defined later.')).toContain('acronym-undefined-AWOL');
+  });
+});

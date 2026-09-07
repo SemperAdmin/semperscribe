@@ -1,0 +1,1118 @@
+[
+ {
+  "input": "",
+  "plain": [],
+  "styled": []
+ },
+ {
+  "input": "plain text",
+  "plain": [
+   "plain text"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "plain text"
+   }
+  ]
+ },
+ {
+  "input": "**bold**",
+  "plain": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "bold"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "bold"
+   }
+  ]
+ },
+ {
+  "input": "*italic*",
+  "plain": [
+   {
+    "style": {
+     "fontStyle": "italic"
+    },
+    "children": "italic"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "italic"
+   }
+  ]
+ },
+ {
+  "input": "***bi***",
+  "plain": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "bi"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "bi"
+   }
+  ]
+ },
+ {
+  "input": "<u>under</u>",
+  "plain": [
+   {
+    "style": {
+     "textDecoration": "underline"
+    },
+    "children": "under"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "textDecoration": "underline"
+    },
+    "children": "under"
+   }
+  ]
+ },
+ {
+  "input": "a **b** c *d* e <u>f</u> g ***h*** i",
+  "plain": [
+   "a ",
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "b"
+   },
+   " c ",
+   {
+    "style": {
+     "fontStyle": "italic"
+    },
+    "children": "d"
+   },
+   " e ",
+   {
+    "style": {
+     "textDecoration": "underline"
+    },
+    "children": "f"
+   },
+   " g ",
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "h"
+   },
+   " i"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "a "
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "b"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " c "
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "d"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " e "
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "textDecoration": "underline"
+    },
+    "children": "f"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " g "
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "h"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " i"
+   }
+  ]
+ },
+ {
+  "input": "**<u>bold underline</u>**",
+  "plain": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "textDecoration": "underline"
+    },
+    "children": "bold underline"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "textDecoration": "underline"
+    },
+    "children": "bold underline"
+   }
+  ]
+ },
+ {
+  "input": "*<u>ital under</u>*",
+  "plain": [
+   {
+    "style": {
+     "fontStyle": "italic",
+     "textDecoration": "underline"
+    },
+    "children": "ital under"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic",
+     "textDecoration": "underline"
+    },
+    "children": "ital under"
+   }
+  ]
+ },
+ {
+  "input": "***<u>all</u>***",
+  "plain": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic",
+     "textDecoration": "underline"
+    },
+    "children": "all"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic",
+     "textDecoration": "underline"
+    },
+    "children": "all"
+   }
+  ]
+ },
+ {
+  "input": "<u>**under bold**</u>",
+  "plain": [
+   {
+    "style": {
+     "textDecoration": "underline",
+     "fontWeight": "bold"
+    },
+    "children": "under bold"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "textDecoration": "underline"
+    },
+    "children": "under bold"
+   }
+  ]
+ },
+ {
+  "input": "**bold *and italic* inside**",
+  "plain": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "bold "
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "and italic"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " inside"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "bold "
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "and italic"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " inside"
+   }
+  ]
+ },
+ {
+  "input": "*it **bo** it*",
+  "plain": [
+   {
+    "style": {
+     "fontStyle": "italic"
+    },
+    "children": "it "
+   },
+   {
+    "style": {
+     "fontStyle": "italic"
+    },
+    "children": "bo"
+   },
+   {
+    "style": {
+     "fontStyle": "italic"
+    },
+    "children": " it"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "it "
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "bo"
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": " it"
+   }
+  ]
+ },
+ {
+  "input": "**unbalanced",
+  "plain": [
+   "unbalanced"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "unbalanced"
+   }
+  ]
+ },
+ {
+  "input": "*lone star",
+  "plain": [
+   "*lone star"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "*lone star"
+   }
+  ]
+ },
+ {
+  "input": "<u>open only",
+  "plain": [
+   "<u>open only"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "<u>open only"
+   }
+  ]
+ },
+ {
+  "input": "close only</u>",
+  "plain": [
+   "close only</u>"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "close only</u>"
+   }
+  ]
+ },
+ {
+  "input": "****",
+  "plain": [],
+  "styled": []
+ },
+ {
+  "input": "**",
+  "plain": [],
+  "styled": []
+ },
+ {
+  "input": "*",
+  "plain": [
+   "*"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "*"
+   }
+  ]
+ },
+ {
+  "input": "***",
+  "plain": [
+   "*"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "*"
+   }
+  ]
+ },
+ {
+  "input": "<u></u>",
+  "plain": [],
+  "styled": []
+ },
+ {
+  "input": "<u>a</u><u>b</u>",
+  "plain": [
+   {
+    "style": {
+     "textDecoration": "underline"
+    },
+    "children": "a"
+   },
+   {
+    "style": {
+     "textDecoration": "underline"
+    },
+    "children": "b"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "textDecoration": "underline"
+    },
+    "children": "a"
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "textDecoration": "underline"
+    },
+    "children": "b"
+   }
+  ]
+ },
+ {
+  "input": "**a**b**c**",
+  "plain": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "a"
+   },
+   "b",
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "c"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "a"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "b"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "c"
+   }
+  ]
+ },
+ {
+  "input": "*a*b*c*",
+  "plain": [
+   {
+    "style": {
+     "fontStyle": "italic"
+    },
+    "children": "a"
+   },
+   "b",
+   {
+    "style": {
+     "fontStyle": "italic"
+    },
+    "children": "c"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "a"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "b"
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "c"
+   }
+  ]
+ },
+ {
+  "input": "****bold****",
+  "plain": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "*bold"
+   },
+   "*"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "*bold"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "*"
+   }
+  ]
+ },
+ {
+  "input": "*****x*****",
+  "plain": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "x"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "x"
+   }
+  ]
+ },
+ {
+  "input": "**a *b* c** d",
+  "plain": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "a "
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "b"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " c"
+   },
+   " d"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "a "
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "b"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " c"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " d"
+   }
+  ]
+ },
+ {
+  "input": "<u>a**b**c</u>",
+  "plain": [
+   {
+    "style": {
+     "textDecoration": "underline"
+    },
+    "children": "a"
+   },
+   {
+    "style": {
+     "textDecoration": "underline",
+     "fontWeight": "bold"
+    },
+    "children": "b"
+   },
+   {
+    "style": {
+     "textDecoration": "underline"
+    },
+    "children": "c"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "textDecoration": "underline"
+    },
+    "children": "a"
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "textDecoration": "underline"
+    },
+    "children": "b"
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "textDecoration": "underline"
+    },
+    "children": "c"
+   }
+  ]
+ },
+ {
+  "input": "x ** y ** z",
+  "plain": [
+   "x ",
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " y "
+   },
+   " z"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "x "
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " y "
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " z"
+   }
+  ]
+ },
+ {
+  "input": "* not bold *",
+  "plain": [
+   {
+    "style": {
+     "fontStyle": "italic"
+    },
+    "children": " not bold "
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": " not bold "
+   }
+  ]
+ },
+ {
+  "input": "<u>a<u>b</u>c</u>",
+  "plain": [
+   {
+    "style": {
+     "textDecoration": "underline"
+    },
+    "children": "a<u>b"
+   },
+   "c</u>"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "textDecoration": "underline"
+    },
+    "children": "a<u>b"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "c</u>"
+   }
+  ]
+ },
+ {
+  "input": "text with <U>caps</U>",
+  "plain": [
+   "text with <U>caps</U>"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "text with <U>caps</U>"
+   }
+  ]
+ },
+ {
+  "input": "a**b",
+  "plain": [
+   "a",
+   "b"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "a"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "b"
+   }
+  ]
+ },
+ {
+  "input": "**a**\n**b**",
+  "plain": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "a"
+   },
+   "\n",
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "b"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "a"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "\n"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "b"
+   }
+  ]
+ },
+ {
+  "input": "***a**",
+  "plain": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "*a"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "*a"
+   }
+  ]
+ },
+ {
+  "input": "**a***",
+  "plain": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "a"
+   },
+   "*"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "a"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "*"
+   }
+  ]
+ },
+ {
+  "input": "*a**",
+  "plain": [
+   {
+    "style": {
+     "fontStyle": "italic"
+    },
+    "children": "a"
+   },
+   "*"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "a"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "*"
+   }
+  ]
+ },
+ {
+  "input": "**a*",
+  "plain": [
+   "a*"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "a*"
+   }
+  ]
+ },
+ {
+  "input": "<u>a<u>a<u>a<u>a<u>a",
+  "plain": [
+   "<u>a<u>a<u>a<u>a<u>a"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "<u>a<u>a<u>a<u>a<u>a"
+   }
+  ]
+ },
+ {
+  "input": "**********",
+  "plain": [],
+  "styled": []
+ },
+ {
+  "input": "*******",
+  "plain": [
+   "*"
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "*"
+   }
+  ]
+ },
+ {
+  "input": "foo <u>*bar*</u> **baz** ***qux*** *<u>**deep**</u>*",
+  "plain": [
+   "foo ",
+   {
+    "style": {
+     "textDecoration": "underline",
+     "fontStyle": "italic"
+    },
+    "children": "bar"
+   },
+   " ",
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "baz"
+   },
+   " ",
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "qux"
+   },
+   " ",
+   {
+    "style": {
+     "fontStyle": "italic"
+    },
+    "children": "<u>"
+   },
+   {
+    "style": {
+     "fontStyle": "italic"
+    },
+    "children": "deep"
+   },
+   {
+    "style": {
+     "fontStyle": "italic"
+    },
+    "children": "</u>"
+   }
+  ],
+  "styled": [
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "foo "
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "textDecoration": "underline",
+     "fontStyle": "italic"
+    },
+    "children": "bar"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " "
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": "baz"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " "
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "qux"
+   },
+   {
+    "style": {
+     "fontWeight": "bold"
+    },
+    "children": " "
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "<u>"
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "deep"
+   },
+   {
+    "style": {
+     "fontWeight": "bold",
+     "fontStyle": "italic"
+    },
+    "children": "</u>"
+   }
+  ]
+ }
+]
