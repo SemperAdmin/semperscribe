@@ -7,12 +7,34 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, mkdir, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { CompanionError } from '../../companion/errors';
 import { outputDir, writeOutput } from '../../companion/output';
 
 const BYTES = new Uint8Array([1, 2, 3, 4]);
+
+/**
+ * Windows grants symlink creation only to administrators or accounts with
+ * SeCreateSymbolicLinkPrivilege (Developer Mode). Probe once, and skip the
+ * symlink cases where the host refuses, so the confinement checks which do
+ * not depend on the privilege still run there. CI runs on Linux, where the
+ * probe succeeds and every case runs.
+ */
+function hostCreatesSymlinks(): boolean {
+  const probe = mkdtempSync(path.join(os.tmpdir(), 'companion-symlink-probe-'));
+  try {
+    symlinkSync(probe, path.join(probe, 'self'), 'dir');
+    return true;
+  } catch {
+    return false;
+  } finally {
+    rmSync(probe, { recursive: true, force: true });
+  }
+}
+
+const itWithSymlinks = it.skipIf(!hostCreatesSymlinks());
 
 let base: string;
 let outside: string;
@@ -89,7 +111,7 @@ describe('writeOutput', () => {
     expect(error.code).toBe('output_path_rejected');
   });
 
-  it('refuses a symbolic link planted in the directory', async () => {
+  itWithSymlinks('refuses a symbolic link planted in the directory', async () => {
     const victim = path.join(outside, 'victim.pdf');
     await writeFile(victim, 'original');
     await symlink(victim, path.join(base, 'link.pdf'));
@@ -98,7 +120,7 @@ describe('writeOutput', () => {
     expect(await readFile(victim, 'utf8')).toBe('original');
   });
 
-  it('refuses a path through a symlinked subdirectory', async () => {
+  itWithSymlinks('refuses a path through a symlinked subdirectory', async () => {
     await symlink(outside, path.join(base, 'elsewhere'));
     const error = await expectRejected('elsewhere/escape.pdf');
     expect(error.code).toBe('output_path_rejected');
@@ -187,12 +209,12 @@ describe('writeOutput error bodies carry no path', () => {
     assertNoPath(await expectRejected('missing/letter.pdf'), base);
   });
 
-  it('for a symlinked subdirectory', async () => {
+  itWithSymlinks('for a symlinked subdirectory', async () => {
     await symlink(outside, path.join(base, 'elsewhere'));
     assertNoPath(await expectRejected('elsewhere/escape.pdf'), base, outside);
   });
 
-  it('for a planted symlink', async () => {
+  itWithSymlinks('for a planted symlink', async () => {
     await writeFile(path.join(outside, 'victim.pdf'), 'original');
     await symlink(path.join(outside, 'victim.pdf'), path.join(base, 'link.pdf'));
     assertNoPath(await expectRejected('link.pdf'), base, outside);

@@ -52,7 +52,10 @@ describe('companion PDF parity with the golden snapshot', () => {
     );
     expect(layout.length).toBeGreaterThan(0);
 
-    const expected = await readFile(SNAPSHOT, 'utf8');
+    // A Windows checkout with core.autocrlf rewrites the snapshot with CRLF
+    // line endings. The layout text is produced with LF. Compare the lines,
+    // not the line terminators, as vitest's own file snapshots do.
+    const expected = (await readFile(SNAPSHOT, 'utf8')).replace(/\r\n/g, '\n');
     expect(layoutToSnapshotText(layout).trimEnd()).toBe(expected.trimEnd());
   }, 60000);
 });
