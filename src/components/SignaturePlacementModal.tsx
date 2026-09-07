@@ -18,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { SignaturePosition } from "@/types";
 import { getPdfWorkerSrc } from '@/lib/pdf-worker';
+import { ShareLinkDialog, type ShareLinkOptions } from "@/components/ShareLinkDialog";
 
 // Dynamically import react-pdf to avoid SSR issues
 const Document = dynamic(() => import("react-pdf").then((mod) => mod.Document), { ssr: false });
@@ -39,8 +40,10 @@ interface SignaturePlacementModalProps {
   open: boolean;
   onClose: () => void;
   onConfirm: (positions: SignaturePosition[]) => void;
-  /** S2e: persist fields AND copy the signature request link in one step */
-  onConfirmAndCopyLink?: (positions: SignaturePosition[]) => void;
+  /** S2e: persist fields AND copy the signature request link in one
+   * step. P2-1: the modal collects the link password first (the request
+   * link is always encrypted), and passes it along with the fields. */
+  onConfirmAndCopyLink?: (positions: SignaturePosition[], options: ShareLinkOptions) => void | Promise<void>;
   pdfBlob: Blob | null;
   totalPages: number;
   /** ENC: pages beyond this are merged enclosures - visible for
@@ -112,6 +115,10 @@ function SignaturePlacementBody({
 
   const [pageSize, setPageSize] = useState({ width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // P2-1: the request link needs a password before it is built. The
+  // share dialog (signature-request mode) collects it; no window.prompt.
+  const [showRequestLinkDialog, setShowRequestLinkDialog] = useState(false);
 
   // Handle page load to get dimensions
   const onPageLoadSuccess = useCallback(({ width, height }: { width: number; height: number }) => {
@@ -327,12 +334,21 @@ function SignaturePlacementBody({
               Save Fields
             </Button>
             {onConfirmAndCopyLink && (
-              <Button onClick={() => onConfirmAndCopyLink(signatureBoxes)} disabled={signatureBoxes.length === 0}>
-                Save &amp; Copy Request Link
+              <Button onClick={() => setShowRequestLinkDialog(true)} disabled={signatureBoxes.length === 0}>
+                Save &amp; Copy Protected Request Link
               </Button>
             )}
           </div>
         </div>
+
+        {onConfirmAndCopyLink && (
+          <ShareLinkDialog
+            open={showRequestLinkDialog}
+            onOpenChange={setShowRequestLinkDialog}
+            mode="signature-request"
+            onCreate={async (options) => { await onConfirmAndCopyLink(signatureBoxes, options); }}
+          />
+        )}
 
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar for Metadata */}

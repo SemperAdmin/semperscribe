@@ -75,23 +75,81 @@ function writeMap(map: ProxyMap): void {
  * Local Network Access enforcement shipped in Chrome 142, so a page on a
  * public origin reaching loopback prompts the user for permission and is
  * deniable by enterprise policy.
+ *
+ * HOST POLICY (P2-2). Loopback hosts pass. Any other host is refused
+ * unless `options.allowRemote` is true; see ProxyUrlOptions.
  */
-export function normalizeProxyUrl(raw: string): string | null {
+export function normalizeProxyUrl(raw: string, options: ProxyUrlOptions = {}): string | null {
+  const classified = classifyProxyUrl(raw);
+  if (classified.kind === 'invalid') return null;
+  if (classified.kind === 'remote' && options.allowRemote !== true) return null;
+  return classified.url;
+}
+
+export interface ProxyUrlOptions {
+  /**
+   * P2-2. A proxy receives the user's API key and the draft text, so a
+   * proxy on any host other than this machine is an egress destination
+   * chosen by whoever wrote the setting. Loopback is the documented
+   * deployment (the SemperScribe local proxy) and passes by default. A
+   * remote host is refused unless the caller says so explicitly, and the
+   * only caller which does is the Settings UI after the user ticks an
+   * acknowledgement naming the host.
+   */
+  allowRemote?: boolean;
+}
+
+export type ProxyUrlClass =
+  | { kind: 'invalid' }
+  | { kind: 'loopback'; url: string; host: string }
+  | { kind: 'remote'; url: string; host: string };
+
+/**
+ * Parse and canonicalise without applying the remote-host policy, so the
+ * Settings UI can tell "malformed" from "needs an acknowledgement" and
+ * name the host in that acknowledgement.
+ */
+export function classifyProxyUrl(raw: string): ProxyUrlClass {
   const trimmed = raw.trim();
-  if (trimmed.length === 0) return null;
+  if (trimmed.length === 0) return { kind: 'invalid' };
 
   let parsed: URL;
   try {
     parsed = new URL(trimmed);
   } catch {
-    return null;
+    return { kind: 'invalid' };
   }
 
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-  if (parsed.search.length > 0 || parsed.hash.length > 0) return null;
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return { kind: 'invalid' };
+  if (parsed.search.length > 0 || parsed.hash.length > 0) return { kind: 'invalid' };
 
   const path = parsed.pathname.replace(/\/+$/, '');
-  return parsed.origin + path;
+  const url = parsed.origin + path;
+  const host = parsed.host;
+  return isLoopbackHost(parsed.hostname) ? { kind: 'loopback', url, host } : { kind: 'remote', url, host };
+}
+
+/**
+ * True for hosts which resolve to this machine without DNS: 127.0.0.0/8,
+ * `localhost`, and the IPv6 loopback. `URL.hostname` brackets an IPv6
+ * literal, so both spellings are checked.
+ */
+export function isLoopbackHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (h === 'localhost' || h === '[::1]' || h === '::1') return true;
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+  if (!m) return false;
+  return m[1] === '127' && m.slice(2).every(o => Number(o) <= 255);
+}
+
+/**
+ * True when a stored or supplied proxy base URL points off this machine.
+ * Used by the send path, which must not trust the stored value: a value
+ * written by an older build, or by hand, carries no acknowledgement.
+ */
+export function isRemoteProxyUrl(url: string): boolean {
+  const c = classifyProxyUrl(url);
+  return c.kind === 'remote';
 }
 
 /** Stored proxy base URL for a provider, or null when none is set. */
@@ -104,8 +162,8 @@ export function getProxyUrl(provider: GunnyProviderId): string | null {
  * Persist a proxy base URL. Returns the normalised value on success and
  * null when the input was rejected, in which case nothing is written.
  */
-export function setProxyUrl(provider: GunnyProviderId, raw: string): string | null {
-  const normalized = normalizeProxyUrl(raw);
+export function setProxyUrl(provider: GunnyProviderId, raw: string, options: ProxyUrlOptions = {}): string | null {
+  const normalized = normalizeProxyUrl(raw, options);
   if (normalized === null) return null;
   const map = readMap();
   map[provider] = normalized;

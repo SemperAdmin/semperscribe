@@ -18,8 +18,33 @@ import { streamChat } from '@/lib/gunnybot/client';
 import { getSystemPrompt } from '@/lib/gunnybot/prompts';
 import { getKey } from '@/lib/gunnybot/keyring';
 import { clearedForEgress } from '@/lib/gunnybot/redaction';
-import type { GunnyMessage } from '@/lib/gunnybot/types';
+import { getAdapter } from '@/lib/gunnybot/providers';
+import { getProxyUrl, classifyProxyUrl } from '@/lib/gunnybot/proxy-config';
+import type { GunnyMessage, GunnyProviderId } from '@/lib/gunnybot/types';
 import { useToast } from '@/hooks/use-toast';
+import { useHydrated } from '@/hooks/useHydrated';
+
+/**
+ * P2-2: the host the next send actually goes to, shown beside the send
+ * control so a stored proxy cannot quietly redirect the draft. A proxy
+ * wins over the provider's own host, which is what client.ts does.
+ * Returns null when the destination cannot be named (no adapter).
+ */
+function describeDestination(provider: GunnyProviderId, model: string): { host: string; viaProxy: boolean; remote: boolean } | null {
+  const proxy = getProxyUrl(provider);
+  if (proxy !== null) {
+    const c = classifyProxyUrl(proxy);
+    if (c.kind !== 'invalid') return { host: c.host, viaProxy: true, remote: c.kind === 'remote' };
+  }
+  const adapter = getAdapter(provider);
+  if (adapter === null) return null;
+  try {
+    const url = adapter.buildRequest({ provider, model, apiKey: '', messages: [], maxOutputTokens: 1 }).url;
+    return { host: new URL(url).host, viaProxy: false, remote: true };
+  } catch {
+    return null;
+  }
+}
 
 export function GunnyBotPanel() {
   const open = useGunnyStore(s => s.panelOpen);
@@ -36,6 +61,11 @@ export function GunnyBotPanel() {
 
   const [input, setInput] = useState('');
   const abortRef = useRef<AbortController | null>(null);
+  // localStorage (proxy URL) is absent during the static prerender; read
+  // it on the client only. Recomputed on every render so a change made in
+  // Settings shows on the next open without a subscription.
+  const hydrated = useHydrated();
+  const destination = hydrated ? describeDestination(provider, model) : null;
 
   const send = async () => {
     const question = input.trim();
@@ -151,6 +181,11 @@ export function GunnyBotPanel() {
             className="min-h-[64px] resize-none"
             disabled={streaming}
           />
+          {destination && (
+            <p className="text-[10px] text-muted-foreground font-mono truncate" data-testid="gunnybot-destination">
+              Sends to {destination.host}{destination.viaProxy ? (destination.remote ? ' (remote proxy)' : ' (local proxy)') : ''}
+            </p>
+          )}
           <div className="flex gap-2">
             {streaming ? (
               <Button variant="outline" size="sm" onClick={stop} className="flex-1">

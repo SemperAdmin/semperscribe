@@ -591,6 +591,9 @@ describe('gunnybot proxy requirement', () => {
     expect(normalizeProxyUrl('http://127.0.0.1:8443?a=1')).toBeNull();
     expect(normalizeProxyUrl('http://127.0.0.1:8443#x')).toBeNull();
     expect(normalizeProxyUrl('  http://127.0.0.1:8443///  ')).toBe('http://127.0.0.1:8443');
-    expect(normalizeProxyUrl('https://proxy.example/gw/')).toBe('https://proxy.example/gw');
+    // P2-2: a remote host needs the explicit allowRemote the Settings UI
+    // passes after the acknowledgement; without it the URL is refused.
+    expect(normalizeProxyUrl('https://proxy.example/gw/')).toBeNull();
+    expect(normalizeProxyUrl('https://proxy.example/gw/', { allowRemote: true })).toBe('https://proxy.example/gw');
   });
 });

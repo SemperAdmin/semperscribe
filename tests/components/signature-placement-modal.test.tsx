@@ -6,14 +6,19 @@
  */
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import React from 'react';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('react-pdf', () => ({
   pdfjs: { GlobalWorkerOptions: {} },
   Document: ({ file, children }: { file: string; children?: React.ReactNode }) => (
     <div data-testid="doc" data-file={file}>{children}</div>
   ),
-  Page: () => <div data-testid="page" />,
+  // Reports a full-size page on mount so the modal's coordinate mapping
+  // is live, which the drawing test below depends on.
+  Page: ({ onLoadSuccess }: { onLoadSuccess?: (p: { width: number; height: number }) => void }) => {
+    React.useEffect(() => { onLoadSuccess?.({ width: 612, height: 792 }); }, [onLoadSuccess]);
+    return <div data-testid="page" className="react-pdf__Page__canvas" />;
+  },
 }));
 
 import { SignaturePlacementModal } from '@/components/SignaturePlacementModal';
@@ -89,5 +94,53 @@ describe('SignaturePlacementModal', () => {
     expect(revoked).toEqual(['blob:mock-1']);
     unmount();
     expect(revoked).toEqual(['blob:mock-1', 'blob:mock-2']);
+  });
+});
+
+describe('SignaturePlacementModal request link (P2-1)', () => {
+  const rect = { left: 0, top: 0, right: 612, bottom: 792, width: 612, height: 792, x: 0, y: 0, toJSON() { return this; } };
+
+  function drawBox() {
+    const canvas = screen.getByTestId('page');
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue(rect as DOMRect);
+    const area = canvas.closest('.cursor-crosshair')!;
+    fireEvent.mouseDown(area, { clientX: 100, clientY: 600 });
+    fireEvent.mouseMove(area, { clientX: 300, clientY: 660 });
+    fireEvent.mouseUp(area);
+  }
+
+  it('collects a password through the share dialog and passes it with the fields', async () => {
+    const onConfirmAndCopyLink = vi.fn();
+    render(
+      <SignaturePlacementModal
+        open
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        onConfirmAndCopyLink={onConfirmAndCopyLink}
+        pdfBlob={new Blob(['x'])}
+        totalPages={1}
+      />,
+    );
+    const button = screen.getByRole('button', { name: /copy protected request link/i }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    drawBox();
+    await waitFor(() => expect(button.disabled).toBe(false));
+
+    fireEvent.click(button);
+    // Nothing is copied until a password is set: the button opens the
+    // dialog rather than calling the handler.
+    expect(onConfirmAndCopyLink).not.toHaveBeenCalled();
+    expect(screen.getByText(/Create Signature Request Link/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Create an unprotected link').closest('.hidden')).not.toBeNull();
+
+    fireEvent.change(screen.getByLabelText('Link password'), { target: { value: 'twelve chars ok' } });
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'twelve chars ok' } });
+    fireEvent.click(screen.getByRole('button', { name: /generate & copy/i }));
+
+    await waitFor(() => expect(onConfirmAndCopyLink).toHaveBeenCalledTimes(1));
+    const [positions, options] = onConfirmAndCopyLink.mock.calls[0];
+    expect(positions).toHaveLength(1);
+    expect(positions[0].page).toBe(1);
+    expect(options).toMatchObject({ password: 'twelve chars ok' });
   });
 });

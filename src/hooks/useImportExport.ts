@@ -12,6 +12,7 @@ import { migrateLegacySamePage } from '@/lib/same-page-composite';
 import { debugUserAction } from '@/lib/console-utils';
 import { createNLDPFile, generateNLDPFilename } from '@/lib/nldp-utils';
 import type { NLDPLifecycle } from '@/lib/nldp-format';
+import { clearedForExport } from '@/lib/export-gate';
 
 interface ImportExportDeps {
   formData: FormData;
@@ -234,6 +235,10 @@ export function useImportExport(deps: ImportExportDeps) {
       toast({ title: "No Document", description: "Please select a document type first.", variant: "destructive" });
       return;
     }
+
+    // P2-1: the same sensitive-data gate every download path runs, before
+    // the link (plain or encrypted) is built.
+    if (!(await clearedForExport({ formData, vias, references, enclosures, copyTos, paragraphs, distList }))) return;
 
     const state: ShareableState = { formData, paragraphs, references, enclosures, vias, copyTos, distList, version: 1 };
     // R1: carry review comments so the reviewer's notes reach the drafter.

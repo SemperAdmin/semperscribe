@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { KeyRound, Check, Loader2, ShieldAlert, Server, XCircle } from 'lucide-react';
+import { KeyRound, Check, Loader2, ShieldAlert, Server, XCircle, Globe } from 'lucide-react';
 import { useGunnyStore } from '@/store/gunnyStore';
 import { getAdapter } from '@/lib/gunnybot/providers';
 import { streamChat } from '@/lib/gunnybot/client';
@@ -23,10 +24,17 @@ import {
   getProxyUrl,
   setProxyUrl,
   clearProxyUrl,
+  classifyProxyUrl,
+  isRemoteProxyUrl,
 } from '@/lib/gunnybot/proxy-config';
 import type { GunnyProviderId } from '@/lib/gunnybot/types';
 import { useToast } from '@/hooks/use-toast';
 import { isEdmsMode, EDMS_ALLOWED_PROVIDER } from '@/lib/edms-mode';
+
+function hostOf(url: string): string {
+  const c = classifyProxyUrl(url);
+  return c.kind === 'invalid' ? url : c.host;
+}
 
 export function GunnyBotSettings() {
   const provider = useGunnyStore(s => s.provider);
@@ -46,6 +54,11 @@ export function GunnyBotSettings() {
   // render, then read once on the first client render.
   const hydrated = useHydrated();
   const [proxyInput, setProxyInput] = useState('');
+  // P2-2: a proxy off this machine is refused by normalizeProxyUrl unless
+  // the caller passes allowRemote, and this component is the only caller
+  // which does, after the user ticks the acknowledgement naming the host.
+  // The tick is per typed value: editing the field clears it.
+  const [remoteAck, setRemoteAck] = useState(false);
   const [edmsLocked] = useSyncedState(hydrated, h => h && isEdmsMode());
   // Proxy base URL for the selected provider. Kept in step from
   // handleProviderChange and the save/clear handlers afterwards.
@@ -75,6 +88,10 @@ export function GunnyBotSettings() {
   // flag is measured per provider in lib/gunnybot/providers.ts.
   const proxyRequired = adapter !== null && !adapter.browserDirect;
   const proxyMissing = proxyRequired && proxySaved === null;
+  const pendingProxy = classifyProxyUrl(proxyInput);
+  const pendingRemoteHost = pendingProxy.kind === 'remote' ? pendingProxy.host : null;
+  const savedProxyRemote = proxySaved !== null && isRemoteProxyUrl(proxySaved);
+  const savedProxyHost = proxySaved !== null ? hostOf(proxySaved) : '';
 
   const handleProviderChange = (value: string) => {
     if (edmsLocked) return;
@@ -113,7 +130,28 @@ export function GunnyBotSettings() {
   };
 
   const handleSaveProxy = () => {
-    const normalized = setProxyUrl(provider, proxyInput);
+    if (pendingRemoteHost !== null) {
+      if (edmsLocked) {
+        toast({
+          title: 'Remote proxy not permitted in EDMS mode',
+          description:
+            'This draft is bound for an EDMS request. GunnyBot only sends through a proxy on this ' +
+            'machine (127.0.0.1) here, and the send path refuses anything else.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (!remoteAck) {
+        toast({
+          title: 'Acknowledge the destination first',
+          description:
+            'The proxy at ' + pendingRemoteHost + ' is not on this machine. Tick the acknowledgement to save it.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+    const normalized = setProxyUrl(provider, proxyInput, { allowRemote: pendingRemoteHost !== null && remoteAck && !edmsLocked });
     if (normalized === null) {
       toast({
         title: 'Proxy URL rejected',
@@ -125,6 +163,7 @@ export function GunnyBotSettings() {
     }
     setProxySaved(normalized);
     setProxyInput('');
+    setRemoteAck(false);
     toast({ title: 'Proxy saved', description: normalized });
   };
 
@@ -264,18 +303,31 @@ export function GunnyBotSettings() {
           )}
 
           {proxySaved !== null && (
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 font-mono text-[10px]">
-                <Server className="w-3 h-3 mr-1" /> {proxySaved}
-              </Badge>
-              <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearProxy}>Clear proxy</Button>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={savedProxyRemote
+                    ? 'text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 font-mono text-[10px]'
+                    : 'text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 font-mono text-[10px]'}
+                >
+                  {savedProxyRemote ? <Globe className="w-3 h-3 mr-1" /> : <Server className="w-3 h-3 mr-1" />} {proxySaved}
+                </Badge>
+                <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearProxy}>Clear proxy</Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                {savedProxyRemote
+                  ? 'Destination: ' + savedProxyHost + ' (remote). Your API key and draft text go to this host.'
+                  : 'Destination: this machine (loopback).'}
+                {savedProxyRemote && edmsLocked && ' In EDMS mode the send path refuses this proxy.'}
+              </p>
             </div>
           )}
 
           <div className="flex gap-2">
             <Input
               value={proxyInput}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProxyInput(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setProxyInput(e.target.value); setRemoteAck(false); }}
               placeholder={proxySaved !== null ? 'Replace the proxy URL...' : 'http://127.0.0.1:8443'}
               autoComplete="off"
               spellCheck={false}
@@ -285,6 +337,25 @@ export function GunnyBotSettings() {
               <Server className="w-3 h-3 mr-1" /> Save proxy
             </Button>
           </div>
+          {pendingRemoteHost !== null && !edmsLocked && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
+              <Checkbox
+                id="proxy-remote-ack"
+                checked={remoteAck}
+                onCheckedChange={c => setRemoteAck(c === true)}
+                className="mt-0.5"
+              />
+              <Label htmlFor="proxy-remote-ack" className="text-xs font-normal leading-snug cursor-pointer">
+                I understand that {pendingRemoteHost} is not on this machine, and that my API key and
+                everything I send to GunnyBot will go to that host.
+              </Label>
+            </div>
+          )}
+          {pendingRemoteHost !== null && edmsLocked && (
+            <p className="text-xs text-red-600 dark:text-red-400">
+              {pendingRemoteHost} is not on this machine. EDMS mode only permits a loopback proxy.
+            </p>
+          )}
           <p className="text-[10px] text-muted-foreground">
             Requests go to this address instead of the provider. The proxy runs on your machine, holds
             no key, and forwards the one you set below. It is not a secret, so unlike your key it is

@@ -46,6 +46,20 @@ const CURRENT_VERSION = 2;
 const MAX_URL_LENGTH = 8000; // Safe limit for most browsers
 
 /**
+ * P2-11 size caps. A share payload is attacker-supplied input reaching
+ * LZ-string and JSON.parse, so both the encoded form and what it inflates
+ * to are bounded BEFORE either parser runs. The same caps apply to the
+ * encrypted path once decryption yields the compressed form. Generation
+ * applies the encoded cap too, so the app never hands out a link that its
+ * own reader would refuse.
+ */
+export const MAX_ENCODED_SHARE_LENGTH = 16_384;
+export const MAX_DECODED_SHARE_LENGTH = 2 * 1024 * 1024;
+
+const ENCODED_TOO_LARGE =
+  'Document is too large for a share link (limit 16 KB encoded). Export a file instead.';
+
+/**
  * Compresses and encodes state for URL storage
  */
 export function encodeStateForUrl(state: ShareableState): string {
@@ -105,9 +119,17 @@ const shareableStateSchema = z.looseObject({
  */
 export function decodeStateFromUrl(encoded: string): ShareableState | null {
   try {
+    if (encoded.length > MAX_ENCODED_SHARE_LENGTH) {
+      console.error('Share payload refused: encoded length', encoded.length, 'exceeds', MAX_ENCODED_SHARE_LENGTH);
+      return null;
+    }
     const json = LZString.decompressFromEncodedURIComponent(encoded);
     if (!json) {
       console.error('Failed to decompress URL state');
+      return null;
+    }
+    if (json.length > MAX_DECODED_SHARE_LENGTH) {
+      console.error('Share payload refused: decoded length', json.length, 'exceeds', MAX_DECODED_SHARE_LENGTH);
       return null;
     }
     const parsed = shareableStateSchema.safeParse(JSON.parse(json));
@@ -138,6 +160,9 @@ export function generateShareableUrl(
 ): { url: string; isLong: boolean; error?: string } {
   try {
     const encoded = encodeStateForUrl({ ...state, version: CURRENT_VERSION });
+    if (encoded.length > MAX_ENCODED_SHARE_LENGTH) {
+      return { url: '', isLong: true, error: ENCODED_TOO_LARGE };
+    }
     const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '');
     // THE FRAGMENT, NOT THE QUERY STRING. A query string is sent to the
     // server on every request and lands in server logs, proxy logs, and the
@@ -246,6 +271,9 @@ export async function generateEncryptedShareUrl(
 ): Promise<{ url: string; isLong: boolean; error?: string }> {
   try {
     const compressed = encodeStateForUrl({ ...state, version: CURRENT_VERSION });
+    if (compressed.length > MAX_ENCODED_SHARE_LENGTH) {
+      return { url: '', isLong: true, error: ENCODED_TOO_LARGE };
+    }
     const payload = await encryptText(compressed, password);
     const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '');
     const url = `${base}${ENCRYPTED_HASH_PREFIX}${payload}`;
@@ -282,6 +310,11 @@ export async function decryptSharedState(
   payload: string,
   password: string
 ): Promise<EncryptedLoadResult> {
+  // P2-11: the ciphertext is base64url over the compressed form (about
+  // 4/3 expansion plus salt and IV), so anything past twice the encoded
+  // cap cannot decrypt to a payload the reader would accept. Refuse it
+  // before PBKDF2 and AES run over it.
+  if (payload.length > MAX_ENCODED_SHARE_LENGTH * 2) return { status: 'corrupt' };
   let compressed: string;
   try {
     compressed = await decryptText(payload, password);

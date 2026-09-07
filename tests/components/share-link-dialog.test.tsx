@@ -28,6 +28,12 @@ describe('ShareLinkDialog', () => {
     expect(screen.queryByText(/EDMS draft/)).toBeNull();
   });
 
+  it('hides the opt-out in signature-request mode (P2-1)', () => {
+    render(<ShareLinkDialog open onOpenChange={vi.fn()} onCreate={vi.fn()} mode="signature-request" />);
+    expect(optOut().closest('.hidden')).not.toBeNull();
+    expect(screen.getByText(/Create Signature Request Link/)).toBeInTheDocument();
+  });
+
   it('hides the opt-out and shows the notice in EDMS mode', () => {
     setEdmsContext({ requestId: 'REQ-1', ruc: '12345', ssic: '1650', docType: 'basic' });
     render(<ShareLinkDialog open onOpenChange={vi.fn()} onCreate={vi.fn()} />);
