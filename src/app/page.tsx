@@ -13,7 +13,6 @@ import { loadSavedLetters, clearSavedLetters } from '@/lib/storage-utils';
 import {
   libLoadAll, libPut, libDelete, libClear, migrateLegacyDrafts,
   filePut, fileGet, fileDeleteIfOwnedBy, fileDeleteForDoc, fileReparentByIds,
-  WORKING_COPY_DOC_ID,
 } from '@/lib/document-library';
 import { putNavmc10132Base, navmc10132BaseFileIdOf } from '@/lib/navmc10132-base-file';
 import { backupDocument } from '@/lib/auto-backup';
@@ -45,7 +44,8 @@ import { useUndoHistory } from '@/hooks/useUndoHistory';
 import { useSyncedState } from '@/hooks/useSyncedState';
 import { EnclosureAttachment, EnclosureRow, newRow, reconcileRows } from '@/lib/enclosure-rows';
 import { useAutosave } from '@/hooks/useAutosave';
-import { RecoveryDialog } from '@/components/RecoveryDialog';
+import { RecoveryDialog, UnsavedWorkDialog } from '@/components/RecoveryDialog';
+import type { PendingReplace } from '@/components/RecoveryDialog';
 import type { WorkingCopy } from '@/lib/autosave';
 import { CommandPalette, useCommandPalette } from '@/components/CommandPalette';
 import { ComplianceDialog } from '@/components/ComplianceDialog';
@@ -272,23 +272,19 @@ function NavalLetterGeneratorInner() {
   const [currentUnitCode, setCurrentUnitCode] = useState<string | undefined>(undefined);
   const [currentUnitName, setCurrentUnitName] = useState<string | undefined>(undefined);
 
-  // Import/Export/Share via hook
+  // R3: autosave working copy + crash recovery. P6-4: the working copy
+  // and its write-through files are scoped to this tab's session id;
+  // `workingCopyDocId` is the file owner id every attach below uses.
   const {
-    handleImport, handleLoadDraft, handleLoadTemplateUrl,
-    handleExportNldp, handleShareLink,
-    handleCopyAMHS, handleExportAMHS,
-  } = useImportExport({
-    formData, setFormData,
-    paragraphs, setParagraphs,
-    vias, setVias,
-    references, setReferences,
-    enclosures, setEnclosures,
-    copyTos, setCopyTos,
-    distList, setDistList,
-    setFormKey, setValidation,
-    savedLetters, toast, comments,
-    onEnclosureBindings: hydrateEnclosureBindings,
+    recovery, recoveryRemaining, workingCopyDocId,
+    laterRecovery, discardRecovery, acceptRecovery,
+    clear: clearAutosave,
+  } = useAutosave({
+    formData, paragraphs, vias, references, enclosures, copyTos, distList,
+    enclosureBindings: enclosureRows,
+    ready: autosaveReady,
   });
+
 
   // Document state slices shared by preview, export, and signature
   const documentData = { formData, vias, references, enclosures, copyTos, paragraphs, distList };
@@ -320,7 +316,7 @@ function NavalLetterGeneratorInner() {
   const clearSamePageHostFile = (host: SamePageHost | undefined) => {
     if (host?.kind !== 'file') return;
     setSamePageHostBytes(prev => { const next = new Map(prev); next.delete(host.fileId); return next; });
-    fileDeleteIfOwnedBy(host.fileId, WORKING_COPY_DOC_ID).catch((error) => console.error('Endorsed letter file delete failed', error));
+    fileDeleteIfOwnedBy(host.fileId, workingCopyDocId).catch((error) => console.error('Endorsed letter file delete failed', error));
   };
 
   const handleAttachSamePageHostFile = async (file: File) => {
@@ -336,7 +332,7 @@ function NavalLetterGeneratorInner() {
     setFormData(prev => ({ ...prev, samePageHost: { kind: 'file', fileId, fileName: file.name } }));
     filePut({
       fileId,
-      docId: WORKING_COPY_DOC_ID,
+      docId: workingCopyDocId,
       fileName: file.name,
       title: file.name,
       mimeType: 'application/pdf',
@@ -425,13 +421,6 @@ function NavalLetterGeneratorInner() {
     return () => { cancelled = true; };
   }, []);
 
-  // R3: autosave working copy + crash recovery
-  const { recovery, dismissRecovery, clear: clearAutosave } = useAutosave({
-    formData, paragraphs, vias, references, enclosures, copyTos, distList,
-    enclosureBindings: enclosureRows,
-    ready: autosaveReady,
-  });
-
   // Enable autosave shortly after mount, once profile defaults and the
   // date effect have settled (they run in their own mount effects).
   useEffect(() => {
@@ -455,16 +444,28 @@ function NavalLetterGeneratorInner() {
     setCopyTos(copy.copyTos);
     setDistList(copy.distList);
     setFormKey(prev => prev + 1);
-    dismissRecovery();
+    // P6-4: a copy from another session brings its write-through files
+    // along. They move under THIS tab's owner id, so that session's
+    // Discard (or its Clear Form sweep) no longer deletes bytes this
+    // document now depends on. (A no-op for this tab's own copy.)
+    const boundIds = (copy.enclosureBindings ?? []).map(b => b.fileId).filter((id): id is string => Boolean(id));
+    const host = copy.formData.samePageHost as SamePageHost | undefined;
+    if (host?.kind === 'file') boundIds.push(host.fileId);
+    const navmcBaseId = navmc10132BaseFileIdOf(copy.formData);
+    if (navmcBaseId) boundIds.push(navmcBaseId);
+    fileReparentByIds(boundIds, workingCopyDocId).catch((error) => console.error('Recovered file re-parent failed', error));
+    acceptRecovery();
     toast({ title: 'Work Restored', description: 'Your in-progress document is back.' });
   };
 
+  // P6-3: only the explicit, confirmed Discard button reaches this.
+  // P6-4: it deletes the copy on offer and that copy's files - never
+  // another session's, never a saved document's (different owner ids).
   const handleDiscardRecovery = () => {
-    clearAutosave();
-    // ENC: a discarded copy's write-through files are garbage. Files a
-    // SAVED document owns are untouched (different owner id).
-    fileDeleteForDoc(WORKING_COPY_DOC_ID).catch((error) => console.error('Working-copy file cleanup failed', error));
-    dismissRecovery();
+    const ownerId = discardRecovery();
+    if (ownerId) {
+      fileDeleteForDoc(ownerId).catch((error) => console.error('Working-copy file cleanup failed', error));
+    }
   };
 
   // Today's date, applied on the first client render. Not part of the
@@ -701,17 +702,19 @@ function NavalLetterGeneratorInner() {
       enclosureBindings: enclosureRows,
     };
 
-    // R3: an explicit save supersedes the autosaved working copy.
-    clearAutosave();
-
-    // D.2: this is the only place the header reads as saved.
-    setSavedMark({ at: now, changeCount });
-
     // P1.2: IndexedDB is the store of record - no eviction cap. A
     // failed write is reported, never silently dropped.
     setSavedLetters(prev => [newLetter, ...prev]);
     libPut(newLetter)
       .then(() => {
+        // P6-2: the working copy is cleared and the header reads "Saved"
+        // only once the write has landed. Both used to run before the
+        // write, so a quota failure left the header on "Saved" with the
+        // only surviving copy of the work gone.
+        // R3: an explicit save supersedes the autosaved working copy.
+        clearAutosave();
+        // D.2: this is the only place the header reads as saved.
+        setSavedMark({ at: now, changeCount });
         toast({ title: 'Draft Saved', description: `"${newLetter.name}" added to your document library.` });
         // ENC: ownership follows the latest save - bound files re-point
         // to this document so its cascade delete governs them.
@@ -747,17 +750,26 @@ function NavalLetterGeneratorInner() {
       .catch((error) => {
         console.error('Library save failed', error);
         setSavedLetters(prev => prev.filter(l => l.id !== newLetter.id));
+        // P6-2: nothing was saved, so nothing reads as saved. The working
+        // copy is left in place: it is the only copy of this work.
+        setSavedMark(null);
         toast({ title: 'Save Failed', description: 'Storage is full or unavailable. Export an .nldp backup instead.', variant: 'destructive' });
       });
   };
 
-  // P1.2: per-document library operations
+  // P1.2: per-document library operations. P6-17: each is optimistic
+  // and, on a failed write, reverts the list and says so - the way Save
+  // does - instead of leaving the screen and the store disagreeing.
   const handleRenameDocument = (id: string, name: string) => {
     const letter = savedLetters.find(l => l.id === id);
     if (!letter) return;
     const updated = { ...letter, name, updatedAt: new Date().toISOString() };
     setSavedLetters(prev => prev.map(l => (l.id === id ? updated : l)));
-    libPut(updated).catch((error) => console.error('Library rename failed', error));
+    libPut(updated).catch((error) => {
+      console.error('Library rename failed', error);
+      setSavedLetters(prev => prev.map(l => (l.id === id ? letter : l)));
+      toast({ title: 'Rename Failed', description: 'The new name could not be written. Storage may be full or unavailable.', variant: 'destructive' });
+    });
   };
 
   const handleDuplicateDocument = (id: string) => {
@@ -772,67 +784,30 @@ function NavalLetterGeneratorInner() {
       name: `${letter.name || letter.subj || 'Untitled'} (copy)`,
     };
     setSavedLetters(prev => [copy, ...prev]);
-    libPut(copy).catch((error) => console.error('Library duplicate failed', error));
+    libPut(copy).catch((error) => {
+      console.error('Library duplicate failed', error);
+      setSavedLetters(prev => prev.filter(l => l.id !== copy.id));
+      toast({ title: 'Duplicate Failed', description: 'The copy could not be written. Storage may be full or unavailable.', variant: 'destructive' });
+    });
   };
 
   const handleDeleteDocument = (id: string) => {
+    const removed = savedLetters.find(l => l.id === id);
     setSavedLetters(prev => prev.filter(l => l.id !== id));
-    libDelete(id).catch((error) => console.error('Library delete failed', error));
+    libDelete(id).catch((error) => {
+      console.error('Library delete failed', error);
+      if (removed) setSavedLetters(prev => (prev.some(l => l.id === id) ? prev : [removed, ...prev]));
+      toast({ title: 'Delete Failed', description: 'The document could not be removed from storage. It is still in your library.', variant: 'destructive' });
+    });
   };
 
   // Resets every piece of document state to a blank form of the given type.
   // Shared by Clear Form and the Word/PDF import's replace-on-confirm.
   const resetDocumentState = (documentType: string) => {
-        const currentType = documentType;
-        const defaults = getFormDefaults();
-
-        setFormData({
-            documentType: currentType,
-            endorsementLevel: '',
-            basicLetterReference: '',
-            referenceWho: '',
-            referenceType: '',
-            referenceDate: '',
-            startingReferenceLevel: 'a',
-            startingEnclosureNumber: '1',
-            endorsementPlacement: 'new-page',
-            samePageOmitsIdentification: true,
-            line1: defaults.line1, line1b: defaults.line1b, line2: defaults.line2, line3: defaults.line3,
-            ssic: '', originatorCode: defaults.originatorCode, date: getTodaysDate(),
-            from: defaults.from, to: '', subj: '', sig: defaults.sig, delegationText: '',
-            startingPageNumber: 1,
-            previousPackagePageCount: 0,
-            headerType: defaults.headerType,
-            bodyFont: defaults.bodyFont,
-            accentColor: defaults.accentColor,
-            directiveTitle: '',
-            cancellationDate: '',
-            cancellationType: 'fixed',
-            distribution: { type: 'none' },
-            reports: [],
-            actionNo: '',
-            orgStation: '',
-            name: '',
-            edipi: '',
-            box11: '',
-            amhsMessageType: 'GENADMIN',
-            amhsClassification: defaults.amhsClassification,
-            amhsPrecedence: defaults.amhsPrecedence,
-            amhsDtg: '',
-            amhsOfficeCode: '',
-            amhsPocs: [],
-            amhsReferences: [],
-            amhsTextBody: '',
-            // SEEDED HERE TOO, and this is the hole the D-43 guard could
-            // not see. That guard scans for setFormData calls producing a
-            // LITERAL 'navmc10132'; this one uses a variable, so it passed
-            // the scan while leaving `stage` undefined. An absent stage is
-            // read as 1 for display and as 'complete' by the export gate,
-            // so Clear Form on a UPB produced a blank document that fired
-            // every later-pass blocker at once. Undefined for every other
-            // document type, which is what those types expect.
-            ...(currentType === 'navmc10132' ? { stage: 1 } : {}),
-        });
+        // The letterhead comes from the profile here (an empty `line1`
+        // makes blankFormData fall back to the defaults), so Clear Form
+        // resets the unit lines the way it always has.
+        setFormData(blankFormData({ documentType, line1: '', line1b: '', line2: '', line3: '' }));
         setParagraphs([{ id: 1, level: 1, content: '', acronymError: '' }]);
         setVias(['']);
         setReferences(['']);
@@ -847,7 +822,7 @@ function NavalLetterGeneratorInner() {
           reparentFailedRef.current = false;
           console.warn('Working-copy file cleanup skipped: the last save could not re-parent its files.');
         } else {
-          fileDeleteForDoc(WORKING_COPY_DOC_ID).catch((error) => console.error('Working-copy file cleanup failed', error));
+          fileDeleteForDoc(workingCopyDocId).catch((error) => console.error('Working-copy file cleanup failed', error));
         }
         setCopyTos(['']);
         setComments([]);
@@ -861,6 +836,90 @@ function NavalLetterGeneratorInner() {
         });
         setFormKey(prev => prev + 1);
   };
+
+  /**
+   * The app's blank document, built from the one being replaced: its
+   * document type and letterhead carry (a template without a letterhead
+   * of its own keeps the unit on screen), profile defaults fill the rest,
+   * and nothing else survives. Shared by Clear Form and, through the
+   * import hook (P6-9), every draft, .nldp, template and share-link load,
+   * so stale keys - signatureFields, samePageHost, the NAVMC 10132 base
+   * id and load report, stage - never reach the new document.
+   */
+  const blankFormData = useCallback((previous: Partial<FormData> & { documentType: string }): FormData => {
+    const currentType = previous.documentType;
+    const defaults = getFormDefaults();
+    return {
+      documentType: currentType,
+      // SEEDED HERE TOO, and this is the hole the D-43 guard could
+      // not see. That guard scans for setFormData calls producing a
+      // LITERAL 'navmc10132'; this one uses a variable, so it passed
+      // the scan while leaving `stage` undefined. An absent stage is
+      // read as 1 for display and as 'complete' by the export gate,
+      // so Clear Form on a UPB produced a blank document that fired
+      // every later-pass blocker at once. Undefined for every other
+      // document type, which is what those types expect.
+      ...(currentType === 'navmc10132' ? { stage: 1 } : {}),
+      endorsementLevel: '',
+      basicLetterReference: '',
+      referenceWho: '',
+      referenceType: '',
+      referenceDate: '',
+      startingReferenceLevel: 'a',
+      startingEnclosureNumber: '1',
+      endorsementPlacement: 'new-page',
+      samePageOmitsIdentification: true,
+      line1: previous.line1 || defaults.line1,
+      line1b: previous.line1 ? (previous.line1b ?? '') : defaults.line1b,
+      line2: previous.line1 ? (previous.line2 ?? '') : defaults.line2,
+      line3: previous.line1 ? (previous.line3 ?? '') : defaults.line3,
+      ssic: '', originatorCode: defaults.originatorCode, date: getTodaysDate(),
+      from: defaults.from, to: '', subj: '', sig: defaults.sig, delegationText: '',
+      startingPageNumber: 1,
+      previousPackagePageCount: 0,
+      headerType: defaults.headerType,
+      bodyFont: defaults.bodyFont,
+      accentColor: defaults.accentColor,
+      directiveTitle: '',
+      cancellationDate: '',
+      cancellationType: 'fixed',
+      distribution: { type: 'none' },
+      reports: [],
+      actionNo: '',
+      orgStation: '',
+      name: '',
+      edipi: '',
+      box11: '',
+      amhsMessageType: 'GENADMIN',
+      amhsClassification: defaults.amhsClassification,
+      amhsPrecedence: defaults.amhsPrecedence,
+      amhsDtg: '',
+      amhsOfficeCode: '',
+      amhsPocs: [],
+      amhsReferences: [],
+      amhsTextBody: '',
+    };
+  }, [getFormDefaults]);
+
+
+  // Import/Export/Share via hook
+  const {
+    handleImport, handleLoadDraft, handleLoadTemplateUrl,
+    handleExportNldp, handleShareLink,
+    handleCopyAMHS, handleExportAMHS,
+  } = useImportExport({
+    formData, setFormData,
+    paragraphs, setParagraphs,
+    vias, setVias,
+    references, setReferences,
+    enclosures, setEnclosures,
+    copyTos, setCopyTos,
+    distList, setDistList,
+    setFormKey, setValidation,
+    savedLetters, toast, comments,
+    onEnclosureBindings: hydrateEnclosureBindings,
+    blankFormData,
+  });
 
   const handleClearForm = () => {
       if (window.confirm('Are you sure you want to clear the form? All unsaved progress will be lost.')) {
@@ -919,7 +978,7 @@ function NavalLetterGeneratorInner() {
       // usable. The id lands on the document once the bytes are stored; a
       // storage failure leaves no id, so the export fills the blank and its
       // toast says the signed file is not available, rather than failing.
-      putNavmc10132Base(bytes, fileName, { replaces: previousBaseId })
+      putNavmc10132Base(bytes, fileName, { docId: workingCopyDocId, replaces: previousBaseId })
         .then((id) => setFormData(prev => ({ ...prev, navmc10132BaseFileId: id })))
         .catch((error) => {
           console.error('Storing the uploaded NAVMC 10132 failed; exports will fill the blank instead:', error);
@@ -941,53 +1000,8 @@ function NavalLetterGeneratorInner() {
     // formData is read once, for the previous base id. The consumer
     // (useDocumentImport) already re-creates its callback on every
     // formData change, so this dependency costs nothing extra.
-    [formData, toast],
+    [formData, toast, workingCopyDocId],
   );
-
-  /**
-   * P6-1: `handleImport` MERGES over the previous document state, so a
-   * draft, a template, a share link or an `.nldp` that carries no signed
-   * file would otherwise inherit the previous document's base id and load
-   * report, and export INTO the previous Marine's signed file. Clearing
-   * both first leaves the incoming document with exactly what it brought:
-   * a saved draft of a loaded UPB carries its own id and gets its own base
-   * back; everything else fills the blank.
-   *
-   * The bytes are not deleted here: a saved document may own them, and
-   * an unsaved base falls to the Clear Form sweep.
-   */
-  const dropNavmc10132Base = useCallback(() => {
-    setFormData(prev => (
-      prev.navmc10132BaseFileId === undefined && prev.navmc10132LoadReport === undefined
-        ? prev
-        : { ...prev, navmc10132BaseFileId: undefined, navmc10132LoadReport: undefined }
-    ));
-  }, []);
-
-  const handleImportFresh = useCallback((payload: Parameters<typeof handleImport>[0]) => {
-    dropNavmc10132Base();
-    handleImport(payload);
-  }, [dropNavmc10132Base, handleImport]);
-
-  const handleLoadDraftFresh = useCallback((id: string) => {
-    dropNavmc10132Base();
-    handleLoadDraft(id);
-  }, [dropNavmc10132Base, handleLoadDraft]);
-
-  const handleLoadTemplateUrlFresh = useCallback((url: string) => {
-    dropNavmc10132Base();
-    return handleLoadTemplateUrl(url);
-  }, [dropNavmc10132Base, handleLoadTemplateUrl]);
-
-  const documentImport = useDocumentImport({
-    applyImport: applyDocumentImport,
-    toast,
-    // So the review modal can name what confirming DESTROYS, not only what
-    // it creates. See replacementWarning in the hook.
-    currentDocumentType: formData.documentType,
-    currentFormData: formData as unknown as Record<string, unknown>,
-    applyNavmc10132: applyNavmc10132Load,
-  });
 
   /**
    * D.7: whether the document on screen holds work worth protecting.
@@ -1001,26 +1015,129 @@ function NavalLetterGeneratorInner() {
       .some(value => typeof value === 'string' && value.trim() !== '');
 
   /**
+   * P6-9: a draft, an .nldp/.json import or a template replaces the
+   * document on screen. When that document holds content the drafter has
+   * not saved, the replacement waits on a confirmation (the same dialog
+   * pattern as the share-link intake, not window.confirm). The pending
+   * action is held here; confirm runs it, dismiss drops it.
+   */
+  const [pendingReplace, setPendingReplace] = useState<(PendingReplace & { run: () => void }) | null>(null);
+  const guardUnsavedWork = useCallback((pending: PendingReplace, run: () => void) => {
+    if (documentHasContent && isDirty) {
+      setPendingReplace({ ...pending, run });
+      return;
+    }
+    run();
+  }, [documentHasContent, isDirty]);
+  const confirmPendingReplace = () => {
+    const pending = pendingReplace;
+    setPendingReplace(null);
+    pending?.run();
+  };
+  const dismissPendingReplace = () => setPendingReplace(null);
+
+  /**
+   * P6-1: `handleImport` MERGES over the previous document state, so a
+   * draft, a template, a share link or an `.nldp` that carries no signed
+   * file would otherwise inherit the previous document's base id and load
+   * report, and export INTO the previous Marine's signed file. Clearing
+   * both first leaves the incoming document with exactly what it brought:
+   * a saved draft of a loaded UPB carries its own id and gets its own base
+   * back; everything else fills the blank.
+   *
+   * P6-9 generalised this: the import hook now rebuilds from
+   * `blankFormData` before it spreads, so EVERY stale key is dropped, not
+   * only these two. The explicit clear stays as belt-and-braces for the
+   * base id, the one key whose leak exports another Marine's signed file.
+   *
+   * The bytes are not deleted here: a saved document may own them, and
+   * an unsaved base falls to the Clear Form sweep.
+   */
+  const dropNavmc10132Base = useCallback(() => {
+    setFormData(prev => (
+      prev.navmc10132BaseFileId === undefined && prev.navmc10132LoadReport === undefined
+        ? prev
+        : { ...prev, navmc10132BaseFileId: undefined, navmc10132LoadReport: undefined }
+    ));
+  }, []);
+
+  const handleImportFresh = useCallback((payload: Parameters<typeof handleImport>[0]) => {
+    guardUnsavedWork(
+      { action: 'Import file', description: 'Importing this file replaces the document you are editing, which has unsaved changes.' },
+      () => {
+        dropNavmc10132Base();
+        handleImport(payload);
+      },
+    );
+  }, [guardUnsavedWork, dropNavmc10132Base, handleImport]);
+
+  const handleLoadDraftFresh = useCallback((id: string) => {
+    const name = savedLetters.find(l => l.id === id)?.name;
+    guardUnsavedWork(
+      { action: 'Load draft', description: `Loading ${name ? `"${name}"` : 'this draft'} replaces the document you are editing, which has unsaved changes.` },
+      () => {
+        dropNavmc10132Base();
+        handleLoadDraft(id);
+      },
+    );
+  }, [guardUnsavedWork, savedLetters, dropNavmc10132Base, handleLoadDraft]);
+
+  // The raw template loader is called here and nowhere else; the guarded
+  // wrapper below is what the UI gets.
+  const loadTemplateUrlNow = useCallback((url: string) => {
+    dropNavmc10132Base();
+    return handleLoadTemplateUrl(url);
+  }, [dropNavmc10132Base, handleLoadTemplateUrl]);
+
+  const handleLoadTemplateUrlFresh = useCallback((url: string) => {
+    guardUnsavedWork(
+      { action: 'Load template', description: 'Loading this template replaces the document you are editing, which has unsaved changes.' },
+      () => { void loadTemplateUrlNow(url); },
+    );
+  }, [guardUnsavedWork, loadTemplateUrlNow]);
+
+  const documentImport = useDocumentImport({
+    applyImport: applyDocumentImport,
+    toast,
+    // So the review modal can name what confirming DESTROYS, not only what
+    // it creates. See replacementWarning in the hook.
+    currentDocumentType: formData.documentType,
+    currentFormData: formData as unknown as Record<string, unknown>,
+    applyNavmc10132: applyNavmc10132Load,
+  });
+
+  /**
    * D.7: picking a template of another document type switches the type
    * first, through the same handleDocumentTypeChange the sidebar uses,
    * so the paragraph template and the type-dependent header fields are
    * set the way the app sets them everywhere else. Loading the template
    * alone left the directive and paper types with a basic letter's
    * single empty paragraph under their own document type.
+   *
+   * P6-9: a same-type pick over a dirty document used to load with no
+   * confirmation at all; both cases now go through the unsaved-work
+   * dialog, which names the type switch when there is one.
    */
   const handleTemplatePick = (url: string, templateDocumentType?: string) => {
     const targetType = templateDocumentType || 'basic';
     // E.4: templates name the picker option they belong to, so a
     // same-page template switches to the same-page option.
-    if (targetType !== pickerTypeFor(formData)) {
-      if (documentHasContent && !window.confirm(
-        `This template is a ${targetType} document. Switching document types replaces the paragraphs you have written. Do you want to proceed?`
-      )) {
-        return;
-      }
-      handleDocumentTypeChange(targetType);
+    const switchesType = targetType !== pickerTypeFor(formData);
+    const run = () => {
+      if (switchesType) handleDocumentTypeChange(targetType);
+      void loadTemplateUrlNow(url);
+    };
+    if (documentHasContent && (isDirty || switchesType)) {
+      setPendingReplace({
+        action: 'Load template',
+        description: switchesType
+          ? `This template is a ${targetType} document. Switching document types replaces the paragraphs you have written, and the document you are editing has unsaved changes.`
+          : 'Loading this template replaces the document you are editing, which has unsaved changes.',
+        run,
+      });
+      return;
     }
-    handleLoadTemplateUrlFresh(url);
+    run();
   };
 
   const handleClearSavedLetters = () => {
@@ -1077,7 +1194,7 @@ function NavalLetterGeneratorInner() {
     setEnclosureRows(prev => prev.map(r => (r.key === rowKey ? { ...r, fileId: undefined } : r)));
     // ENC: bytes delete only when the working copy owns them - a saved
     // document's file falls to that document's own cascade delete.
-    fileDeleteIfOwnedBy(fileId, WORKING_COPY_DOC_ID).catch((error) => console.error('Enclosure file delete failed', error));
+    fileDeleteIfOwnedBy(fileId, workingCopyDocId).catch((error) => console.error('Enclosure file delete failed', error));
   };
 
   const handleRemoveEnclosureRow = (key: string) => {
@@ -1091,7 +1208,7 @@ function NavalLetterGeneratorInner() {
   const handleClearEnclosureRows = () => {
     setEnclosureRows([newRow()]);
     setEnclosureFiles(new Map());
-    fileDeleteForDoc(WORKING_COPY_DOC_ID).catch((error) => console.error('Working-copy file cleanup failed', error));
+    fileDeleteForDoc(workingCopyDocId).catch((error) => console.error('Working-copy file cleanup failed', error));
   };
 
   const handleBindEnclosureFile = (rowKey: string, attachment: EnclosureAttachment) => {
@@ -1104,14 +1221,14 @@ function NavalLetterGeneratorInner() {
     });
     setEnclosureRows(prev => prev.map(r => (r.key === rowKey ? { ...r, fileId: attachment.id } : r)));
     if (oldFileId) {
-      fileDeleteIfOwnedBy(oldFileId, WORKING_COPY_DOC_ID).catch((error) => console.error('Enclosure file delete failed', error));
+      fileDeleteIfOwnedBy(oldFileId, workingCopyDocId).catch((error) => console.error('Enclosure file delete failed', error));
     }
     // ENC: write-through - the file survives a crash before Save. A
     // failed persist keeps the in-memory binding (export still works)
     // and says so.
     filePut({
       fileId: attachment.id,
-      docId: WORKING_COPY_DOC_ID,
+      docId: workingCopyDocId,
       fileName: attachment.fileName,
       title: attachment.title,
       mimeType: attachment.mimeType,
@@ -1426,8 +1543,15 @@ function NavalLetterGeneratorInner() {
       />
       <RecoveryDialog
         copy={recovery}
+        remaining={recoveryRemaining}
         onRestore={handleRestoreRecovery}
         onDiscard={handleDiscardRecovery}
+        onLater={laterRecovery}
+      />
+      <UnsavedWorkDialog
+        pending={pendingReplace}
+        onConfirm={confirmPendingReplace}
+        onDismiss={dismissPendingReplace}
       />
       <RevisionCompareDialog
         open={showCompare}

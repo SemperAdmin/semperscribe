@@ -29,6 +29,24 @@ export const MAX_ENCLOSURE_FILE_BYTES = 25 * 1024 * 1024;
 export const WORKING_COPY_DOC_ID = 'working-copy';
 
 /**
+ * P6-4: the session id of the working copy written before tabs had
+ * sessions. Its files live under the bare WORKING_COPY_DOC_ID.
+ */
+export const LEGACY_WORKING_COPY_SESSION_ID = 'legacy';
+
+/**
+ * P6-4: the write-through file owner id for one tab's working copy.
+ * Every tab used to share WORKING_COPY_DOC_ID, so a second tab's Discard
+ * swept the first tab's live enclosure bytes. Folding the per-tab
+ * autosave session id in scopes the sweep to the copy it belongs to.
+ */
+export function workingCopyDocIdFor(sessionId: string): string {
+  return sessionId === LEGACY_WORKING_COPY_SESSION_ID
+    ? WORKING_COPY_DOC_ID
+    : `${WORKING_COPY_DOC_ID}:${sessionId}`;
+}
+
+/**
  * ENC: a stored enclosure file. Bytes live here - NOT inside the
  * SavedLetter record - so libLoadAll never pulls binaries into memory.
  */
