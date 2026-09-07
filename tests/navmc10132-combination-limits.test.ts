@@ -23,7 +23,7 @@ import { createEmptyNavmc10132Data, type Navmc10132PunishmentEntry } from '@/typ
 
 import { NAVMC_10132_PUNISHMENTS, punishmentFamily } from '@/lib/navmc10132-punishments';
 
-import { familyTotals, combinationFindings } from '@/lib/navmc10132-combination-limits';
+import { familyTotals, combinationFindings, extraDutyMaximumFor } from '@/lib/navmc10132-combination-limits';
 
 import { punishmentCombinationIssues, punishmentIssues } from '@/lib/navmc10132-validators-punishment';
 
@@ -345,6 +345,39 @@ describe('combinationFindings — 5.d(4) numeric cap', () => {
     expect(findings[0].citation).toBe('MCM Part V para 5.d(4)');
     expect(findings[0].rule).toContain('60 days');
     expect(findings[0].rule).toContain('45-day maximum');
+  });
+
+  it('P5-5: the cap is the grade\'s extra-duty maximum, not the imposed code\'s own: O5, N09 14 + N15 45 concurrently is inside 45', () => {
+    // Owner ruling 2026-09-07. Before it, the cap read N09's own 14-day
+    // ceiling and blocked this lawful set as "over the 14-day maximum".
+    const findings = combinationFindings({
+      entries: [
+        { code: 'N09', days: '14' },
+        { code: 'N15', limits: 'the confines of the air station', days: '45' },
+      ],
+      authorityPayGrade: 'O5',
+      concurrent: true,
+    });
+    expect(findings.find((f) => f.id === 'combination-restriction-extra-duties')).toBeUndefined();
+  });
+
+  it('P5-5: the same set consecutively is 59, over the field-grade 45, and the message names 45', () => {
+    const findings = combinationFindings({
+      entries: [
+        { code: 'N09', days: '14' },
+        { code: 'N15', limits: 'the confines of the air station', days: '45' },
+      ],
+      authorityPayGrade: 'O5',
+      concurrent: false,
+    });
+    const finding = findings.find((f) => f.id === 'combination-restriction-extra-duties');
+    expect(finding?.rule).toContain('59 days');
+    expect(finding?.rule).toContain('45-day maximum');
+  });
+
+  it('P5-5: company grade stays at 14 whichever extra-duty code is imposed', () => {
+    expect(extraDutyMaximumFor('company-grade')).toBe(14);
+    expect(extraDutyMaximumFor('field-grade')).toBe(45);
   });
 
   it('field grade O5: N15 restriction 45 + N13 extra duties 45, concurrently, raises no finding', () => {
