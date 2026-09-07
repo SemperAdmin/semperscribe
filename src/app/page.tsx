@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { ParagraphData, SavedLetter, ValidationState, FormData, ReportData, SamePageHost } from '@/types';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { EXAMPLE_DOCUMENT_URL } from '@/components/layout/LandingPage';
@@ -12,7 +12,7 @@ import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, g
 import { loadSavedLetters, clearSavedLetters } from '@/lib/storage-utils';
 import {
   libLoadAll, libPut, libDelete, libClear, migrateLegacyDrafts,
-  filePut, fileGet, fileDeleteIfOwnedBy, fileDeleteForDoc, fileReparentByIds, clearAllLocalData,
+  filePut, fileGet, fileDeleteIfOwnedBy, fileDeleteForDoc, fileReparentByIds, fileCopyForSave, clearAllLocalData,
 } from '@/lib/document-library';
 import { putNavmc10132Base, navmc10132BaseFileIdOf } from '@/lib/navmc10132-base-file';
 import { backupDocument } from '@/lib/auto-backup';
@@ -292,12 +292,6 @@ function NavalLetterGeneratorInner() {
 
   // R3: autosave becomes active once the initial document load settles
   const [autosaveReady, setAutosaveReady] = useState(false);
-
-  // P6-7: set when Save could not re-parent the bound files (enclosures,
-  // the uploaded signed NAVMC 10132) to the saved document. While set, the
-  // Clear Form sweep of working-copy files is skipped, because it would
-  // delete files a saved document still depends on.
-  const reparentFailedRef = useRef(false);
 
   // Unit header state (sourced from user profile)
   const [currentUnitCode, setCurrentUnitCode] = useState<string | undefined>(undefined);
@@ -717,74 +711,88 @@ function NavalLetterGeneratorInner() {
     });
 
     const now = new Date();
-    const newLetter: SavedLetter = {
-      ...formData,
-      id: now.toISOString(),
-      savedAt: now.toLocaleString(),
-      name: formData.subj || 'Untitled',
-      updatedAt: now.toISOString(),
-      vias,
-      references,
-      enclosures,
-      copyTos,
-      paragraphs,
-      // ENC: bindings persist with the document; bytes live in the
-      // enclosureFiles store, keyed by fileId.
-      enclosureBindings: enclosureRows,
-    };
+    const saveId = now.toISOString();
 
-    // P1.2: IndexedDB is the store of record - no eviction cap. A
-    // failed write is reported, never silently dropped.
-    setSavedLetters(prev => [newLetter, ...prev]);
-    libPut(newLetter)
-      .then(() => {
-        // P6-2: the working copy is cleared and the header reads "Saved"
-        // only once the write has landed. Both used to run before the
-        // write, so a quota failure left the header on "Saved" with the
-        // only surviving copy of the work gone.
-        // R3: an explicit save supersedes the autosaved working copy.
-        clearAutosave();
-        // D.2: this is the only place the header reads as saved.
-        setSavedMark({ at: now, changeCount });
-        toast({ title: 'Draft Saved', description: `"${newLetter.name}" added to your document library.` });
-        // ENC: ownership follows the latest save - bound files re-point
-        // to this document so its cascade delete governs them.
-        const boundIds = enclosureRows.map(r => r.fileId).filter((id): id is string => Boolean(id));
-        // E.3: the attached letter being endorsed is owned the same way.
-        const host = newLetter.samePageHost as SamePageHost | undefined;
-        if (host?.kind === 'file') boundIds.push(host.fileId);
-        // P6-7: the uploaded signed NAVMC 10132 is owned the same way too.
-        // Left out, it stayed under the working copy and Clear Form after
-        // Save deleted the saved document's signed file.
-        const navmcBaseId = navmc10132BaseFileIdOf(newLetter as FormData);
-        if (navmcBaseId) boundIds.push(navmcBaseId);
-        fileReparentByIds(boundIds, newLetter.id).catch((error) => {
-          console.error('Enclosure file re-parent failed', error);
-          // The files still belong to the working copy, so the next Clear
-          // Form sweep would delete what this save depends on. Hold the
-          // sweep off and say so.
-          if (boundIds.length > 0) {
-            reparentFailedRef.current = true;
-            toast({
-              title: 'Attached files not moved to the saved document',
-              description: 'The draft saved, but its attached files (enclosures, a signed NAVMC 10132) could not be re-parented to it. Save again before clearing the form.',
-              variant: 'destructive',
+    // P6-8: every save owns its own copy of the files it references.
+    // The bound files (enclosures, the endorsed letter, the uploaded
+    // signed NAVMC 10132) are copied under the new save's id FIRST, the
+    // bindings are rewritten to the copies, and only then is the letter
+    // written. Deleting this save later cascades to its copies alone;
+    // older saves and the working copy keep theirs. Before this, saves
+    // shared one set of bytes re-parented to the newest save, and
+    // deleting the newest save orphaned every older save's enclosures.
+    const host = formData.samePageHost as SamePageHost | undefined;
+    const navmcBaseId = navmc10132BaseFileIdOf(formData);
+    const boundIds = enclosureRows.map(r => r.fileId).filter((id): id is string => Boolean(id));
+    if (host?.kind === 'file') boundIds.push(host.fileId);
+    if (navmcBaseId) boundIds.push(navmcBaseId);
+
+    fileCopyForSave(boundIds, saveId)
+      .then(({ ids, missing }) => {
+        const mapped = (id: string | undefined) => (id ? ids.get(id) : undefined);
+        const newLetter: SavedLetter = {
+          ...formData,
+          id: saveId,
+          savedAt: now.toLocaleString(),
+          name: formData.subj || 'Untitled',
+          updatedAt: now.toISOString(),
+          vias,
+          references,
+          enclosures,
+          copyTos,
+          paragraphs,
+          // ENC: bindings persist with the document; bytes live in the
+          // enclosureFiles store, keyed by fileId. A binding whose file
+          // is gone is saved without one and reported below.
+          enclosureBindings: enclosureRows.map(r => ({ key: r.key, title: r.title, fileId: mapped(r.fileId) })),
+          ...(host?.kind === 'file'
+            ? { samePageHost: mapped(host.fileId) ? { ...host, fileId: mapped(host.fileId) as string } : undefined }
+            : {}),
+          ...(navmcBaseId ? { navmc10132BaseFileId: mapped(navmcBaseId) } : {}),
+        };
+
+        // P1.2: IndexedDB is the store of record - no eviction cap. A
+        // failed write is reported, never silently dropped.
+        setSavedLetters(prev => [newLetter, ...prev]);
+        return libPut(newLetter)
+          .then(() => {
+            // P6-2: the working copy is cleared and the header reads "Saved"
+            // only once the write has landed. Both used to run before the
+            // write, so a quota failure left the header on "Saved" with the
+            // only surviving copy of the work gone.
+            // R3: an explicit save supersedes the autosaved working copy.
+            clearAutosave();
+            // D.2: this is the only place the header reads as saved.
+            setSavedMark({ at: now, changeCount });
+            toast({ title: 'Draft Saved', description: `"${newLetter.name}" added to your document library.` });
+            if (missing.length > 0) {
+              toast({
+                title: 'Attached files missing from the save',
+                description: `${missing.length} attached file(s) were not found in this browser and were saved without their file. Re-attach and save again.`,
+                variant: 'destructive',
+              });
+            }
+            // P1.3: mirror to the backup folder when auto backup is on.
+            backupDocument(newLetter).catch((error) => {
+              console.error('Auto backup failed', error);
+              toast({ title: 'Backup Skipped', description: 'The library save worked, but the folder backup failed. Check Settings, Data.', variant: 'destructive' });
             });
-          }
-        });
-        // P1.3: mirror to the backup folder when auto backup is on.
-        backupDocument(newLetter).catch((error) => {
-          console.error('Auto backup failed', error);
-          toast({ title: 'Backup Skipped', description: 'The library save worked, but the folder backup failed. Check Settings, Data.', variant: 'destructive' });
-        });
+          })
+          .catch((error) => {
+            console.error('Library save failed', error);
+            setSavedLetters(prev => prev.filter(l => l.id !== saveId));
+            // The copies made for this save have no owner document now.
+            fileDeleteForDoc(saveId).catch((cleanupError) => console.error('Save copy cleanup failed', cleanupError));
+            // P6-2: nothing was saved, so nothing reads as saved. The working
+            // copy is left in place: it is the only copy of this work.
+            setSavedMark(null);
+            toast({ title: 'Save Failed', description: 'Storage is full or unavailable. Export an .nldp backup instead.', variant: 'destructive' });
+          });
       })
       .catch((error) => {
-        console.error('Library save failed', error);
-        setSavedLetters(prev => prev.filter(l => l.id !== newLetter.id));
-        // P6-2: nothing was saved, so nothing reads as saved. The working
-        // copy is left in place: it is the only copy of this work.
+        console.error('Enclosure file copy failed', error);
         setSavedMark(null);
-        toast({ title: 'Save Failed', description: 'Storage is full or unavailable. Export an .nldp backup instead.', variant: 'destructive' });
+        toast({ title: 'Save Failed', description: 'The attached files could not be copied into the saved document. Storage may be full. Export an .nldp backup instead.', variant: 'destructive' });
       });
   };
 
@@ -847,14 +855,9 @@ function NavalLetterGeneratorInner() {
         // ENC: clear-form abandons unsaved write-through files, the
         // uploaded signed NAVMC 10132 among them (navmc10132-base-file.ts).
         // The new document carries no base id, so it fills the blank
-        // whether or not the sweep runs. P6-7: skipped when the last Save
-        // failed to move its files off the working copy.
-        if (reparentFailedRef.current) {
-          reparentFailedRef.current = false;
-          console.warn('Working-copy file cleanup skipped: the last save could not re-parent its files.');
-        } else {
-          fileDeleteForDoc(workingCopyDocId).catch((error) => console.error('Working-copy file cleanup failed', error));
-        }
+        // whether or not the sweep runs. P6-8: a save holds its own copies, so the sweep never reaches
+        // bytes a saved document depends on.
+        fileDeleteForDoc(workingCopyDocId).catch((error) => console.error('Working-copy file cleanup failed', error));
         setCopyTos(['']);
         setComments([]);
         setReviewMode(false);

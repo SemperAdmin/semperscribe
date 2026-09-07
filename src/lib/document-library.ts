@@ -364,6 +364,62 @@ export async function fileReparentByIds(fileIds: string[], toDocId: string): Pro
   }
 }
 
+/**
+ * P6-8: every save owns its own copy of the bytes it references. Copies
+ * each listed file to a fresh id owned by `toDocId`, in one transaction,
+ * and returns old id to new id. Deleting any save then cascades to that
+ * save's copies alone; an older save keeps its enclosures, and the
+ * working copy keeps the bytes the editor is still holding. A missing
+ * source is reported in `missing` rather than thrown, so a save with one
+ * lost attachment still lands and the caller can say which one.
+ */
+export async function fileCopyForSave(
+  fileIds: readonly string[],
+  toDocId: string,
+): Promise<{ ids: Map<string, string>; missing: string[] }> {
+  const ids = new Map<string, string>();
+  const missing: string[] = [];
+  const unique = Array.from(new Set(fileIds.filter((id) => id !== '')));
+  if (unique.length === 0) return { ids, missing };
+  const db = await openDb();
+  try {
+    const tx = db.transaction(FILES_STORE, 'readwrite');
+    const store = tx.objectStore(FILES_STORE);
+    for (const fileId of unique) {
+      const req = store.get(fileId);
+      req.onsuccess = () => {
+        const record = req.result as StoredEnclosureFile | undefined;
+        if (!record) {
+          missing.push(fileId);
+          return;
+        }
+        const copyId = saveCopyId(fileId);
+        ids.set(fileId, copyId);
+        store.put({ ...record, fileId: copyId, docId: toDocId, bytes: record.bytes.slice(0) });
+      };
+    }
+    await txDone(tx);
+  } finally {
+    db.close();
+  }
+  return { ids, missing };
+}
+
+/**
+ * A copy keeps the source id's prefix (a NAVMC 10132 base id is
+ * recognised by its `navmc10132-base:` prefix) and appends a fresh
+ * suffix, so the copy resolves through every path the original did.
+ */
+function saveCopyId(sourceId: string): string {
+  const uuid =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const colon = sourceId.indexOf(':');
+  const prefix = colon > 0 ? sourceId.slice(0, colon + 1) : '';
+  return `${prefix}${uuid}`;
+}
+
 /** Deletes every file owned by a document. */
 export async function fileDeleteForDoc(docId: string): Promise<void> {
   const db = await openDb();
