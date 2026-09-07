@@ -23,7 +23,8 @@ import {
   VerticalPositionAlign,
   FrameAnchorType,
   FrameWrap,
-  HeightRule
+  HeightRule,
+  type ISectionOptions,
 } from "docx";
 import { FormData, ParagraphData } from "@/types";
 import { getDoDSealBuffer } from "./dod-seal";
@@ -78,6 +79,12 @@ const createEmptyLine = (font?: string, size?: number) => {
   });
 };
 
+/** The one section a document renders as, plus any directive structural pages. */
+interface DocxParts {
+  section: ISectionOptions;
+  structuralSections: ISectionOptions[];
+}
+
 export async function generateDocxBlob(
   formData: FormData,
   vias: string[],
@@ -87,6 +94,67 @@ export async function generateDocxBlob(
   paragraphs: ParagraphData[],
   distList: string[] = []
 ): Promise<Blob> {
+  const parts = await buildDocxParts(formData, vias, references, enclosures, copyTos, paragraphs, distList);
+  const doc = new Document({ sections: [parts.section, ...parts.structuralSections] });
+  return Packer.toBlob(doc);
+}
+
+/**
+ * E.5 in Word: the same-page endorsement written from scratch, both
+ * halves in one document. The letter half is built as the basic
+ * letter and the endorsement half as the bare block (no letterhead, no
+ * seal, no page number of its own), and the two are joined in the
+ * letter's section with Figure 9-1's rule between them, so the block
+ * follows the letter's last line and Word paginates the pair as one
+ * document. When the block does not fit under the signature, Word
+ * carries it to the next page, which is 9-2.1.a's own fallback. The
+ * letter's headers and footers govern the whole, so the continuation
+ * header and the page numbers run on through the endorsement.
+ *
+ * A same-page endorsement onto an ATTACHED letter has no Word form:
+ * the letter is a PDF and Word takes no PDF host. Callers export the
+ * endorsement as a page of its own in that case, and say so.
+ */
+export async function generateSamePageCompositeDocxBlob(ctx: {
+  formData: FormData; vias: string[]; references: string[]; enclosures: string[]; copyTos: string[]; paragraphs: ParagraphData[]; distList?: string[];
+}): Promise<Blob> {
+  const { letterContext, endorsementContext } = await import('./same-page-composite');
+  const { asSamePageBlock, SAME_PAGE_RULE_WEIGHT } = await import('./same-page-endorsement');
+  const letter = letterContext(ctx);
+  const block = endorsementContext(ctx);
+  const letterParts = await buildDocxParts(letter.formData, letter.vias, letter.references, letter.enclosures, letter.copyTos, letter.paragraphs, letter.distList);
+  const blockParts = await buildDocxParts(asSamePageBlock(block.formData), block.vias, block.references, block.enclosures, block.copyTos, block.paragraphs, block.distList);
+  const font = getFont(letter.formData.bodyFont);
+  // Figure 9-1's rule: one line below the letter's last line, the full
+  // width of the text. An empty line carrying a bottom border is the
+  // rule; the block's own leading empty line makes the second blank
+  // line of the gap (SAME_PAGE_GAP_LINES).
+  const rule = new Paragraph({
+    children: [new TextRun({ text: '', font, size: FONT_SIZE_BODY })],
+    spacing: { before: 0, after: 0 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: Math.round(SAME_PAGE_RULE_WEIGHT * 8), color: '000000', space: 1 } },
+  });
+  const doc = new Document({
+    sections: [
+      {
+        ...letterParts.section,
+        children: [...(letterParts.section.children ?? []), rule, ...(blockParts.section.children ?? [])],
+      },
+      ...letterParts.structuralSections,
+    ],
+  });
+  return Packer.toBlob(doc);
+}
+
+async function buildDocxParts(
+  formData: FormData,
+  vias: string[],
+  references: string[],
+  enclosures: string[],
+  copyTos: string[],
+  paragraphs: ParagraphData[],
+  distList: string[] = []
+): Promise<DocxParts> {
   // P3.1 (G7): archetype font policy. Directives coerce to Courier at
   // generation time; correspondence passes through unchanged. Same
   // guard for letterhead: directives never carry DLA letterhead.
@@ -155,7 +223,7 @@ export async function generateDocxBlob(
   // the same way.
   const isSamePageBlock = isSamePageBlockRender(formData);
   if (isSamePageEndorsement(formData) && formData.samePageEndorsement && !isSamePageBlock) {
-    throw new Error('Word export is not available for a same-page endorsement written from scratch: the letter and its endorsement are composed onto one page in the PDF.');
+    throw new Error('A same-page endorsement written from scratch renders through generateSamePageCompositeDocxBlob, which builds the letter and the block and joins them. Rendering the whole through this path would print the letter half as the document.');
   }
   const omitEndorsementIdentification = omitsIdentification(formData);
 
@@ -2593,9 +2661,8 @@ export async function generateDocxBlob(
   if (markingsOn && !baseHasBanner) firstFooterChildren.push(classificationBannerParagraph());
   const firstPageFooter = new Footer({ children: firstFooterChildren });
 
-  // --- Assemble Document ---
-  const doc = new Document({
-    sections: [{
+  // --- Assemble the section ---
+  const section: ISectionOptions = {
         properties: {
           page: {
             margin: {
@@ -2648,10 +2715,7 @@ export async function generateDocxBlob(
         ...distributionParagraphs,
         ...reportsPageParagraphs,
       ],
-    },
-    ...(structuralSections as []),
-    ],
-  });
+  };
 
-  return Packer.toBlob(doc);
+  return { section, structuralSections: structuralSections as ISectionOptions[] };
 }

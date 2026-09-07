@@ -7,7 +7,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { registerNodeAssets } from './node-assets';
-import { extractPdfTextLayout } from './golden/helpers';
+import { docxToDocumentXml, extractPdfTextLayout } from './golden/helpers';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import {
   deriveEndorsementAddressing, derivedBasicLetterReference, nextReferenceLetter, nextEnclosureNumber,
@@ -192,4 +192,50 @@ describe('the render through the pipeline', () => {
     expect(page2).toContain('Subj:');
     expect(page2).toContain('5216');
   }, 90_000);
+});
+
+describe('the Word export of the two-half document', () => {
+  it('joins the letter and the endorsement block in one document with Figure 9-1\'s rule between them', async () => {
+    const { generateSamePageCompositeDocxBlob } = await import('@/lib/docx-generator');
+    const xml = await docxToDocumentXml(await generateSamePageCompositeDocxBlob(figure()));
+    const flat = xml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    // Both halves, signer 1 before signer 2.
+    expect(flat).toContain('HOW TO PREPARE AN ENDORSEMENT');
+    expect(flat).toContain('G. L. SLAUGHTER, JR');
+    expect(flat).toContain('FIRST ENDORSEMENT');
+    expect(flat).toContain('R. L. GABEL');
+    expect(flat.indexOf('SLAUGHTER')).toBeLessThan(flat.indexOf('GABEL'));
+    // The letterhead prints once, above the letter, never above the block.
+    expect(flat.split('NAVAL AIR STATION').length - 1).toBe(1);
+    // The rule: one paragraph carrying a bottom border, between the two signers.
+    const rules = [...xml.matchAll(/<w:pBdr>\s*<w:bottom [^>]*w:val="single"[^>]*\/>\s*<\/w:pBdr>/g)];
+    expect(rules).toHaveLength(1);
+    const ruleAt = rules[0].index!;
+    expect(ruleAt).toBeGreaterThan(xml.indexOf('SLAUGHTER'));
+    expect(ruleAt).toBeLessThan(xml.indexOf('GABEL'));
+    // One body section: the block adds no section break of its own.
+    expect((xml.match(/<w:sectPr/g) ?? []).length).toBe(1);
+  }, 90_000);
+
+  it('renders through LibreOffice onto one page like the PDF, when soffice is present', async () => {
+    const { execFileSync } = await import('child_process');
+    const { existsSync, mkdtempSync, writeFileSync, readFileSync } = await import('fs');
+    const os = await import('os');
+    const soffice = ['/usr/bin/soffice', '/usr/local/bin/soffice'].find((p) => existsSync(p)) ?? process.env.SOFFICE_PATH;
+    if (!soffice || !existsSync(soffice)) {
+      process.stderr.write('[same-page docx] LibreOffice absent, page-count check not evaluated here.\n');
+      return;
+    }
+    const { generateSamePageCompositeDocxBlob } = await import('@/lib/docx-generator');
+    const blob = await generateSamePageCompositeDocxBlob(figure());
+    const dir = mkdtempSync(join(os.tmpdir(), 'same-page-docx-'));
+    const docxPath = join(dir, 'figure.docx');
+    writeFileSync(docxPath, Buffer.from(await blob.arrayBuffer()));
+    execFileSync(soffice, ['--headless', '--convert-to', 'pdf', '--outdir', dir, docxPath], { timeout: 60000, stdio: 'ignore' });
+    const items = await extractPdfTextLayout(new Blob([readFileSync(join(dir, 'figure.pdf'))]));
+    expect(Math.max(...items.map((i) => i.page))).toBe(1);
+    const page = text(items, 1);
+    expect(page).toContain('SLAUGHTER');
+    expect(page).toContain('GABEL');
+  }, 120_000);
 });
