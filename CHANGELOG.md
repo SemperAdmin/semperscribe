@@ -91,10 +91,10 @@ Every item carries a regression test written before the fix.
 
 ### Changed
 
-- Privacy and Security Notice: personal information about a service
-  member in a record is CUI in the Privacy category (PRVCY) under the DoD
-  CUI Registry, so the authorizing-official condition applies to a form
-  produced for a real Marine. New Section 6A states what is kept, that
+- Privacy and Security Notice: a name or an EDIPI is not CUI on its own.
+  Whether a completed record about a real Marine is CUI in the Privacy
+  category (PRVCY) is the user's command's determination, and where it
+  is, the authorizing-official condition applies to it. New Section 6A states what is kept, that
   nothing expires on its own, and how to delete it (P9-1, P9-4).
 - LICENSES.md names @axe-core/playwright as the MPL-2.0 direct
   devDependency; the typescript pin carries its reason and a Dependabot

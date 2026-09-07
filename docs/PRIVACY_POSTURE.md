@@ -155,6 +155,8 @@ While EDMS mode is active, three controls apply, all enforced in code rather tha
 
 EDMS mode is held in `sessionStorage`, never `localStorage`, so it expires with the browser tab. A stale EDMS context surviving into an unrelated draft would mislabel that draft's export.
 
+EDMS mode is a usability guard, not a security boundary, and it is accepted as such (audit P2-7, 2026-09-07). The fragment is unsigned and the flag is tab-scoped, so anyone enters the mode with a crafted link and leaves it by opening a new tab. The three controls above catch a drafter's mistakes. They do not stop a user who wants around them, and nothing sensitive depends on them: the mode carries no credential, grants no access, and opens no data path.
+
 The generated document leaves SemperScribe as a file the user downloads and uploads to EDMS by hand. No direct write path to EDMS exists, and none is planned. This preserves the no-backend posture in Section 2.
 
 ## 12. Policy Review
