@@ -12,7 +12,7 @@ import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, g
 import { loadSavedLetters, clearSavedLetters } from '@/lib/storage-utils';
 import {
   libLoadAll, libPut, libDelete, libClear, migrateLegacyDrafts,
-  filePut, fileGet, fileDeleteIfOwnedBy, fileDeleteForDoc, fileReparentByIds,
+  filePut, fileGet, fileDeleteIfOwnedBy, fileDeleteForDoc, fileReparentByIds, clearAllLocalData,
 } from '@/lib/document-library';
 import { putNavmc10132Base, navmc10132BaseFileIdOf } from '@/lib/navmc10132-base-file';
 import { backupDocument } from '@/lib/auto-backup';
@@ -1171,6 +1171,16 @@ function NavalLetterGeneratorInner() {
     run();
   };
 
+  // P2-5: everything, then a reload so no in-memory state survives.
+  const handleClearAllLocalData = () => {
+    clearAllLocalData()
+      .then(() => { window.location.reload(); })
+      .catch((error) => {
+        console.error('Clear all local data failed', error);
+        toast({ title: 'Delete failed', description: error instanceof Error ? error.message : String(error), variant: 'destructive' });
+      });
+  };
+
   const handleClearSavedLetters = () => {
     clearSavedLetters();
     libClear().catch((error) => console.error('Library clear failed', error));
@@ -1658,6 +1668,7 @@ function NavalLetterGeneratorInner() {
         profile={profile}
         onUpdateProfile={updateProfile}
         onClearProfile={clearProfile}
+        onClearAllLocalData={handleClearAllLocalData}
         savedLetterCount={savedLetters.length}
         onClearSavedLetters={handleClearSavedLetters}
       />

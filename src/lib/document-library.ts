@@ -212,6 +212,40 @@ export async function libDelete(id: string): Promise<void> {
   }
 }
 
+/**
+ * P2-5: everything the app keeps in this browser, in one call. The three
+ * IndexedDB stores (documents, settings including the working copies and
+ * the backup directory handle, enclosure and NAVMC base files), the
+ * localStorage keys (legacy letters, profile, disclaimer flag, migration
+ * flag, GunnyBot proxy), and the EDMS session flag. "Clear saved letters"
+ * alone left the working copy, the profile, the proxy URL and the backup
+ * handle behind on a shared workstation.
+ */
+export async function clearAllLocalData(): Promise<void> {
+  const db = await openDb();
+  try {
+    const tx = db.transaction([STORE, FILES_STORE, SETTINGS_STORE], 'readwrite');
+    tx.objectStore(STORE).clear();
+    tx.objectStore(FILES_STORE).clear();
+    tx.objectStore(SETTINGS_STORE).clear();
+    await txDone(tx);
+  } finally {
+    db.close();
+  }
+  if (typeof localStorage !== 'undefined') {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('semperscribe') || key === 'navalLetters' || key.startsWith('gunnybot.') || key === 'theme') {
+        localStorage.removeItem(key);
+      }
+    }
+  }
+  if (typeof sessionStorage !== 'undefined') {
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith('semperscribe')) sessionStorage.removeItem(key);
+    }
+  }
+}
+
 export async function libClear(): Promise<void> {
   const db = await openDb();
   try {

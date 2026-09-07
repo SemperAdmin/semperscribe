@@ -34,6 +34,8 @@ interface SettingsDialogProps {
   onClearProfile: () => void;
   savedLetterCount: number;
   onClearSavedLetters: () => void;
+  /** P2-5: clears every store, then reloads. */
+  onClearAllLocalData?: () => void;
 }
 
 export function SettingsDialog({
@@ -44,6 +46,7 @@ export function SettingsDialog({
   onClearProfile,
   savedLetterCount,
   onClearSavedLetters,
+  onClearAllLocalData,
 }: SettingsDialogProps) {
   const { theme, setTheme } = useTheme();
   const [unitSearchOpen, setUnitSearchOpen] = useState(false);
@@ -449,6 +452,26 @@ export function SettingsDialog({
                   >
                     <Trash2 className="w-3 h-3 mr-1" />
                     Clear All
+                  </Button>
+                </div>
+                {/* P2-5: one action which reaches every store, for a shared workstation. */}
+                <div className="flex items-center justify-between rounded-md border border-destructive/40 p-3">
+                  <div>
+                    <p className="text-sm text-foreground">Delete all local data</p>
+                    <p className="text-xs text-muted-foreground">Saved drafts, the autosaved working copy, enclosure and form files, your profile, the GunnyBot proxy setting and the backup folder link. Use this before handing the computer to someone else.</p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={!onClearAllLocalData}
+                    onClick={() => {
+                      if (window.confirm('Delete every piece of Semper Scribe data in this browser? This cannot be undone.')) {
+                        onClearAllLocalData?.();
+                      }
+                    }}
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    Delete all
                   </Button>
                 </div>
               </div>
