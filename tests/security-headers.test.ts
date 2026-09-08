@@ -78,4 +78,13 @@ describe('security-headers.conf', () => {
     expect(h).toMatch(/frame-src 'self' blob:/);
     expect(h).toMatch(/worker-src 'self' blob:/);
   });
+
+  it("allows WebAssembly for react-pdf's layout engine without general eval", () => {
+    const h = headers();
+    const csp = h.split('\n').find((l) => l.includes('Content-Security-Policy')) ?? '';
+    const script = /script-src ([^;]+);/.exec(csp)?.[1] ?? '';
+    expect(script).toContain("'wasm-unsafe-eval'");
+    // The broad eval allowance stays out.
+    expect(script).not.toContain("'unsafe-eval'");
+  });
 });

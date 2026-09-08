@@ -113,7 +113,11 @@ so `next build` copies them into the export root the manifest pushes.
 The CSP keeps `script-src` and `style-src` at `'unsafe-inline'`. Next.js
 App Router static export emits inline streaming-payload scripts and has
 no per-request nonce, so a nonce-based policy needs server rendering the
-static export does not do. `frame-ancestors`, `object-src 'none'`,
+static export does not do. `script-src` also carries `'wasm-unsafe-eval'`,
+since the PDF preview and export run through a WebAssembly layout engine
+(@react-pdf/renderer's yoga). That keyword permits WASM compilation only,
+not general `eval`, and is honored by current Chromium, Firefox, and
+Safari. `frame-ancestors`, `object-src 'none'`,
 `base-uri 'self'`, `form-action 'self'`, and the constrained
 `connect-src` (self, the two AI hosts, and loopback) carry the policy's
 protective weight. The app has no HTML injection sink, verified in the
