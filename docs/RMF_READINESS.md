@@ -283,6 +283,10 @@ Out of the boundary.
 - Any AI provider a user selects in GunnyBot. The user contracts with the provider directly under their own key. Provider-side handling, retention, and residency are governed by that provider's own posture.
 - The USMC EDMS Power App and its SharePoint document library, which carry their own DoD IL5 authorization. The handoff is a URL launch and a manual file upload, not an interconnection this system holds credentials for.
 
+### Response Security Headers (SC)
+
+The cloud.gov deployment sets Content-Security-Policy (`frame-ancestors 'none'`), X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, Referrer-Policy, Permissions-Policy, and Cross-Origin-Opener-Policy through the staticfile buildpack (`public/Staticfile`, `public/nginx/conf/includes/security-headers.conf`), closing audit 2026-09-08 finding 1 for that host. GitHub Pages cannot set response headers; the Pages mirror is a public demonstration and any sensitive use belongs on cloud.gov. See SECURITY.md.
+
 ## 9. Risks Accepted
 
 | Risk | Severity | Rationale for Acceptance |

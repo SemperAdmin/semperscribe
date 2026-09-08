@@ -100,6 +100,21 @@ Every item carries a regression test written before the fix.
   devDependency; the typescript pin carries its reason and a Dependabot
   ignore (P7-2, P7-4).
 
+### Security, 2026-09-08
+
+- Response security headers on cloud.gov through the staticfile
+  buildpack: a Content-Security-Policy with `frame-ancestors 'none'`,
+  X-Frame-Options DENY, nosniff, one-year HSTS, no-referrer, a
+  Permissions-Policy denying unused device APIs, and COOP same-origin
+  (`public/Staticfile`, `public/nginx/conf/includes/security-headers.conf`).
+  Closes the 2026-09-08 review's top finding for that host. GitHub Pages
+  cannot set headers; SECURITY.md records the limit. A test guards the
+  config against a silent drop.
+- Share-link generated passphrase raised from four words to six
+  (`ShareLinkDialog.tsx`), about 34 bits to about 51.5 bits against the
+  600k-round PBKDF2, and the strength comment corrected. The manual
+  password check now rejects a long single-character run.
+
 ### Rulings applied 2026-09-07
 
 - P5-5: the 5.d(4) combination cap is the extra-duty maximum the

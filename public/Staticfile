@@ -1,0 +1,16 @@
+# cloud.gov / Cloud Foundry staticfile_buildpack configuration.
+#
+# This file ships in public/, so `next build` copies it verbatim to the
+# export root (out/), which manifest.yml pushes as the app root. The
+# buildpack reads it at staging.
+#
+# force_https redirects any plaintext request to HTTPS at the edge.
+# location_include merges every *.conf under nginx/conf/includes/ into
+# the server's `location /` block, which is where the response security
+# headers below are set (audit 2026-09-08 finding 1).
+#
+# GitHub Pages cannot set response headers, so this file governs the
+# cloud.gov deployment only. SECURITY.md records that limit and names
+# cloud.gov as the deployment for any sensitive use.
+force_https: true
+location_include: includes/*.conf

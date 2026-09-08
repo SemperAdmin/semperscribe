@@ -48,13 +48,16 @@ export interface ShareLinkOptions {
  */
 export const MIN_SHARE_PASSWORD_LENGTH = 12;
 
-// Short, common, unambiguous English words, 385 of them. Four words
-// drawn uniformly give log2(385^4), about 34 bits. That is a floor set by
-// the spec (four words, small list), not a ceiling: with the 600k-round
-// PBKDF2 in crypto-utils.ts an offline search still prices out at
-// years of single-GPU time, and the user can type anything longer.
-// Editing the list does not affect existing links: words never travel,
-// only the password the user typed or accepted.
+// Short, common, unambiguous English words, 385 of them. Six words
+// drawn uniformly give log2(385^6), about 51.5 bits. Paired with the
+// 600k-round PBKDF2-SHA-256 in crypto-utils.ts, an offline search at an
+// estimated 1e4 derivations per second per GPU runs into thousands of
+// GPU-years, orders of magnitude past the four-word default this
+// replaced (about 34 bits, days of single-GPU time). The figure is a
+// floor, not a ceiling: the user types anything longer. Editing the
+// list does not affect existing links, since words never travel, only
+// the password the user typed or accepted.
+const PASSPHRASE_WORD_COUNT = 6;
 const PASSPHRASE_WORDS = [
   'acorn', 'actor', 'adobe', 'alarm', 'album', 'alley', 'alpine', 'amber', 'anchor', 'ankle',
   'anvil', 'apple', 'apron', 'arena', 'armor', 'arrow', 'aspen', 'atlas', 'attic', 'aurora',
@@ -97,17 +100,28 @@ const PASSPHRASE_WORDS = [
   'zebra', 'zenith', 'zephyr', 'zinc', 'zipper',
 ];
 
-/** Four random words from the built-in list, space separated. */
+/** Six random words from the built-in list, space separated. */
 export function generatePassphrase(): string {
-  const idx = new Uint32Array(4);
+  const idx = new Uint32Array(PASSPHRASE_WORD_COUNT);
   crypto.getRandomValues(idx);
   return Array.from(idx, n => PASSPHRASE_WORDS[n % PASSPHRASE_WORDS.length]).join(' ');
 }
+
+/**
+ * Distinct-character floor. A length-only check passes a run of one
+ * character (`aaaaaaaaaaaa`), which meets twelve characters at about
+ * 5 bits. Requiring six distinct characters rejects that class without
+ * a dictionary. The generated six-word passphrase clears it every time.
+ */
+const MIN_DISTINCT_CHARS = 6;
 
 /** Validation shared by the share dialog and the signature-request path. */
 export function sharePasswordProblem(password: string, confirm: string): string | null {
   if (password.length < MIN_SHARE_PASSWORD_LENGTH) {
     return `Password must be at least ${MIN_SHARE_PASSWORD_LENGTH} characters.`;
+  }
+  if (new Set(password).size < MIN_DISTINCT_CHARS) {
+    return `Password must use at least ${MIN_DISTINCT_CHARS} different characters. Use the generated passphrase or a longer phrase.`;
   }
   if (password !== confirm) return 'Passwords do not match.';
   return null;

@@ -35,7 +35,7 @@ import { decryptSharedState, decodeStateFromUrl, encodeStateForUrl, type Shareab
 import { normalizeProxyUrl, setProxyUrl, clearAllProxyUrls, getProxyUrl } from '@/lib/gunnybot/proxy-config';
 import { streamChat } from '@/lib/gunnybot/client';
 import type { GunnyStreamEvent } from '@/lib/gunnybot/types';
-import { ShareLinkDialog, generatePassphrase, MIN_SHARE_PASSWORD_LENGTH, type ShareLinkOptions } from '@/components/ShareLinkDialog';
+import { ShareLinkDialog, generatePassphrase, sharePasswordProblem, MIN_SHARE_PASSWORD_LENGTH, type ShareLinkOptions } from '@/components/ShareLinkDialog';
 
 const PASSWORD = 'correct horse battery staple';
 
@@ -251,11 +251,19 @@ describe('P3-2 share link password policy', () => {
     expect(onCreate.mock.calls[0][0]).toMatchObject({ password: shown.value });
   });
 
-  it('generatePassphrase yields four words from the built-in list', () => {
+  it('generatePassphrase yields six words from the built-in list (P5-8 hardening, ~51.5 bits)', () => {
     const p = generatePassphrase();
-    expect(p.split(' ')).toHaveLength(4);
+    expect(p.split(' ')).toHaveLength(6);
     expect(p.length).toBeGreaterThanOrEqual(MIN_SHARE_PASSWORD_LENGTH);
+    expect(new Set(p.replace(/ /g, '')).size).toBeGreaterThanOrEqual(6);
     expect(generatePassphrase()).not.toBe(p);
+  });
+
+  it('sharePasswordProblem rejects a long single-character run', () => {
+    expect(sharePasswordProblem('aaaaaaaaaaaa', 'aaaaaaaaaaaa')).toMatch(/different characters/);
+    expect(sharePasswordProblem(generatePassphrase(), '')).not.toBeNull();
+    const good = generatePassphrase();
+    expect(sharePasswordProblem(good, good)).toBeNull();
   });
 });
 

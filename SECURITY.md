@@ -98,6 +98,31 @@ not a finding. See [`docs/COMPANION.md`](docs/COMPANION.md).
 
 SemperScribe includes an optional assistant, GunnyBot, disabled until the user supplies a personal LLM provider API key. When enabled and used, GunnyBot sends the text the user submits to it (a typed question, a draft paragraph, or the document body for a review) directly from the browser to the user-chosen provider (Google or GenAI.mil), under the user's own key. The provider processes that text under the provider's own terms, outside SemperScribe's control. The key is held in browser session memory only, clears when the tab closes, and is never written to disk or sent to any SemperScribe-controlled host. This is an opt-in, user-controlled data flow, documented in the Privacy and Security Notice. The application applies no attestation or content filtering before sending, so the user is solely responsible for not submitting CUI, PII, or classified text to GunnyBot. This intentional flow is not an information-leakage defect. See In Scope above for the GunnyBot behavior that remains reportable.
 
+## Response Security Headers
+
+The cloud.gov deployment sets response security headers through the
+staticfile buildpack. `public/Staticfile` carries `force_https` and a
+`location_include` directive, and `public/nginx/conf/includes/security-headers.conf`
+sets, on every response, a Content-Security-Policy with `frame-ancestors 'none'`,
+`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+`Strict-Transport-Security` (one year, includeSubDomains), `Referrer-Policy: no-referrer`,
+a `Permissions-Policy` denying the device APIs the app does not use, and
+`Cross-Origin-Opener-Policy: same-origin`. Both files ship in `public/`,
+so `next build` copies them into the export root the manifest pushes.
+
+The CSP keeps `script-src` and `style-src` at `'unsafe-inline'`. Next.js
+App Router static export emits inline streaming-payload scripts and has
+no per-request nonce, so a nonce-based policy needs server rendering the
+static export does not do. `frame-ancestors`, `object-src 'none'`,
+`base-uri 'self'`, `form-action 'self'`, and the constrained
+`connect-src` (self, the two AI hosts, and loopback) carry the policy's
+protective weight. The app has no HTML injection sink, verified in the
+2026-09-08 review, so the inline allowance carries no known live risk.
+
+GitHub Pages cannot set response headers, so these controls apply to the
+cloud.gov deployment only. The GitHub Pages mirror is a public format
+demonstration. Any use with real personnel data belongs on cloud.gov.
+
 ## Compliance References
 
 Vulnerability handling for this repository follows.
