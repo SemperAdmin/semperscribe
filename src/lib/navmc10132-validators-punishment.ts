@@ -132,6 +132,7 @@ import {
   payTableStatus,
 } from '@/lib/navmc10132-basic-pay';
 import { combinationFindings } from '@/lib/navmc10132-combination-limits';
+import { parseDollars, hasCents, formatDollars, parseWholeNumber } from '@/lib/navmc10132-money';
 import {
   suspensionPeriodFindings,
   suspensionsWithComputedEnd,
@@ -204,16 +205,19 @@ function vacationEntries(formData: FormData): Navmc10132Vacation[] {
 }
 
 /**
- * Parses a numeric form field that is stored as a string. Returns null for
- * empty, missing, or non-numeric input rather than 0, so callers can tell
- * "not entered" apart from "entered as zero" and skip the comparison.
+ * Reads a day or month count stored as a string. Returns null for an empty
+ * or missing field, so callers can tell "not entered" apart from "entered".
+ * A non-empty field that is not a whole non-negative integer (`\d+`) is
+ * returned as `{ unreadable: text }`: `Number()` used to sit here and read
+ * "-3" as a lawful count under every ceiling and "3.5" as three and a half
+ * days, neither of which a commander can impose.
  */
-function parseNumericField(value: unknown): number | null {
+function parseCountField(value: unknown): number | { unreadable: string } | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   if (trimmed === '') return null;
-  const n = Number(trimmed);
-  return Number.isFinite(n) ? n : null;
+  const n = parseWholeNumber(trimmed);
+  return n === null ? { unreadable: trimmed } : n;
 }
 
 /**
@@ -940,8 +944,20 @@ export function punishmentParameterCeilingIssues(formData: FormData): Validation
     const code = resolvePunishment(entry.code);
     if (!code) return;
 
-    const days = parseNumericField(entry.days);
-    if (code.maxDays !== undefined && days !== null && days > code.maxDays) {
+    const days = parseCountField(entry.days);
+    if (days !== null && typeof days !== 'number') {
+      issues.push(
+        issue(
+          `navmc10132-w06-days-${entry.code}-${index}`,
+          'block',
+          `Punishment code ${entry.code} entered days ("${days.unreadable}") is not a whole number of days.`,
+          code.statute,
+          `${code.description}. Days must be a whole number${
+            code.maxDays !== undefined ? ` from 1 to ${code.maxDays}` : ''
+          }; a negative or fractional count cannot be imposed. Entered value: "${days.unreadable}".`,
+        ),
+      );
+    } else if (code.maxDays !== undefined && days !== null && days > code.maxDays) {
       issues.push(
         issue(
           `navmc10132-w06-days-${entry.code}-${index}`,
@@ -953,8 +969,20 @@ export function punishmentParameterCeilingIssues(formData: FormData): Validation
       );
     }
 
-    const months = parseNumericField(entry.months);
-    if (code.maxMonths !== undefined && months !== null && months > code.maxMonths) {
+    const months = parseCountField(entry.months);
+    if (months !== null && typeof months !== 'number') {
+      issues.push(
+        issue(
+          `navmc10132-w06-months-${entry.code}-${index}`,
+          'block',
+          `Punishment code ${entry.code} entered months ("${months.unreadable}") is not a whole number of months.`,
+          code.statute,
+          `${code.description}. Months must be a whole number${
+            code.maxMonths !== undefined ? ` from 1 to ${code.maxMonths}` : ''
+          }; a negative or fractional count cannot be imposed. Entered value: "${months.unreadable}".`,
+        ),
+      );
+    } else if (code.maxMonths !== undefined && months !== null && months > code.maxMonths) {
       issues.push(
         issue(
           `navmc10132-w06-months-${entry.code}-${index}`,
@@ -971,19 +999,28 @@ export function punishmentParameterCeilingIssues(formData: FormData): Validation
 }
 
 /**
- * Returns true when a dollar-amount string is not a whole dollar figure,
- * i.e. it parses but carries a nonzero fractional part.
+ * Returns true when a dollar-amount string parses as a dollar figure and
+ * carries cents. An unreadable figure is false here: V-20 owns that block,
+ * and two blocks for one bad field would be the same fact stated twice.
  */
 function hasFractionalDollars(value: unknown): boolean {
-  const n = parseNumericField(value);
-  if (n === null) return false;
-  return !Number.isInteger(n);
+  const parsed = parseDollars(value);
+  return parsed !== null && hasCents(parsed);
 }
 
 /**
- * W-07 (advisory). A forfeiture amount is not expressed in whole dollars.
- * Applies to both `dollars` and `dollarsPerMonth`, the two forfeiture
- * parameters the punishment table defines.
+ * W-07 (BLOCKING, promoted from advisory on 2026-09 in the P5 remediation,
+ * owner decision recorded in the audit). A forfeiture amount is not expressed
+ * in whole dollars. MCO 5800.16 Vol 14 para 010901: "Forfeiture imposed as
+ * NJP must be expressed in whole-dollar amounts only, not in dollars and
+ * cents." That is a prohibition on the figure itself, the same class as
+ * V-20, and the MCTFS transaction the figure feeds (PRIUM 70502.1) has no
+ * cents field to carry it. Applies to both `dollars` and `dollarsPerMonth`,
+ * the two forfeiture parameters the punishment table defines. The rule ID
+ * prefix stays w07 so an existing reference still resolves.
+ *
+ * Reads the figure through parseDollars, so "$50.50" and "1,000.25" draw the
+ * issue where `Number()` used to read them as NaN and stay silent.
  */
 export function forfeitureWholeDollarIssues(formData: FormData): ValidationIssue[] {
   const entries = punishmentEntries(formData);
@@ -994,7 +1031,7 @@ export function forfeitureWholeDollarIssues(formData: FormData): ValidationIssue
       issues.push(
         issue(
           `navmc10132-w07-dollars-${entry.code}-${index}`,
-          'warn',
+          'block',
           `Punishment code ${entry.code} forfeiture is not a whole dollar amount.`,
           'MCO 5800.16 Vol 14 para 010901',
           `Item 6 forfeitures under ${entry.code} must be expressed in whole dollars. ` +
@@ -1006,7 +1043,7 @@ export function forfeitureWholeDollarIssues(formData: FormData): ValidationIssue
       issues.push(
         issue(
           `navmc10132-w07-dollarsPerMonth-${entry.code}-${index}`,
-          'warn',
+          'block',
           `Punishment code ${entry.code} monthly forfeiture is not a whole dollar amount.`,
           'MCO 5800.16 Vol 14 para 010901',
           `Item 6 forfeitures under ${entry.code} must be expressed in whole dollars. ` +
@@ -1177,9 +1214,46 @@ export function correctionalCustodyGradeIssues(formData: FormData): ValidationIs
  * The grade used is `forfeitureBasisGrade` where one is recorded, which V-18
  * has already forced to equal the reduction target. Only where no reduction is
  * imposed does it fall back to item 19.
+ *
+ * ONE EXCEPTION TO THE TWO CONDITIONS, added 2026-09 (P5-1): a non-empty
+ * amount that is not a dollar figure at all ("seven hundred", "7e2") blocks
+ * whatever the table or the ceiling say, because it is unreadable in its own
+ * right and the comparison this rule exists for cannot run on it. The two
+ * conditions still govern the over-ceiling comparison itself.
  */
 export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
   const entries = punishmentEntries(formData);
+
+  // AN UNREADABLE AMOUNT BLOCKS BEFORE ANY CEILING IS CONSULTED. Until 2026-09
+  // the amount went through Number(), which is NaN for "$700", "1,200" and
+  // "seven hundred", and the comparison below was skipped for exactly those
+  // entries. A skipped check on the field this rule exists to police is the
+  // gate switched off with no warning, so a non-empty figure parseDollars
+  // cannot read now blocks in its own right, naming the text, regardless of
+  // whether a ceiling could be computed or the table governs the date.
+  const unreadable: ValidationIssue[] = [];
+  entries.forEach((entry, index) => {
+    const code = resolvePunishment(entry.code);
+    if (!code) return;
+    (['dollars', 'dollarsPerMonth'] as const).forEach((field) => {
+      if (!code.parameters.includes(field)) return;
+      const text = typeof entry[field] === 'string' ? entry[field].trim() : '';
+      if (text === '' || parseDollars(text) !== null) return;
+      unreadable.push(
+        issue(
+          `navmc10132-v20-forfeiture-unreadable-${field}-${index}`,
+          'block',
+          `${code.code} forfeiture "${text}" is not a dollar figure.`,
+          'MCO 5800.16 Vol 14 para 010901; JAGMAN 0111.i',
+          `Item 6 records the ${field === 'dollars' ? 'forfeiture' : 'monthly forfeiture'} for ` +
+            `${code.code} as "${text}", which the app cannot read as a whole-dollar amount. ` +
+            'Enter digits only, with an optional leading $ and thousands commas, such as 700 ' +
+            'or $1,200. Until it is readable the forfeiture cannot be checked against its ' +
+            'statutory ceiling, so export is blocked rather than the check skipped.',
+        ),
+      );
+    });
+  });
 
   const status = payTableStatus(
     typeof formData.punishmentDate === 'string' ? formData.punishmentDate : '',
@@ -1206,8 +1280,9 @@ export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
   // UNREADABLE entry is a data error, and passing over it silently is how a
   // mistyped pay grade used to switch this gate off with no warning at all.
   if (result.kind === 'unavailable') {
-    if (!CEILING_REASONS_WORTH_SURFACING.includes(result.reason)) return [];
+    if (!CEILING_REASONS_WORTH_SURFACING.includes(result.reason)) return unreadable;
     return [
+      ...unreadable,
       issue(
         `navmc10132-v20-ceiling-unreadable-${result.reason}`,
         'block',
@@ -1235,22 +1310,22 @@ export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
   // split. The panel and the hearing script now print the figures with a
   // caveat, because a clerk planning a hearing needs a planning maximum. This
   // gate refuses to act on them, because an export is a Federal record.
-  if (!ceiling.tableGovernsDate) return [];
+  if (!ceiling.tableGovernsDate) return unreadable;
 
-  const issues: ValidationIssue[] = [];
+  const issues: ValidationIssue[] = [...unreadable];
 
   entries.forEach((entry, index) => {
     const code = resolvePunishment(entry.code);
     if (!code) return;
 
     if (code.parameters.includes('dollars')) {
-      const amount = Number((entry.dollars ?? '').trim());
-      if (Number.isFinite(amount) && amount > ceiling.sevenDaysPay) {
+      const parsed = parseDollars(entry.dollars);
+      if (parsed !== null && parsed.dollars > ceiling.sevenDaysPay) {
         issues.push(
           issue(
             `navmc10132-v20-forfeiture-over-ceiling-${index}`,
             'block',
-            `${code.code} forfeits $${amount} but the ceiling at ${ceiling.payGrade} is $${ceiling.sevenDaysPay}.`,
+            `${code.code} forfeits ${formatDollars(parsed.cents)} but the ceiling at ${ceiling.payGrade} is $${ceiling.sevenDaysPay}.`,
             '10 U.S.C. 815(b)(2)(C); JAGMAN 0111.i; DoD FMR Vol 7A Ch 1',
             `Seven days' pay at ${ceiling.payGrade} is $${ceiling.sevenDaysPay}, from monthly pay ` +
               `subject to forfeiture of $${ceiling.monthlySubjectToForfeiture.toFixed(2)} at one ` +
@@ -1262,13 +1337,13 @@ export function forfeitureCeilingIssues(formData: FormData): ValidationIssue[] {
     }
 
     if (code.parameters.includes('dollarsPerMonth')) {
-      const amount = Number((entry.dollarsPerMonth ?? '').trim());
-      if (Number.isFinite(amount) && amount > ceiling.halfMonthPay) {
+      const parsed = parseDollars(entry.dollarsPerMonth);
+      if (parsed !== null && parsed.dollars > ceiling.halfMonthPay) {
         issues.push(
           issue(
             `navmc10132-v20-forfeiture-over-ceiling-${index}`,
             'block',
-            `${code.code} forfeits $${amount} per month but the ceiling at ${ceiling.payGrade} is $${ceiling.halfMonthPay}.`,
+            `${code.code} forfeits ${formatDollars(parsed.cents)} per month but the ceiling at ${ceiling.payGrade} is $${ceiling.halfMonthPay}.`,
             '10 U.S.C. 815(b)(2)(H)(iii); JAGMAN 0111.i',
             `One-half of one month's pay at ${ceiling.payGrade} is $${ceiling.halfMonthPay}, from ` +
               `monthly pay subject to forfeiture of $${ceiling.monthlySubjectToForfeiture.toFixed(2)}. ` +
@@ -1328,6 +1403,12 @@ export function punishmentCombinationIssues(formData: FormData): ValidationIssue
  * months: a suspension imposed on 31 August runs to 28 February. See
  * njp-suspension-period.ts for the arithmetic and for the EAS caveat this
  * app cannot check.
+ *
+ * ALSO BLOCKS ON AN UNREADABLE PERIOD, since 2026-09 (P5-6). "6.5" months
+ * used to truncate to six and pass under the cap it exceeds; it now computes
+ * no date and njp-suspension-period.ts reports it as an unreadable period,
+ * which this wrapper carries as a block for the same reason an unreadable
+ * forfeiture blocks V-20: a check that cannot run is not a check passed.
  */
 export function suspensionPeriodIssues(formData: FormData): ValidationIssue[] {
   return suspensionPeriodFindings(formData).map((finding) =>
@@ -1364,8 +1445,9 @@ export function suspensionPeriodIssues(formData: FormData): ValidationIssue[] {
  * FIRES ONCE PER SUSPENSION WITH A COMPUTED END DATE, silent when item 7
  * carries none. A suspension whose period is unreadable (see
  * `suspensionsWithComputedEnd`) has no date for this warning to qualify, so
- * it is left to whatever rule already flags the unreadable entry
- * (`suspensionTermsIssues`, V-05) rather than duplicated here.
+ * it is left to the rule that blocks on the unreadable period (V-22, via
+ * `suspensionPeriodFindings`' unreadable-period finding) rather than
+ * duplicated here.
  *
  * THE ID IS KEYED ON suspensionIndex, NOT punishmentIndex. Nothing forbids
  * two item-7 suspensions from naming the same punishmentIndex, so keying the
@@ -1754,10 +1836,21 @@ export function vacationOrderDeadlineIssues(formData: FormData): ValidationIssue
 }
 
 /**
- * V-29 (blocker on the certain lower bound only). The offense or violation
- * that triggers a vacation must have been committed on or after the item 6
- * punishment date, i.e. during the period of suspension it is offered to
- * justify. Decision row D-49.
+ * V-29 (blocker on the certain lower bound only) and its W-23 companion.
+ * The offense or violation that triggers a vacation must have been
+ * committed on or after the item 6 punishment date, i.e. during the period
+ * of suspension it is offered to justify. Decision row D-49.
+ *
+ * THE SAME DATE IS NOT PROVABLY OUTSIDE THE WINDOW. Owner ruling 2026-09-07
+ * (audit P5-8): both fields hold a date and no time, and MCM Part V para
+ * 6.a(2) runs the suspension "from the date of the suspension", so a Marine
+ * restricted at the morning's NJP who breaks restriction that evening has
+ * offended inside the period on the same date. The app cannot tell that
+ * case from an offence which preceded the hearing. An offence dated BEFORE
+ * the punishment date is provably outside the window and BLOCKS (V-29). An
+ * offence on the SAME date WARNS (W-23): "confirm the offence followed the
+ * imposition." Before the ruling the same date blocked, the JSDoc said "on
+ * or after", and spec V-29 said strictly after; the three now agree.
  *
  * MCO 5800.16 Vol 14 para 011201, verbatim: "Vacation of suspension may
  * only be based on an offense under the UCMJ committed during the period
@@ -1826,19 +1919,33 @@ export function vacationOffenceWindowIssues(formData: FormData): ValidationIssue
     const offenceDate = (vacation.offenceDate ?? '').trim();
     if (offenceDate === '' || punishmentDate === '') return; // nothing recorded yet to test
 
-    if (offenceDate <= punishmentDate) {
+    if (offenceDate < punishmentDate) {
       issues.push(
         issue(
           `navmc10132-v29-vacation-offence-before-suspension-${index}`,
           'block',
-          `Vacation record ${index}'s triggering offence is dated ${offenceDate}, on or before ` +
+          `Vacation record ${index}'s triggering offence is dated ${offenceDate}, before ` +
             `the item 6 punishment date of ${punishmentDate}.`,
           'MCO 5800.16 Vol 14 para 011201; JAGMAN (JAGINST 5800.7G CH-2) para 0118.d',
           'Vacation may only be based on conduct committed during the period of suspension, ' +
-            `which begins on the item 6 punishment date. An offence dated ${offenceDate}, on ` +
-            `or before ${punishmentDate}, cannot have occurred during a suspension that had ` +
+            `which begins on the item 6 punishment date. An offence dated ${offenceDate}, ` +
+            `before ${punishmentDate}, cannot have occurred during a suspension that had ` +
             'not yet begun. Correct the offence date, or confirm this vacation record ' +
             'targets the right suspension.',
+        ),
+      );
+    } else if (offenceDate === punishmentDate) {
+      issues.push(
+        issue(
+          `navmc10132-w23-vacation-offence-same-day-${index}`,
+          'warn',
+          `Vacation record ${index}'s triggering offence is dated ${offenceDate}, the same ` +
+            'date as the item 6 punishment. Confirm the offence followed the imposition.',
+          'MCO 5800.16 Vol 14 para 011201; MCM Part V para 6.a(2)',
+          'The suspension runs from the date of the punishment, so an offence later that ' +
+            'same day falls inside it and an offence earlier that day does not. The record ' +
+            'carries dates without times, so the application cannot tell which. Confirm the ' +
+            'offence followed the imposition before relying on this vacation.',
         ),
       );
     }

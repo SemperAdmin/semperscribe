@@ -43,6 +43,11 @@ self.addEventListener('activate', (event) => {
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+      // P6-11: skipWaiting + claim swaps the worker under open tabs, whose
+      // loaded chunks may no longer match the new deploy's. Tell every
+      // client so the page can offer a reload instead of failing later.
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((clients) => clients.forEach((client) => client.postMessage({ type: 'sw-updated' })))
   );
 });
 
@@ -54,12 +59,20 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Navigations: network first, offline falls back to the cached shell.
+  //
+  // Only a 200 same-origin answer becomes the shell (AUDIT P6-12). The
+  // branch used to cache whatever came back, so a 503 during a rollout
+  // or a redirect became the offline app on every later visit. The
+  // write sits inside waitUntil so the worker is kept alive until the
+  // cache has it, rather than possibly being torn down mid-put.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(SHELL_URL, copy));
+          if (response.ok && response.type === 'basic') {
+            const copy = response.clone();
+            event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(SHELL_URL, copy)));
+          }
           return response;
         })
         .catch(() => caches.match(SHELL_URL).then((hit) => hit || Response.error()))

@@ -3,6 +3,7 @@ import { DOCUMENT_TYPES, PdfPipeline } from '@/lib/schemas';
 import type { CoordinationPageData } from '@/services/pdf/coordinationPageGenerator';
 import { Navmc11811Data } from '@/types/navmc';
 import { mergeAdminSubsections } from '@/lib/naval-format-utils';
+import type { Navmc10132ExportReport } from '@/lib/navmc10132-export';
 
 // Generators are imported dynamically inside each pipeline so the PDF
 // engines (@react-pdf/renderer, pdf-lib, the seal data) stay out of the
@@ -16,6 +17,20 @@ interface PdfBuildContext {
   copyTos: string[];
   paragraphs: ParagraphData[];
   distList?: string[];
+  /**
+   * Who is asking. `export` (the default): a render failure THROWS, so an
+   * export, a companion render, a package assembly never delivers a stand-in
+   * page as the document. `preview`: the live preview pane renders on a
+   * timer and must not crash, so a NAVMC 10132 fill failure degrades to a
+   * notice page there, and only there (audit P6-5).
+   */
+  mode?: 'preview' | 'export';
+  /**
+   * NAVMC 10132 only: receives the export report (which path ran, which
+   * field writes the signed file refused) so the caller can tell the clerk
+   * rather than leaving it in the console.
+   */
+  onNavmc10132Report?: (report: Navmc10132ExportReport) => void;
 }
 
 function buildNavmc10274Data(ctx: PdfBuildContext) {
@@ -129,7 +144,11 @@ async function generateCoordinationPagePdf(ctx: PdfBuildContext): Promise<Blob> 
  * generatePdfForDocType on a timer, so a throwing PIPELINE_MAP entry crashes
  * the preview pane rather than showing a message. The 10922 build hit that
  * live. Since Phase 5 this is the FALLBACK: the AcroForm fill is the primary
- * path and this page shows only when the blank cannot be fetched or filled.
+ * path and this page shows only when the blank cannot be fetched or filled,
+ * and ONLY for the preview (`mode: 'preview'`). Every other caller gets the
+ * failure: audit P6-5 found an export downloading this page under a toast
+ * saying the official form had been filled, and the companion writing it to
+ * disk as the record.
  */
 async function generateNavmc10132Placeholder(): Promise<Blob> {
   const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
@@ -171,9 +190,6 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
     const bytes = await generateNavmc10922(ctx.formData);
     return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
   },
-  // NAVMC 10132 fills the official AcroForm blank. The live preview consumes
-  // this map on a timer, so a failure must degrade to the placeholder notice
-  // page rather than throw and take the preview pane down with it.
   // DD Form 368: the form's own artwork with the values placed by item.
   dd368: async (ctx) => {
     const { generateDd368 } = await import('@/services/pdf/dd368Generator');
@@ -187,12 +203,20 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
     const bytes = await generateCounseling(ctx.formData);
     return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
   },
+  // NAVMC 10132 fills the official AcroForm blank, or writes into the loaded
+  // signed file. The live preview consumes this map on a timer, so under
+  // `mode: 'preview'` a failure degrades to the placeholder notice page
+  // rather than take the pane down. An export, the default, gets the error:
+  // a notice page delivered as the form is a wrong record, not a degraded one.
   navmc10132: async (ctx) => {
+    const { exportNavmc10132FormWithReport } = await import('@/lib/navmc10132-export');
     try {
-      const { exportNavmc10132Form } = await import('@/lib/navmc10132-export');
-      return await exportNavmc10132Form(ctx.formData);
+      const { blob, report } = await exportNavmc10132FormWithReport(ctx.formData);
+      ctx.onNavmc10132Report?.(report);
+      return blob;
     } catch (error) {
-      console.error('NAVMC 10132 AcroForm fill failed, falling back to the notice page:', error);
+      if (ctx.mode !== 'preview') throw error;
+      console.error('NAVMC 10132 AcroForm fill failed, previewing the notice page instead:', error);
       return generateNavmc10132Placeholder();
     }
   },

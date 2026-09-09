@@ -48,9 +48,11 @@
  */
 
 import {
+  NAVMC_10132_PUNISHMENTS,
   punishmentFamily,
   resolvePunishment,
   resolveAuthorityLevel,
+  type NjpAuthorityLevel,
   type PunishmentFamily,
 } from '@/lib/navmc10132-punishments';
 import type { Navmc10132PunishmentEntry } from '@/types/navmc';
@@ -115,6 +117,28 @@ function readDays(entry: Navmc10132PunishmentEntry): number | null {
   if (raw === '') return null;
   const value = Number(raw);
   return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+/**
+ * "The maximum imposable for extra duties" at this authority's grade: the
+ * highest maxDays among the extra-duty codes the grade may impose. Company
+ * grade reaches 14 (N09 to N11), field grade 45 (N13). The 5.d(4) cap reads
+ * this figure, not the imposed code's own ceiling. Owner ruling, 2026-09-07
+ * (P5-5): a field-grade commander who chose N09 at 14 days beside 45 days of
+ * restriction is inside 5.d(4), because the cap is what the grade may impose
+ * for extra duties, and the per-case ceiling on N09 itself is enforced
+ * separately by the aggregate rule.
+ */
+export function extraDutyMaximumFor(level: NjpAuthorityLevel): number | null {
+  let max: number | null = null;
+  NAVMC_10132_PUNISHMENTS.forEach((code) => {
+    if (punishmentFamily(code.code) !== 'extra-duties') return;
+    if (typeof code.maxDays !== 'number') return;
+    if (code.requiredAuthority === 'gcmca') return;
+    if (code.requiredAuthority === 'field-grade' && level !== 'field-grade') return;
+    max = max === null ? code.maxDays : Math.max(max, code.maxDays);
+  });
+  return max;
 }
 
 /**
@@ -229,7 +253,7 @@ export function combinationFindings(input: CombinationInput): CombinationFinding
     // imposing officer's grade. Unreadable item 8A means the app cannot state
     // the number, so it says nothing rather than guessing one.
     const level = resolveAuthorityLevel(input.authorityPayGrade);
-    const cap = extraDuties.ceiling;
+    const cap = level === null ? null : extraDutyMaximumFor(level);
 
     if (level !== null && cap !== null) {
       const combined = input.concurrent

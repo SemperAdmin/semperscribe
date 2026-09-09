@@ -128,7 +128,7 @@ NIST SP 800-53 Rev 5 Low baseline control selection. The status column indicates
 | Control | Status | Notes |
 |---------|--------|-------|
 | PT-1 Policy and Procedures | Compliant | Privacy Notice covers PII posture. |
-| PT-2 Authority to Process PII | N/A | System does not process PII by design. |
+| PT-2 Authority to Process PII | User's command | Four forms collect a Marine's EDIPI by design (NAVMC 10132, NAVMC 118(11), NAVMC 10274, Counseling Worksheet). The maintainer processes nothing: the data stays in the user's browser. The authority to collect it, and the SORN it files under, belong to the user's command (Privacy Notice Sections 4 and 7). |
 | PT-4 Consent | Compliant | GunnyBot is inert without a user-supplied key. The pre-send scan routes structured-identifier findings through an explicit consent dialog and fails closed when no handler is mounted (`lib/gunnybot/egress-gate.ts`). |
 | PT-5 Privacy Notice | Compliant | /privacy route plus SECURITY.md. |
 
@@ -283,6 +283,10 @@ Out of the boundary.
 - Any AI provider a user selects in GunnyBot. The user contracts with the provider directly under their own key. Provider-side handling, retention, and residency are governed by that provider's own posture.
 - The USMC EDMS Power App and its SharePoint document library, which carry their own DoD IL5 authorization. The handoff is a URL launch and a manual file upload, not an interconnection this system holds credentials for.
 
+### Response Security Headers (SC)
+
+The cloud.gov deployment sets Content-Security-Policy (`frame-ancestors 'none'`), X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, Referrer-Policy, Permissions-Policy, and Cross-Origin-Opener-Policy through the staticfile buildpack (`public/Staticfile`, `public/nginx/conf/includes/security-headers.conf`), closing audit 2026-09-08 finding 1 for that host. GitHub Pages cannot set response headers; the Pages mirror is a public demonstration and any sensitive use belongs on cloud.gov. See SECURITY.md. Deploys run from the "Deploy to cloud.gov" GitHub Actions workflow with a space-deployer service account; Windows workstation builds are refused by `scripts/check-export.mjs`.
+
 ## 9. Risks Accepted
 
 | Risk | Severity | Rationale for Acceptance |
@@ -294,6 +298,10 @@ Out of the boundary.
 | GunnyBot transmits user-entered text to a commercial provider outside EDMS mode | Moderate | Opt-in, requires a user-supplied key, disclosed in the settings panel, the privacy notice, and `docs/PRIVACY_POSTURE.md` section 1. Users under a residency or retention obligation select GenAI.mil. Under EDMS mode, commercial providers are blocked in code. |
 | The pre-send scan detects SSN and EDIPI patterns only | Moderate | Names, ranks, units, subject lines, and body text pass untouched. Keyword matching was removed because bare-substring matches flagged ordinary correspondence vocabulary constantly, producing alert fatigue. The control is informed consent, not filtering, and it is documented as such rather than overclaimed. |
 | No maintainer-side agreement with any AI provider | Moderate | The user is the contracting party. No maintainer-side data-processing terms exist or are claimed. |
+| EDMS mode is a usability guard, not a security boundary | Low | Accepted 2026-09-07 (audit P2-7). The mode rests on an unsigned `#edms=` fragment and a tab-scoped flag: anyone enters it with a crafted link and leaves it by opening a new tab. Its three controls (GenAI.mil only, no share links, EDMS filenames) reduce mistakes by a drafter working an EDMS request. They do not stop a user who wants around them, and nothing sensitive rides on the mode: no credential, no access, no data path. Documented the same way in `docs/PRIVACY_POSTURE.md` Section 13. |
+| `eslint@9` is registry-deprecated | Low | Recorded 2026-09-07 (audit P7-3). Dev-only, never shipped. eslint 10 was tried and fails at load: `eslint-plugin-react@7.37.5`, pinned by `eslint-config-next@16.3.4`, calls `context.getFilename`, removed in 10. The upgrade waits on eslint-config-next. `.github/dependabot.yml` carries the note. |
+| `pdf-lib@1.17.1` is unmaintained | Low | Recorded 2026-09-07 (audit P7-1). Single maintainer, last published 2021-11-06, parses every uploaded PDF. Zero advisories at the pinned version. The maintained fork `@cantoo/pdf-lib` is already a dependency for incremental saves, so the fix path for a future advisory is consolidation onto the fork, deferred until the NAVMC 10132 Acrobat round trip is re-proven for another reason. Uploads are capped at 10 MB and parsed in the browser sandbox, so the blast radius of a parser fault is the user's own tab. |
+| Commands use the tool for real correspondence without an ATO | Moderate | Stated by the owner 2026-09-07 (audit P9-2). The tool is not a system of record and holds no records; every output is filed by the user's command under its own records schedule and SORN. Each command's authorizing official decides whether the tool is permitted on its systems and for which data (Privacy Notice Section 4). The system owner is the maintainer, Semper Admin. No command is named as sponsor. |
 | A user pastes CUI into the form and invokes a commercial provider | Moderate | No technical control detects CUI. Mitigated by the persistent banner, the settings-panel warning, and the EDMS-mode restriction on the workflow where CUI is most likely. Residual risk accepted and disclosed. |
 
 ## 10. Conditions for Authorization
@@ -303,6 +311,6 @@ If a DoD Component sponsors this PoC for ATO, the following gaps would need clos
 - Formal vulnerability response SLA aligned with the sponsoring Component's expectations.
 - Component CIO approval for MPL-2.0 axe-core per OSS Guidance paragraph 3G.
 - Records management EIS registration per MCO 5210.11F if the tool is to be used officially.
-- Privacy Impact Assessment (PIA) per OMB M-03-22 if PII processing becomes a possibility.
+- Privacy Impact Assessment (PIA) per OMB M-03-22. Four forms collect an EDIPI by design, so the sponsoring Component decides whether a PIA is owed for a tool which holds the data only in the user's browser.
 - Migration from github.io public hosting to a DoD-approved hosting environment per the sponsoring Component's policies.
 - Continuous monitoring tied to the Component's RMF Knowledge Service tooling.

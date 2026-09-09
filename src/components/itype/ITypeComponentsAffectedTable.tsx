@@ -74,6 +74,7 @@ export const ITypeComponentsAffectedTable: React.FC<ITypeComponentsAffectedTable
                 >
                   <td style={{ height: '40px', padding: '0 12px', verticalAlign: 'middle', overflow: 'hidden' }}>
                     <Input
+                      aria-label={`NSN, row ${index + 1}`}
                       value={row.nsn}
                       onChange={(e) => handleRowChange(index, 'nsn', e.target.value)}
                       placeholder="NSN"
@@ -83,6 +84,7 @@ export const ITypeComponentsAffectedTable: React.FC<ITypeComponentsAffectedTable
                   </td>
                   <td style={{ height: '40px', padding: '0 12px', verticalAlign: 'middle', overflow: 'hidden' }}>
                     <Input
+                      aria-label={`TAMCN, row ${index + 1}`}
                       value={row.tamcn}
                       onChange={(e) => handleRowChange(index, 'tamcn', e.target.value)}
                       placeholder="TAMCN"
@@ -92,6 +94,7 @@ export const ITypeComponentsAffectedTable: React.FC<ITypeComponentsAffectedTable
                   </td>
                   <td style={{ height: '40px', padding: '0 12px', verticalAlign: 'middle', overflow: 'hidden' }}>
                     <Input
+                      aria-label={`ID, row ${index + 1}`}
                       value={row.id}
                       onChange={(e) => handleRowChange(index, 'id', e.target.value)}
                       placeholder="ID"
@@ -101,6 +104,7 @@ export const ITypeComponentsAffectedTable: React.FC<ITypeComponentsAffectedTable
                   </td>
                   <td style={{ height: '40px', padding: '0 12px', verticalAlign: 'middle', overflow: 'hidden' }}>
                     <Input
+                      aria-label={`MODEL, row ${index + 1}`}
                       value={row.model}
                       onChange={(e) => handleRowChange(index, 'model', e.target.value)}
                       placeholder="MODEL"

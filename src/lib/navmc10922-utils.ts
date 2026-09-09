@@ -23,8 +23,12 @@ export function parseDateLoose(value: string | undefined | null): Date | null {
   if (!value || !value.trim()) return null;
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
   if (iso) {
-    const d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-    return isNaN(d.getTime()) ? null : d;
+    const [y, m, day] = [Number(iso[1]), Number(iso[2]), Number(iso[3])];
+    const d = new Date(y, m - 1, day);
+    // Reject a rolled date: the local constructor turns 2026-02-31 into
+    // 3 Mar silently, and a date input never produces one, so it is a typo.
+    if (isNaN(d.getTime()) || d.getFullYear() !== y || d.getMonth() !== m - 1 || d.getDate() !== day) return null;
+    return d;
   }
   const parsed = new Date(value);
   return isNaN(parsed.getTime()) ? null : parsed;

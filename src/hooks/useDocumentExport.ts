@@ -12,6 +12,7 @@ import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-rows';
 import { getClassification, bannerText } from '@/lib/classification';
 import { getEdmsContext, edmsBaseFilename } from '@/lib/edms-mode';
 import { clearedForExport } from '@/lib/export-gate';
+import type { Navmc10132ExportReport } from '@/lib/navmc10132-export';
 
 interface UseDocumentExportArgs {
   data: DocumentDataSlices;
@@ -165,6 +166,9 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
 
       // Route other document types through existing pipeline
       let blob: Blob;
+      // NAVMC 10132: which path the fill took and what the signed file
+      // refused, handed back by the pipeline so the toast below can say.
+      let navmc10132Report: Navmc10132ExportReport | null = null;
 
       if (format === 'pdf') {
         // E.3 (M-5216.5 9-1): a same-page endorsement with the letter
@@ -184,20 +188,34 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
           });
         } else {
           blob = await applySignatureFields(
-            secnavCountedBlob ?? await generatePdfForDocType({ formData, vias, references, enclosures, copyTos, paragraphs, distList })
+            secnavCountedBlob ?? await generatePdfForDocType({
+              formData, vias, references, enclosures, copyTos, paragraphs, distList,
+              mode: 'export',
+              onNavmc10132Report: (report) => { navmc10132Report = report; },
+            })
           );
         }
       } else {
-        // E.5: Word takes no PDF host and the DOCX emitter renders one
-        // document, so the two-half same-page endorsement has no Word
-        // form. Say so rather than export the letter half as the whole.
+        // E.5 in Word. Written from scratch, the two halves go into one
+        // document with Figure 9-1's rule between them. Onto an
+        // attached letter, Word takes no PDF host, so the endorsement
+        // exports as a page of its own, and the toast says which.
         if (isSamePageEndorsement(formData) && formData.samePageEndorsement) {
-          toast?.({
-            title: 'Word export is not available for a same-page endorsement',
-            description: 'The letter and its endorsement are composed onto one page in the PDF. Export the PDF.',
-          });
-          return;
-        }
+          const attached = formData.samePageHost ? await resolveSamePageHost?.() : null;
+          if (attached) {
+            const { endorsementContext } = await import('@/lib/same-page-composite');
+            const { generateDocxBlob } = await import('@/lib/docx-generator');
+            const block = endorsementContext({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+            blob = await generateDocxBlob(block.formData, block.vias, block.references, block.enclosures, block.copyTos, block.paragraphs, block.distList);
+            toast?.({
+              title: 'Word carries the endorsement on a page of its own',
+              description: 'The letter being endorsed is a PDF, which Word does not take as a host. The PDF export composes the two.',
+            });
+          } else {
+            const { generateSamePageCompositeDocxBlob } = await import('@/lib/docx-generator');
+            blob = await generateSamePageCompositeDocxBlob({ formData, vias, references, enclosures, copyTos, paragraphs, distList });
+          }
+        } else {
         const features = DOCUMENT_TYPES[formData.documentType]?.features;
         const paragraphsToRender = features?.isDirective
           ? mergeAdminSubsections(paragraphs, formData.adminSubsections)
@@ -205,6 +223,7 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
 
         const { generateDocxBlob } = await import('@/lib/docx-generator');
         blob = await generateDocxBlob(formData, vias, references, enclosures, copyTos, paragraphsToRender, distList);
+        }
       }
 
       // ENC: merge bound enclosure files into the export (PDF only; the
@@ -232,22 +251,52 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
       // pipeline returns a flattened redraw and the official form has to be
       // fetched on a separate path. Routing it through the standard path
       // keeps the signature-field pass and the enclosure merge, both of
-      // which are safe on an AcroForm. Only the note differs.
+      // which are safe on an AcroForm. Only the note differs, and the note
+      // is written from the pipeline's REPORT (audit P6-5): a fill failure
+      // now throws out of the pipeline into the catch below, so this branch
+      // never describes a notice page as the filled form, and a field the
+      // signed file refused to take is named here rather than left in the
+      // console.
       if (format === 'pdf' && formData.documentType === 'navmc10132') {
-        toast?.({
-          title: 'Official Form Exported',
-          description:
-            'This is the official NAVMC 10132, filled and still editable in Adobe Acrobat or Reader. '
-            + 'The seven signature blocks are left open so items 9 and 16 take a CAC signature. '
-            + "Adobe's usage-rights signature was removed - it goes void the moment the file changes, "
-            + 'and an invalid signature reads as tampering. Filling and signing are unaffected.',
-        });
+        // Assigned inside the pipeline callback, which TypeScript's flow
+        // analysis does not follow, hence the widening cast.
+        const report = navmc10132Report as Navmc10132ExportReport | null;
+        if (report?.path === 'incremental') {
+          const refused = report.refused;
+          toast?.({
+            title: refused.length > 0 ? 'Signed Form Exported, With Fields Not Written' : 'Signed Form Exported',
+            description:
+              'This pass was written into the signed NAVMC 10132 you loaded, so its existing CAC '
+              + 'signatures stay valid. '
+              + (refused.length > 0
+                ? `${refused.length} field${refused.length === 1 ? '' : 's'} could not be written `
+                  + 'because a signature has closed them or the form does not carry them: '
+                  + `${refused.join('; ')}. The file keeps its own values there.`
+                : 'The remaining signature blocks are left open for a CAC signature.'),
+          });
+        } else {
+          toast?.({
+            title: 'Official Form Exported',
+            description:
+              (report?.baseMissing
+                ? 'The signed file this document was loaded from is not in this browser, so the '
+                  + 'bundled blank was filled instead; it carries none of the earlier signatures. '
+                : '')
+              + 'This is the official NAVMC 10132, filled and still editable in Adobe Acrobat or Reader. '
+              + 'The seven signature blocks are left open so items 9 and 16 take a CAC signature. '
+              + "Adobe's usage-rights signature was removed - it goes void the moment the file changes, "
+              + 'and an invalid signature reads as tampering. Filling and signing are unaffected.',
+          });
+        }
       }
     } catch (error) {
       console.error(`Error generating ${format.toUpperCase()}:`, error);
       toast?.({
         title: `${format.toUpperCase()} export failed`,
-        description: 'The document did not render. The browser console carries the detail.',
+        description:
+          formData.documentType === 'navmc10132' && error instanceof Error && error.message
+            ? `Nothing was downloaded. ${error.message}`
+            : 'The document did not render. The browser console carries the detail.',
       });
     }
   };

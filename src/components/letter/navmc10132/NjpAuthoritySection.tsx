@@ -120,7 +120,7 @@ export function NjpAuthoritySection({ formData, setFormData, SectionCard }: Sect
     <SectionCard icon={<Gavel className="mr-2 h-5 w-5" />} title="NJP Authority (Items 8, 8A, 8B)">
       <div className="space-y-4">
         <div className="space-y-1">
-          <Label className="text-xs">
+          <Label className="text-xs" htmlFor="njp-authority-name">
             Item 8 - name, title, service branch if other than USMC
             {nameLocked && <LockedBadge />}
           </Label>
@@ -128,6 +128,7 @@ export function NjpAuthoritySection({ formData, setFormData, SectionCard }: Sect
             <ReadOnlyValue value={str(formData, 'njpAuthorityName')} />
           ) : (
             <Input
+              id="njp-authority-name"
               value={str(formData, 'njpAuthorityName')}
               onChange={(e) => write({ njpAuthorityName: e.target.value })}
             />
@@ -149,9 +150,9 @@ export function NjpAuthoritySection({ formData, setFormData, SectionCard }: Sect
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-1">
-              <Label className="text-xs">Service</Label>
+              <Label className="text-xs" htmlFor="njp-authority-service">Service</Label>
               <Select value={service} onValueChange={setService}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="njp-authority-service"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USMC">Marine Corps</SelectItem>
                   <SelectItem value="OTHER">Other service</SelectItem>
@@ -160,10 +161,10 @@ export function NjpAuthoritySection({ formData, setFormData, SectionCard }: Sect
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Rank</Label>
+              <Label className="text-xs" htmlFor="njp-authority-rank">Rank</Label>
               {service === 'USMC' ? (
                 <Select value={rankAbbrev} onValueChange={pickRank}>
-                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectTrigger id="njp-authority-rank"><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent>
                     {NAVMC_10132_USMC_OFFICER_RANKS.map((rank) => (
                       <SelectItem key={rank.abbreviation} value={rank.abbreviation}>
@@ -174,6 +175,7 @@ export function NjpAuthoritySection({ formData, setFormData, SectionCard }: Sect
                 </Select>
               ) : (
                 <Input
+                  id="njp-authority-rank"
                   value={rankAbbrev}
                   placeholder="LCDR"
                   onChange={(e) => setFreeRank(e.target.value)}
@@ -182,9 +184,9 @@ export function NjpAuthoritySection({ formData, setFormData, SectionCard }: Sect
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Pay grade</Label>
+              <Label className="text-xs" htmlFor="njp-authority-pay-grade">Pay grade</Label>
               <Select value={payGrade} onValueChange={pickPayGrade}>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectTrigger id="njp-authority-pay-grade"><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   {NAVMC_10132_OFFICER_PAY_GRADES.map((grade) => (
                     <SelectItem key={grade} value={grade}>{grade}</SelectItem>
@@ -251,7 +253,7 @@ export function NjpAuthoritySection({ formData, setFormData, SectionCard }: Sect
         )}
 
         <div className="space-y-1">
-          <Label className="text-xs">
+          <Label className="text-xs" htmlFor="njp-authority-edipi">
             Item 8B - EDIPI
             {edipiLocked && <LockedBadge />}
           </Label>
@@ -259,6 +261,7 @@ export function NjpAuthoritySection({ formData, setFormData, SectionCard }: Sect
             <ReadOnlyValue value={str(formData, 'njpAuthorityEdipi')} />
           ) : (
             <Input
+              id="njp-authority-edipi"
               value={str(formData, 'njpAuthorityEdipi')}
               onChange={(e) =>
                 write({ njpAuthorityEdipi: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })

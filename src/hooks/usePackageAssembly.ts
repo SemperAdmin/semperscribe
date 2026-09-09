@@ -150,6 +150,7 @@ export function usePackageAssembly({ savedLetters, toast }: UsePackageAssemblyAr
     try {
       const { generatePdfForDocType } = await import('@/services/export/pdfPipelineService');
       const { PDFDocument } = await import('pdf-lib');
+      const { sanitizePdfActions } = await import('@/lib/pdf-sanitize');
       const { composeSamePage } = await import('@/lib/same-page-endorsement');
       const { indexToRefLetter } = await import('@/lib/letter-validators');
 
@@ -212,6 +213,9 @@ export function usePackageAssembly({ savedLetters, toast }: UsePackageAssemblyAr
       const merged = await PDFDocument.create();
       for (const bytes of rendered) {
         const source = await PDFDocument.load(bytes);
+        // P4-4: a member may carry uploaded enclosure pages; strip
+        // their actions before copying into the package.
+        sanitizePdfActions(source);
         const pages = await merged.copyPages(source, source.getPageIndices());
         pages.forEach((p) => merged.addPage(p));
       }

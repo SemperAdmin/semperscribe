@@ -166,6 +166,11 @@ describe('formatCancellationDate', () => {
     expect(formatCancellationDate('2025-06-15')).toBe('Jun 2025');
   });
 
+  it('keeps the month on the first of the month (local parse, not UTC midnight)', () => {
+    expect(formatCancellationDate('2026-07-01')).toBe('Jul 2026');
+    expect(formatCancellationDate('2026-01-01')).toBe('Jan 2026');
+  });
+
   it('returns original string for invalid dates', () => {
     expect(formatCancellationDate('not-a-date')).toBe('not-a-date');
   });

@@ -34,6 +34,7 @@ import {
   isNavmc10132SectionLocked,
 } from '@/lib/navmc10132-locks';
 import { formForfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
+import { parseDollars, formatDollars } from '@/lib/navmc10132-money';
 import { ForfeitureLadderPanel } from '@/components/letter/navmc10132/ForfeitureLadderPanel';
 import {
   Gavel, Plus, Trash2, AlertTriangle, HelpCircle, Info,
@@ -346,9 +347,9 @@ export function PunishmentSection({ formData, setFormData, SectionCard }: Sectio
         <div className="space-y-2 rounded-md border border-dashed p-3">
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-[280px] flex-1 space-y-1">
-              <Label className="text-xs">Add a punishment</Label>
+              <Label className="text-xs" htmlFor="punishment-code-to-add">Add a punishment</Label>
               <Select value={codeToAdd} onValueChange={setCodeToAdd}>
-                <SelectTrigger>
+                <SelectTrigger id="punishment-code-to-add">
                   <SelectValue placeholder="Select a punishment code" />
                 </SelectTrigger>
                 <SelectContent>
@@ -516,6 +517,20 @@ function clampToCeiling(raw: string, ceiling: number | undefined): string {
   return value > ceiling ? String(ceiling) : raw;
 }
 
+/**
+ * The forfeiture boxes accept only what parseDollars will read once the
+ * entry is complete: digits, an optional leading $, thousands commas, at
+ * most two decimal places. A keystroke outside that shape is dropped and the
+ * previous value kept, never edited out of the middle of the entry (P5-1,
+ * P5-3). A trailing "." or "," is allowed mid-entry. Cents are allowed here
+ * so the whole-dollar rule (W-07) can name the figure it refuses.
+ */
+const DOLLARS_KEYSTROKE_SHAPE = /^\$?[\d,]*(\.\d{0,2})?$/;
+
+function sanitiseDollarsKeystroke(next: string, previous: string | undefined): string {
+  return DOLLARS_KEYSTROKE_SHAPE.test(next) ? next : (previous ?? '');
+}
+
 function ParameterInputs({
   code,
   entry,
@@ -543,10 +558,11 @@ function ParameterInputs({
           case 'days':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-days`}>
                   Days{code.maxDays !== undefined ? ` (max ${code.maxDays})` : ''}
                 </Label>
                 <Input
+                  id={`punishment-${code.code}-days`}
                   type="number"
                   min={1}
                   max={code.maxDays}
@@ -558,8 +574,9 @@ function ParameterInputs({
           case 'limits':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">Limits</Label>
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-limits`}>Limits</Label>
                 <Input
+                  id={`punishment-${code.code}-limits`}
                   type="text"
                   value={entry.limits ?? ''}
                   onChange={(e) => onChange({ limits: e.target.value })}
@@ -569,15 +586,17 @@ function ParameterInputs({
           case 'dollars':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-dollars`}>
                   Forfeiture{ceiling ? ` (max $${ceiling.sevenDaysPay})` : ''}
                 </Label>
                 <div className="flex items-center gap-1">
                   <span className="text-sm text-muted-foreground">$</span>
                   <Input
+                    id={`punishment-${code.code}-dollars`}
                     type="text"
+                    inputMode="decimal"
                     value={entry.dollars ?? ''}
-                    onChange={(e) => onChange({ dollars: e.target.value })}
+                    onChange={(e) => onChange({ dollars: sanitiseDollarsKeystroke(e.target.value, entry.dollars) })}
                   />
                 </div>
                 <CeilingNote
@@ -592,15 +611,21 @@ function ParameterInputs({
           case 'dollarsPerMonth':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-dollars-per-month`}>
                   Forfeiture per month{ceiling ? ` (max $${ceiling.halfMonthPay})` : ''}
                 </Label>
                 <div className="flex items-center gap-1">
                   <span className="text-sm text-muted-foreground">$</span>
                   <Input
+                    id={`punishment-${code.code}-dollars-per-month`}
                     type="text"
+                    inputMode="decimal"
                     value={entry.dollarsPerMonth ?? ''}
-                    onChange={(e) => onChange({ dollarsPerMonth: e.target.value })}
+                    onChange={(e) =>
+                      onChange({
+                        dollarsPerMonth: sanitiseDollarsKeystroke(e.target.value, entry.dollarsPerMonth),
+                      })
+                    }
                   />
                 </div>
                 <CeilingNote
@@ -615,10 +640,11 @@ function ParameterInputs({
           case 'months':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-months`}>
                   Months{code.maxMonths !== undefined ? ` (max ${code.maxMonths})` : ''}
                 </Label>
                 <Input
+                  id={`punishment-${code.code}-months`}
                   type="number"
                   min={1}
                   max={code.maxMonths}
@@ -639,7 +665,7 @@ function ParameterInputs({
             const targets = reducibleGrades(accusedPayGrade, { nextInferiorOnly: true });
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">Grade reduced to</Label>
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-grade-reduced-to`}>Grade reduced to</Label>
                 {accusedPayGrade === '' ? (
                   <p className="text-[11px] text-muted-foreground">
                     Set the accused&apos;s pay grade in item 19 first. The lawful target is
@@ -655,7 +681,7 @@ function ParameterInputs({
                     value={entry.gradeReducedTo ?? ''}
                     onValueChange={(value) => onChange({ gradeReducedTo: value })}
                   >
-                    <SelectTrigger><SelectValue placeholder="Select the target" /></SelectTrigger>
+                    <SelectTrigger id={`punishment-${code.code}-grade-reduced-to`}><SelectValue placeholder="Select the target" /></SelectTrigger>
                     <SelectContent>
                       {targets.flatMap((grade) => {
                         const ranks = ranksAtGrade(grade);
@@ -680,14 +706,14 @@ function ParameterInputs({
           case 'oralOrWritten':
             return (
               <div key={param} className="space-y-1">
-                <Label className="text-xs">Delivered</Label>
+                <Label className="text-xs" htmlFor={`punishment-${code.code}-delivered`}>Delivered</Label>
                 <Select
                   value={entry.oralOrWritten ?? ''}
                   onValueChange={(value) =>
                     onChange({ oralOrWritten: value as Navmc10132PunishmentEntry['oralOrWritten'] })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id={`punishment-${code.code}-delivered`}>
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
@@ -898,14 +924,14 @@ function ForfeitureBasisGrade({
       ) : (
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label className="text-xs">Computed on pay grade</Label>
+            <Label className="text-xs" htmlFor="forfeiture-basis-grade">Computed on pay grade</Label>
             <Select
               value={recorded}
               onValueChange={(value) =>
                 setFormData((prev) => ({ ...prev, forfeitureBasisGrade: value }))
               }
             >
-              <SelectTrigger><SelectValue placeholder="Select the basis" /></SelectTrigger>
+              <SelectTrigger id="forfeiture-basis-grade"><SelectValue placeholder="Select the basis" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={target}>{target} (reduced grade)</SelectItem>
                 {currentGrade !== '' && currentGrade !== target && (
@@ -1009,14 +1035,25 @@ function CeilingNote({
     );
   }
 
-  const amount = Number((entered ?? '').trim());
-  const over = Number.isFinite(amount) && entered?.trim() !== '' && amount > max;
+  // The same reader V-20 uses, so the note and the gate agree on "$700" and
+  // "1,200", which Number() read as NaN and the note passed in silence.
+  const enteredText = (entered ?? '').trim();
+  const parsed = parseDollars(enteredText);
+  const unreadable = enteredText !== '' && parsed === null;
+  const over = parsed !== null && parsed.dollars > max;
 
   return (
     <div className="space-y-1">
-      {over && (
+      {unreadable && (
         <p className="text-[11px] font-medium text-destructive">
-          ${amount} exceeds the ${max} ceiling at {ceiling.payGrade}. Export is blocked.
+          &quot;{enteredText}&quot; is not a dollar figure. Enter digits, such as 700 or $1,200.
+          Export is blocked.
+        </p>
+      )}
+      {over && parsed && (
+        <p className="text-[11px] font-medium text-destructive">
+          {formatDollars(parsed.cents)} exceeds the ${max} ceiling at {ceiling.payGrade}. Export is
+          blocked.
         </p>
       )}
       <p className="text-[11px] text-muted-foreground">

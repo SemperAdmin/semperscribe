@@ -23,6 +23,7 @@ import {
   fileLoadForDoc,
   fileDeleteForDoc,
   fileReparent,
+  fileCopyForSave,
   FILES_STORE,
   StoredEnclosureFile,
 } from '@/lib/document-library';
@@ -173,5 +174,56 @@ describe('fileReparent', () => {
     await filePut(makeFile('f2', 'doc-other'));
     await fileReparent('working-copy', 'doc-saved');
     expect(await fileLoadForDoc('doc-other')).toHaveLength(1);
+  });
+});
+
+describe('P6-8 fileCopyForSave: every save owns its own bytes', () => {
+  it('copies the listed files under the save id with fresh ids and leaves the sources in place', async () => {
+    await filePut(makeFile('enc-1', 'working'));
+    await filePut(makeFile('navmc10132-base:abc', 'working'));
+    const { ids, missing } = await fileCopyForSave(['enc-1', 'navmc10132-base:abc'], 'save-1');
+    expect(missing).toEqual([]);
+    expect(ids.size).toBe(2);
+    const encCopy = ids.get('enc-1') as string;
+    const baseCopy = ids.get('navmc10132-base:abc') as string;
+    expect(encCopy).not.toBe('enc-1');
+    expect(baseCopy.startsWith('navmc10132-base:')).toBe(true);
+    expect(baseCopy).not.toBe('navmc10132-base:abc');
+    expect((await fileLoadForDoc('working')).map((f) => f.fileId).sort()).toEqual(['enc-1', 'navmc10132-base:abc']);
+    const saved = await fileLoadForDoc('save-1');
+    expect(saved.map((f) => f.fileId).sort()).toEqual([baseCopy, encCopy].sort());
+    expect(new Uint8Array(saved[0].bytes)).toEqual(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  });
+
+  it('deleting the newest save leaves the older save\'s enclosures intact', async () => {
+    await filePut(makeFile('enc-1', 'working'));
+    const first = await fileCopyForSave(['enc-1'], 'save-1');
+    await libPut(makeLetter('save-1'));
+    const second = await fileCopyForSave(['enc-1'], 'save-2');
+    await libPut(makeLetter('save-2'));
+
+    await libDelete('save-2');
+
+    expect(await fileLoadForDoc('save-2')).toEqual([]);
+    const older = await fileLoadForDoc('save-1');
+    expect(older.map((f) => f.fileId)).toEqual([first.ids.get('enc-1')]);
+    expect(second.ids.get('enc-1')).not.toBe(first.ids.get('enc-1'));
+    // The working copy still holds what the editor is holding.
+    expect((await fileLoadForDoc('working')).map((f) => f.fileId)).toEqual(['enc-1']);
+  });
+
+  it('reports a missing source instead of throwing, and copies the rest', async () => {
+    await filePut(makeFile('enc-1', 'working'));
+    const { ids, missing } = await fileCopyForSave(['enc-1', 'gone'], 'save-1');
+    expect(missing).toEqual(['gone']);
+    expect(ids.has('enc-1')).toBe(true);
+    expect(ids.has('gone')).toBe(false);
+  });
+
+  it('copies a file listed twice once', async () => {
+    await filePut(makeFile('enc-1', 'working'));
+    const { ids } = await fileCopyForSave(['enc-1', 'enc-1'], 'save-1');
+    expect(ids.size).toBe(1);
+    expect(await fileLoadForDoc('save-1')).toHaveLength(1);
   });
 });

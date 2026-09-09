@@ -53,6 +53,45 @@ export interface ValidationIssue {
 }
 
 /**
+ * Longest SSIC the directive rules examine. A real identifier
+ * ("C5216R.3K w/ ch 12") is under 20 characters; anything past this is
+ * noise and is cut before the annotation strip runs (P4-1).
+ */
+const SSIC_SCAN_CAP = 64;
+
+/**
+ * Strips the change annotation ("5215.1K w/ ch 2" -> "5215.1K") in one
+ * linear pass. Same result as the former
+ * `replace(/\s*w\/.*$/i, '').trim()`: the strip starts at the first
+ * "w/" whose remainder holds no line terminator (the old `.*$` could
+ * not cross one), and swallows the whitespace before it. The regex
+ * form backtracked quadratically on a whitespace run - 120 000 spaces
+ * took 24 s, on every keystroke (P4-1).
+ */
+export function stripSsicChangeAnnotation(raw: string): string {
+  const s = raw.length > SSIC_SCAN_CAP ? raw.slice(0, SSIC_SCAN_CAP) : raw;
+  // `.` in the old pattern stopped at a line terminator, so only a
+  // "w/" on the final line ever matched.
+  let lineStart = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c === 0x0a || c === 0x0d || c === 0x2028 || c === 0x2029) lineStart = i + 1;
+  }
+  let at = -1;
+  for (let i = lineStart; i + 1 < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if ((c === 0x77 || c === 0x57) && s.charCodeAt(i + 1) === 0x2f) {
+      at = i;
+      break;
+    }
+  }
+  if (at < 0) return s.trim();
+  let start = at;
+  while (start > 0 && /\s/.test(s[start - 1])) start--;
+  return s.slice(0, start).trim();
+}
+
+/**
  * Reference rules (audit line 24): every listed reference must be
  * cited in the text, references are listed in order of FIRST text
  * citation, and citations must not exceed the list.
@@ -556,7 +595,7 @@ export function validateRevisionSuffix(formData: FormData): ValidationIssue[] {
   const isUsmc = USMC_DIRECTIVE_TYPES_V.includes(t);
   const isSecnav = SECNAV_DIRECTIVE_TYPES_V.includes(t);
   if (!isUsmc && !isSecnav) return [];
-  const ssic = (formData.ssic || '').replace(/\s*w\/.*$/i, '').trim();
+  const ssic = stripSsicChangeAnnotation(formData.ssic || '');
   if (!ssic) return [];
   // Suffix = letters trailing the point number ("5215.1K" -> K).
   const m = ssic.match(/\.(\d+)([A-Za-z]+)$/);
@@ -689,7 +728,7 @@ export function validateSecnavSchema(
       });
     }
     // Notices carry no consecutive point number (audit line 90).
-    const ssic = (formData.ssic || '').replace(/\s*w\/.*$/i, '').trim();
+    const ssic = stripSsicChangeAnnotation(formData.ssic || '');
     if (/\.\d/.test(ssic)) {
       issues.push({
         id: 'secnav-notice-no-point-number',

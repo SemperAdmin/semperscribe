@@ -71,8 +71,9 @@ export function StructuredReferenceInput({ formData, setFormData }: StructuredRe
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">Who</Label>
+            <Label className="text-xs font-semibold uppercase text-muted-foreground" htmlFor="basic-reference-who">Who</Label>
             <Input
+              id="basic-reference-who"
               type="text"
               value={formData.referenceWho}
               onChange={(e) => updateReference('who', e.target.value)}
@@ -89,12 +90,12 @@ export function StructuredReferenceInput({ formData, setFormData }: StructuredRe
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">Type</Label>
+            <Label className="text-xs font-semibold uppercase text-muted-foreground" htmlFor="basic-reference-type">Type</Label>
             <Select
               value={formData.referenceType}
               onValueChange={(val) => updateReference('type', val)}
             >
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-9" id="basic-reference-type">
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
@@ -107,8 +108,9 @@ export function StructuredReferenceInput({ formData, setFormData }: StructuredRe
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">SSIC</Label>
+            <Label className="text-xs font-semibold uppercase text-muted-foreground" htmlFor="basic-reference-ssic">SSIC</Label>
             <Input
+              id="basic-reference-ssic"
               type="text"
               value={formData.basicLetterSsic || ''}
               onChange={(e) => updateReference('ssic', e.target.value)}

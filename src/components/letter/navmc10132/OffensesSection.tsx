@@ -290,11 +290,12 @@ function OffenseRow({
         </div>
 
         <div className="flex-1 min-w-[260px] space-y-1">
-          <Label className="text-[11px] text-muted-foreground">
+          <Label className="text-[11px] text-muted-foreground" htmlFor={`offense-${letter}-summary`}>
             Summary, item 1{letter}
             {offenceLocked && <LockedBadge />}
           </Label>
           <Input
+            id={`offense-${letter}-summary`}
             value={offense.summary}
             onChange={(e) => onChange({ summary: e.target.value })}
             placeholder="Article, specific offense, date, and place"
@@ -321,7 +322,7 @@ function OffenseRow({
 
         {showFinding ? (
           <div className="w-40 space-y-1">
-            <Label className="text-[11px] text-muted-foreground">
+            <Label className="text-[11px] text-muted-foreground" htmlFor={`offense-${letter}-finding`}>
               Finding, item 5{letter}
               {findingLocked && <LockedBadge />}
             </Label>
@@ -330,7 +331,7 @@ function OffenseRow({
               onValueChange={(value) => onChange({ finding: value as Navmc10132Offense['finding'] })}
               disabled={findingLocked || !offense.articleLabel}
             >
-              <SelectTrigger>
+              <SelectTrigger id={`offense-${letter}-finding`}>
                 <SelectValue placeholder="Blank" />
               </SelectTrigger>
               <SelectContent>
@@ -427,6 +428,7 @@ function ArticlePicker({
           </DialogHeader>
           <Input
             autoFocus
+            aria-label="Filter articles"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter by offense, for example desertion"

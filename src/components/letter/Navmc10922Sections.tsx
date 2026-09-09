@@ -179,19 +179,20 @@ function ReasonSection({ formData, setFormData }: {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Full Name</Label>
+              <Label className="text-xs" htmlFor="n10922-lost-name">Full Name</Label>
               <Input
+                id="n10922-lost-name"
                 value={(formData.lostDependentName as string) ?? ''}
                 onChange={(e) => setFormData((prev) => ({ ...prev, lostDependentName: e.target.value }))}
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Relationship</Label>
+              <Label className="text-xs" htmlFor="n10922-lost-relationship">Relationship</Label>
               <Select
                 value={(formData.lostDependentRelationship as string) || undefined}
                 onValueChange={(v) => setFormData((prev) => ({ ...prev, lostDependentRelationship: v }))}
               >
-                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <SelectTrigger id="n10922-lost-relationship"><SelectValue placeholder="Select…" /></SelectTrigger>
                 <SelectContent>
                   {NAVMC_10922_RELATIONSHIPS.map((r) => (
                     <SelectItem key={r} value={r}>{r}</SelectItem>
@@ -200,12 +201,12 @@ function ReasonSection({ formData, setFormData }: {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Loss Event</Label>
+              <Label className="text-xs" htmlFor="n10922-lost-event">Loss Event</Label>
               <Select
                 value={(formData.lostEventType as string) || undefined}
                 onValueChange={(v) => setFormData((prev) => ({ ...prev, lostEventType: v }))}
               >
-                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <SelectTrigger id="n10922-lost-event"><SelectValue placeholder="Select…" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="divorce">Divorce</SelectItem>
                   <SelectItem value="annulment">Annulment</SelectItem>
@@ -215,8 +216,9 @@ function ReasonSection({ formData, setFormData }: {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Effective Date</Label>
+              <Label className="text-xs" htmlFor="n10922-lost-effective-date">Effective Date</Label>
               <Input
+                id="n10922-lost-effective-date"
                 type="date"
                 value={(formData.lostEffectiveDate as string) ?? ''}
                 onChange={(e) => setFormData((prev) => ({ ...prev, lostEffectiveDate: e.target.value }))}
@@ -289,6 +291,7 @@ function UnitSearchDialog({ open, onOpenChange, onSelect, title }: {
           </DialogTitle>
         </DialogHeader>
         <Input
+          aria-label="Search units"
           placeholder="Search by Name, RUC, or MCC..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -494,16 +497,16 @@ function DependentsSection({ formData, setFormData }: {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Name (full given name)</Label>
-                  <Input value={row.name} onChange={(e) => updateRow(i, { name: e.target.value })} />
+                  <Label className="text-xs" htmlFor={`n10922-dep-${i}-name`}>Name (full given name)</Label>
+                  <Input id={`n10922-dep-${i}-name`} value={row.name} onChange={(e) => updateRow(i, { name: e.target.value })} />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Relationship</Label>
+                  <Label className="text-xs" htmlFor={`n10922-dep-${i}-relationship`}>Relationship</Label>
                   <Select
                     value={row.relationship || undefined}
                     onValueChange={(v) => updateRow(i, { relationship: v as Navmc10922Dependent['relationship'] })}
                   >
-                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                    <SelectTrigger id={`n10922-dep-${i}-relationship`}><SelectValue placeholder="Select…" /></SelectTrigger>
                     <SelectContent>
                       {NAVMC_10922_RELATIONSHIPS.map((r) => (
                         <SelectItem key={r} value={r}>{r}</SelectItem>
@@ -512,18 +515,19 @@ function DependentsSection({ formData, setFormData }: {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Date of Birth</Label>
-                  <Input type="date" value={row.dateOfBirth} onChange={(e) => updateRow(i, { dateOfBirth: e.target.value })} />
+                  <Label className="text-xs" htmlFor={`n10922-dep-${i}-dob`}>Date of Birth</Label>
+                  <Input id={`n10922-dep-${i}-dob`} type="date" value={row.dateOfBirth} onChange={(e) => updateRow(i, { dateOfBirth: e.target.value })} />
                 </div>
                 <div className="space-y-1 md:col-span-2">
-                  <Label className="text-xs">Complete Address (include zip code)</Label>
-                  <Input value={row.address} onChange={(e) => updateRow(i, { address: e.target.value })} />
+                  <Label className="text-xs" htmlFor={`n10922-dep-${i}-address`}>Complete Address (include zip code)</Label>
+                  <Input id={`n10922-dep-${i}-address`} value={row.address} onChange={(e) => updateRow(i, { address: e.target.value })} />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">
+                  <Label className="text-xs" htmlFor={`n10922-dep-${i}-claimed-from`}>
                     {prev ? 'Date of Approval (previously approved)' : 'Date Allowance Claimed From'}
                   </Label>
                   <Input
+                    id={`n10922-dep-${i}-claimed-from`}
                     type="date"
                     value={row.allowanceClaimedFrom}
                     onChange={(e) => updateRow(i, { allowanceClaimedFrom: e.target.value })}
@@ -613,9 +617,9 @@ function CustodianSection({ formData, setFormData }: {
           )}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Dep No.</Label>
+              <Label className="text-xs" htmlFor="n10922-custodian-dep-no">Dep No.</Label>
               <Select value={custodian.depNo || undefined} onValueChange={(v) => update({ depNo: v })}>
-                <SelectTrigger><SelectValue placeholder="Row…" /></SelectTrigger>
+                <SelectTrigger id="n10922-custodian-dep-no"><SelectValue placeholder="Row…" /></SelectTrigger>
                 <SelectContent>
                   {flagged.map((x) => (
                     <SelectItem key={x.no} value={String(x.no)}>
@@ -626,16 +630,16 @@ function CustodianSection({ formData, setFormData }: {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Full Name of Custodian</Label>
-              <Input value={custodian.name} onChange={(e) => update({ name: e.target.value })} />
+              <Label className="text-xs" htmlFor="n10922-custodian-name">Full Name of Custodian</Label>
+              <Input id="n10922-custodian-name" value={custodian.name} onChange={(e) => update({ name: e.target.value })} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Relationship to Dependent</Label>
-              <Input value={custodian.relationship} onChange={(e) => update({ relationship: e.target.value })} />
+              <Label className="text-xs" htmlFor="n10922-custodian-relationship">Relationship to Dependent</Label>
+              <Input id="n10922-custodian-relationship" value={custodian.relationship} onChange={(e) => update({ relationship: e.target.value })} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Address and Zip Code</Label>
-              <Input value={custodian.address} onChange={(e) => update({ address: e.target.value })} />
+              <Label className="text-xs" htmlFor="n10922-custodian-address">Address and Zip Code</Label>
+              <Input id="n10922-custodian-address" value={custodian.address} onChange={(e) => update({ address: e.target.value })} />
             </div>
           </div>
         </>
@@ -711,12 +715,12 @@ function DissolutionSection({ formData, setFormData }: {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mt-2">
                   <div className="space-y-1">
-                    <Label className="text-xs">Former Marriage Of</Label>
+                    <Label className="text-xs" htmlFor={`n10922-diss-${i}-of`}>Former Marriage Of</Label>
                     <Select
                       value={row.formerMarriageOf || undefined}
                       onValueChange={(v) => updateRow(i, { formerMarriageOf: v as Navmc10922Dissolution['formerMarriageOf'] })}
                     >
-                      <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                      <SelectTrigger id={`n10922-diss-${i}-of`}><SelectValue placeholder="Select…" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="self">Yourself</SelectItem>
                         <SelectItem value="spouse">Spouse</SelectItem>
@@ -724,12 +728,12 @@ function DissolutionSection({ formData, setFormData }: {
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Spouse in the Dissolved Marriage</Label>
-                    <Input value={row.spouseName} onChange={(e) => updateRow(i, { spouseName: e.target.value })} />
+                    <Label className="text-xs" htmlFor={`n10922-diss-${i}-spouse`}>Spouse in the Dissolved Marriage</Label>
+                    <Input id={`n10922-diss-${i}-spouse`} value={row.spouseName} onChange={(e) => updateRow(i, { spouseName: e.target.value })} />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Date of Dissolution</Label>
-                    <Input type="date" value={row.dateOfDissolution} onChange={(e) => updateRow(i, { dateOfDissolution: e.target.value })} />
+                    <Label className="text-xs" htmlFor={`n10922-diss-${i}-date`}>Date of Dissolution</Label>
+                    <Input id={`n10922-diss-${i}-date`} type="date" value={row.dateOfDissolution} onChange={(e) => updateRow(i, { dateOfDissolution: e.target.value })} />
                     {invalid && (
                       <p className="text-[11px] text-destructive">
                         On or after the present marriage date — export will block
@@ -738,16 +742,16 @@ function DissolutionSection({ formData, setFormData }: {
                     )}
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Place (County and State)</Label>
-                    <Input value={row.placeOfDissolution} onChange={(e) => updateRow(i, { placeOfDissolution: e.target.value })} />
+                    <Label className="text-xs" htmlFor={`n10922-diss-${i}-place`}>Place (County and State)</Label>
+                    <Input id={`n10922-diss-${i}-place`} value={row.placeOfDissolution} onChange={(e) => updateRow(i, { placeOfDissolution: e.target.value })} />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Reason</Label>
+                    <Label className="text-xs" htmlFor={`n10922-diss-${i}-reason`}>Reason</Label>
                     <Select
                       value={row.reason || undefined}
                       onValueChange={(v) => updateRow(i, { reason: v as Navmc10922Dissolution['reason'] })}
                     >
-                      <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                      <SelectTrigger id={`n10922-diss-${i}-reason`}><SelectValue placeholder="Select…" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="death">Death</SelectItem>
                         <SelectItem value="annulment">Annulment</SelectItem>

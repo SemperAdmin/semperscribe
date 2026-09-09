@@ -228,3 +228,54 @@ describe('renderDocument', () => {
     }
   });
 });
+
+/**
+ * AUDIT P6-5: the NAVMC 10132 fill used to fall back to a one-page notice
+ * on any failure, and the companion answered 200 with that notice as the
+ * rendered Unit Punishment Book. A signed base file the companion cannot
+ * read (there is no IndexedDB under Node, and the document says a signed
+ * file is behind it) is the natural failure: the render has to refuse,
+ * with the companion's own error shape, rather than write a blank or a
+ * notice to disk as the Marine's record.
+ */
+describe('renderDocument for a NAVMC 10132 whose signed base cannot be read', () => {
+  const LOAD_REPORT = {
+    fileName: 'NAVMC 10132 - THOMPSON.pdf',
+    signedSignatures: ['2 ACCUSED SIGNATURE'],
+    lockedFields: ['18 ACCUSED FULL NAME'],
+    appLockedFields: [],
+    lockedFieldCount: 1,
+  };
+
+  it('refuses with a 500 CompanionError, not a 200 placeholder', async () => {
+    expect(typeof indexedDB).toBe('undefined');
+    const document = await fixturePackage({
+      documentType: 'navmc10132',
+      accusedName: 'THOMPSON, JAMAL R',
+      navmc10132LoadReport: LOAD_REPORT,
+      navmc10132BaseFileId: 'navmc10132-base:on-another-machine',
+    });
+    try {
+      await renderDocument({ document, format: 'pdf' });
+      throw new Error('expected the render to be refused');
+    } catch (error) {
+      expect(error).toBeInstanceOf(CompanionError);
+      const companion = error as CompanionError;
+      expect(companion.code).toBe('internal_error');
+      expect(companion.status).toBe(500);
+      expect(companion.message).toMatch(/NAVMC 10132/);
+      expect(companion.details.documentType).toBe('navmc10132');
+    }
+  });
+
+  it('still renders a NAVMC 10132 with no signed file behind it', async () => {
+    const document = await fixturePackage({
+      documentType: 'navmc10132',
+      accusedName: 'THOMPSON, JAMAL R',
+    });
+    const result = await renderDocument({ document, format: 'pdf' });
+    expect(Buffer.from(result.bytes.subarray(0, 5)).toString('latin1')).toBe(PDF_MAGIC);
+    // The real official blank, filled: pages, not a one-page notice.
+    expect(result.bytes.length).toBeGreaterThan(100_000);
+  });
+});

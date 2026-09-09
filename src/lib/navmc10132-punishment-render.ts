@@ -13,6 +13,7 @@ import {
   type Navmc10132Punishment,
 } from '@/lib/navmc10132-punishments';
 import type { Navmc10132PunishmentEntry } from '@/types/navmc';
+import { parseDollars, formatDollars, parseWholeNumber } from '@/lib/navmc10132-money';
 
 /** Re-exported so this module's public surface still names its own entry type. */
 export type { Navmc10132PunishmentEntry } from '@/types/navmc';
@@ -68,21 +69,31 @@ export class Navmc10132PunishmentRenderError extends Error {
   }
 }
 
-/** Strips $ and thousands separators from a money string and parses it. */
-function parseMoney(raw: string): number {
-  const cleaned = raw.replace(/[^0-9.\-]/g, '');
-  const value = Number(cleaned);
-  if (!Number.isFinite(value)) {
+/**
+ * Reads a money field through the one dollar reader (navmc10132-money.ts).
+ * Until 2026-09 this stripped everything but digits, points and minus signs
+ * and handed the rest to Number(), which accepted "-700" and let "$1,200"
+ * through to a template that already prints its own "$", so item 6 read
+ * "$$1,200". Anything parseDollars refuses is thrown, because a forfeiture
+ * the app cannot read is not a forfeiture it can print on a Federal record.
+ */
+function parseMoney(code: string, field: string, raw: string): number {
+  const parsed = parseDollars(raw);
+  if (parsed === null) {
     throw new Navmc10132PunishmentRenderError(
-      `Cannot parse "${raw}" as a dollar amount.`
+      `Code ${code}: cannot read "${raw}" in "${field}" as a dollar amount.`
     );
   }
-  return value;
+  return parsed.cents;
 }
 
-/** Formats a number with thousands separators, the way the MCO's own worked example (2) does for $500. */
-function formatMoney(value: number): string {
-  return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+/**
+ * Prints integer cents the way the MCO's own worked example (2) prints $500,
+ * WITHOUT the leading "$": every template that names a money placeholder
+ * already carries its own "$" before it.
+ */
+function formatMoney(cents: number): string {
+  return formatDollars(cents).slice(1);
 }
 
 /**
@@ -117,8 +128,17 @@ function interpolate(
           `Code ${punishment.code} needs "dollarsPerMonth" and "months" to fill {totalForf}.`
         );
       }
-      const total = parseMoney(entry.dollarsPerMonth) * Number(entry.months);
-      return formatMoney(total);
+      const months = parseWholeNumber(entry.months);
+      if (months === null) {
+        // Number('') is 0, so a blank month count used to print "Total forf
+        // $0" on a two-month forfeiture. A blank or non-integer count is a
+        // missing parameter, the same error path as an absent one.
+        throw new Navmc10132PunishmentRenderError(
+          `Code ${punishment.code} needs a whole number of "months" to fill {totalForf}, got "${entry.months}".`
+        );
+      }
+      const perMonth = parseMoney(punishment.code, 'dollarsPerMonth', entry.dollarsPerMonth);
+      return formatMoney(perMonth * months);
     }
     if (!isEntryParamKey(name)) {
       throw new Navmc10132PunishmentRenderError(
@@ -130,6 +150,11 @@ function interpolate(
       throw new Navmc10132PunishmentRenderError(
         `Code ${punishment.code} needs "${name}" to fill its template.`
       );
+    }
+    if (name === 'dollars' || name === 'dollarsPerMonth') {
+      // The normalised figure, one "$" (the template's own) and thousands
+      // separators, whatever spelling the clerk typed.
+      return formatMoney(parseMoney(punishment.code, name, String(value)));
     }
     return String(value);
   });

@@ -19,6 +19,9 @@ interface ModernAppShellProps {
   documentType: string;
   onDocumentTypeChange: (type: string) => void;
   previewUrl?: string;
+  previewBlob?: Blob | null;
+  /** P6-13: the last render failed; the pane shows the previous render with a notice. */
+  previewError?: string | null;
   validationIssues?: PreviewIssue[];
   isGeneratingPreview?: boolean;
   onExportDocx: () => void;
@@ -77,6 +80,8 @@ export function ModernAppShell({
   documentType,
   onDocumentTypeChange,
   previewUrl,
+  previewBlob,
+  previewError,
   validationIssues,
   isGeneratingPreview,
   onExportDocx,
@@ -230,9 +235,14 @@ export function ModernAppShell({
             </a>
             
             {/* Wordmark hidden on phones: the actions row needs the width,
-                and the seal + page hero carry the brand there. */}
-            <div className="hidden sm:flex flex-col">
-              <h1 className="text-primary font-bold text-lg leading-tight tracking-tight font-headline">Semper Scribe</h1>
+                and the seal + page hero carry the brand there. P8-12: the
+                h1 stays in the tree at phone width, screen-reader only,
+                so the heading outline never starts at h2. */}
+            <div className="flex flex-col">
+              {/* P8-11: the light-theme gold (--primary, 31% lightness) measures
+                  3.14:1 on the navy header. This is the dark theme's gold, which
+                  measures 7.8:1 on the same ground, used in both themes. */}
+              <h1 className="sr-only sm:not-sr-only text-[hsl(42,72%,52%)] font-bold text-lg leading-tight tracking-tight font-headline">Semper Scribe</h1>
             </div>
           </div>
 
@@ -260,7 +270,7 @@ export function ModernAppShell({
                       Saved {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   ) : (
-                    <span className="text-primary-foreground/70 font-medium text-xs">Draft</span>
+                    <span className="text-secondary-foreground/80 font-medium text-xs">Draft</span>
                   )}
                 </span>
               </>
@@ -277,20 +287,20 @@ export function ModernAppShell({
                 type="button"
                 onClick={onOpenCommandPalette}
                 title={`Command palette (${paletteShortcut})`}
-                className="inline-flex items-center gap-1.5 rounded-md border border-primary-foreground/20 px-2 py-1 text-primary-foreground/70 hover:text-primary-foreground hover:border-primary-foreground/40 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md border border-secondary-foreground/20 px-2 py-1 text-secondary-foreground/80 hover:text-secondary-foreground hover:border-secondary-foreground/40 transition-colors"
               >
                 <span className="text-[11px]">Commands</span>
-                <kbd className="font-sans text-[10px] font-medium tracking-wide rounded bg-primary-foreground/10 px-1.5 py-0.5">
+                <kbd className="font-sans text-[10px] font-medium tracking-wide rounded bg-secondary-foreground/10 px-1.5 py-0.5">
                   {paletteShortcut}
                 </kbd>
               </button>
             ) : (
               <span
                 title={`Command palette (${paletteShortcut})`}
-                className="inline-flex items-center gap-1.5 text-primary-foreground/70"
+                className="inline-flex items-center gap-1.5 text-secondary-foreground/80"
               >
                 <span className="text-[11px]">Commands</span>
-                <kbd className="font-sans text-[10px] font-medium tracking-wide rounded bg-primary-foreground/10 px-1.5 py-0.5">
+                <kbd className="font-sans text-[10px] font-medium tracking-wide rounded bg-secondary-foreground/10 px-1.5 py-0.5">
                   {paletteShortcut}
                 </kbd>
               </span>
@@ -397,12 +407,14 @@ export function ModernAppShell({
           ) : (
             <LivePreview
               previewUrl={previewUrl}
+              previewBlob={previewBlob}
               isLoading={isGeneratingPreview}
               onUpdatePreview={onUpdatePreview}
               documentType={documentType}
               downloadFileName={formData ? getExportFilename(formData, 'pdf') : undefined}
               onDownloadExport={onGeneratePdf}
               emptyStateFields={emptyStateFields}
+              previewError={previewError}
             />
           )
         )}
@@ -422,7 +434,8 @@ export function ModernAppShell({
       )}
 
       {/* Compliance footer. Maps to COMPLIANCE_REMEDIATION_PLAN.md Phase 4 P4-2. */}
-      <footer className="shrink-0 border-t bg-muted/40 text-muted-foreground text-xs px-4 py-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+      {/* P8-11: muted-foreground on this ground measured 4.49:1; foreground/70 is 6:1. */}
+      <footer className="shrink-0 border-t bg-muted/40 text-foreground/70 text-xs px-4 py-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
         <span>SemperScribe non-official Proof of Concept.</span>
         <Link href="/privacy" className="underline hover:no-underline">Privacy and Security Notice</Link>
         <a href="https://github.com/SemperAdmin/semperscribe/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Security disclosure</a>

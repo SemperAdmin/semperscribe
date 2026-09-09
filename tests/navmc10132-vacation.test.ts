@@ -880,27 +880,34 @@ describe('V-34: an executed vacation must actually produce an item 21 remark', (
 // ---------------------------------------------------------------------------
 
 describe('V-29: a vacation\'s triggering offence must not predate the suspension it targets', () => {
-  it('blocks when the offence date is on or before the item 6 punishment date', () => {
-    const onSameDay = baseForm({
-      punishmentDate: '2026-01-15',
-      punishments: [{ code: 'N09', days: '14' }],
-      suspensions: [{ punishmentIndex: 0, months: '6' }],
-      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2026-01-15' }],
-    });
-    let issues = vacationOffenceWindowIssues(onSameDay);
-    expect(issues).toHaveLength(1);
-    expect(issues[0].severity).toBe('block');
-    expect(issues[0].id).toBe('navmc10132-v29-vacation-offence-before-suspension-0');
-
+  it('blocks when the offence date is before the item 6 punishment date', () => {
     const before = baseForm({
       punishmentDate: '2026-01-15',
       punishments: [{ code: 'N09', days: '14' }],
       suspensions: [{ punishmentIndex: 0, months: '6' }],
       vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2025-12-01' }],
     });
-    issues = vacationOffenceWindowIssues(before);
+    const issues = vacationOffenceWindowIssues(before);
     expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('block');
     expect(issues[0].id).toBe('navmc10132-v29-vacation-offence-before-suspension-0');
+  });
+
+  it('P5-8: warns, not blocks, on the same date, with the owner\'s wording', () => {
+    // Owner ruling 2026-09-07. Dates carry no time, and the suspension runs
+    // from the date of the punishment (MCM Part V 6.a(2)), so a same-day
+    // offence is not provably outside the window.
+    const onSameDay = baseForm({
+      punishmentDate: '2026-01-15',
+      punishments: [{ code: 'N09', days: '14' }],
+      suspensions: [{ punishmentIndex: 0, months: '6' }],
+      vacations: [{ suspensionIndex: 0, status: 'pending', offenceDate: '2026-01-15' }],
+    });
+    const issues = vacationOffenceWindowIssues(onSameDay);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].id).toBe('navmc10132-w23-vacation-offence-same-day-0');
+    expect(issues[0].rule).toContain('Confirm the offence followed the imposition');
   });
 
   it('is silent when the offence date is strictly after the punishment date and within the computed window', () => {

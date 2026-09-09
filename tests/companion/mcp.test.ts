@@ -87,6 +87,57 @@ describe('companion MCP server', () => {
     expect(body.errors).toEqual([]);
   }, 60000);
 
+  /**
+   * AUDIT P2-10. The EDMS context reaches the returned filename, so the
+   * tool schema carries the same shapes the EDMS handoff link accepts and
+   * the SDK refuses a request that fails them before the tool runs.
+   */
+  it('advertises the EDMS field patterns in the render_document schema', async () => {
+    const { tools } = await client.listTools();
+    const render = tools.find((t) => t.name === 'render_document');
+    const edms = (render?.inputSchema as { properties: Record<string, { properties?: Record<string, { pattern?: string }> }> })
+      .properties.edms;
+    expect(edms.properties?.requestId.pattern).toBeDefined();
+    expect(new RegExp(edms.properties?.requestId.pattern ?? '').test('../x')).toBe(false);
+    expect(new RegExp(edms.properties?.requestId.pattern ?? '').test('482')).toBe(true);
+    for (const field of ['ruc', 'ssic', 'docType', 'section']) {
+      expect(edms.properties?.[field].pattern, field).toBeDefined();
+    }
+  });
+
+  it('refuses render_document when edms.requestId carries a path', async () => {
+    const document = await createNLDPFile(
+      FIXTURE_FORM_DATA,
+      FIXTURE_VIAS,
+      FIXTURE_REFERENCES,
+      FIXTURE_ENCLOSURES,
+      FIXTURE_COPY_TOS,
+      FIXTURE_PARAGRAPHS,
+    );
+    let outcome: 'threw' | 'errored' | 'rendered' = 'rendered';
+    let text = '';
+    try {
+      const result = await client.callTool({
+        name: 'render_document',
+        arguments: {
+          document: document as unknown as Record<string, unknown>,
+          format: 'pdf',
+          edms: { requestId: '../x', ruc: '12345', ssic: '1000', docType: 'basic' },
+        },
+      });
+      if ((result as { isError?: boolean }).isError) {
+        outcome = 'errored';
+        text = JSON.stringify(result);
+      }
+    } catch (error) {
+      outcome = 'threw';
+      text = (error as Error).message;
+    }
+    expect(outcome).not.toBe('rendered');
+    expect(text).toMatch(/requestId/);
+    expect(text).not.toMatch(/base64/);
+  }, 60000);
+
   it('reports a bad package as a tool result, not a transport failure', async () => {
     const body = parsed(
       await client.callTool({

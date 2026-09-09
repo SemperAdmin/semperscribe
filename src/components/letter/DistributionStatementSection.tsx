@@ -90,14 +90,14 @@ export function DistributionStatementSection({
       <CardContent className="space-y-4 pt-4">
         {/* Statement Code Selection */}
         <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase text-muted-foreground">
+          <Label className="text-xs font-semibold uppercase text-muted-foreground" htmlFor="distribution-statement-code">
             Statement Code
           </Label>
           <Select
             value={statementCode || 'none'}
             onValueChange={handleStatementChange}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full" id="distribution-statement-code">
               <SelectValue placeholder="Select Distribution Statement" />
             </SelectTrigger>
             <SelectContent>
@@ -126,10 +126,11 @@ export function DistributionStatementSection({
             {/* Restriction Reason */}
             {needsReason && (
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold uppercase text-muted-foreground" htmlFor="distribution-statement-reason">
                   Restriction Reason
                 </Label>
                 <Input
+                  id="distribution-statement-reason"
                   type="text"
                   value={distribution.statementReason || ''}
                   onChange={(e) => updateField('statementReason', e.target.value)}
@@ -175,10 +176,11 @@ export function DistributionStatementSection({
             {/* Originating Command/Authority */}
             {needsAuthority && (
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold uppercase text-muted-foreground" htmlFor="distribution-statement-authority">
                   Originating Command
                 </Label>
                 <Input
+                  id="distribution-statement-authority"
                   type="text"
                   value={distribution.statementAuthority || ''}
                   onChange={(e) => updateField('statementAuthority', e.target.value)}

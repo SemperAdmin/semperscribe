@@ -2,6 +2,9 @@
 # cloud.gov deploy for the SemperScribe static export.
 # Build the static site first with DEPLOY_TARGET=cloudgov so assets
 # resolve at the route root, then run `cf push` from this directory.
+# The "Deploy to cloud.gov" GitHub Actions workflow
+# (.github/workflows/deploy-cloudgov.yml) runs that build-and-push
+# sequence on Linux; treat it as the build-and-push path.
 applications:
   - name: semperscribe
     buildpack: staticfile_buildpack

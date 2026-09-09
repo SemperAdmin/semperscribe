@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { registerExportAckHandler } from '@/lib/export-gate';
+import { toast } from '@/hooks/use-toast';
 
 /**
  * Pre-export consent dialog. Registers the acknowledgment handler that
@@ -28,8 +29,12 @@ export function ExportScanGate() {
     registerExportAckHandler(
       next =>
         new Promise<boolean>(resolve => {
+          // P6-15: a prompt still open when the next one arrives is
+          // refused, not orphaned - its export must not hang forever.
+          const superseded = resolveRef.current;
           resolveRef.current = resolve;
           setFindings(next);
+          if (superseded) superseded(false);
         }),
     );
     return () => {
@@ -39,6 +44,12 @@ export function ExportScanGate() {
       resolveRef.current = null;
       if (pending) {
         pending(false);
+        // P6-15: say why the export did not happen.
+        toast({
+          title: 'Export cancelled',
+          description: 'The sensitive-data prompt closed before you answered. Run the export again.',
+          variant: 'destructive',
+        });
       }
     };
   }, []);

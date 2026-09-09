@@ -52,6 +52,14 @@ jobs:
       - name: Build with Next.js
         run: npm run build
 
+      # See scripts/check-export.mjs: a Windows build of Next 16.3.4
+      # writes nested-route RSC prefetch payloads as directories
+      # instead of files (measured 2026-09-09). This runner is Linux,
+      # where the defect does not reproduce; the check still runs here
+      # so a Linux-side regression would be caught too.
+      - name: Prove the export layout
+        run: node scripts/check-export.mjs
+
       # Sanity check: tests/ must never reach the static export.
       - name: Assert no test file in out
         run: |

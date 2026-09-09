@@ -12,6 +12,7 @@ import { migrateLegacySamePage } from '@/lib/same-page-composite';
 import { debugUserAction } from '@/lib/console-utils';
 import { createNLDPFile, generateNLDPFilename } from '@/lib/nldp-utils';
 import type { NLDPLifecycle } from '@/lib/nldp-format';
+import { clearedForExport } from '@/lib/export-gate';
 
 interface ImportExportDeps {
   formData: FormData;
@@ -36,6 +37,15 @@ interface ImportExportDeps {
   /** ENC: imported documents carrying file bindings hydrate through
    * this (drafts, recovery). Absent on .nldp and share links. */
   onEnclosureBindings?: (bindings: { key: string; title: string; fileId?: string }[]) => void;
+  /**
+   * P6-9: builds the app's blank document from the one being replaced
+   * (its document type and letterhead carry; nothing else does). When
+   * given, an import REPLACES the document: stale keys of the previous
+   * one - signatureFields, samePageHost, the NAVMC 10132 base id and
+   * load report, stage - never reach the new one. Absent, the legacy
+   * merge-over-previous behaviour stands.
+   */
+  blankFormData?: (previous: FormData) => FormData;
   toast: (opts: { title: string; description: string; variant?: 'default' | 'destructive' }) => void;
 }
 
@@ -52,7 +62,7 @@ export function useImportExport(deps: ImportExportDeps) {
     copyTos, setCopyTos,
     distList, setDistList,
     setFormKey, setValidation,
-    savedLetters, toast, comments, onEnclosureBindings,
+    savedLetters, toast, comments, onEnclosureBindings, blankFormData,
   } = deps;
 
   const handleImport = useCallback((inputData: any) => {
@@ -119,7 +129,8 @@ export function useImportExport(deps: ImportExportDeps) {
         incomingCopyTos = migrated.copyTos;
       }
 
-      setFormData(prev => ({ ...prev, ...formDataToMerge }));
+      // P6-9: start from the blank default, not the previous document.
+      setFormData(prev => ({ ...(blankFormData ? blankFormData(prev) : prev), ...formDataToMerge }));
 
       if (incomingParagraphs) setParagraphs(incomingParagraphs);
       if (incomingVias) setVias(incomingVias);
@@ -145,7 +156,7 @@ export function useImportExport(deps: ImportExportDeps) {
       console.error('Import failed', error);
       alert('Failed to import data structure.');
     }
-  }, [setFormData, setParagraphs, setVias, setReferences, setEnclosures, setCopyTos, setDistList, setFormKey, setValidation, onEnclosureBindings]);
+  }, [setFormData, setParagraphs, setVias, setReferences, setEnclosures, setCopyTos, setDistList, setFormKey, setValidation, onEnclosureBindings, blankFormData]);
 
   const handleLoadDraft = useCallback((id: string) => {
     const letter = findLetterById(id, savedLetters);
@@ -225,6 +236,10 @@ export function useImportExport(deps: ImportExportDeps) {
       return;
     }
 
+    // P2-1: the same sensitive-data gate every download path runs, before
+    // the link (plain or encrypted) is built.
+    if (!(await clearedForExport({ formData, vias, references, enclosures, copyTos, paragraphs, distList }))) return;
+
     const state: ShareableState = { formData, paragraphs, references, enclosures, vias, copyTos, distList, version: 1 };
     // R1: carry review comments so the reviewer's notes reach the drafter.
     if (comments && comments.length > 0) state.comments = comments;
@@ -255,7 +270,10 @@ export function useImportExport(deps: ImportExportDeps) {
     }
   }, [formData, paragraphs, references, enclosures, vias, copyTos, distList, comments, toast]);
 
-  const handleCopyAMHS = useCallback(() => {
+  // P6-10: the copy is awaited and the toast follows the result. The
+  // previous version fired "Copied" on an unawaited clipboard write, so a
+  // denied clipboard (insecure context, permission) still read as done.
+  const handleCopyAMHS = useCallback(async () => {
     const validation = validateAMHSMessage(formData, formData.amhsReferences || []);
     if (!validation.isValid) {
       toast({ title: "Validation Failed", description: validation.errors.join('. '), variant: "destructive" });
@@ -263,8 +281,12 @@ export function useImportExport(deps: ImportExportDeps) {
     }
 
     const message = generateFullMessage(formData, formData.amhsReferences || [], formData.amhsPocs || []);
-    navigator.clipboard.writeText(message);
-    toast({ title: "Copied to Clipboard", description: "Message text is ready to paste into AMHS." });
+    const copied = await copyToClipboard(message);
+    if (copied) {
+      toast({ title: "Copied to Clipboard", description: "Message text is ready to paste into AMHS." });
+    } else {
+      toast({ title: "Copy Failed", description: "Could not copy the message to the clipboard. Use Export AMHS to download it instead.", variant: "destructive" });
+    }
   }, [formData, toast]);
 
   const handleExportAMHS = useCallback(() => {

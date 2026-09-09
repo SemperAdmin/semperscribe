@@ -642,12 +642,12 @@ export function DocumentTypeSection({
           
           <CardContent className="space-y-6 pt-6">
             <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Endorsement Level</Label>
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider" htmlFor="dts-endorsement-level">Endorsement Level</Label>
               <Select 
                 value={formData.endorsementLevel} 
                 onValueChange={handleEndorsementLevelChange}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" id="dts-endorsement-level">
                   <SelectValue placeholder="Select endorsement level..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -686,8 +686,9 @@ export function DocumentTypeSection({
                   </h4>
                   
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Last Page # of Previous Document</Label>
+                    <Label className="text-xs text-muted-foreground" htmlFor="dts-previous-package-page-count">Last Page # of Previous Document</Label>
                     <Input
+                      id="dts-previous-package-page-count"
                       type="number"
                       min="0"
                       max="100"
@@ -721,12 +722,12 @@ export function DocumentTypeSection({
                   </h4>
                   
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Start References At Letter</Label>
+                    <Label className="text-xs text-muted-foreground" htmlFor="dts-starting-reference-level">Start References At Letter</Label>
                     <Select
                       value={formData.startingReferenceLevel}
                       onValueChange={(val) => setFormData(prev => ({ ...prev, startingReferenceLevel: val }))}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="dts-starting-reference-level">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -741,8 +742,9 @@ export function DocumentTypeSection({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Start Enclosures At Number</Label>
+                    <Label className="text-xs text-muted-foreground" htmlFor="dts-starting-enclosure-number">Start Enclosures At Number</Label>
                     <Input
+                      id="dts-starting-enclosure-number"
                       type="number"
                       min="1"
                       max="50"
@@ -809,12 +811,12 @@ export function DocumentTypeSection({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cancellation Type</Label>
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider" htmlFor="dts-cancellation-type">Cancellation Type</Label>
                 <Select
                   value={formData.cancellationType || 'fixed'}
                   onValueChange={(val) => setFormData(prev => ({ ...prev, cancellationType: val as 'fixed' | 'contingent' }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="dts-cancellation-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

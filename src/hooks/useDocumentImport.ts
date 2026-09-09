@@ -13,6 +13,14 @@ import { extractDocumentText, DocumentExtractionError } from '@/services/import/
 import { debugUserAction } from '@/lib/console-utils';
 import { isNavmc10132Pdf, loadNavmc10132FromPdf } from '@/lib/navmc10132-pdf-load';
 
+/** P4-5: the largest file the importer will read, matching useNLDP's cap. */
+export const MAX_IMPORT_MB = 10;
+export const MAX_IMPORT_BYTES = MAX_IMPORT_MB * 1024 * 1024;
+
+function formatMb(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(1);
+}
+
 interface UseDocumentImportDeps {
   /** Applies the reviewed payload — reset current document, then import. */
   applyImport: (payload: ImportPayload) => void;
@@ -190,6 +198,16 @@ export function useDocumentImport({
   }, [review, toast]);
 
   const startImport = useCallback(async (file: File) => {
+    // P4-5: refuse before the bytes are read. mammoth and pdfjs parse the
+    // whole buffer in memory; the cap matches useNLDP's.
+    if (file.size > MAX_IMPORT_BYTES) {
+      toast({
+        title: 'File too large',
+        description: `"${file.name}" is ${formatMb(file.size)} MB. The import limit is ${MAX_IMPORT_MB} MB.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     setIsProcessing(true);
     setFileName(file.name);
     // Extraction lazy-loads mammoth/pdfjs and can take a few seconds on

@@ -27,7 +27,7 @@
  * fed by the same builder function, so the two can never disagree.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Coins } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,9 +51,28 @@ function str(formData: FormData, key: string): string {
   return typeof value === 'string' ? value : '';
 }
 
+/**
+ * What each box accepts, as a shape the WHOLE entry must match after the
+ * keystroke. Whole completed years, at most two digits. Dollars with at most
+ * two decimal places, where a trailing point is allowed because the clerk is
+ * mid-entry ("150." on the way to "150.00").
+ *
+ * REJECT THE KEYSTROKE, NEVER EDIT THE ENTRY. Until 2026-09 (P5-3) these
+ * inputs stripped every non-digit from whatever was typed, so "150.00" was
+ * stored as "15000" and "2.5" as "25": a sea pay a hundred times too large
+ * and a length of service ten times too long, both silently, both feeding
+ * the forfeiture ceiling. A keystroke that would take the entry outside its
+ * shape is dropped and the previous value kept, and the box says why.
+ */
+const YEARS_SHAPE = /^\d{0,2}$/;
+const DOLLARS_SHAPE = /^\d*(\.\d{0,2})?$/;
+
 export function AccusedPayFactsSection({ formData, setFormData, SectionCard }: SectionProps) {
   const write = (patch: Record<string, string>) =>
     setFormData((prev) => ({ ...prev, ...patch }));
+
+  const [yearsRejected, setYearsRejected] = useState<string | null>(null);
+  const [payRejected, setPayRejected] = useState<string | null>(null);
 
   const ladder = formForfeitureLadder(formData as unknown as { [key: string]: unknown });
 
@@ -86,11 +105,24 @@ export function AccusedPayFactsSection({ formData, setFormData, SectionCard }: S
               id="accused-years-of-service"
               inputMode="numeric"
               placeholder="4"
+              aria-invalid={yearsRejected !== null || undefined}
               value={str(formData, 'accusedYearsOfService')}
-              onChange={(e) =>
-                write({ accusedYearsOfService: e.target.value.replace(/[^0-9]/g, '').slice(0, 2) })
-              }
+              onChange={(e) => {
+                const next = e.target.value;
+                if (!YEARS_SHAPE.test(next)) {
+                  setYearsRejected(next);
+                  return;
+                }
+                setYearsRejected(null);
+                write({ accusedYearsOfService: next });
+              }}
             />
+            {yearsRejected !== null && (
+              <p className="text-[11px] font-medium text-destructive" role="alert">
+                Whole years only, up to two digits. &quot;{yearsRejected}&quot; was not stored;
+                the box still holds &quot;{str(formData, 'accusedYearsOfService')}&quot;.
+              </p>
+            )}
             <p className="text-[11px] text-muted-foreground">
               Round DOWN. A Marine at 1 year 10 months is 1, not 2. The pay table is banded,
               so one band crossed in error moves the ceiling by real money.
@@ -105,16 +137,28 @@ export function AccusedPayFactsSection({ formData, setFormData, SectionCard }: S
               <span className="text-sm text-muted-foreground">$</span>
               <Input
                 id="accused-sea-hardship-pay"
-                inputMode="numeric"
+                inputMode="decimal"
                 placeholder="0"
+                aria-invalid={payRejected !== null || undefined}
                 value={str(formData, 'accusedSeaHardshipDutyPay')}
-                onChange={(e) =>
-                  write({
-                    accusedSeaHardshipDutyPay: e.target.value.replace(/[^0-9]/g, '').slice(0, 6),
-                  })
-                }
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (!DOLLARS_SHAPE.test(next)) {
+                    setPayRejected(next);
+                    return;
+                  }
+                  setPayRejected(null);
+                  write({ accusedSeaHardshipDutyPay: next });
+                }}
               />
             </div>
+            {payRejected !== null && (
+              <p className="text-[11px] font-medium text-destructive" role="alert">
+                Dollars and cents only, digits with at most two decimal places. &quot;
+                {payRejected}&quot; was not stored; the box still holds &quot;
+                {str(formData, 'accusedSeaHardshipDutyPay')}&quot;.
+              </p>
+            )}
             <p className="text-[11px] text-muted-foreground">
               Blank for most Marines. JAGMAN 0111.i: pay subject to forfeiture is basic pay{' '}
               <em>plus sea duty or hardship duty pay</em>. Leaving it blank on a Marine who

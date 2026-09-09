@@ -153,14 +153,14 @@ export function VacationSection({ formData, setFormData, SectionCard }: SectionP
             <div key={index} className="rounded-md border p-3 space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-[260px] flex-1 space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">
+                  <Label className="text-[11px] text-muted-foreground" htmlFor={`vacation-${index}-suspension`}>
                     Which item 7 suspension this vacates
                   </Label>
                   <Select
                     value={String(vacation.suspensionIndex)}
                     onValueChange={(value) => patch(index, { suspensionIndex: Number(value) })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id={`vacation-${index}-suspension`}>
                       <SelectValue placeholder="Select the suspension" />
                     </SelectTrigger>
                     <SelectContent>
@@ -248,10 +248,11 @@ export function VacationSection({ formData, setFormData, SectionCard }: SectionP
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">
+                  <Label className="text-[11px] text-muted-foreground" htmlFor={`vacation-${index}-authority-grade`}>
                     Pay grade of the vacating commander
                   </Label>
                   <Input
+                    id={`vacation-${index}-authority-grade`}
                     value={vacation.vacatingAuthorityGrade ?? ''}
                     onChange={(e) => patch(index, { vacatingAuthorityGrade: e.target.value })}
                     placeholder="e.g. O5"
@@ -266,7 +267,7 @@ export function VacationSection({ formData, setFormData, SectionCard }: SectionP
               </div>
 
               <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Outcome</Label>
+                <Label className="text-[11px] text-muted-foreground" htmlFor={`vacation-${index}-status`}>Outcome</Label>
                 <Select
                   value={vacation.status}
                   onValueChange={(value) =>
@@ -279,7 +280,7 @@ export function VacationSection({ formData, setFormData, SectionCard }: SectionP
                     })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id={`vacation-${index}-status`}>
                     <SelectValue placeholder="Select the outcome" />
                   </SelectTrigger>
                   <SelectContent>
@@ -312,10 +313,11 @@ export function VacationSection({ formData, setFormData, SectionCard }: SectionP
 
               {vacation.status === 'vacated-part' && (
                 <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">
+                  <Label className="text-[11px] text-muted-foreground" htmlFor={`vacation-${index}-detail`}>
                     What was vacated
                   </Label>
                   <Input
+                    id={`vacation-${index}-detail`}
                     value={vacation.vacatedDetail ?? ''}
                     onChange={(e) => patch(index, { vacatedDetail: e.target.value })}
                     placeholder="e.g. 7 of the 14 days of restriction"

@@ -71,6 +71,7 @@
 import type { FormData } from '@/types';
 import type { Navmc10132PunishmentEntry, Navmc10132Suspension } from '@/types/navmc';
 import { resolvePunishment } from '@/lib/navmc10132-utils';
+import { parseWholeNumber } from '@/lib/navmc10132-money';
 
 /** MCM Part V para 6.a(2). Months, because the order says months. */
 export const SUSPENSION_MAX_MONTHS = 6;
@@ -102,8 +103,12 @@ function daysInMonth(year: number, month: number): number {
  */
 export function addMonths(iso: string, months: number): string | null {
   const parts = parseIso(iso);
-  if (parts === null || !Number.isFinite(months)) return null;
-  const total = parts.m - 1 + Math.trunc(months);
+  // WHOLE MONTHS ONLY. `Math.trunc` used to sit here, so a 6.5-month
+  // suspension computed as six months and passed under the MCM Part V para
+  // 6.a(2) cap it exceeds. A fractional count is not a shorter count, it is
+  // one this function cannot place on a calendar.
+  if (parts === null || !Number.isInteger(months)) return null;
+  const total = parts.m - 1 + months;
   const year = parts.y + Math.floor(total / 12);
   const month = (total % 12 + 12) % 12 + 1;
   const day = Math.min(parts.d, daysInMonth(year, month));
@@ -113,9 +118,9 @@ export function addMonths(iso: string, months: number): string | null {
 /** `iso` plus a whole number of days. */
 export function addDays(iso: string, days: number): string | null {
   const parts = parseIso(iso);
-  if (parts === null || !Number.isFinite(days)) return null;
+  if (parts === null || !Number.isInteger(days)) return null;
   const base = Date.UTC(parts.y, parts.m - 1, parts.d);
-  return toIso(new Date(base + Math.trunc(days) * 86400000));
+  return toIso(new Date(base + days * 86400000));
 }
 
 /**
@@ -244,6 +249,14 @@ export interface SuspensionPeriod {
   latestLawfulEnd: string | null;
   /** True when `endsOnIfUninterrupted` is past `latestLawfulEnd`. */
   exceedsSixMonths: boolean;
+  /**
+   * True when item 7 states a period the app cannot read as a whole number
+   * of months or days ("6.5", "abc", "-3"). An EMPTY period is not
+   * unreadable, it is not entered. Reported by suspensionPeriodFindings so
+   * a period that computes to no date does not pass the six-month cap in
+   * silence, which is what `Math.trunc(6.5)` used to let happen.
+   */
+  periodUnreadable: boolean;
 }
 
 function suspensionEntries(formData: FormData): Navmc10132Suspension[] {
@@ -280,15 +293,22 @@ export function suspensionPeriods(formData: FormData): SuspensionPeriod[] {
 
     let stated = '';
     let endsOnIfUninterrupted: string | null = null;
+    let periodUnreadable = false;
 
+    // /^\d+$/ ONLY, via parseWholeNumber. Number("6.5") is 6.5 and addMonths
+    // used to truncate it, so a six-and-a-half-month suspension computed as
+    // six months and passed under the cap it exceeds. A zero count is
+    // unreadable too: a suspension "for 0 months" states no period.
     if (monthsText !== '') {
-      const months = Number(monthsText);
+      const months = parseWholeNumber(monthsText);
       stated = `${monthsText} month${months === 1 ? '' : 's'}`;
-      endsOnIfUninterrupted = Number.isFinite(months) && months > 0 ? addMonths(njpDate, months) : null;
+      periodUnreadable = months === null || months <= 0;
+      endsOnIfUninterrupted = months === null || months <= 0 ? null : addMonths(njpDate, months);
     } else if (daysText !== '') {
-      const days = Number(daysText);
+      const days = parseWholeNumber(daysText);
       stated = `${daysText} day${days === 1 ? '' : 's'}`;
-      endsOnIfUninterrupted = Number.isFinite(days) && days > 0 ? addDays(njpDate, days) : null;
+      periodUnreadable = days === null || days <= 0;
+      endsOnIfUninterrupted = days === null || days <= 0 ? null : addDays(njpDate, days);
     }
 
     return {
@@ -297,6 +317,7 @@ export function suspensionPeriods(formData: FormData): SuspensionPeriod[] {
       code,
       stated,
       endsOnIfUninterrupted,
+      periodUnreadable,
       latestLawfulEnd,
       exceedsSixMonths:
         endsOnIfUninterrupted !== null &&
@@ -328,18 +349,39 @@ export interface SuspensionPeriodFinding {
  * array by construction; punishmentIndex is not.
  */
 export function suspensionPeriodFindings(formData: FormData): SuspensionPeriodFinding[] {
-  return suspensionPeriods(formData)
-    .filter((period) => period.exceedsSixMonths)
-    .map((period) => ({
-      id: `suspension-over-six-months-${period.suspensionIndex}`,
-      citation: 'MCM Part V para 6.a(2)',
-      rule: `The suspension of ${period.code || 'the item 6 punishment'} runs to ${period.endsOnIfUninterrupted}, past the ${SUSPENSION_MAX_MONTHS}-month limit.`,
-      detail:
-        `Item 7 suspends ${period.code || 'a punishment'} for ${period.stated}, which from the ` +
-        `item 6 date runs to ${period.endsOnIfUninterrupted}. A suspension may not exceed ` +
-        `${SUSPENSION_MAX_MONTHS} months from the date of the suspension, so the latest lawful ` +
-        `end is ${period.latestLawfulEnd}. Shorten the period.`,
-    }));
+  return suspensionPeriods(formData).flatMap((period) => {
+    // AN UNREADABLE PERIOD IS A FINDING, NOT A SILENCE. A period the app
+    // cannot place on the calendar cannot be checked against the six-month
+    // cap, and until 2026-09 that check simply did not run. This is the
+    // "unreadable period" report the V-22 wrapper carries as a block.
+    if (period.periodUnreadable) {
+      return [
+        {
+          id: `suspension-period-unreadable-${period.suspensionIndex}`,
+          citation: 'MCM Part V para 6.a(2)',
+          rule: `The suspension of ${period.code || 'the item 6 punishment'} states an unreadable period.`,
+          detail:
+            `Item 7 suspends ${period.code || 'a punishment'} for "${period.stated}", which is not a ` +
+            'whole number of months or days. The app cannot check it against the ' +
+            `${SUSPENSION_MAX_MONTHS}-month limit, so export is blocked rather than the check ` +
+            'skipped. Enter the period as whole months or whole days.',
+        },
+      ];
+    }
+    if (!period.exceedsSixMonths) return [];
+    return [
+      {
+        id: `suspension-over-six-months-${period.suspensionIndex}`,
+        citation: 'MCM Part V para 6.a(2)',
+        rule: `The suspension of ${period.code || 'the item 6 punishment'} runs to ${period.endsOnIfUninterrupted}, past the ${SUSPENSION_MAX_MONTHS}-month limit.`,
+        detail:
+          `Item 7 suspends ${period.code || 'a punishment'} for ${period.stated}, which from the ` +
+          `item 6 date runs to ${period.endsOnIfUninterrupted}. A suspension may not exceed ` +
+          `${SUSPENSION_MAX_MONTHS} months from the date of the suspension, so the latest lawful ` +
+          `end is ${period.latestLawfulEnd}. Shorten the period.`,
+      },
+    ];
+  });
 }
 
 /**

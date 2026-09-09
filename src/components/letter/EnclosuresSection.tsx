@@ -164,12 +164,12 @@ export function EnclosuresSection({
                 </Alert>
 
                 <div className="flex items-center gap-3">
-                  <Label className="whitespace-nowrap">Starting Enclosure:</Label>
+                  <Label className="whitespace-nowrap" htmlFor="encl-starting-number">Starting Enclosure:</Label>
                   <Select
                     value={formData.startingEnclosureNumber}
                     onValueChange={(val) => setFormData({ ...formData, startingEnclosureNumber: val })}
                   >
-                    <SelectTrigger className="w-[200px]">
+                    <SelectTrigger className="w-[200px]" id="encl-starting-number">
                       <SelectValue placeholder="Select starting number" />
                     </SelectTrigger>
                     <SelectContent>

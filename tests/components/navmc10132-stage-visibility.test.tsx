@@ -746,7 +746,11 @@ describe('a fully signed section collapses to its record', () => {
     // 'Item 19, as it will print' belongs to this card alone.
     expect(screen.getByText('Item 19, as it prints on the signed form')).toBeInTheDocument();
     expect(screen.queryByText('Item 19, as it will print')).not.toBeInTheDocument();
-    expect(screen.queryByRole('combobox', { name: /rank/i })).not.toBeInTheDocument();
+    // P8-3 gave every trigger its label's name, so a role query for
+    // "Rank" now finds item 8A's picker. The item 19 picker is the one
+    // AccusedRankSection labels through the accused-rank id.
+    expect(document.getElementById('accused-rank')).toBeNull();
+    expect(document.getElementById('accused-pay-grade')).toBeNull();
   });
 
   // Item 19 is stated ONCE on this screen. The collapsed summary above owns

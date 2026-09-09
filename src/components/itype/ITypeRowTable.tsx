@@ -84,6 +84,7 @@ export const ITypeRowTable: React.FC<ITypeRowTableProps> = ({
                       }}
                     >
                       <Input
+                        aria-label={`${c.label}, row ${index + 1}`}
                         value={row[c.key] ?? ''}
                         onChange={(e) => handleChange(index, c.key, e.target.value)}
                         placeholder={c.label}

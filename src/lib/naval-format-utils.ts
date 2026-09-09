@@ -4,6 +4,7 @@
  */
 
 import { FormData, ParagraphData } from '@/types';
+import { parseIsoLocalDate } from './date-utils';
 
 /**
  * Gets the font name based on user selection
@@ -152,9 +153,14 @@ export function formatCancellationDate(dateString: string): string {
   if (!dateString) return '';
   
   try {
-    const dateObj = new Date(dateString);
-    if (isNaN(dateObj.getTime())) return dateString;
-    
+    // A bare ISO date must be parsed by parts into a LOCAL date: new Date(iso)
+    // is UTC midnight, so '2026-07-01' printed 'Jun 2026' west of Greenwich.
+    // A rolled ISO date (2026-02-31) is returned unchanged rather than handed
+    // to the lenient Date parser.
+    const isIso = /^\d{4}-\d{1,2}-\d{1,2}$/.test(dateString.trim());
+    const dateObj = isIso ? parseIsoLocalDate(dateString) : new Date(dateString);
+    if (!dateObj || isNaN(dateObj.getTime())) return dateString;
+
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const month = months[dateObj.getMonth()];
     const year = dateObj.getFullYear();

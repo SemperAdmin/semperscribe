@@ -136,12 +136,12 @@ export function VictimsSection({ formData, setFormData, SectionCard }: SectionPr
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                 <div>
-                  <Label className="text-xs">Status</Label>
+                  <Label className="text-xs" htmlFor={`victim-${letter}-status`}>Status</Label>
                   <Select
                     value={victim.status}
                     onValueChange={(value) => updateVictim(index, { status: value as Navmc10132Victim['status'] })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id={`victim-${letter}-status`}>
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -152,12 +152,12 @@ export function VictimsSection({ formData, setFormData, SectionCard }: SectionPr
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Sex</Label>
+                  <Label className="text-xs" htmlFor={`victim-${letter}-sex`}>Sex</Label>
                   <Select
                     value={victim.sex}
                     onValueChange={(value) => updateVictim(index, { sex: value as Navmc10132Victim['sex'] })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id={`victim-${letter}-sex`}>
                       <SelectValue placeholder="Select sex" />
                     </SelectTrigger>
                     <SelectContent>
@@ -168,12 +168,12 @@ export function VictimsSection({ formData, setFormData, SectionCard }: SectionPr
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Race</Label>
+                  <Label className="text-xs" htmlFor={`victim-${letter}-race`}>Race</Label>
                   <Select
                     value={victim.race}
                     onValueChange={(value) => updateVictim(index, { race: value as Navmc10132Victim['race'] })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id={`victim-${letter}-race`}>
                       <SelectValue placeholder="Select race" />
                     </SelectTrigger>
                     <SelectContent>
@@ -184,12 +184,12 @@ export function VictimsSection({ formData, setFormData, SectionCard }: SectionPr
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Ethnicity</Label>
+                  <Label className="text-xs" htmlFor={`victim-${letter}-ethnicity`}>Ethnicity</Label>
                   <Select
                     value={victim.ethnicity}
                     onValueChange={(value) => updateVictim(index, { ethnicity: value as Navmc10132Victim['ethnicity'] })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id={`victim-${letter}-ethnicity`}>
                       <SelectValue placeholder="Select ethnicity" />
                     </SelectTrigger>
                     <SelectContent>

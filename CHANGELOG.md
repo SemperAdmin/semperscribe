@@ -5,6 +5,211 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.0] - 2026-09-07
+
+Remediation of the 2026-09-07 findings report (docs/AUDIT_2026-09-07.md).
+Every item carries a regression test written before the fix.
+
+### Fixed
+
+- NAVMC 10132: the signed base file is keyed per document, the incremental
+  write runs only for a document which loaded that file, and a fresh
+  document never writes into another Marine's signed UPB. A fill failure
+  is an export failure, not a placeholder page with a success toast, in
+  the browser and the companion. Refused field writes are named in the
+  toast. Save carries the base with the document (P6-1, P6-5, P6-6, P6-7).
+- NJP money: one dollar parser for every forfeiture field ($ and thousands
+  separators accepted, exponent and hex refused); V-20 and W-07 BLOCK on an
+  unreadable non-empty amount instead of skipping; item 6 prints one
+  dollar sign; the pay-facts inputs keep the decimal point (150.00 no
+  longer stores 15000); suspension periods must be whole months and days;
+  PRIUM fields refuse cents and six digits; negative and fractional day
+  counts are flagged (P5-1, P5-3, P5-6, P5-7, P5-12).
+- Dates: ISO dates parse as local calendar days, so 15 Jan prints 15 Jan
+  west of Greenwich and a 1 July cancellation prints July; counseling
+  intervals clamp to month ends (31 Aug plus six months is 28 Feb);
+  rolled dates such as 31 Feb are rejected; NAVMC 10922 day counts are
+  DST-safe; two-decimal JEPES marks band. The test suite runs pinned to
+  America/Los_Angeles (P5-2, P5-4, P5-9, P5-10, P5-11).
+- Validators: the SSIC change-annotation strip, the acronym definition
+  scan and the rich-text tokenizer are linear; 200 000 spaces or 40 000
+  distinct acronyms complete in milliseconds where they took 20 to 66
+  seconds on the main thread and in the companion (P4-1, P4-2, P4-3).
+- Save Draft reports success only after the write; a failed write keeps
+  the working copy and the header stays Unsaved. Escape or a click
+  outside the recovery dialog keeps the copy; Discard asks once inside
+  the dialog. Working copies are per tab, a stale write is refused, and a
+  second tab's Discard deletes only its own copy and files. Loading a
+  draft, importing or picking a template over unsaved work prompts first
+  and starts from a blank document, so no signature fields, host or NAVMC
+  base ride into the new one. AMHS copy and library rename, duplicate and
+  delete report failures (P6-2, P6-3, P6-4, P6-9, P6-10, P6-17).
+- The live preview drops superseded renders and shows a notice when the
+  last render failed. Concurrent export scans settle the earlier prompt.
+  A failed File System Access write is aborted so no empty file is left.
+  IndexedDB version changes and blocked opens are reported; a new service
+  worker prompts for reload and never caches an error page as the offline
+  shell (P6-11, P6-12, P6-13, P6-15, P6-16).
+
+### Security
+
+- The signature request link is encrypted (#es=) with a password of at
+  least 12 characters, refused in EDMS mode when unprotected, and gated by
+  the sensitive-data scan, as is the sign-ready PDF and every share link.
+  Share passwords are 12 characters minimum with a passphrase generator.
+  Share payloads are size-capped before decoding (P2-1, P2-6, P2-11, P3-2).
+- GunnyBot proxy URLs are loopback-only unless the user acknowledges a
+  named remote host in Settings; EDMS mode refuses a remote proxy at send
+  time; the destination host is shown beside Send (P2-2).
+- Companion: Host and Origin checks (403 on rebinding), an optional bearer
+  token which becomes mandatory for a non-loopback bind, own-property
+  document-type lookup, EDMS context validated in both skins, atomic
+  temp-and-rename output writes, no output path in error bodies
+  (P2-3, P2-4, P2-9, P2-10, P6-14, P6-20).
+- Uploaded PDFs are stripped of OpenAction, page and annotation actions of
+  the Launch, JavaScript, SubmitForm, ImportData, GoToR and GoToE kinds
+  before they are merged into an export (P4-4). Document import refuses
+  files over 10 MB before reading them (P4-5). An unseparated nine-digit
+  SSN is reported by the export and GunnyBot scans (P2-8).
+- Settings, Data, "Delete all local data" clears every IndexedDB store,
+  every app key in localStorage and sessionStorage, then reloads (P2-5).
+  Auto-backup keeps the newest five snapshots per document, deletes them
+  with the document, and warns when the folder looks synced (P3-3).
+
+### Accessibility
+
+- Signature placement is keyboard-operable: Add signature field, arrow
+  keys move, Alt+arrows resize, Delete removes, each field named. Every
+  select, input and textarea across the forms carries an accessible name.
+  DynamicForm checkboxes are named. The command palette has a title,
+  valid listbox children and returns focus. Dark-theme header text,
+  preview placeholders, tab labels, the wordmark and the footer meet
+  4.5:1. Heading order is fixed and the h1 survives at phone width. The
+  axe suite covers every editor, the Settings and Share dialogs, the
+  command palette, dark theme, header and footer, and passes with no
+  serious or critical violation (P8-1 to P8-12).
+
+### Changed
+
+- Privacy and Security Notice: a name or an EDIPI is not CUI on its own.
+  Whether a completed record about a real Marine is CUI in the Privacy
+  category (PRVCY) is the user's command's determination, and where it
+  is, the authorizing-official condition applies to it. New Section 6A states what is kept, that
+  nothing expires on its own, and how to delete it (P9-1, P9-4).
+- LICENSES.md names @axe-core/playwright as the MPL-2.0 direct
+  devDependency; the typescript pin carries its reason and a Dependabot
+  ignore (P7-2, P7-4).
+
+### Fixed, 2026-09-09
+
+- cloud.gov: the signature-field preview and the position-paper page
+  count reported "Failed to load PDF file." The 2026-09-08 CSP set no
+  `blob:` on `connect-src`, and pdfjs loaded a `URL.createObjectURL`
+  string through XHR, which CSP governs under `connect-src`. Measured
+  live with a `securitypolicyviolation` listener (`connect-src`, `blob`,
+  enforce). An interim build added `blob:` to `connect-src` to pass;
+  this change removes it again, passing the Blob object itself to both
+  pdfjs `<Document>` consumers instead (`SignaturePlacementModal.tsx`,
+  and `PageCountIndicator.tsx` via a new `previewBlob` from
+  `useLivePreview`), which react-pdf reads through FileReader with no
+  fetch, so `connect-src` keeps no `blob:`. The 09-08 smoke test covered
+  `@react-pdf/renderer` only, not pdfjs.
+- The e2e suite now runs under the production response headers:
+  `scripts/serve-out.mjs` mirrors `security-headers.conf` on every
+  response, so a CSP that breaks the app fails locally instead of only
+  on cloud.gov. A new `tests/e2e/csp-pdfjs.spec.ts` drives both pdfjs
+  consumers - the signature placement modal and the position-paper
+  page count - under that policy, and `E2E_BASE_URL` runs the same
+  specs against a deployed URL as the post-`cf push` check.
+- A Windows build of Next 16.3.4 writes a nested route's RSC prefetch
+  payload as a DIRECTORY (`out/privacy/__next.privacy/__PAGE__.txt`)
+  instead of the FILE the browser requests
+  (`out/privacy/__next.privacy.__PAGE__.txt`). Measured 2026-09-09 on a
+  Windows build, against `privacy` and `dynamic-forms` (the root-level
+  `out/__next.__PAGE__.txt` came out correct). The App Router falls
+  back to a hard navigation on a failed prefetch, so the defect never
+  showed up while clicking around; the live cloud.gov site, pushed
+  from such a build, 404s on those prefetches. `scripts/check-export.mjs`
+  (`npm run check:export`) now refuses an export with the defect and is
+  wired into both deploy paths - the new "Deploy to cloud.gov" GitHub
+  Actions workflow (`.github/workflows/deploy-cloudgov.yml`, builds on
+  Linux and pushes with a cloud.gov space-deployer service account, not
+  an SSO user) and `.github/workflows/deploy.yml` - plus a hard stop in
+  `scripts/deploy-cloudgov.ps1` step 6 for a manual Windows push.
+
+### Security, 2026-09-08
+
+- Response security headers on cloud.gov through the staticfile
+  buildpack: a Content-Security-Policy with `frame-ancestors 'none'`,
+  X-Frame-Options DENY, nosniff, one-year HSTS, no-referrer, a
+  Permissions-Policy denying unused device APIs, and COOP same-origin
+  (`public/Staticfile`, `public/nginx/conf/includes/security-headers.conf`).
+  Closes the 2026-09-08 review's top finding for that host. GitHub Pages
+  cannot set headers; SECURITY.md records the limit. A test guards the
+  config against a silent drop.
+- Share-link generated passphrase raised from four words to six
+  (`ShareLinkDialog.tsx`), about 34 bits to about 51.5 bits against the
+  600k-round PBKDF2, and the strength comment corrected. The manual
+  password check now rejects a long single-character run.
+
+### Rulings applied 2026-09-07
+
+- P5-5: the 5.d(4) combination cap is the extra-duty maximum the
+  imposing grade may award (`extraDutyMaximumFor`: 14 at company grade,
+  45 at field grade), not the imposed code's own ceiling.
+- P6-8: every save owns its own copy of its attached files
+  (`fileCopyForSave`). Deleting a save cascades to its copies alone.
+- P9-1: a name or an EDIPI is not CUI on its own; whether a completed
+  record is CUI (Privacy) is the user's command's determination.
+- P2-7, P7-1, P7-3, P9-2: recorded as accepted risks in
+  `docs/RMF_READINESS.md` Section 9. eslint 10 measured as blocked by
+  eslint-config-next's plugin set.
+
+- P5-8: a vacation offence dated before the item 6 punishment date
+  blocks (V-29). The same date warns under new W-23, "confirm the
+  offence followed the imposition", because dates carry no time and the
+  suspension runs from the date of the punishment.
+
+## [0.12.0] - 2026-09-07
+
+### Added
+
+- Word export of the same-page endorsement written from scratch
+  (`generateSamePageCompositeDocxBlob`). The letter half is built as
+  the basic letter and the endorsement half as the bare block, and the
+  two are joined in the letter's section with Figure 9-1's rule between
+  them, an empty line carrying a 0.75 pt bottom border, so the block
+  follows the letter's last line, the continuation header and page
+  numbers run on, and Word paginates the pair as one document. When the
+  block does not fit under the signature, Word carries it to the next
+  page. Measured through LibreOffice: Figure 9-1 lands on one page with
+  both signers, as the PDF does. Reverses the 0.10.0 note.
+- A same-page endorsement onto an ATTACHED letter exports to Word as
+  the endorsement on a page of its own, since Word takes no PDF host,
+  and the toast says so. Before this the export was refused outright.
+- Counseling Worksheet: a provisional JEPES benchmark under Step 5 for
+  Marines in the grades Pvt through Cpl (docs/COUNSELING_JEPES_BENCHMARK_PLAN.md),
+  with the MCO 1616.1 Figure 1-2 rubric, the para 3.a band rules as
+  suggestions, a Start at 2.5 control, prior marks with a delta, and
+  Section VI-A on the record. Hidden for E-5 and above. Descriptors are
+  editor-only.
+- Counseling Worksheet: the occasion "JEPES evaluation (formerly
+  proficiency and conduct marks)", citing MCO 1616.1.
+
+### Fixed
+
+- Counseling Worksheet PDF: a word wider than its cell breaks inside the
+  cell; a check label wider than its column wraps under its box; a row
+  taller than a page splits across pages with "(continued)" labels
+  instead of running through the footer marking.
+
+### Changed
+
+- `generateDocxBlob` is a thin wrapper over `buildDocxParts`, which
+  returns the section and any structural sections rather than the
+  packed document, so a composer assembles more than one render into
+  one file.
+
 ## [0.11.1] - 2026-09-06
 
 ### Changed

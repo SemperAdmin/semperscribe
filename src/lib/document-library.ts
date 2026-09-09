@@ -29,6 +29,24 @@ export const MAX_ENCLOSURE_FILE_BYTES = 25 * 1024 * 1024;
 export const WORKING_COPY_DOC_ID = 'working-copy';
 
 /**
+ * P6-4: the session id of the working copy written before tabs had
+ * sessions. Its files live under the bare WORKING_COPY_DOC_ID.
+ */
+export const LEGACY_WORKING_COPY_SESSION_ID = 'legacy';
+
+/**
+ * P6-4: the write-through file owner id for one tab's working copy.
+ * Every tab used to share WORKING_COPY_DOC_ID, so a second tab's Discard
+ * swept the first tab's live enclosure bytes. Folding the per-tab
+ * autosave session id in scopes the sweep to the copy it belongs to.
+ */
+export function workingCopyDocIdFor(sessionId: string): string {
+  return sessionId === LEGACY_WORKING_COPY_SESSION_ID
+    ? WORKING_COPY_DOC_ID
+    : `${WORKING_COPY_DOC_ID}:${sessionId}`;
+}
+
+/**
  * ENC: a stored enclosure file. Bytes live here - NOT inside the
  * SavedLetter record - so libLoadAll never pulls binaries into memory.
  */
@@ -46,13 +64,56 @@ export interface StoredEnclosureFile {
 /** localStorage flag guarding the one-time legacy import. */
 export const LIBRARY_MIGRATED_KEY = 'semperscribe-library-migrated';
 
+/**
+ * P3-3: what libDelete calls after the document is gone, so the backup
+ * folder (lib/auto-backup) drops that document's snapshots too. A hook
+ * rather than an import: auto-backup imports this module. Nothing is
+ * registered until auto-backup loads, and a hook failure is logged,
+ * never surfaced as a failed delete - the library write already held.
+ */
+type BackupDeleteHook = (id: string) => Promise<unknown>;
+let backupDeleteHook: BackupDeleteHook | null = null;
+
+export function registerBackupDeleteHook(hook: BackupDeleteHook | null): void {
+  backupDeleteHook = hook;
+}
+
+/**
+ * P6-11: set when another tab (a newer deploy) asked this connection to
+ * step aside for a schema upgrade. The connection is closed on the spot;
+ * every later open refuses with RELOAD_REQUIRED_MESSAGE, which the Save
+ * path shows, because this tab's code no longer matches the database.
+ */
+export const RELOAD_REQUIRED_MESSAGE =
+  'The app was updated in another tab. Reload the app, then save again.';
+let reloadRequired = false;
+
+export function isReloadRequired(): boolean {
+  return reloadRequired;
+}
+
+/** Test seam: the flag is module state and tests share the module. */
+export function resetReloadRequiredForTests(): void {
+  reloadRequired = false;
+}
+
 export function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
       reject(new Error('IndexedDB unavailable'));
       return;
     }
+    if (reloadRequired) {
+      reject(new Error(RELOAD_REQUIRED_MESSAGE));
+      return;
+    }
     const req = indexedDB.open(DB_NAME, DB_VERSION);
+    // P6-11: an older tab holding the database open blocks this
+    // upgrade. Without a handler the promise never settles and the Save
+    // spinner runs forever; reject so the caller can say what to do.
+    req.onblocked = () => {
+      reject(new Error('The document library is open in another tab running an older version. Close or reload that tab, then try again.'));
+    };
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) {
@@ -68,7 +129,16 @@ export function openDb(): Promise<IDBDatabase> {
         files.createIndex('docId', 'docId', { unique: false });
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      // P6-11: a newer deploy in another tab wants to upgrade. Close so
+      // its open is not blocked, and flag this tab as stale.
+      db.onversionchange = () => {
+        reloadRequired = true;
+        db.close();
+      };
+      resolve(db);
+    };
     req.onerror = () => reject(req.error ?? new Error('IndexedDB open failed'));
   });
 }
@@ -132,6 +202,47 @@ export async function libDelete(id: string): Promise<void> {
     await txDone(tx);
   } finally {
     db.close();
+  }
+  if (backupDeleteHook) {
+    try {
+      await backupDeleteHook(id);
+    } catch (error) {
+      console.warn('Backup folder cleanup failed', error);
+    }
+  }
+}
+
+/**
+ * P2-5: everything the app keeps in this browser, in one call. The three
+ * IndexedDB stores (documents, settings including the working copies and
+ * the backup directory handle, enclosure and NAVMC base files), the
+ * localStorage keys (legacy letters, profile, disclaimer flag, migration
+ * flag, GunnyBot proxy), and the EDMS session flag. "Clear saved letters"
+ * alone left the working copy, the profile, the proxy URL and the backup
+ * handle behind on a shared workstation.
+ */
+export async function clearAllLocalData(): Promise<void> {
+  const db = await openDb();
+  try {
+    const tx = db.transaction([STORE, FILES_STORE, SETTINGS_STORE], 'readwrite');
+    tx.objectStore(STORE).clear();
+    tx.objectStore(FILES_STORE).clear();
+    tx.objectStore(SETTINGS_STORE).clear();
+    await txDone(tx);
+  } finally {
+    db.close();
+  }
+  if (typeof localStorage !== 'undefined') {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('semperscribe') || key === 'navalLetters' || key.startsWith('gunnybot.') || key === 'theme') {
+        localStorage.removeItem(key);
+      }
+    }
+  }
+  if (typeof sessionStorage !== 'undefined') {
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith('semperscribe')) sessionStorage.removeItem(key);
+    }
   }
 }
 
@@ -251,6 +362,62 @@ export async function fileReparentByIds(fileIds: string[], toDocId: string): Pro
   } finally {
     db.close();
   }
+}
+
+/**
+ * P6-8: every save owns its own copy of the bytes it references. Copies
+ * each listed file to a fresh id owned by `toDocId`, in one transaction,
+ * and returns old id to new id. Deleting any save then cascades to that
+ * save's copies alone; an older save keeps its enclosures, and the
+ * working copy keeps the bytes the editor is still holding. A missing
+ * source is reported in `missing` rather than thrown, so a save with one
+ * lost attachment still lands and the caller can say which one.
+ */
+export async function fileCopyForSave(
+  fileIds: readonly string[],
+  toDocId: string,
+): Promise<{ ids: Map<string, string>; missing: string[] }> {
+  const ids = new Map<string, string>();
+  const missing: string[] = [];
+  const unique = Array.from(new Set(fileIds.filter((id) => id !== '')));
+  if (unique.length === 0) return { ids, missing };
+  const db = await openDb();
+  try {
+    const tx = db.transaction(FILES_STORE, 'readwrite');
+    const store = tx.objectStore(FILES_STORE);
+    for (const fileId of unique) {
+      const req = store.get(fileId);
+      req.onsuccess = () => {
+        const record = req.result as StoredEnclosureFile | undefined;
+        if (!record) {
+          missing.push(fileId);
+          return;
+        }
+        const copyId = saveCopyId(fileId);
+        ids.set(fileId, copyId);
+        store.put({ ...record, fileId: copyId, docId: toDocId, bytes: record.bytes.slice(0) });
+      };
+    }
+    await txDone(tx);
+  } finally {
+    db.close();
+  }
+  return { ids, missing };
+}
+
+/**
+ * A copy keeps the source id's prefix (a NAVMC 10132 base id is
+ * recognised by its `navmc10132-base:` prefix) and appends a fresh
+ * suffix, so the copy resolves through every path the original did.
+ */
+function saveCopyId(sourceId: string): string {
+  const uuid =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const colon = sourceId.indexOf(':');
+  const prefix = colon > 0 ? sourceId.slice(0, colon + 1) : '';
+  return `${prefix}${uuid}`;
 }
 
 /** Deletes every file owned by a document. */

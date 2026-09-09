@@ -213,11 +213,21 @@ export function SuspensionSection({ formData, setFormData, SectionCard }: Sectio
                   </div>
                   {on && (
                     <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {/* step="1" min="0": MCM Part V para 6.a(2) caps a suspension
+                          at six MONTHS, and a "6.5" here used to truncate to six
+                          and pass under it (P5-6). The period is whole months or
+                          whole days; njp-suspension-period.ts refuses anything
+                          else and V-22 blocks on it. */}
                       <div className="space-y-1">
-                        <Label className="text-xs">Suspended for (months)</Label>
+                        <Label className="text-xs" htmlFor={`suspend-${index}-months`}>
+                          Suspended for (months)
+                        </Label>
                         <Input
+                          id={`suspend-${index}-months`}
                           type="number"
-                          min={1}
+                          inputMode="numeric"
+                          step="1"
+                          min={0}
                           value={suspension?.months ?? ''}
                           onChange={(e) =>
                             setPeriod(index, { months: e.target.value, days: '' })
@@ -225,10 +235,15 @@ export function SuspensionSection({ formData, setFormData, SectionCard }: Sectio
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">or days</Label>
+                        <Label className="text-xs" htmlFor={`suspend-${index}-days`}>
+                          or days
+                        </Label>
                         <Input
+                          id={`suspend-${index}-days`}
                           type="number"
-                          min={1}
+                          inputMode="numeric"
+                          step="1"
+                          min={0}
                           value={suspension?.days ?? ''}
                           onChange={(e) =>
                             setPeriod(index, { days: e.target.value, months: '' })

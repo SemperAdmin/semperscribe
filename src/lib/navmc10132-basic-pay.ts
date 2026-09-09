@@ -46,6 +46,7 @@
  */
 
 import { createHash } from 'crypto';
+import { parseDollars, parseWholeNumber } from '@/lib/navmc10132-money';
 
 /** Where the table comes from. DFAS republishes it on 1 January, and may
  *  publish again mid-year when Congress legislates a separate raise. */
@@ -250,12 +251,21 @@ export function monthlyBasicPay(payGrade: string, yearsOfService: string | numbe
   if (yearsRaw === '') {
     return { kind: 'unavailable', reason: 'years-not-set', detail: 'No years of service are set.' };
   }
-  const years = Number(yearsRaw);
-  if (!Number.isFinite(years) || years < 0) {
+  // WHOLE COMPLETED YEARS, `\d+` and nothing else. Number() used to sit here
+  // and read "1e1" as ten years and "0x10" as sixteen, neither of which is a
+  // length of service a clerk typed on purpose. A numeric caller is held to
+  // the same rule.
+  const years =
+    typeof yearsOfService === 'number'
+      ? Number.isInteger(yearsOfService) && yearsOfService >= 0
+        ? yearsOfService
+        : null
+      : parseWholeNumber(yearsRaw);
+  if (years === null) {
     return {
       kind: 'unavailable',
       reason: 'unreadable-years',
-      detail: `"${yearsRaw}" is not a readable length of service.`,
+      detail: `"${yearsRaw}" is not a readable length of service. Enter completed years as a whole number.`,
     };
   }
 
@@ -474,16 +484,19 @@ export function forfeitureCeiling(input: ForfeitureCeilingInput): ForfeitureCeil
     monthly = basic.monthly;
   }
 
+  // Read through the one dollar reader (navmc10132-money.ts), so "150.00",
+  // "$150" and "1,200" all price and "1e2" does not.
   const rawExtra = input.seaHardshipDutyPay ?? 0;
   const extraText = typeof rawExtra === 'number' ? String(rawExtra) : rawExtra.trim();
-  const extra = extraText === '' ? 0 : Number(extraText);
-  if (!Number.isFinite(extra) || extra < 0) {
+  const extraParsed = extraText === '' ? { dollars: 0 } : parseDollars(extraText);
+  if (extraParsed === null) {
     return {
       kind: 'unavailable',
       reason: 'unreadable-extra-pay',
       detail: `"${extraText}" is not a readable amount of sea or hardship duty pay.`,
     };
   }
+  const extra = extraParsed.dollars;
 
   const subject = monthly + extra;
   const grade = normaliseGrade(input.payGrade);

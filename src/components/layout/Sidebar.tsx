@@ -234,7 +234,7 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
       <div className="flex-1 min-h-0 overflow-y-auto native-scroll">
         {/* Document Type Selector */}
         <div className="p-4 border-b border-border">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Document Type</h3>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Document Type</h2>
           <Accordion
             type="multiple"
             defaultValue={[]}
@@ -526,7 +526,7 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
 
         {/* Find in Document */}
         <div className="p-4">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Find in Document</h3>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Find in Document</h2>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             {/* D.8: the audit counted this input among the five visible

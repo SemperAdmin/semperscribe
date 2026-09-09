@@ -38,6 +38,18 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 // --- helpers ---------------------------------------------------------
 
+/**
+ * Whole calendar days from `a` to `b`, by their LOCAL calendar fields. A
+ * plain (b - a) / DAY_MS on local-midnight dates is 23 hours short across
+ * the spring DST change, so 7 Mar to 7 Apr floored to 30 days and the 30-day
+ * rule (MCO 1751.3 Ch 1 para 1.f) never fired. Date.UTC has no DST.
+ */
+function calendarDaysBetween(a: Date, b: Date): number {
+  const ua = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+  const ub = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.floor((ub - ua) / DAY_MS);
+}
+
 function dependents(formData: FormData): Navmc10922Dependent[] {
   return Array.isArray(formData.dependents) ? formData.dependents : [];
 }
@@ -442,7 +454,7 @@ function lifeEventClock(formData: FormData): ValidationIssue[] {
   const event = parseDateLoose(formData.lifeEventDate);
   const app = parseDateLoose(formData.dateOfApplication);
   if (!event || !app) return [];
-  const days = Math.floor((app.getTime() - event.getTime()) / DAY_MS);
+  const days = calendarDaysBetween(event, app);
   if (days <= 30) return [];
   return [issue(
     'navmc10922-30-day', 'warn',
@@ -512,7 +524,7 @@ function currencyForCmcRouting(formData: FormData, now: Date): ValidationIssue[]
     foreignDivorceHeuristic(formData).length > 0 ||
     cmcMarriageRouting(formData).length > 0;
   if (!routed) return [];
-  const days = Math.floor((now.getTime() - app.getTime()) / DAY_MS);
+  const days = calendarDaysBetween(app, now);
   if (days <= 42) return [];
   return [issue(
     'navmc10922-6-week', 'warn',

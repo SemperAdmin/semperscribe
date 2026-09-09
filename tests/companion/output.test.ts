@@ -6,13 +6,35 @@
  * subdirectory are each refused.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { CompanionError } from '../../companion/errors';
 import { outputDir, writeOutput } from '../../companion/output';
 
 const BYTES = new Uint8Array([1, 2, 3, 4]);
+
+/**
+ * Windows grants symlink creation only to administrators or accounts with
+ * SeCreateSymbolicLinkPrivilege (Developer Mode). Probe once, and skip the
+ * symlink cases where the host refuses, so the confinement checks which do
+ * not depend on the privilege still run there. CI runs on Linux, where the
+ * probe succeeds and every case runs.
+ */
+function hostCreatesSymlinks(): boolean {
+  const probe = mkdtempSync(path.join(os.tmpdir(), 'companion-symlink-probe-'));
+  try {
+    symlinkSync(probe, path.join(probe, 'self'), 'dir');
+    return true;
+  } catch {
+    return false;
+  } finally {
+    rmSync(probe, { recursive: true, force: true });
+  }
+}
+
+const itWithSymlinks = it.skipIf(!hostCreatesSymlinks());
 
 let base: string;
 let outside: string;
@@ -89,7 +111,7 @@ describe('writeOutput', () => {
     expect(error.code).toBe('output_path_rejected');
   });
 
-  it('refuses a symbolic link planted in the directory', async () => {
+  itWithSymlinks('refuses a symbolic link planted in the directory', async () => {
     const victim = path.join(outside, 'victim.pdf');
     await writeFile(victim, 'original');
     await symlink(victim, path.join(base, 'link.pdf'));
@@ -98,7 +120,7 @@ describe('writeOutput', () => {
     expect(await readFile(victim, 'utf8')).toBe('original');
   });
 
-  it('refuses a path through a symlinked subdirectory', async () => {
+  itWithSymlinks('refuses a path through a symlinked subdirectory', async () => {
     await symlink(outside, path.join(base, 'elsewhere'));
     const error = await expectRejected('elsewhere/escape.pdf');
     expect(error.code).toBe('output_path_rejected');
@@ -112,5 +134,108 @@ describe('writeOutput', () => {
   it('refuses an empty path and a null byte', async () => {
     expect((await expectRejected('   ')).code).toBe('output_path_rejected');
     expect((await expectRejected('bad\0name.pdf')).code).toBe('output_path_rejected');
+  });
+});
+
+/**
+ * AUDIT P6-14. The write used to open the final path with O_TRUNC and
+ * stream into it, so a failure part way through left a truncated file at
+ * the path the caller was about to be told about. The write now lands in
+ * a temp file beside the target and is renamed over it only once every
+ * byte is on disk.
+ */
+describe('writeOutput atomicity', () => {
+  const failingWriter = async (handle: { write: (b: Uint8Array) => Promise<unknown> }, bytes: Uint8Array) => {
+    await handle.write(bytes.subarray(0, 2));
+    throw new Error('disk full (injected)');
+  };
+
+  it('leaves no file at the final path and no temp file when the write fails mid-way', async () => {
+    await expect(
+      writeOutput('letter.pdf', BYTES, base, { writer: failingWriter }),
+    ).rejects.toThrow(/injected/);
+    const names = await readdir(base);
+    expect(names).toEqual([]);
+    expect(names.some((n) => n.includes('.tmp-'))).toBe(false);
+  });
+
+  it('keeps the previous file intact when a rewrite fails mid-way', async () => {
+    const target = path.join(base, 'letter.pdf');
+    await writeFile(target, 'previous render');
+    await expect(
+      writeOutput('letter.pdf', BYTES, base, { writer: failingWriter }),
+    ).rejects.toThrow(/injected/);
+    expect(await readFile(target, 'utf8')).toBe('previous render');
+    expect(await readdir(base)).toEqual(['letter.pdf']);
+  });
+
+  it('replaces an existing file whole and leaves no temp file behind', async () => {
+    const target = path.join(base, 'letter.pdf');
+    await writeFile(target, 'previous render');
+    const written = await writeOutput('letter.pdf', BYTES, base);
+    expect(written).toBe(target);
+    expect(new Uint8Array(await readFile(target))).toEqual(BYTES);
+    expect(await readdir(base)).toEqual(['letter.pdf']);
+  });
+
+  it('writes into a subdirectory without leaving a temp file', async () => {
+    await mkdir(path.join(base, 'batch'));
+    await writeOutput('batch/letter.pdf', BYTES, base);
+    expect(await readdir(path.join(base, 'batch'))).toEqual(['letter.pdf']);
+  });
+});
+
+/**
+ * AUDIT P6-20. A refusal used to carry the real output directory in its
+ * details and, for a missing directory, in its message. The path stays in
+ * the companion's log; the caller gets the code and a generic line.
+ */
+describe('writeOutput error bodies carry no path', () => {
+  function assertNoPath(error: CompanionError, ...paths: string[]) {
+    const text = `${error.message} ${JSON.stringify(error.details)}`;
+    for (const p of paths) {
+      expect(text).not.toContain(p);
+      expect(text).not.toContain(path.resolve(p));
+    }
+    expect(error.details.outDir).toBeUndefined();
+    expect(text).not.toMatch(/\/(tmp|home|var|srv|Users)\//);
+  }
+
+  it('for a traversal', async () => {
+    assertNoPath(await expectRejected('../escape.pdf'), base);
+  });
+
+  it('for a missing parent directory', async () => {
+    assertNoPath(await expectRejected('missing/letter.pdf'), base);
+  });
+
+  itWithSymlinks('for a symlinked subdirectory', async () => {
+    await symlink(outside, path.join(base, 'elsewhere'));
+    assertNoPath(await expectRejected('elsewhere/escape.pdf'), base, outside);
+  });
+
+  itWithSymlinks('for a planted symlink', async () => {
+    await writeFile(path.join(outside, 'victim.pdf'), 'original');
+    await symlink(path.join(outside, 'victim.pdf'), path.join(base, 'link.pdf'));
+    assertNoPath(await expectRejected('link.pdf'), base, outside);
+  });
+
+  it('for a directory at the target', async () => {
+    await mkdir(path.join(base, 'dir.pdf'));
+    const error = await expectRejected('dir.pdf');
+    expect(error.code).toBe('output_path_rejected');
+    assertNoPath(error, base);
+  });
+
+  it('for an output directory which does not exist', async () => {
+    const missing = path.join(path.dirname(base), 'never-made');
+    try {
+      await writeOutput('letter.pdf', BYTES, missing);
+      throw new Error('expected the write to be refused');
+    } catch (error) {
+      const companion = error as CompanionError;
+      expect(companion.code).toBe('output_not_configured');
+      assertNoPath(companion, missing);
+    }
   });
 });

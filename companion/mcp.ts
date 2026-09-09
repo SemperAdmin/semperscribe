@@ -18,6 +18,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { version as APP_VERSION } from '../package.json';
+import { PATTERNS as EDMS_PATTERNS } from '@/lib/edms-handoff';
 import type { EdmsContext } from '@/lib/edms-mode';
 import { errorPayload } from './errors';
 import { renderTimeoutMs, withTimeout } from './limits';
@@ -37,13 +38,30 @@ const documentSchema = z
   .union([z.string(), z.record(z.string(), z.unknown())])
   .describe('An NLDP package: the parsed object, or the JSON text of one.');
 
+/**
+ * The EDMS context reaches the returned filename, so each field takes the
+ * same shape the EDMS handoff link accepts (AUDIT P2-10). The patterns
+ * are advertised in the tool schema and enforced by the SDK before the
+ * tool runs; a requestId of "../x" never reaches the renderer.
+ */
 const edmsSchema = z
   .object({
-    requestId: z.string().optional(),
-    ruc: z.string(),
-    ssic: z.string(),
-    docType: z.string(),
-    section: z.string().optional(),
+    requestId: z
+      .string()
+      .regex(EDMS_PATTERNS.requestId)
+      .optional()
+      .describe('EDMS request ID: one to nine digits.'),
+    ruc: z.string().regex(EDMS_PATTERNS.ruc).describe('Unit RUC: one to eight alphanumerics.'),
+    ssic: z.string().regex(EDMS_PATTERNS.ssic).describe('Four or five digit SSIC.'),
+    docType: z
+      .string()
+      .regex(EDMS_PATTERNS.docType)
+      .describe('Document type id: lowercase letters, digits, and hyphens.'),
+    section: z
+      .string()
+      .regex(EDMS_PATTERNS.section)
+      .optional()
+      .describe('Reviewing section: letters, digits, spaces, hyphens, and slashes.'),
   })
   .describe('EDMS context. Present means the file takes the EDMS name convention.');
 

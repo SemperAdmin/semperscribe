@@ -80,6 +80,9 @@ describe('dates and the interval rule (NAVMC 2795 para 2001)', () => {
     expect(toNavalDate(d)).toBe('6 Sep 26');
     expect(parseNavalDate('2026-09-06')!.getDate()).toBe(6);
     expect(parseNavalDate('soon')).toBeNull();
+    expect(parseNavalDate('31 Feb 26')).toBeNull();
+    expect(parseNavalDate('0 Jan 26')).toBeNull();
+    expect(parseNavalDate('1 Jan 0026')).toBeNull();
   });
 
   it('gives lance corporals and below 30 days active, 3 months reserve', () => {
@@ -98,6 +101,8 @@ describe('dates and the interval rule (NAVMC 2795 para 2001)', () => {
     expect(computedNextSessionDate(form({ counselingMarineGrade: 'E-3', counselingOccasion: 'thirty-day' }))).toBe('6 Oct 26');
     expect(computedNextSessionDate(form({ counselingOccasion: 'follow-on' }))).toBe('6 Mar 27');
     expect(computedNextSessionDate(form({ date: '' }))).toBe('');
+    // "No more than 6 months": month arithmetic clamps to the end of the target month (P5-4).
+    expect(computedNextSessionDate(form({ date: '31 Aug 26', counselingOccasion: 'follow-on' }))).toBe('28 Feb 27');
   });
 });
 
@@ -361,7 +366,10 @@ describe('JEPES benchmark: bands, scope, suggestions', () => {
     expect(jepesBand('')).toBeNull();
     expect(jepesBand('5.1')).toBeNull();
     expect(jepesBand('abc')).toBeNull();
-    expect(jepesBand('2.55')).toBeNull();
+    // Two decimals are accepted and rounded to tenths for banding (P5-11).
+    expect(jepesBand('2.55')?.id).toBe('meets');
+    expect(jepesBand('4.50')?.id).toBe('exceptional');
+    expect(jepesBand('2.555')).toBeNull();
   });
 
   it('covers Private through Corporal only (MCO 1616.1 para 1)', () => {

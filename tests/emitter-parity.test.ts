@@ -18,7 +18,15 @@
  * neither emitter invents text the drafter never typed, and an empty
  * required field is reported by the validators instead.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Every case here renders a real PDF or DOCX and reads it back, and the
+// PDF path loads fonts on a worker's first render. A Windows host running
+// the full suite in parallel measured the 27-reference PDF case past the
+// 30 s global timeout on an unchanged renderer (918 ms here alone). The
+// budget is a hang detector, not a benchmark, so it is widened for this
+// file only.
+vi.setConfig({ testTimeout: 120_000 });
 import JSZip from 'jszip';
 
 import { generateDocxBlob } from '@/lib/docx-generator';

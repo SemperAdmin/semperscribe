@@ -26,7 +26,16 @@ updates:
       # zod 4.5.x carries a schema compiler on the classic import path,
       # +83 KB of initial-load JS (docs/audits/2026-09-05/bundle-attribution.md).
       - dependency-name: zod
+      # typescript is exact-pinned (package.json "//", P7-4): a minor
+      # compiler release can fail typecheck with no code change.
+      - dependency-name: typescript
       # Major versions are a review conversation, never an auto-PR.
+      # eslint 10 is the exception on the list, not in it: measured
+      # 2026-09-07, eslint@10.10.0 fails at load ("contextOrFilename.
+      # getFilename is not a function" from eslint-plugin-react@7.37.5,
+      # which eslint-config-next@16.3.4 pins). Take 10 when
+      # eslint-config-next ships a plugin set declaring an eslint 10
+      # peer (audit P7-3).
       - dependency-name: "*"
         update-types: [version-update:semver-major]
 

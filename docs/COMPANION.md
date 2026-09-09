@@ -33,7 +33,8 @@ template pages) from `public/` on disk through the asset seam in
 | Variable | Default | Meaning |
 |---|---|---|
 | `COMPANION_PORT` | `7719` | HTTP port |
-| `COMPANION_HOST` | `127.0.0.1` | HTTP bind address. Read the security section before changing it |
+| `COMPANION_HOST` | `127.0.0.1` | HTTP bind address. Anything but loopback requires `COMPANION_TOKEN`; read the security section before changing it |
+| `COMPANION_TOKEN` | unset | Bearer token required on every route except `GET /health`. Mandatory when `COMPANION_HOST` is not loopback |
 | `COMPANION_MAX_BODY` | `2097152` | Largest request body in bytes |
 | `COMPANION_TIMEOUT_MS` | `45000` | Wall-clock ceiling on one validate or render |
 | `COMPANION_OUT_DIR` | unset | Directory rendered files are written into. Unset means no writes at all |
@@ -49,7 +50,9 @@ Errors are JSON in one shape at every route.
 
 | Status | When |
 |---|---|
-| 400 | Bad input: no document, a body which is not a JSON object, an unknown format, a rejected output path |
+| 400 | Bad input: no document, a body which is not a JSON object, an unknown format, a malformed `edms` context, a rejected output path |
+| 401 | `COMPANION_TOKEN` is set and the request carried no `Authorization: Bearer` token, or the wrong one |
+| 403 | The `Host` header does not name this listener, or the `Origin` header is not a loopback origin |
 | 404, 405 | No such route, or the wrong method on one |
 | 413 | Body past the cap |
 | 415 | `Content-Type` was not `application/json` |
@@ -143,7 +146,7 @@ curl -X POST http://127.0.0.1:7719/render \
 |---|---|---|
 | `document` | yes | NLDP package, object or JSON text |
 | `format` | yes | `"pdf"` or `"docx"` |
-| `edms` | no | `{requestId?, ruc, ssic, docType, section?}`. Present means the file takes the EDMS name convention |
+| `edms` | no | `{requestId?, ruc, ssic, docType, section?}`. Present means the file takes the EDMS name convention. Each field takes the shape the EDMS handoff link accepts (`requestId` one to nine digits, `ruc` one to eight alphanumerics, `ssic` four or five digits, `docType` lowercase letters, digits, and hyphens, `section` letters, digits, spaces, hyphens, and slashes); anything else is a 400 `invalid_edms` naming the field, since the context reaches the returned filename |
 | `out` | no | File name under `COMPANION_OUT_DIR`. Returns a path instead of bytes |
 | `acknowledgeSensitive` | no | `true` proceeds past the sensitive-data gate |
 
@@ -168,6 +171,13 @@ With `out` the response is JSON:
   "findings": []
 }
 ```
+
+A refusal for an output path (`output_path_rejected`, `output_not_configured`)
+names the rule which fired and nothing else. The real directory and the
+resolved path go to the companion's own log, never to the response body.
+The file itself is written to a temp name beside the target and renamed
+over it once every byte is on disk, so a failure part way through leaves
+the target as it was and no partial file at the reported path.
 
 A document carrying sensitive data is refused:
 
@@ -223,17 +233,37 @@ Run it with the repository root as the working directory, or add
 ## Security posture
 
 **Loopback only.** The HTTP server binds `127.0.0.1`. `COMPANION_HOST`
-widens the bind and publishes an unauthenticated document renderer to
-whatever the new address reaches. Anything wider than loopback belongs
-behind a reverse proxy which authenticates the caller, and the process
-prints a warning on startup when the bind is not loopback.
+widens the bind, and a bind wider than loopback refuses to start unless
+`COMPANION_TOKEN` is set, because the alternative publishes an
+unauthenticated document renderer to whatever the address reaches. The
+process prints a warning on startup when the bind is not loopback.
 
-**No authentication, by design.** There are no tokens, no sessions, and
-no accounts. The trust boundary is the loopback interface and the
-operating system account the process runs under. Adding a token to a
-loopback listener would give the appearance of a control without the
-substance of one, and the honest statement is the one above: anything
-which reaches the socket renders documents.
+**Host and Origin checks.** Every request must carry a `Host` header
+naming a loopback address (`127.0.0.1`, `localhost`, `[::1]`) on the
+bound port; anything else is a 403 `forbidden_host`. This is the DNS
+rebinding control: an attacker's name pointed at 127.0.0.1 makes a page
+from that name same-origin with the companion, and the `Host` header is
+the one thing the rebinding cannot forge. When `COMPANION_HOST` is a
+specific non-loopback address, that address is accepted too; a wildcard
+bind (`0.0.0.0`, `::`) accepts any `Host` on the bound port, which is why
+it needs the token. A request carrying an `Origin` header is held to the
+same rule and refused with 403 `forbidden_origin` otherwise.
+
+**Bearer token.** With `COMPANION_TOKEN` set, every route except
+`GET /health` requires `Authorization: Bearer <token>`, compared in
+constant time; a missing or wrong token is a 401 `unauthorized` carrying
+a `WWW-Authenticate: Bearer` header. `/health` stays open so a probe
+needs no secret. On a loopback bind the token is optional: the trust
+boundary there is the interface and the operating system account the
+process runs under, and the token adds a second factor for a shared
+machine. Off loopback it is mandatory. Pass it through the environment,
+not the command line, so it stays out of process listings and shell
+history.
+
+```bash
+COMPANION_TOKEN="$(openssl rand -hex 32)" npm run companion
+curl -H "Authorization: Bearer $COMPANION_TOKEN" http://127.0.0.1:7719/document-types
+```
 
 **No CORS headers.** A page from another origin has no business calling
 the companion, and the absence of the headers is what stops a browser from
@@ -251,7 +281,11 @@ off for itself, and the findings on the response are the audit trail.
 only when the caller asks for one. The path is resolved through realpath
 before the check, so traversal, an absolute path, a planted symlink, and a
 symlinked subdirectory are each refused. Directories are never created.
-With the variable unset there are no writes at all.
+With the variable unset there are no writes at all. The write itself is
+atomic: bytes land in a temp file beside the target and are renamed over
+it after an fsync, so the path the caller is told about never holds a
+partial file. Refusals name the rule and not the directory; the paths go
+to the companion's log.
 
 **Body and time limits.** Two megabytes of request body and forty five
 seconds per operation, both overridable. The timeout bounds the caller's
@@ -264,9 +298,12 @@ render reads `public/` from disk and nothing else.
 
 ## What it does not do
 
-- **No authentication, no authorization, no rate limiting.** Put a proxy
-  in front of it if the deployment needs any of the three.
-- **No TLS.** Loopback traffic never leaves the machine.
+- **No authorization and no rate limiting.** One bearer token is the whole
+  credential; there are no accounts, roles, or quotas. Put a proxy in
+  front of it if the deployment needs either.
+- **No TLS.** Loopback traffic never leaves the machine. A token sent to
+  a non-loopback bind travels in the clear unless a TLS-terminating proxy
+  sits in front.
 - **No AMHS text.** The message format exports through the editor. The
   companion renders PDF and DOCX only, and refuses anything else with a
   422 naming the formats the type offers.

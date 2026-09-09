@@ -298,9 +298,9 @@ export function DocumentImportModal({
             )}
 
             <div className="space-y-1.5">
-              <Label>Document Type</Label>
+              <Label htmlFor="import-document-type">Document Type</Label>
               <Select value={result.documentType} onValueChange={onChangeDocumentType}>
-                <SelectTrigger className="w-full sm:w-80">
+                <SelectTrigger className="w-full sm:w-80" id="import-document-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

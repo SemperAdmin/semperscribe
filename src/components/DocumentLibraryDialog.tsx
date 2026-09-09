@@ -115,6 +115,7 @@ export function DocumentLibraryDialog({
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
+              aria-label="Search saved documents"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by name, subject, or type"
@@ -122,7 +123,7 @@ export function DocumentLibraryDialog({
             />
           </div>
           <Select value={sort} onValueChange={(v) => setSort(v as SortMode)}>
-            <SelectTrigger className="w-[130px]">
+            <SelectTrigger className="w-[130px]" aria-label="Sort saved documents">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -159,6 +160,7 @@ export function DocumentLibraryDialog({
                     {renamingId === letter.id ? (
                       <div className="flex items-center gap-1.5">
                         <Input
+                          aria-label="New document name"
                           value={renameValue}
                           onChange={(e) => setRenameValue(e.target.value)}
                           onKeyDown={(e) => {

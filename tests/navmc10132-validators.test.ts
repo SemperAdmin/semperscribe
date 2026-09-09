@@ -777,20 +777,23 @@ describe('W-06, an entered days or months value exceeds the code own ceiling', (
 });
 
 describe('W-07, a forfeiture amount must be whole dollars', () => {
-  it('trips on a fractional dollars amount', () => {
+  // BLOCKS since the 2026-09 P5 remediation (owner decision recorded in the
+  // audit). MCO 5800.16 Vol 14 para 010901 is a prohibition on the figure
+  // itself, and the MCTFS field the figure feeds carries no cents.
+  it('trips on a fractional dollars amount and blocks', () => {
     const form = baseForm({ punishments: [{ code: 'N07', dollars: '50.5' }] });
     const issues = forfeitureWholeDollarIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toContain('navmc10132-w07-dollars-N07');
-    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].severity).toBe('block');
   });
 
-  it('trips on a fractional dollarsPerMonth amount', () => {
+  it('trips on a fractional dollarsPerMonth amount and blocks', () => {
     const form = baseForm({ punishments: [{ code: 'N04', dollarsPerMonth: '100.25', months: '2' }] });
     const issues = forfeitureWholeDollarIssues(form);
     expect(issues).toHaveLength(1);
     expect(issues[0].id).toContain('navmc10132-w07-dollarsPerMonth-N04');
-    expect(issues[0].severity).toBe('warn');
+    expect(issues[0].severity).toBe('block');
   });
 
   it('does not trip on whole dollar amounts', () => {

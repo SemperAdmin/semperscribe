@@ -78,7 +78,7 @@ export function PackageDialog({
 
         <div className="flex items-center gap-2">
           <Select value={pick} onValueChange={setPick}>
-            <SelectTrigger className="flex-1 text-xs h-9">
+            <SelectTrigger className="flex-1 text-xs h-9" aria-label="Saved document to add">
               <SelectValue placeholder={available.length ? 'Add a saved document...' : 'No more saved documents'} />
             </SelectTrigger>
             <SelectContent>

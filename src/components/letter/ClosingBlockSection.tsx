@@ -124,9 +124,9 @@ export function ClosingBlockSection({
             {showDelegation && (
               <div className="space-y-4 p-4 bg-secondary/5 rounded-lg border border-secondary/10 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-foreground">Delegation Authority Type</Label>
+                  <Label className="text-sm font-medium text-foreground" htmlFor="delegation-type">Delegation Authority Type</Label>
                   <Select onValueChange={updateDelegationType}>
-                    <SelectTrigger className="bg-background border-input focus:ring-primary">
+                    <SelectTrigger className="bg-background border-input focus:ring-primary" id="delegation-type">
                       <SelectValue placeholder="Select delegation type..." />
                     </SelectTrigger>
                     <SelectContent>

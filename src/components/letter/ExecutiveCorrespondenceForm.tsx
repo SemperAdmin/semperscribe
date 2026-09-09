@@ -190,14 +190,17 @@ export function ExecutiveCorrespondenceForm() {
                 render={({ field }) => (
                   <FormItem className="md:col-span-1">
                     <FormLabel>Complimentary Close</FormLabel>
-                    <FormControl>
+                    {/* P8-3: FormControl is a Slot, and Select's root renders
+                        no element, so the id has to land on the trigger. */}
                       <Select
                         value={field.value || 'Sincerely,'}
                         onValueChange={field.onChange}
                       >
+                        <FormControl>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
+                        </FormControl>
                         <SelectContent>
                           <SelectItem value="Sincerely,">Sincerely, (Routine/Congressional)</SelectItem>
                           <SelectItem value="Respectfully,">Respectfully, (Junior Flag/GO)</SelectItem>
@@ -208,7 +211,6 @@ export function ExecutiveCorrespondenceForm() {
                           <SelectItem value="All the best,">All the best, (General personal)</SelectItem>
                         </SelectContent>
                       </Select>
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

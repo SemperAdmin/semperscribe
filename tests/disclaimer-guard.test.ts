@@ -80,7 +80,8 @@ describe('the banner says what the app does', () => {
     expect(banner).toContain('no transmission');
     expect(banner).toContain('this browser on this computer');
     expect(banner).toContain('until you clear them');
-    expect(banner).toContain('approved for the information you enter');
+    // 2026-09-06 wording: the approval is the authorizing official's, for this application on the user's system.
+    expect(banner).toContain('authorizing official has approved this application');
   });
 
   // Unchanged by the rewrite and independently required.

@@ -1,0 +1,152 @@
+# Deploy to cloud.gov, on Linux.
+#
+# WHY THIS EXISTS. Measured 2026-09-09: a Windows build of Next 16.3.4
+# writes nested-route RSC prefetch payloads as directories instead of
+# the files the browser requests (scripts/check-export.mjs; CHANGELOG.md
+# "Fixed, 2026-09-09"). scripts/deploy-cloudgov.ps1 remains the manual
+# fallback for a workstation with cloud.gov access this workflow does
+# not have, but it is expected to stop at its "Verify the built bundle"
+# step on Windows until Next fixes the export writer. This workflow
+# builds on ubuntu-latest, where the defect does not reproduce, and is
+# the primary path.
+#
+# workflow_dispatch only, not a push trigger: a deploy to a government
+# sandbox is an explicit act, not a side effect of merging to main (that
+# is what deploy.yml / GitHub Pages is for). Add
+# `push: { tags: ['v*'] }` here later if a tag-triggered cloud.gov
+# release is wanted.
+name: Deploy to cloud.gov
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudgov
+  cancel-in-progress: false
+
+jobs:
+  # Same suite deploy.yml gates on, defined once in test.yml so the two
+  # deploy targets can never check different things.
+  test:
+    uses: ./.github/workflows/test.yml
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: cloudgov
+      url: https://semperscribe.app.cloud.gov/
+    env:
+      CF_API: https://api.fr.cloud.gov
+      CF_ORG: sandbox-usmc
+      CF_SPACE: stephen.shorter
+      APP_ROUTE: https://semperscribe.app.cloud.gov/
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for cloud.gov
+        run: npm run build
+        env:
+          DEPLOY_TARGET: cloudgov
+
+      # Mirrors scripts/deploy-cloudgov.ps1 step 6: the export-layout
+      # guard, then the same asset-path and headers-file checks that
+      # step runs by hand.
+      - name: Prove the export
+        run: |
+          node scripts/check-export.mjs
+
+          if grep -q '/semperscribe/_next/' out/index.html; then
+            echo "::error::Built HTML references /semperscribe/_next/. This is a GitHub Pages build. DEPLOY_TARGET did not reach next.config.ts. Every asset would 404 on cloud.gov."
+            exit 1
+          fi
+          if ! grep -q '/_next/' out/index.html; then
+            echo "::error::Built HTML references no /_next/ assets at all. Inspect out/index.html by hand before pushing."
+            exit 1
+          fi
+
+          if [ ! -f out/nginx/conf/includes/security-headers.conf ]; then
+            echo "::error::out/nginx/conf/includes/security-headers.conf missing. Response security headers would silently vanish on cloud.gov."
+            exit 1
+          fi
+          if [ ! -f out/Staticfile ]; then
+            echo "::error::out/Staticfile missing. The staticfile buildpack would not pick up force_https or the header include."
+            exit 1
+          fi
+
+      # Sanity check: tests/ must never reach the static export.
+      - name: Assert no test file in out
+        run: |
+          if find out -name '*.test.*' -print -quit | grep -q .; then
+            echo "::error::Test files found in out/ - static export contaminated"
+            find out -name '*.test.*'
+            exit 1
+          fi
+
+      # Official apt repo, no third-party action - one less supply-chain
+      # hop ahead of the step that hands this runner production
+      # credentials.
+      - name: Install cf CLI
+        run: |
+          curl -fsSL https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo gpg --dearmor -o /usr/share/keyrings/cloudfoundry-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/cloudfoundry-keyring.gpg] https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry.list
+          sudo apt-get update && sudo apt-get install --yes cf8-cli
+          cf version
+
+      # CF_USERNAME / CF_PASSWORD are a cloud.gov space-deployer service
+      # account, never an SSO user (a service account has no MFA/SSO
+      # prompt, so it is the only credential type CI can authenticate
+      # with unattended):
+      #   cf create-service cloud-gov-service-account space-deployer semperscribe-deployer
+      #   cf create-service-key semperscribe-deployer github-actions
+      #   cf service-key semperscribe-deployer github-actions
+      # The printed username/password become this repo's CF_USERNAME and
+      # CF_PASSWORD secrets.
+      - name: Push
+        env:
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+        run: |
+          cf api "$CF_API"
+          cf auth "$CF_USERNAME" "$CF_PASSWORD"
+          cf target -o "$CF_ORG" -s "$CF_SPACE"
+          cf push
+
+      - name: Live header check
+        run: |
+          if ! curl -sSI "$APP_ROUTE" | grep -qi '^content-security-policy:'; then
+            echo "::error::Live response from $APP_ROUTE carries no Content-Security-Policy header."
+            exit 1
+          fi
+
+      # The post-`cf push` check playwright.config.ts documents:
+      # E2E_BASE_URL runs the same spec against the live deployment
+      # instead of the local static server.
+      - name: Post-deploy smoke
+        env:
+          E2E_BASE_URL: ${{ env.APP_ROUTE }}
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test tests/e2e/csp-pdfjs.spec.ts
+
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cloudgov-smoke-traces-${{ github.sha }}
+          path: test-results/e2e
+          retention-days: 7
+          if-no-files-found: ignore

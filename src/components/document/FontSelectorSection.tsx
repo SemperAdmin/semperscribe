@@ -25,13 +25,13 @@ export function FontSelectorSection({ formData, setFormData }: FontSelectorSecti
   return (
     <div className="bg-card p-6 rounded-lg shadow-sm border border-border mb-6 grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Body Font</label>
+        <label className="text-sm font-medium text-foreground" htmlFor="body-font">Body Font</label>
         <Select
           value={value}
           disabled={locked}
           onValueChange={(val: any) => setFormData(prev => ({ ...prev, bodyFont: val }))}
         >
-          <SelectTrigger className="bg-background border-input">
+          <SelectTrigger className="bg-background border-input" id="body-font">
             <SelectValue placeholder="Select Font" />
           </SelectTrigger>
           <SelectContent>
