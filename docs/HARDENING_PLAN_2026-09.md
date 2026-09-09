@@ -125,6 +125,8 @@ Why first: unit tests import modules directly and never exercise dynamic `import
 
 CI: a new `e2e` job in test.yml on `ubuntu-latest`, `npm run build` then `npm run test:e2e`. Budget 10 minutes.
 
+2026-09-09: `scripts/serve-out.mjs` now sends the same response headers as the cloud.gov deployment (`public/nginx/conf/includes/security-headers.conf`), so this suite - and the new `tests/e2e/csp-pdfjs.spec.ts`, which drives the signature placement modal and the position-paper page count - runs under the production Content-Security-Policy rather than no headers at all.
+
 ### 0.2 Lint ratchet
 
 Add `scripts/lint-ratchet.mjs`: runs eslint in JSON mode, counts warnings per rule, compares to `.lint-baseline.json` (committed, starts at the table above). Fails when any rule's count rises. Prints the per-rule delta. Wire into test.yml after the lint step. When a PR lowers a count, it updates the baseline in the same PR.

@@ -100,6 +100,43 @@ Every item carries a regression test written before the fix.
   devDependency; the typescript pin carries its reason and a Dependabot
   ignore (P7-2, P7-4).
 
+### Fixed, 2026-09-09
+
+- cloud.gov: the signature-field preview and the position-paper page
+  count reported "Failed to load PDF file." The 2026-09-08 CSP set no
+  `blob:` on `connect-src`, and pdfjs loaded a `URL.createObjectURL`
+  string through XHR, which CSP governs under `connect-src`. Measured
+  live with a `securitypolicyviolation` listener (`connect-src`, `blob`,
+  enforce). An interim build added `blob:` to `connect-src` to pass;
+  this change removes it again, passing the Blob object itself to both
+  pdfjs `<Document>` consumers instead (`SignaturePlacementModal.tsx`,
+  and `PageCountIndicator.tsx` via a new `previewBlob` from
+  `useLivePreview`), which react-pdf reads through FileReader with no
+  fetch, so `connect-src` keeps no `blob:`. The 09-08 smoke test covered
+  `@react-pdf/renderer` only, not pdfjs.
+- The e2e suite now runs under the production response headers:
+  `scripts/serve-out.mjs` mirrors `security-headers.conf` on every
+  response, so a CSP that breaks the app fails locally instead of only
+  on cloud.gov. A new `tests/e2e/csp-pdfjs.spec.ts` drives both pdfjs
+  consumers - the signature placement modal and the position-paper
+  page count - under that policy, and `E2E_BASE_URL` runs the same
+  specs against a deployed URL as the post-`cf push` check.
+- A Windows build of Next 16.3.4 writes a nested route's RSC prefetch
+  payload as a DIRECTORY (`out/privacy/__next.privacy/__PAGE__.txt`)
+  instead of the FILE the browser requests
+  (`out/privacy/__next.privacy.__PAGE__.txt`). Measured 2026-09-09 on a
+  Windows build, against `privacy` and `dynamic-forms` (the root-level
+  `out/__next.__PAGE__.txt` came out correct). The App Router falls
+  back to a hard navigation on a failed prefetch, so the defect never
+  showed up while clicking around; the live cloud.gov site, pushed
+  from such a build, 404s on those prefetches. `scripts/check-export.mjs`
+  (`npm run check:export`) now refuses an export with the defect and is
+  wired into both deploy paths - the new "Deploy to cloud.gov" GitHub
+  Actions workflow (`.github/workflows/deploy-cloudgov.yml`, builds on
+  Linux and pushes with a cloud.gov space-deployer service account, not
+  an SSO user) and `.github/workflows/deploy.yml` - plus a hard stop in
+  `scripts/deploy-cloudgov.ps1` step 6 for a manual Windows push.
+
 ### Security, 2026-09-08
 
 - Response security headers on cloud.gov through the staticfile

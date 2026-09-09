@@ -13,6 +13,7 @@ export type { PreviewIssue } from './ComplianceBanner';
 interface LivePreviewProps {
   className?: string;
   previewUrl?: string; // If we have a blob URL
+  previewBlob?: Blob | null;
   isLoading?: boolean;
   onUpdatePreview?: () => void;
   documentType?: string;
@@ -72,7 +73,7 @@ export function PreviewEmptyState({ fields }: { fields: RequiredFieldStatus[] })
   );
 }
 
-export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview, documentType = 'standard', downloadFileName, onDownloadExport, emptyStateFields, previewError }: LivePreviewProps) {
+export function LivePreview({ className, previewUrl, previewBlob, isLoading, onUpdatePreview, documentType = 'standard', downloadFileName, onDownloadExport, emptyStateFields, previewError }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // R12 (USER_DRIVEN_ROADMAP): the Print and Download buttons were inert.
@@ -152,7 +153,7 @@ export function LivePreview({ className, previewUrl, isLoading, onUpdatePreview,
         <div aria-live="polite" className="sr-only">
           {isLoading ? 'Updating document preview' : previewUrl ? 'Document preview updated' : 'Preview not available'}
         </div>
-        <PageCountIndicator url={previewUrl || null} documentType={documentType} />
+        <PageCountIndicator file={previewBlob ?? null} documentType={documentType} />
         {previewError && !isLoading && (
           <div role="alert" className="absolute inset-x-0 top-0 z-10 border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-xs text-foreground">
             Preview is out of date: the last render failed ({previewError}). The page below is the previous render.

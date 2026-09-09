@@ -19,6 +19,7 @@ interface ModernAppShellProps {
   documentType: string;
   onDocumentTypeChange: (type: string) => void;
   previewUrl?: string;
+  previewBlob?: Blob | null;
   /** P6-13: the last render failed; the pane shows the previous render with a notice. */
   previewError?: string | null;
   validationIssues?: PreviewIssue[];
@@ -79,6 +80,7 @@ export function ModernAppShell({
   documentType,
   onDocumentTypeChange,
   previewUrl,
+  previewBlob,
   previewError,
   validationIssues,
   isGeneratingPreview,
@@ -405,6 +407,7 @@ export function ModernAppShell({
           ) : (
             <LivePreview
               previewUrl={previewUrl}
+              previewBlob={previewBlob}
               isLoading={isGeneratingPreview}
               onUpdatePreview={onUpdatePreview}
               documentType={documentType}

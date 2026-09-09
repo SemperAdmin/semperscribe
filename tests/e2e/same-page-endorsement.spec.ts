@@ -17,37 +17,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { extractPdfTextLayout } from '../golden/helpers';
-
-const IGNORED_CONSOLE = [
-  /Download the React DevTools/,
-  /TT: undefined function/,
-  /TT: ENDF bad stack/,
-  /FormatError: Could not fix indexToLocFormat/,
-  /Warning: .*fontkit/,
-];
-
-function collectErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on('pageerror', err => errors.push(`pageerror: ${err.message}`));
-  page.on('response', res => {
-    if (res.status() >= 400 && res.url().startsWith('http://127.0.0.1')) {
-      errors.push(`http ${res.status()}: ${res.url()}`);
-    }
-  });
-  page.on('console', msg => {
-    if (msg.type() !== 'error') return;
-    const text = msg.text();
-    if (IGNORED_CONSOLE.some(re => re.test(text))) return;
-    errors.push(`console.error: ${text}`);
-  });
-  return errors;
-}
-
-async function enterApp(page: Page) {
-  await page.goto('.');
-  await page.getByRole('button', { name: 'I Understand' }).click();
-  await expect(page.getByRole('button', { name: /Standard Naval Letter/ })).toBeVisible();
-}
+import { enterApp, collectErrors } from './helpers';
 
 async function exportVia(page: Page, itemName: string | RegExp, ext: 'pdf' | 'docx') {
   const download = page.waitForEvent('download', {

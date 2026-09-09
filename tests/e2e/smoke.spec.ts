@@ -22,43 +22,10 @@ import { extractPdfTextLayout } from '../golden/helpers';
 import { getTodaysDate } from '../../src/lib/date-utils';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { enterApp, collectErrors } from './helpers';
 
 const SUBJECT = 'SMOKE TEST REQUEST FOR RANGE TIME';
 const PARAGRAPH = 'Request approval for additional range time during the third quarter.';
-
-/** Console noise the app is known to emit and which is not a defect. */
-const IGNORED_CONSOLE = [
-  /Download the React DevTools/,
-  /TT: undefined function/,
-  /TT: ENDF bad stack/,
-  /FormatError: Could not fix indexToLocFormat/,
-  /Warning: .*fontkit/,
-];
-
-function collectErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on('pageerror', err => errors.push(`pageerror: ${err.message}`));
-  // A 4xx or 5xx on our own origin is a missing or mis-prefixed asset.
-  page.on('response', res => {
-    if (res.status() >= 400 && res.url().startsWith('http://127.0.0.1')) {
-      errors.push(`http ${res.status()}: ${res.url()}`);
-    }
-  });
-  page.on('console', msg => {
-    if (msg.type() !== 'error') return;
-    const text = msg.text();
-    if (IGNORED_CONSOLE.some(re => re.test(text))) return;
-    errors.push(`console.error: ${text}`);
-  });
-  return errors;
-}
-
-/** Load the app and clear the first-visit disclaimer. */
-async function enterApp(page: Page) {
-  await page.goto('.');
-  await page.getByRole('button', { name: 'I Understand' }).click();
-  await expect(page.getByRole('button', { name: /Standard Naval Letter/ })).toBeVisible();
-}
 
 /**
  * Export through the header menu and return the download with the

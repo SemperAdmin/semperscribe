@@ -14,6 +14,13 @@ import { existsSync } from 'node:fs';
  * PLAYWRIGHT_CHROMIUM_EXECUTABLE at a Chromium binary. The Claude Code
  * remote environment ships one at /opt/pw-browsers/chromium, picked up
  * automatically when Playwright's own build is absent.
+ *
+ * Deployed-URL mode: `E2E_BASE_URL=https://semperscribe.app.cloud.gov/
+ * npm run test:e2e` (bash) or, in PowerShell,
+ * `$env:E2E_BASE_URL="https://semperscribe.app.cloud.gov/"; npm run
+ * test:e2e` - runs the same specs against a deployment instead of the
+ * local static server: baseURL becomes E2E_BASE_URL and no webServer
+ * is started. This is the post-`cf push` check.
  */
 const FALLBACK_CHROMIUM = '/opt/pw-browsers/chromium';
 const executablePath =
@@ -22,6 +29,12 @@ const executablePath =
 
 const PORT = 4173;
 const BASE_PATH = '/semperscribe';
+
+// Full URL (ending in /) of a live deployment, e.g.
+// https://semperscribe.app.cloud.gov/. Set means the suite runs against
+// that deployment: baseURL points at it and no local server is started.
+// Unset (the default) keeps the local out/ export on 127.0.0.1.
+const deployedBaseURL = process.env.E2E_BASE_URL;
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -33,17 +46,21 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['github']] : [['list']],
   outputDir: 'test-results/e2e',
   use: {
-    baseURL: `http://127.0.0.1:${PORT}${BASE_PATH}/`,
+    baseURL: deployedBaseURL ?? `http://127.0.0.1:${PORT}${BASE_PATH}/`,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     acceptDownloads: true,
     ...devices['Desktop Chrome'],
     launchOptions: executablePath ? { executablePath } : {},
   },
-  webServer: {
-    command: `node scripts/serve-out.mjs ${PORT} ${BASE_PATH}`,
-    url: `http://127.0.0.1:${PORT}${BASE_PATH}/`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
-  },
+  ...(deployedBaseURL
+    ? {}
+    : {
+        webServer: {
+          command: `node scripts/serve-out.mjs ${PORT} ${BASE_PATH}`,
+          url: `http://127.0.0.1:${PORT}${BASE_PATH}/`,
+          reuseExistingServer: !process.env.CI,
+          timeout: 30_000,
+        },
+      }),
 });

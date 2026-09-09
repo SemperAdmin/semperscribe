@@ -26,6 +26,7 @@
     "test:e2e": "playwright test",
     "lint:ratchet": "node scripts/lint-ratchet.mjs",
     "bundle:report": "node scripts/bundle-report.mjs",
+    "check:export": "node scripts/check-export.mjs",
     "companion": "tsx companion/server.ts",
     "companion:mcp": "tsx companion/mcp.ts"
   },

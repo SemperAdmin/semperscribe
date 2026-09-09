@@ -65,6 +65,9 @@ export function useLivePreview(
   const { enclosureRows, enclosureFiles, attachmentCoverPages } = enclosureArgs;
 
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
+  // previewBlob feeds pdfjs consumers directly (no blob: fetch under CSP);
+  // previewUrl stays for the iframe and downloads.
+  const [previewBlob, setPreviewBlob] = useState<Blob | undefined>(undefined);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   // E.3: where the same-page endorsement landed on the last render.
   // Null for every other document.
@@ -147,6 +150,7 @@ export function useLivePreview(
         if (prev) URL.revokeObjectURL(prev);
         return url;
       });
+      setPreviewBlob(blob);
       setSamePageStatus(status);
       setPreviewError(null);
     } catch (e) {
@@ -172,5 +176,5 @@ export function useLivePreview(
     return () => clearTimeout(timer);
   }, [updatePreview]);
 
-  return { previewUrl, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus, previewError };
+  return { previewUrl, previewBlob, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus, previewError };
 }

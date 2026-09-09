@@ -127,6 +127,12 @@ GitHub Pages cannot set response headers, so these controls apply to the
 cloud.gov deployment only. The GitHub Pages mirror is a public format
 demonstration. Any use with real personnel data belongs on cloud.gov.
 
+Deploys to cloud.gov run from the "Deploy to cloud.gov" GitHub Actions
+workflow (`.github/workflows/deploy-cloudgov.yml`) using a cloud.gov
+space-deployer service account, not an SSO user; a Windows workstation
+build is refused by `scripts/check-export.mjs` (see CHANGELOG.md,
+"Fixed, 2026-09-09").
+
 ## Compliance References
 
 Vulnerability handling for this repository follows.

@@ -65,6 +65,8 @@ describe('security-headers.conf', () => {
     const csp = h.split('\n').find((l) => l.includes('Content-Security-Policy')) ?? '';
     const connect = /connect-src ([^;]+);/.exec(csp)?.[1] ?? '';
     expect(connect).toContain("'self'");
+    // pdfjs consumers take the Blob object, so connect-src needs no blob:
+    expect(connect).not.toContain('blob:');
     expect(connect).toContain('https://generativelanguage.googleapis.com');
     expect(connect).toContain('https://api.genai.mil');
     expect(connect).toContain('http://127.0.0.1:*');

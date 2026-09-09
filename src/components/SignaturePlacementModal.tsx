@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useSyncedState } from "@/hooks/useSyncedState";
 import dynamic from "next/dynamic";
 import {
@@ -87,27 +87,21 @@ export function SignaturePlacementModal(props: SignaturePlacementModalProps) {
   // starts over without an effect resetting them after the first paint.
   const [openCount] = useSyncedState(open, (isOpen, prev: number | undefined) => (isOpen ? (prev ?? 0) + 1 : prev ?? 0));
 
-  // Object URL for the preview, one per blob, revoked when the blob
-  // changes or the modal unmounts. Held here so a remount of the body
-  // does not re-create it.
-  const pdfUrl = useMemo(() => (pdfBlob ? URL.createObjectURL(pdfBlob) : null), [pdfBlob]);
-  useEffect(() => {
-    if (!pdfUrl) return;
-    return () => URL.revokeObjectURL(pdfUrl);
-  }, [pdfUrl]);
+  // The Blob itself goes to react-pdf directly (via the {...props}
+  // spread below), which reads it through FileReader rather than
+  // fetching it - so no object URL exists here, and the production
+  // CSP needs no `blob:` on connect-src.
 
   return (
     <SignaturePlacementBody
       key={`${openCount}:${lastLetterPage}`}
       {...props}
-      pdfUrl={pdfUrl}
       lastLetterPage={lastLetterPage}
     />
   );
 }
 
 interface SignaturePlacementBodyProps extends SignaturePlacementModalProps {
-  pdfUrl: string | null;
   lastLetterPage: number;
 }
 
@@ -117,7 +111,7 @@ function SignaturePlacementBody({
   onConfirm,
   onConfirmAndCopyLink,
   totalPages,
-  pdfUrl,
+  pdfBlob,
   lastLetterPage,
 }: SignaturePlacementBodyProps) {
   // ENC: open on the LAST LETTER page (where the signature block lives).
@@ -565,8 +559,8 @@ function SignaturePlacementBody({
               onMouseLeave={handleMouseUp}
             >
               <div ref={containerRef} className="relative shadow-lg select-none" style={{ width: 'fit-content', height: 'fit-content' }}>
-                {pdfUrl && (
-                  <Document file={pdfUrl} loading={<div className="w-[612px] h-[792px] bg-white animate-pulse" />}>
+                {pdfBlob && (
+                  <Document file={pdfBlob} loading={<div className="w-[612px] h-[792px] bg-white animate-pulse" />}>
                     <Page 
                       pageNumber={currentPage} 
                       width={PDF_WIDTH} // Fixed width for consistency

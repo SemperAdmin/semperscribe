@@ -1,6 +1,8 @@
 <#
 .SYNOPSIS
   Build the SemperScribe static export for cloud.gov and push it.
+  Manual fallback for "Deploy to cloud.gov"
+  (.github/workflows/deploy-cloudgov.yml), which is now the primary path.
 
 .DESCRIPTION
   The single most likely failure on this path is a basePath mismatch.
@@ -12,6 +14,15 @@
 
   npm run deploy is the GitHub Pages path (gh-pages -d out). Do not use it
   for cloud.gov.
+
+  The "Deploy to cloud.gov" GitHub Actions workflow builds on Linux,
+  where a 2026-09-09 defect in Windows builds of Next 16.3.4 does not
+  reproduce (see scripts/check-export.mjs) - that workflow is now the
+  primary path, and this script is the manual fallback for a
+  workstation with cloud.gov access the workflow does not have. On
+  Windows, this script is expected to stop at step 6 until Next fixes
+  the export writer; that is the check working as intended, not a bug
+  in this script.
 
 .PARAMETER SkipTests
   Skip typecheck and vitest. Use only when re-pushing a build you already
@@ -165,6 +176,12 @@ try {
     Fail 'Built HTML references no /_next/ assets at all. Inspect out/index.html by hand before pushing.'
   }
   Ok 'asset paths resolve at the route root'
+
+  # A Windows build of Next 16.3.4 writes nested-route RSC prefetch
+  # payloads as directories instead of files (measured 2026-09-09);
+  # cloud.gov 404s on them. See scripts/check-export.mjs.
+  node scripts/check-export.mjs
+  if ($LASTEXITCODE -ne 0) { Fail 'Export layout check failed. A Windows build of Next 16.3.4 writes nested-route RSC payloads as directories (measured 2026-09-09); cloud.gov 404s on them. Deploy from the "Deploy to cloud.gov" GitHub Actions workflow, which builds on Linux.' }
 
   $count = (Get-ChildItem 'out' -Recurse -File).Count
   $mb    = [math]::Round(((Get-ChildItem 'out' -Recurse -File | Measure-Object Length -Sum).Sum / 1MB), 1)

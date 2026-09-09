@@ -19,14 +19,15 @@ if (typeof window !== 'undefined') {
 }
 
 interface PageCountIndicatorProps {
-  url: string | null;
+  file: Blob | null;
   documentType: string;
 }
 
-export function PageCountIndicator({ url, documentType }: PageCountIndicatorProps) {
-  // Page count is keyed on the URL: a new preview resets it to unknown
-  // during render, before the invisible Document below reloads and reports.
-  const [numPages, setNumPages] = useSyncedState(url, () => null as number | null);
+export function PageCountIndicator({ file, documentType }: PageCountIndicatorProps) {
+  // Page count is keyed on the Blob: a new render produces a new Blob,
+  // which resets the count to unknown during render, before the
+  // invisible Document below reloads and reports.
+  const [numPages, setNumPages] = useSyncedState(file, () => null as number | null);
 
   const isPositionPaper = documentType === 'position-paper';
 
@@ -34,7 +35,7 @@ export function PageCountIndicator({ url, documentType }: PageCountIndicatorProp
     setNumPages(numPages);
   }
 
-  if (!url || !isPositionPaper) return null;
+  if (!file || !isPositionPaper) return null;
 
   let status: 'green' | 'yellow' | 'red' = 'green';
   let message = '1 Page (Preferred)';
@@ -54,7 +55,7 @@ export function PageCountIndicator({ url, documentType }: PageCountIndicatorProp
     <div className="absolute top-14 right-6 z-10 flex gap-2 pointer-events-none">
       <div className="hidden">
         {/* Invisible Document to count pages */}
-        <Document file={url} onLoadSuccess={onDocumentLoadSuccess} />
+        <Document file={file} onLoadSuccess={onDocumentLoadSuccess} />
       </div>
       
       {numPages !== null && (

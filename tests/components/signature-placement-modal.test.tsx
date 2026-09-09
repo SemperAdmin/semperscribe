@@ -1,8 +1,9 @@
 /**
  * SignaturePlacementModal: every open starts fresh on the last letter
- * page with no boxes, and the preview object URL is created once per blob
- * and revoked when it changes. Phase A.3 replaced the reset effect with a
- * keyed remount and the URL effect with a memo plus revoke-only cleanup.
+ * page with no boxes, and the PDF blob is passed to react-pdf directly
+ * rather than through an object URL, so no object URL is ever created.
+ * Phase A.3 replaced the reset effect with a keyed remount; a later pass
+ * removed the URL memo entirely once react-pdf started reading Blobs.
  */
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import React from 'react';
@@ -10,8 +11,8 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 
 vi.mock('react-pdf', () => ({
   pdfjs: { GlobalWorkerOptions: {} },
-  Document: ({ file, children }: { file: string; children?: React.ReactNode }) => (
-    <div data-testid="doc" data-file={file}>{children}</div>
+  Document: ({ file, children }: { file: unknown; children?: React.ReactNode }) => (
+    <div data-testid="doc" data-file={file instanceof Blob ? 'blob-object' : String(file)}>{children}</div>
   ),
   // Reports a full-size page on mount so the modal's coordinate mapping
   // is live, which the drawing test below depends on.
@@ -80,20 +81,19 @@ describe('SignaturePlacementModal', () => {
     expect(pageLabel()).toHaveTextContent('Page 4 of 5');
   });
 
-  it('creates one object URL per blob and revokes the old one on change', () => {
+  it('passes the Blob itself to react-pdf and never creates an object URL', () => {
     const a = new Blob(['a']);
     const b = new Blob(['b']);
     const { rerender, unmount } = render(modal(true, a));
-    expect(created).toEqual([a]);
-    rerender(modal(false, a));
-    rerender(modal(true, a));
-    expect(created).toEqual([a]);
-    expect(revoked).toEqual([]);
+    expect(screen.getByTestId('doc')).toHaveAttribute('data-file', 'blob-object');
+    expect(created).toEqual([]);
     rerender(modal(true, b));
-    expect(created).toEqual([a, b]);
-    expect(revoked).toEqual(['blob:mock-1']);
+    expect(screen.getByTestId('doc')).toHaveAttribute('data-file', 'blob-object');
+    expect(created).toEqual([]);
+    expect(revoked).toEqual([]);
     unmount();
-    expect(revoked).toEqual(['blob:mock-1', 'blob:mock-2']);
+    expect(created).toEqual([]);
+    expect(revoked).toEqual([]);
   });
 });
 

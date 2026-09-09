@@ -106,6 +106,9 @@ jobs:
     # exercise dynamic import() boundaries, chunk loading, or the service
     # worker; this job is the only guard for that class of break. See
     # tests/e2e/smoke.spec.ts and docs/HARDENING_PLAN_2026-09.md Phase 0.1.
+    # scripts/serve-out.mjs sends the same response headers cloud.gov
+    # does (public/nginx/conf/includes/security-headers.conf), so the
+    # production CSP is under test here too - see tests/e2e/csp-pdfjs.spec.ts.
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
