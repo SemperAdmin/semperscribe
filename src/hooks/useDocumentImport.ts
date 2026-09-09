@@ -11,7 +11,6 @@ import { linesFromText, parseCorrespondence } from '@/services/import/correspond
 import { detectDocumentType, DocTypeDetection } from '@/services/import/docTypeDetector';
 import { extractDocumentText, DocumentExtractionError } from '@/services/import/documentTextExtractor';
 import { debugUserAction } from '@/lib/console-utils';
-import { isNavmc10132Pdf, loadNavmc10132FromPdf } from '@/lib/navmc10132-pdf-load';
 
 /** P4-5: the largest file the importer will read, matching useNLDP's cap. */
 export const MAX_IMPORT_MB = 10;
@@ -223,6 +222,11 @@ export function useDocumentImport({
       // This is what lets one menu item serve both. Stephen asked whether
       // the existing import function could carry this, and it can: the app
       // decides by opening the file rather than making a clerk choose.
+      // Lazy: navmc10132-pdf-load carries pdf-lib, which B.4 keeps off the
+      // initial load (tests/e2e/smoke.spec.ts guards it). The 2026-08-26
+      // static import of this module put pdf-lib back on every first
+      // paint; measured 2026-09-09 in CI.
+      const { isNavmc10132Pdf, loadNavmc10132FromPdf } = await import('@/lib/navmc10132-pdf-load');
       if (applyNavmc10132 && (await isNavmc10132Pdf(data))) {
         const { patch, report } = await loadNavmc10132FromPdf(
           data,
