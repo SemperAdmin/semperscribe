@@ -48,9 +48,12 @@ async function exportVia(page: Page, itemName: string | RegExp, ext: 'pdf' | 'do
 
 /**
  * Polls the autosave working copy (IndexedDB `semperscribe` / `settings` /
- * `workingCopy`, written from document state 1.5 s after the last change)
- * until one paragraph carries `text`. The failure message quotes what the
- * document state held, which is the fact a lost-body export needs.
+ * `workingCopy:<sessionId>`, written from document state 1.5 s after the
+ * last change) until one paragraph carries `text`. The failure message
+ * quotes what the document state held, which is the fact a lost-body
+ * export needs. The key is per tab since 1816a37 (2026-09-07, P6-9): the
+ * session id lives in sessionStorage `semperscribe-autosave-session`, and
+ * the pre-1816a37 key `workingCopy` is read as a fallback only.
  */
 async function waitForCommittedParagraph(page: Page, text: string) {
   const deadline = Date.now() + 20_000;
@@ -64,12 +67,14 @@ async function waitForCommittedParagraph(page: Page, text: string) {
       });
       try {
         if (!db.objectStoreNames.contains('settings')) return '(no settings store)';
+        const sessionId = sessionStorage.getItem('semperscribe-autosave-session');
+        const key = sessionId ? `workingCopy:${sessionId}` : 'workingCopy';
         const copy = await new Promise<{ paragraphs?: { content: string }[] } | undefined>((resolve, reject) => {
-          const req = db.transaction('settings', 'readonly').objectStore('settings').get('workingCopy');
+          const req = db.transaction('settings', 'readonly').objectStore('settings').get(key);
           req.onsuccess = () => resolve(req.result);
           req.onerror = () => reject(req.error);
         });
-        return JSON.stringify(copy?.paragraphs ?? null);
+        return JSON.stringify(copy?.paragraphs ?? null) + ` (key ${key})`;
       } finally {
         db.close();
       }

@@ -137,6 +137,15 @@ Every item carries a regression test written before the fix.
   an SSO user) and `.github/workflows/deploy.yml` - plus a hard stop in
   `scripts/deploy-cloudgov.ps1` step 6 for a manual Windows push.
 
+- CI e2e, two failures present since the 2026-09-06 merge and first seen
+  green-gated on 2026-09-09: pdf-lib was back on the initial load because
+  `useDocumentImport.ts` imported `navmc10132-pdf-load` statically (since
+  2026-08-26); it is a dynamic import at the point of use again, initial
+  JS 3,310,405 B to 2,862,484 B. And `smoke.spec.ts` read the autosave
+  working copy at the pre-1816a37 key `workingCopy`; it now reads the
+  per-tab `workingCopy:<sessionId>` key the app has written since
+  2026-09-07.
+
 ### Security, 2026-09-08
 
 - Response security headers on cloud.gov through the staticfile
