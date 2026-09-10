@@ -112,6 +112,12 @@ Every item carries a regression test written before the fix.
   WebKit project for `tests/e2e/csp-pdfjs.spec.ts` and a live-preview
   iframe test, so an engine-specific CSP break fails in CI.
 
+- Pages deploy: bundle budgets raised to 3,000,000 B initial and
+  8,000,000 B total (`deploy.yml`), from 2,810,000 and 7,490,000. The
+  09-06 to 09-07 features put the build at 2,862,484 and 7,453,802 B;
+  the lazy-load guard in `smoke.spec.ts` stays the control on what
+  reaches the first paint.
+
 ### Fixed, 2026-09-09
 
 - cloud.gov: the signature-field preview and the position-paper page
