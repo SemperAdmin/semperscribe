@@ -120,8 +120,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
       - name: Build static export
         run: npm run build
       - name: Bundle report

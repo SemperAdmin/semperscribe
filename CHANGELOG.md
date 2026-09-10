@@ -100,6 +100,18 @@ Every item carries a regression test written before the fix.
   devDependency; the typescript pin carries its reason and a Dependabot
   ignore (P7-2, P7-4).
 
+### Fixed, 2026-09-10
+
+- cloud.gov on iPhone Safari: the PDF preview stayed blank. `frame-ancestors
+  'none'` was inherited by the blob: preview document and WebKit enforced
+  it on the preview iframe ("Refused to load blob:... frame-ancestors");
+  Chromium does not, which is why desktop passed. Now `frame-ancestors
+  'self'` and `X-Frame-Options: SAMEORIGIN`: own-origin framing only,
+  third parties still refused. Measured with Playwright WebKit against
+  the local server with and without the headers. The e2e suite gains a
+  WebKit project for `tests/e2e/csp-pdfjs.spec.ts` and a live-preview
+  iframe test, so an engine-specific CSP break fails in CI.
+
 ### Fixed, 2026-09-09
 
 - cloud.gov: the signature-field preview and the position-paper page

@@ -103,8 +103,8 @@ SemperScribe includes an optional assistant, GunnyBot, disabled until the user s
 The cloud.gov deployment sets response security headers through the
 staticfile buildpack. `public/Staticfile` carries `force_https` and a
 `location_include` directive, and `public/nginx/conf/includes/security-headers.conf`
-sets, on every response, a Content-Security-Policy with `frame-ancestors 'none'`,
-`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+sets, on every response, a Content-Security-Policy with `frame-ancestors 'self'`,
+`X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`,
 `Strict-Transport-Security` (one year, includeSubDomains), `Referrer-Policy: no-referrer`,
 a `Permissions-Policy` denying the device APIs the app does not use, and
 `Cross-Origin-Opener-Policy: same-origin`. Both files ship in `public/`,
@@ -117,7 +117,11 @@ static export does not do. `script-src` also carries `'wasm-unsafe-eval'`,
 since the PDF preview and export run through a WebAssembly layout engine
 (@react-pdf/renderer's yoga). That keyword permits WASM compilation only,
 not general `eval`, and is honored by current Chromium, Firefox, and
-Safari. `frame-ancestors`, `object-src 'none'`,
+Safari. `frame-ancestors` is `'self'`, not `'none'`: the app frames its
+own blob: PDF previews, a blob: document inherits the creating page's
+CSP, and WebKit enforces the inherited `frame-ancestors` on that iframe
+(measured 2026-09-10; `'none'` blanked the preview on iPhone Safari).
+Third-party framing stays refused. `frame-ancestors`, `object-src 'none'`,
 `base-uri 'self'`, `form-action 'self'`, and the constrained
 `connect-src` (self, the two AI hosts, and loopback) carry the policy's
 protective weight. The app has no HTML injection sink, verified in the
