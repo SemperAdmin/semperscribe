@@ -50,9 +50,29 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     acceptDownloads: true,
-    ...devices['Desktop Chrome'],
-    launchOptions: executablePath ? { executablePath } : {},
   },
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: executablePath ? { executablePath } : {},
+      },
+    },
+    // WebKit runs the CSP spec only. Engines differ on how the policy
+    // applies to blob: documents (2026-09-10: frame-ancestors 'none'
+    // blanked the preview iframe on iPhone Safari and nowhere else), so
+    // a Chromium-only pass is not evidence for Safari. Desktop Safari,
+    // not an iPhone profile: the engine behaviour is what is under test,
+    // and the desktop layout keeps the same selectors as the Chromium
+    // project. Needs `npx playwright install webkit` locally; CI
+    // installs it.
+    {
+      name: 'webkit',
+      testMatch: /csp-pdfjs\.spec\.ts/,
+      use: { ...devices['Desktop Safari'] },
+    },
+  ],
   ...(deployedBaseURL
     ? {}
     : {

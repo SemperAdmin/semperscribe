@@ -53,10 +53,13 @@ describe('security-headers.conf', () => {
     }
   });
 
-  it('denies framing and MIME sniffing outright', () => {
+  it('allows framing by this origin only, and denies MIME sniffing', () => {
     const h = headers();
-    expect(h).toMatch(/frame-ancestors 'none'/);
-    expect(h).toMatch(/X-Frame-Options "DENY"/);
+    // 'self', not 'none': WebKit inherits the CSP into the blob: preview
+    // iframe and enforces frame-ancestors on it (2026-09-10).
+    expect(h).toMatch(/frame-ancestors 'self'/);
+    expect(h).not.toMatch(/frame-ancestors 'none'/);
+    expect(h).toMatch(/X-Frame-Options "SAMEORIGIN"/);
     expect(h).toMatch(/X-Content-Type-Options "nosniff"/);
   });
 

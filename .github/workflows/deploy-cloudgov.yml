@@ -139,7 +139,7 @@ jobs:
         env:
           E2E_BASE_URL: ${{ env.APP_ROUTE }}
         run: |
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
           npx playwright test tests/e2e/csp-pdfjs.spec.ts
 
       - name: Upload traces on failure

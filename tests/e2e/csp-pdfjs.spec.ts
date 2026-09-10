@@ -59,7 +59,9 @@ test.describe('CSP: pdfjs consumers under the production headers', () => {
     expect(response, 'the initial navigation must produce a response').toBeTruthy();
     const csp = response!.headers()['content-security-policy'];
     expect(csp, 'Content-Security-Policy header must be present').toBeTruthy();
-    expect(csp).toContain("frame-ancestors 'none'");
+    // 'self', not 'none': WebKit applies the inherited policy to the
+    // blob: preview iframe (2026-09-10, see security-headers.conf).
+    expect(csp).toContain("frame-ancestors 'self'");
     // The tight shape this suite exists to guard: connect-src carries no
     // blob:, so a regression back to a blob: URL fetch (rather than the
     // Blob object react-pdf reads through FileReader) fails here first.
@@ -84,7 +86,11 @@ test.describe('CSP: pdfjs consumers under the production headers', () => {
 
     const canvas = page.locator('.react-pdf__Page canvas').first();
     await expect(canvas).toBeVisible();
-    await expect(canvas).toHaveAttribute('width', '612');
+    // react-pdf sizes the bitmap at 612 CSS px times devicePixelRatio
+    // (1 on the Chromium project, 2 on Desktop Safari).
+    await expect
+      .poll(() => canvas.evaluate((c) => (c as HTMLCanvasElement).width / window.devicePixelRatio))
+      .toBe(612);
 
     await expect(page.getByText('Failed to load PDF file.')).toHaveCount(0);
 
@@ -97,6 +103,25 @@ test.describe('CSP: pdfjs consumers under the production headers', () => {
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(dialog).toBeHidden();
 
+    expect(errors, errors.join('\n')).toEqual([]);
+  });
+
+  test('live preview iframe loads under the CSP', async ({ page }) => {
+    // The preview is <iframe src="blob:..."> (LivePreview.tsx). A blob:
+    // document inherits the page CSP, and WebKit enforces the inherited
+    // frame-ancestors on that iframe, so frame-ancestors 'none' blanked
+    // the preview on iPhone Safari while Chromium showed it (measured
+    // 2026-09-10). This test runs on both engines (playwright.config.ts).
+    await trackCspViolations(page);
+    const errors = collectErrors(page);
+    await enterApp(page);
+
+    await page.getByRole('button', { name: 'Start from a filled example' }).click();
+    const frame = page.locator('iframe[src^="blob:"]').first();
+    await expect(frame).toBeVisible();
+    // WebKit reports the refusal as a console error, not a
+    // securitypolicyviolation event on the parent; collectErrors sees it.
+    expect(errors.filter((e) => /frame-ancestors/.test(e)), errors.join('\n')).toEqual([]);
     expect(errors, errors.join('\n')).toEqual([]);
   });
 

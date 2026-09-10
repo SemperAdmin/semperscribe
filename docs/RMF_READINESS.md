@@ -285,7 +285,7 @@ Out of the boundary.
 
 ### Response Security Headers (SC)
 
-The cloud.gov deployment sets Content-Security-Policy (`frame-ancestors 'none'`), X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, Referrer-Policy, Permissions-Policy, and Cross-Origin-Opener-Policy through the staticfile buildpack (`public/Staticfile`, `public/nginx/conf/includes/security-headers.conf`), closing audit 2026-09-08 finding 1 for that host. GitHub Pages cannot set response headers; the Pages mirror is a public demonstration and any sensitive use belongs on cloud.gov. See SECURITY.md. Deploys run from the "Deploy to cloud.gov" GitHub Actions workflow with a space-deployer service account; Windows workstation builds are refused by `scripts/check-export.mjs`.
+The cloud.gov deployment sets Content-Security-Policy (`frame-ancestors 'self'`, own-origin framing only, since the app frames its own blob: previews and WebKit enforces the inherited policy on them), X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, Referrer-Policy, Permissions-Policy, and Cross-Origin-Opener-Policy through the staticfile buildpack (`public/Staticfile`, `public/nginx/conf/includes/security-headers.conf`), closing audit 2026-09-08 finding 1 for that host. GitHub Pages cannot set response headers; the Pages mirror is a public demonstration and any sensitive use belongs on cloud.gov. See SECURITY.md. Deploys run from the "Deploy to cloud.gov" GitHub Actions workflow with a space-deployer service account; Windows workstation builds are refused by `scripts/check-export.mjs`.
 
 ## 9. Risks Accepted
 
