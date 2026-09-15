@@ -9,6 +9,7 @@ import { getLoadedUnits, loadUnits } from '@/lib/reference-data';
 import { resolveUnit } from '@/hooks/useUserProfile';
 import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename } from '@/lib/naval-format-utils';
+import { defaultAdminSubsections } from '@/lib/constants';
 import { loadSavedLetters, clearSavedLetters } from '@/lib/storage-utils';
 import {
   libLoadAll, libPut, libDelete, libClear, migrateLegacyDrafts,
@@ -141,11 +142,7 @@ function NavalLetterGeneratorInner() {
     cancellationType: 'fixed',
     distribution: { type: 'none' },
     reports: [],
-    adminSubsections: {
-      recordsManagement: { show: false, content: '', order: 0 },
-      privacyAct: { show: false, content: '', order: 0 },
-      reportsRequired: { show: false, content: 'None.', order: 0 }
-    },
+    adminSubsections: defaultAdminSubsections(),
     actionNo: '',
     orgStation: '',
     name: '',
@@ -589,16 +586,20 @@ function NavalLetterGeneratorInner() {
     }
 
     if (formData.adminSubsections?.reportsRequired?.content !== content) {
-      setFormData(prev => ({
-        ...prev,
-        adminSubsections: {
-          ...prev.adminSubsections!,
-          reportsRequired: {
-            ...prev.adminSubsections!.reportsRequired,
-            content
+      setFormData(prev => {
+        // Read through a default rather than a non-null assertion: an
+        // imported document can arrive without the key (its own JSON
+        // predates it), and the assertion turned that into a crash
+        // instead of a merge.
+        const current = prev.adminSubsections ?? defaultAdminSubsections();
+        return {
+          ...prev,
+          adminSubsections: {
+            ...current,
+            reportsRequired: { ...current.reportsRequired, content }
           }
-        }
-      }));
+        };
+      });
     }
   });
 
@@ -919,6 +920,11 @@ function NavalLetterGeneratorInner() {
       cancellationType: 'fixed',
       distribution: { type: 'none' },
       reports: [],
+      // The blank document carries the same subsections the app's first
+      // document does. Leaving this out made every draft, template and
+      // share-link load produce a document whose adminSubsections was
+      // undefined, which the reports sync below then dereferenced.
+      adminSubsections: defaultAdminSubsections(),
       actionNo: '',
       orgStation: '',
       name: '',
