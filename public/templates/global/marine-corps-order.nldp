@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "packageId": "nldp_1770758957964_mco",
+    "packageId": "nldp_template_marine-corps-order",
     "formatVersion": "1.0.0",
     "createdAt": "2026-02-10T21:29:17.964Z",
     "author": {
@@ -9,8 +9,8 @@
     },
     "package": {
       "title": "Marine Corps Order",
-      "description": "Permanent directive establishing policy.",
-      "subject": "MARINE CORPS ORDER TITLE",
+      "description": "A complete worked Order: front matter, five-paragraph body to the fourth level, reports and enclosures.",
+      "subject": "MARINE CORPS RECORDS MANAGEMENT PROGRAM",
       "documentType": "mco",
       "tags": [
         "template",
@@ -25,19 +25,71 @@
   "data": {
     "formData": {
       "documentType": "mco",
-      "ssic": "1000",
-      "originatorCode": "CODE",
+      "ssic": "5210",
+      "originatorCode": "AR",
       "date": "10 Feb 26",
-      "from": "Commanding Officer",
+      "from": "Commandant of the Marine Corps",
       "to": "Distribution List",
-      "subj": "MARINE CORPS ORDER TITLE",
+      "subj": "MARINE CORPS RECORDS MANAGEMENT PROGRAM",
       "orderPrefix": "MCO",
+      "directiveTitle": "MARINE CORPS ORDER 5210.11G",
+      "bodyFont": "courier",
+      "showLocatorSheet": true,
+      "showRecordOfChanges": true,
+      "showStructuralPages": true,
       "distribution": {
-        "type": "standard",
-        "pcn": "10200000000",
-        "statementCode": "A"
+        "type": "pcn-with-copy",
+        "pcn": "10200150000",
+        "statementCode": "A",
+        "statementReason": "administrative/operational use",
+        "statementDate": "10 Feb 26",
+        "statementAuthority": "CMC (AR)",
+        "copyTo": [
+          {
+            "code": "8145001",
+            "qty": 1
+          },
+          {
+            "code": "0320001",
+            "qty": 2
+          }
+        ]
+      },
+      "reports": [
+        {
+          "id": "rpt-1",
+          "title": "Annual Records Management Assessment",
+          "controlSymbol": "MCO 5210.11G-01",
+          "paragraphRef": "4.c.(3)(b)",
+          "exempt": false
+        },
+        {
+          "id": "rpt-2",
+          "title": "Records Disposition Schedule Update",
+          "controlSymbol": "MCO 5210.11G-02",
+          "paragraphRef": "4.c.(1)",
+          "exempt": false
+        }
+      ],
+      "adminSubsections": {
+        "recordsManagement": {
+          "show": true,
+          "content": "Records created as a result of this Order shall be managed per reference (b) and disposed of per the approved disposition schedule.",
+          "order": 1
+        },
+        "privacyAct": {
+          "show": true,
+          "content": "Any misuse or unauthorized disclosure of personally identifiable information may result in both civil and criminal penalties.",
+          "order": 2
+        },
+        "reportsRequired": {
+          "show": true,
+          "content": "The reports required by this Order are listed in enclosure (3).",
+          "order": 3
+        }
       },
       "sig": "I. M. MARINE",
+      "delegationText": "By direction",
       "line1": "",
       "line2": "",
       "line3": "",
@@ -51,69 +103,148 @@
       "startingPageNumber": 1,
       "previousPackagePageCount": 0,
       "headerType": "USMC",
-      "bodyFont": "times",
-      "delegationText": "",
       "accentColor": "black"
     },
     "vias": [],
-    "references": [],
-    "enclosures": [],
+    "references": [
+      "Title 44, United States Code",
+      "SECNAV M-5210.1",
+      "DoD Directive 5015.2",
+      "SECNAVINST 5210.8E"
+    ],
+    "enclosures": [
+      "Definitions",
+      "Records Retention Schedule",
+      "Required Reports"
+    ],
     "copyTos": [],
     "paragraphs": [
       {
         "id": 1,
-        "level": 0,
-        "content": "1. Situation."
+        "level": 1,
+        "title": "Situation",
+        "content": "Federal law requires every Marine Corps command to create, maintain, and dispose of its records under an approved schedule.  Reference (a) establishes the statutory basis and reference (b) implements it for the Department of the Navy."
       },
       {
         "id": 2,
-        "level": 0,
-        "content": "2. Mission."
+        "level": 2,
+        "content": "The program established by Marine Corps Order (MCO) 5210.11F predates the electronic recordkeeping requirements imposed by references (c) and (d)."
       },
       {
         "id": 3,
-        "level": 0,
-        "content": "3. Execution."
+        "level": 2,
+        "content": "Inspections conducted during FY25 found inconsistent appointment of command Records Managers and incomplete disposition schedules across the Total Force."
       },
       {
         "id": 4,
         "level": 1,
-        "content": "a. Commander's Intent."
+        "title": "Cancellation",
+        "content": "MCO 5210.11F."
       },
       {
         "id": 5,
         "level": 1,
-        "content": "b. Concept of Operations."
+        "title": "Mission",
+        "content": "Establish policy, assign responsibilities, and prescribe procedures for the Marine Corps Records Management Program."
       },
       {
         "id": 6,
         "level": 1,
-        "content": "c. Tasks."
+        "title": "Execution",
+        "content": ""
       },
       {
         "id": 7,
         "level": 2,
-        "content": "(1) Subordinate Unit 1."
+        "title": "Commander's Intent",
+        "content": "Every Marine Corps command treats its records as Federal assets and manages them from creation through final disposition.  The end state is a Total Force in which any record can be located, produced, and lawfully disposed of on demand."
       },
       {
         "id": 8,
         "level": 2,
-        "content": "(2) Subordinate Unit 2."
+        "title": "Concept of Operations",
+        "content": "The program operates through a Records Manager designated at each level of command, supported by a single disposition schedule and an annual self-assessment."
       },
       {
         "id": 9,
-        "level": 1,
-        "content": "d. Coordinating Instructions."
+        "level": 3,
+        "content": "CMC (AR) sets policy, maintains the schedule, and reports Marine Corps compliance to the Department of the Navy."
       },
       {
         "id": 10,
-        "level": 0,
-        "content": "4. Administration and Logistics."
+        "level": 3,
+        "content": "Commands execute the program locally and assess their own compliance each fiscal year."
       },
       {
         "id": 11,
-        "level": 0,
-        "content": "5. Command and Signal."
+        "level": 2,
+        "title": "Tasks",
+        "content": ""
+      },
+      {
+        "id": 12,
+        "level": 3,
+        "content": "CMC (AR) will serve as the Marine Corps Records Manager, publish the disposition schedule, and provide program oversight."
+      },
+      {
+        "id": 13,
+        "level": 3,
+        "content": "Commander, Marine Corps Systems Command will ensure Marine Corps information systems support the electronic recordkeeping requirements of reference (c)."
+      },
+      {
+        "id": 14,
+        "level": 3,
+        "content": "Commanding Generals and Commanding Officers will:"
+      },
+      {
+        "id": 15,
+        "level": 4,
+        "content": "Appoint a command Records Manager in writing within 60 days of assuming command."
+      },
+      {
+        "id": 16,
+        "level": 4,
+        "content": "Conduct an annual records management assessment and report the results to CMC (AR) no later than 31 October."
+      },
+      {
+        "id": 17,
+        "level": 2,
+        "title": "Coordinating Instructions",
+        "content": ""
+      },
+      {
+        "id": 18,
+        "level": 3,
+        "content": "Commands will complete an initial compliance review within 180 days of the effective date of this Order."
+      },
+      {
+        "id": 19,
+        "level": 3,
+        "content": "Questions concerning this Order will be directed to CMC (AR)."
+      },
+      {
+        "id": 20,
+        "level": 1,
+        "title": "Administration and Logistics",
+        "content": "Records management training is coordinated through Training and Education Command (TECOM) and delivered through MarineNet."
+      },
+      {
+        "id": 21,
+        "level": 1,
+        "title": "Command and Signal",
+        "content": ""
+      },
+      {
+        "id": 22,
+        "level": 2,
+        "title": "Command",
+        "content": "This Order is applicable to the Marine Corps Total Force."
+      },
+      {
+        "id": 23,
+        "level": 2,
+        "title": "Signal",
+        "content": "This Order is effective the date signed."
       }
     ]
   }

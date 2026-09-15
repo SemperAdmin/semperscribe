@@ -18,6 +18,7 @@ import {
   PDF_SUBJECT,
   PDF_SPACING,
   LINE_HEIGHT_12PT,
+  LINE_HEIGHT_12PT_COURIER,
 } from '@/lib/pdf-settings';
 
 // Height reserved for continuation page header (Subj line + spacing)
@@ -31,7 +32,23 @@ import {
 // absolute-positioned header origin.
 const CONTINUATION_SUBJ_OFFSET = 60 - PDF_MARGINS.top;
 const CONTINUATION_SPACER_NAVAL = 84 - PDF_MARGINS.top;
-const CONTINUATION_HEADER_HEIGHT = 48; // directive/civilian legacy, retuned in Phases 3-4
+const CONTINUATION_HEADER_HEIGHT = 48; // civilian legacy, retuned in Phases 3-4
+
+// Directive continuation page (MCO 5215.1K para 38; audit lines 98, 160).
+// The ID stack starts 1 INCH from the page top and runs two lines,
+// designation then date. Body text resumes on the 2nd line below the
+// date - one blank line - which is what the DOCX emitter's trailing
+// createEmptyLine produces in the Word header.
+//
+// The old value was the flat 48pt shared with the civilian branch. That
+// put the body 92pt from the page top while the two header lines run to
+// 72 + 2 x 13.59 = 99.18pt, so the date printed THROUGH the first line
+// of body text on every page past the first. The constant now derives
+// from the same position and line metric the header itself uses, so the
+// two cannot drift apart again.
+const CONTINUATION_DIRECTIVE_STACK_TOP = 72;
+const CONTINUATION_SPACER_DIRECTIVE =
+  CONTINUATION_DIRECTIVE_STACK_TOP - PDF_MARGINS.top + 3 * LINE_HEIGHT_12PT_COURIER;
 import { getPDFSealDataUrl } from '@/lib/pdf-seal';
 import { parseAndFormatDate, formatBusinessDate } from '@/lib/date-utils';
 import { splitSubject, formatCancellationDate, getDirectiveDesignation, buildDirectiveTitle, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose, getSignatureBlankLines, resolveDistributionStatement } from '@/lib/naval-format-utils';
@@ -39,6 +56,7 @@ import { parseFormattedText } from '@/lib/pdf-text-parser';
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from '@/lib/indent-engine';
 import { getClassification, bannerText, needsCuiBlock, cuiBlockLines, portionPrefix, paragraphLevel } from '@/lib/classification';
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from '@/lib/font-policy';
+import { getHeadingStyle } from '@/lib/heading-policy';
 import type { ParagraphIndentSpec } from '@/lib/indent-engine';
 import { generateDisplayCitation } from '@/lib/citation';
 import { refLetterAt, startingRefLetterFor, startingEnclosureNumberFor } from '@/lib/reference-letters';
@@ -85,8 +103,13 @@ const createStyles = (bodyFont: 'times' | 'courier', accentColor?: string, isSho
       marginBottom: 0,
     },
     
+    // Letterhead runs in the document's own face, the same rule the DOCX
+    // emitter follows. M-5216.5 App C para a fixes the SIZES (10 pt bold
+    // department line, 8 pt address lines) and authorizes several faces,
+    // so pinning the serif here put a second font on a directive that
+    // MCO 5215.1K locks to Courier New.
     headerTitle: {
-      fontFamily: PDF_FONTS.SERIF,
+      fontFamily: fontFamily,
       fontSize: PDF_FONT_SIZES.title,
       fontWeight: 'bold',
       textAlign: 'center',
@@ -94,7 +117,7 @@ const createStyles = (bodyFont: 'times' | 'courier', accentColor?: string, isSho
     },
     
     headerLine: {
-      fontFamily: PDF_FONTS.SERIF,
+      fontFamily: fontFamily,
       fontSize: PDF_FONT_SIZES.unitLines,
       textAlign: 'center',
       color: headerColor,
@@ -377,6 +400,7 @@ function ParagraphItem({
   bodyFont,
   shouldBoldTitle = true,
   shouldUppercaseTitle = true,
+  shouldUnderlineTitle = true,
   documentType,
   isShortLetter,
   fourDigitNumbering,
@@ -390,6 +414,7 @@ function ParagraphItem({
   bodyFont: 'times' | 'courier';
   shouldBoldTitle?: boolean;
   shouldUppercaseTitle?: boolean;
+  shouldUnderlineTitle?: boolean;
   documentType?: string;
   isShortLetter?: boolean;
   fourDigitNumbering?: boolean;
@@ -403,6 +428,27 @@ function ParagraphItem({
   const isUnderlined = level >= 5 && level <= 8;
 
   const titleText = shouldUppercaseTitle && paragraph.title ? paragraph.title.toUpperCase() : paragraph.title;
+
+  /**
+   * The heading run. M-5216.5 7-2.d: "Underline any heading and
+   * capitalize its key words using the Title Case format." The period
+   * that separates the heading from run-on text is punctuation and
+   * stays outside the rule, the same split the level 5-8 designators
+   * take (Fig 7-8), and so do the two spaces after it, so the rule ends
+   * where the words do.
+   */
+  const headingRun = (bold: boolean) => (
+    <>
+      <Text style={{
+        fontWeight: bold ? 'bold' : 'normal',
+        textDecoration: shouldUnderlineTitle ? 'underline' : 'none',
+      }}>{titleText}</Text>
+      <Text style={{ fontWeight: bold ? 'bold' : 'normal', textDecoration: 'none' }}>
+        {paragraph.content ? '.' : ''}
+      </Text>
+      {paragraph.content ? '\u00A0\u00A0' : ''}
+    </>
+  );
 
   if (documentType === 'business-letter' || documentType === 'executive-correspondence') {
      if (level === 1) {
@@ -538,9 +584,7 @@ function ParagraphItem({
             citation
           )}
           {spacesAfterCitation}
-          {paragraph.title && (
-            <Text>{titleText}{paragraph.content ? '.' : ''}{paragraph.content ? '\u00A0\u00A0' : ''}</Text>
-          )}
+          {paragraph.title && headingRun(false)}
           {parseFormattedText(paragraph.content)}
         </Text>
       </View>
@@ -574,12 +618,7 @@ function ParagraphItem({
             citation
           )}
           {'\u00A0'.repeat(spec.spacesAfter)}
-          {paragraph.title && (
-            <Text style={{
-              fontWeight: shouldBoldTitle ? 'bold' : 'normal',
-              textDecoration: 'none'
-            }}>{titleText}{paragraph.content ? '.' : ''}{paragraph.content ? '\u00A0\u00A0' : ''}</Text>
-          )}
+          {paragraph.title && headingRun(shouldBoldTitle)}
           {parseFormattedText(paragraph.content)}
         </Text>
       </View>
@@ -610,12 +649,7 @@ function ParagraphItem({
           (M-5216.5 Fig 7-1 para 3.a). This branch serves the Times
           formats which carry no indent spec. */}
       <Text style={{ flex: 1 }} orphans={2} widows={2}>
-        {paragraph.title && (
-            <Text style={{
-              fontWeight: shouldBoldTitle ? 'bold' : 'normal',
-              textDecoration: 'none'
-            }}>{titleText}{paragraph.content ? '.' : ''}{paragraph.content ? '\u00A0\u00A0' : ''}</Text>
-        )}
+        {paragraph.title && headingRun(shouldBoldTitle)}
         {parseFormattedText(paragraph.content)}
       </Text>
     </View>
@@ -887,7 +921,7 @@ export function NavalLetterPDF({
                       omitted, stack top at 1 INCH from the page top
                       (band origin is PDF_MARGINS.top, so offset the
                       difference). */
-                   <View style={{ alignItems: 'flex-end', marginTop: 72 - PDF_MARGINS.top }}>
+                   <View style={{ alignItems: 'flex-end', marginTop: CONTINUATION_DIRECTIVE_STACK_TOP - PDF_MARGINS.top }}>
                       <View style={{ alignItems: 'flex-start' }}>
                         <Text style={styles.addressLine}>
                           {getDirectiveDesignation(formData)}
@@ -918,7 +952,7 @@ export function NavalLetterPDF({
           render={({ pageNumber }) => (
             pageNumber > 1 && !isSamePageBlock ? (
               <View style={{ height: isDirective
-                ? CONTINUATION_HEADER_HEIGHT
+                ? CONTINUATION_SPACER_DIRECTIVE
                 : isCivilianStyle
                   ? CONTINUATION_HEADER_HEIGHT + 48
                   /* Multi-line subjects wrap inside the fixed header, so the
@@ -1760,8 +1794,9 @@ export function NavalLetterPDF({
               index={i}
               allParagraphs={paragraphsWithContent}
               bodyFont={formData.bodyFont}
-              shouldBoldTitle={!['mco', 'moa', 'mou', 'information-paper', 'position-paper'].includes(formData.documentType)}
-              shouldUppercaseTitle={!['mco', 'bulletin', 'change-transmittal', 'moa', 'mou', 'information-paper', 'position-paper'].includes(formData.documentType)}
+              shouldBoldTitle={getHeadingStyle(formData.documentType).bold}
+              shouldUppercaseTitle={getHeadingStyle(formData.documentType).uppercase}
+              shouldUnderlineTitle={getHeadingStyle(formData.documentType).underline}
               documentType={formData.documentType}
               isShortLetter={formData.isShortLetter}
               fourDigitNumbering={formData.fourDigitNumbering}

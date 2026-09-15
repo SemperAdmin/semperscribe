@@ -1,114 +1,83 @@
-
 import fs from 'fs';
 import path from 'path';
-import { DOCUMENT_TEMPLATES } from '../src/lib/templates';
-import { NLDPFile } from '../src/lib/nldp-format';
+import { PUBLISHED_TEMPLATES } from '../src/lib/templates';
+import { serializeTemplatePackage, indexEntry } from '../src/lib/templates/publish';
 
-// Mapping for human-readable filenames
-const FILENAME_MAP: Record<string, string> = {
-  'basic': 'usmc-basic-letter',
-  'business-letter': 'business-letter',
-  'endorsement': 'endorsement',
-  'mfr': 'memorandum-for-record',
-  'aa-form': 'aa-form',
-  'position-paper': 'position-paper',
-  'information-paper': 'information-paper',
-  'from-to-memo': 'from-to-memo',
-  'letterhead-memo': 'letterhead-memo',
-  'moa': 'memorandum-of-agreement',
-  'mou': 'memorandum-of-understanding',
-  'mco': 'marine-corps-order',
-  'bulletin': 'marine-corps-bulletin'
-};
+/**
+ * Publishes the code templates to public/templates/global as .nldp
+ * files and rewrites the picker's index.json.
+ *
+ * The filename is the KEY of PUBLISHED_TEMPLATES, not the document
+ * type, so a type can publish more than one template. The Order ships
+ * two: a worked example and a format guide.
+ *
+ * Output is deterministic (see TEMPLATE_PACKAGE_EPOCH), so a run that
+ * changes nothing writes nothing and
+ * tests/published-templates.test.ts can hold the files on disk to the
+ * code byte for byte.
+ *
+ * Run with:  npx tsx scripts/generate-templates.ts
+ */
 
 const OUTPUT_DIR = path.join(process.cwd(), 'public/templates/global');
 const INDEX_FILE = path.join(OUTPUT_DIR, 'index.json');
 
-// Helper to generate NLDP structure
-function createNLDP(template: any): NLDPFile {
-  // Destructure the merged defaultData to separate arrays from formData
-  const { 
-    vias, 
-    references, 
-    enclosures, 
-    copyTos, 
-    paragraphs, 
-    ...formData 
-  } = template.defaultData;
-
-  return {
-    metadata: {
-      packageId: `nldp_${Date.now()}_${template.typeId}`,
-      formatVersion: '1.0.0',
-      createdAt: new Date().toISOString(),
-      author: {
-        name: 'System Template',
-        unit: 'HQMC'
-      },
-      package: {
-        title: template.name,
-        description: template.description,
-        subject: formData.subj || 'TEMPLATE',
-        documentType: template.typeId as any,
-        tags: ['template', 'standard']
-      },
-      checksums: {
-        dataHash: '', // skipped for generation
-        crc32: ''    // skipped for generation
-      }
-    },
-    data: {
-      formData: formData as any,
-      vias: vias || [],
-      references: references || [],
-      enclosures: enclosures || [],
-      copyTos: copyTos || [],
-      paragraphs: paragraphs || []
-    }
-  };
-}
-
-async function generate() {
+function generate() {
   console.log(`Generating templates in ${OUTPUT_DIR}...`);
 
-  // 1. Read existing index to preserve manual entries if needed (optional, but good practice)
-  // For now, we will overwrite or append. Let's start fresh with our comprehensive list + existing special ones.
-  
-  const existingIndex = JSON.parse(fs.readFileSync(INDEX_FILE, 'utf-8'));
-  // Filter out the "standard" ones we are about to regenerate to avoid duplicates
-  // Keep the "special" ones like CDDM or Page 11 examples if they aren't covered by our base types
-  const specialTemplates = existingIndex.filter((item: any) => 
-    !Object.keys(FILENAME_MAP).includes(item.documentType) && 
-    !['usmc-basic-letter'].includes(item.id) // Remove old basic letter
-  );
+  const existingIndex = JSON.parse(fs.readFileSync(INDEX_FILE, 'utf-8')) as { id: string }[];
+  const generatedIds = new Set(Object.keys(PUBLISHED_TEMPLATES));
+  const generatedRows: ReturnType<typeof indexEntry>[] = [];
+  let written = 0;
 
-  const newIndexEntries: any[] = [];
-
-  for (const [key, template] of Object.entries(DOCUMENT_TEMPLATES)) {
-    if (!FILENAME_MAP[key]) continue; // Skip aliases like 'page11' placeholder for now if not mapped
-
-    const filename = `${FILENAME_MAP[key]}.nldp`;
-    const filePath = path.join(OUTPUT_DIR, filename);
-    const nldp = createNLDP(template);
-
-    fs.writeFileSync(filePath, JSON.stringify(nldp, null, 2));
-    console.log(`Created: ${filename}`);
-
-    newIndexEntries.push({
-      id: FILENAME_MAP[key],
-      title: template.name,
-      description: template.description,
-      documentType: template.typeId,
-      url: `/templates/global/${filename}`
-    });
+  for (const [id, template] of Object.entries(PUBLISHED_TEMPLATES)) {
+    const filePath = path.join(OUTPUT_DIR, `${id}.nldp`);
+    const body = serializeTemplatePackage(id, template);
+    const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : null;
+    if (current !== body) {
+      fs.writeFileSync(filePath, body);
+      console.log(`Wrote: ${id}.nldp`);
+      written++;
+    }
+    generatedRows.push(indexEntry(id, template));
   }
 
-  // Merge and Write Index
-  // Put new standard templates first, then special examples
-  const finalIndex = [...newIndexEntries, ...specialTemplates];
-  
-  fs.writeFileSync(INDEX_FILE, JSON.stringify(finalIndex, null, 2));
-  console.log(`Updated index.json with ${finalIndex.length} templates.`);
+  // Index ORDER is curated and must survive a regeneration. Rows sit
+  // where a person put them: same-page-endorsement is deliberately
+  // next to endorsement, and a test pins that adjacency. Rebuilding
+  // the list as "everything generated, then everything else" threw
+  // that away. So walk the existing index, refresh the generated rows
+  // in place, and give a genuinely new row a home next to its own
+  // document type.
+  const byId = new Map(generatedRows.map((r) => [r.id, r]));
+  const placed = new Set<string>();
+  const finalIndex: (ReturnType<typeof indexEntry> | { id: string })[] = [];
+
+  for (const row of existingIndex) {
+    const refreshed = byId.get(row.id);
+    if (refreshed) {
+      finalIndex.push(refreshed);
+      placed.add(row.id);
+    } else {
+      finalIndex.push(row);
+    }
+  }
+
+  for (const row of generatedRows) {
+    if (placed.has(row.id)) continue;
+    const lastOfType = finalIndex.map((r) =>
+      (r as { documentType?: string }).documentType).lastIndexOf(row.documentType);
+    if (lastOfType === -1) finalIndex.push(row);
+    else finalIndex.splice(lastOfType + 1, 0, row);
+    console.log(`Indexed new template: ${row.id}`);
+  }
+
+  const indexBody = JSON.stringify(finalIndex, null, 2);
+  if (fs.readFileSync(INDEX_FILE, 'utf-8') !== indexBody) {
+    fs.writeFileSync(INDEX_FILE, indexBody);
+    console.log('Updated index.json');
+  }
+  console.log(`${written} template file(s) changed. Index lists ${finalIndex.length}.`);
 }
 
-generate().catch(console.error);
+generate();

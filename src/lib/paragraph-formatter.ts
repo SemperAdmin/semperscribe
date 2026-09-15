@@ -77,7 +77,8 @@ export function createFormattedParagraph(
   isShortLetter: boolean = false,
   relativeSpec?: ParagraphIndentSpec,
   keepWithNext: boolean = false,
-  citationOptions?: CitationOptions
+  citationOptions?: CitationOptions,
+  shouldUnderlineTitle: boolean = true
 ): Paragraph {
     const { content, level } = paragraph;
     // Shared display ruleset keeps DOCX designators identical to the
@@ -89,6 +90,29 @@ export function createFormattedParagraph(
         return shouldUppercaseTitle ? title.toUpperCase() : title;
     };
 
+    /**
+     * The heading, plus the period that separates it from run-on text.
+     *
+     * M-5216.5 7-2.d underlines the heading; the separating period is
+     * punctuation and stays plain, the same split the level 5-8
+     * designators use (Fig 7-8, tests/underline-verification.test.ts).
+     * Two runs, so Word draws the rule under the words only.
+     */
+    const titleRuns = (title: string, suffix: string): TextRun[] => {
+        const runs = [new TextRun({
+            text: processTitle(title),
+            font,
+            size: 24,
+            bold: shouldBoldTitle,
+            color,
+            ...(shouldUnderlineTitle ? { underline: { color } } : {}),
+        })];
+        if (suffix) {
+            runs.push(new TextRun({ text: suffix, font, size: 24, bold: shouldBoldTitle, color }));
+        }
+        return runs;
+    };
+
     // BUSINESS LETTER MODE
     if (isBusinessLetter) {
        // Level 1: No citation, 0.5" first line indent (or 1" for Short Letter)
@@ -96,13 +120,7 @@ export function createFormattedParagraph(
            const children: TextRun[] = [];
            if (paragraph.title) {
                 const suffix = content ? '.' : '';
-                children.push(new TextRun({
-                    text: processTitle(paragraph.title) + suffix,
-                    font: font,
-                    size: 24,
-                    bold: shouldBoldTitle,
-                    color
-                }));
+                children.push(...titleRuns(paragraph.title, suffix));
                 if (content) children.push(new TextRun({ text: '\u00A0\u00A0', font: font, size: 24, color }));
            }
            children.push(...parseContentToRuns(content, font, 24, color));
@@ -195,14 +213,7 @@ export function createFormattedParagraph(
         // Only add period if content exists (standard naval letter)
         const suffix = content ? '.' : '';
 
-        children.push(new TextRun({
-            text: processTitle(paragraph.title) + suffix,
-            font: font,
-            size: 24,
-            bold: shouldBoldTitle,
-            color,
-            underline: undefined // Explicitly undefined to ensure no underline
-        }));
+        children.push(...titleRuns(paragraph.title, suffix));
         if (content) children.push(new TextRun({ text: '\u00A0\u00A0', font: font, size: 24, color }));
     }
         children.push(...parseContentToRuns(content, font, 24, color));
@@ -233,14 +244,7 @@ export function createFormattedParagraph(
         // Only add period if content exists (standard naval letter)
         const suffix = content ? '.' : '';
 
-        children.push(new TextRun({
-            text: processTitle(paragraph.title) + suffix,
-            font: font,
-            size: 24,
-            bold: shouldBoldTitle,
-            color,
-            underline: undefined
-        }));
+        children.push(...titleRuns(paragraph.title, suffix));
         if (content) children.push(new TextRun({ text: '\u00A0\u00A0', font: font, size: 24, color }));
     }
         children.push(...parseContentToRuns(content, font, 24, color));
@@ -267,7 +271,7 @@ export function createFormattedParagraph(
         children.push(new TextRun({ text: '\u00A0'.repeat(relativeSpec.spacesAfter), font, size: 24, color }));
         if (paragraph.title) {
             const suffix = content ? '.' : '';
-            children.push(new TextRun({ text: processTitle(paragraph.title) + suffix, font: font, size: 24, bold: shouldBoldTitle, color }));
+            children.push(...titleRuns(paragraph.title, suffix));
             if (content) children.push(new TextRun({ text: '\u00A0\u00A0', font, size: 24, color }));
         }
         children.push(...parseContentToRuns(content, font, 24, color));
@@ -294,7 +298,7 @@ export function createFormattedParagraph(
         if (paragraph.title) {
             // Only add period if content exists (standard naval letter)
             const suffix = content ? '.' : '';
-            children.push(new TextRun({ text: processTitle(paragraph.title) + suffix, font: font, size: 24, bold: shouldBoldTitle, color }));
+            children.push(...titleRuns(paragraph.title, suffix));
             if (content) children.push(new TextRun({ text: '\u00A0\u00A0', font: font, size: 24, color }));
         }
         children.push(...parseContentToRuns(content, font, 24, color));
@@ -318,7 +322,7 @@ export function createFormattedParagraph(
     ];
 
     if (paragraph.title) {
-        children.push(new TextRun({ text: processTitle(paragraph.title) + '.', font: font, size: 24, bold: shouldBoldTitle, color }));
+        children.push(...titleRuns(paragraph.title, '.'));
         if (content) children.push(new TextRun({ text: '\u00A0\u00A0', font: font, size: 24, color }));
     }
     children.push(...parseContentToRuns(content, font, 24, color));

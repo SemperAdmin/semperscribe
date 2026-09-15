@@ -93,6 +93,16 @@ export const PDF_SUBJECT = {
 // Word uses the same font metrics, so DOCX blank lines and PDF gaps
 // now have identical height (pagination parity; audit G2/G8).
 export const LINE_HEIGHT_12PT = 13.8;
+
+// The Courier line. Liberation Mono at 12pt:
+// (ascent 1705 - descent -615 + lineGap 0) / 2048 em * 12pt = 13.59pt.
+// Directives are Courier by policy (MCO 5215.1K), so any directive
+// geometry expressed in whole lines has to use THIS number, not the
+// Times one above. Mixing the two is what let the continuation-page
+// header run into the first body line: the header sat at an absolute
+// 1-inch grid position while the body spacer was sized off a different
+// line metric, and the two met about 7pt short.
+export const LINE_HEIGHT_12PT_COURIER = 13.59;
 export const PDF_SPACING = {
   paragraph: LINE_HEIGHT_12PT,  // Space between body paragraphs (one blank line)
   emptyLine: LINE_HEIGHT_12PT,  // Height of one blank line

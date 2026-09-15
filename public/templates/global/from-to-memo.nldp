@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "packageId": "nldp_1770758957960_from-to-memo",
+    "packageId": "nldp_template_from-to-memo",
     "formatVersion": "1.0.0",
-    "createdAt": "2026-02-10T21:29:17.960Z",
+    "createdAt": "2026-02-10T21:29:17.964Z",
     "author": {
       "name": "System Template",
       "unit": "HQMC"
@@ -10,7 +10,7 @@
     "package": {
       "title": "From-To Memorandum",
       "description": "Informal internal correspondence.",
-      "subject": "FROM-TO MEMO SUBJECT",
+      "subject": "UPDATED TRAINING SCHEDULE FOR MARCH 2026",
       "documentType": "from-to-memo",
       "tags": [
         "template",
@@ -26,12 +26,12 @@
     "formData": {
       "documentType": "from-to-memo",
       "date": "10 Feb 26",
-      "from": "Rank Name",
-      "to": "Recipient",
-      "subj": "FROM-TO MEMO SUBJECT",
-      "ssic": "",
-      "originatorCode": "",
-      "sig": "",
+      "from": "Capt J. M. Smith",
+      "to": "Maj R. L. Jones, Operations Officer",
+      "subj": "UPDATED TRAINING SCHEDULE FOR MARCH 2026",
+      "ssic": "1500",
+      "originatorCode": "S-3",
+      "sig": "J. M. SMITH",
       "line1": "",
       "line2": "",
       "line3": "",
@@ -50,24 +50,45 @@
       "accentColor": "black"
     },
     "vias": [],
-    "references": [],
-    "enclosures": [],
-    "copyTos": [],
+    "references": [
+      "(a) Battalion Training Plan dtd 15 Jan 26"
+    ],
+    "enclosures": [
+      "(1) Revised Training Schedule"
+    ],
+    "copyTos": [
+      "S-3A"
+    ],
     "paragraphs": [
       {
         "id": 1,
         "level": 0,
-        "content": "1. Just a quick note."
+        "content": "1. The training schedule for March 2026 has been revised to incorporate the new range allocation from Range Control."
       },
       {
         "id": 2,
         "level": 0,
-        "content": "2. Another point."
+        "content": "2. Key changes include the following."
       },
       {
         "id": 3,
         "level": 1,
-        "content": "a. Sub-point."
+        "content": "a. Live-fire exercise moved from 10-12 Mar to 17-19 Mar."
+      },
+      {
+        "id": 4,
+        "level": 1,
+        "content": "b. Field exercise extended by two days to accommodate additional objectives."
+      },
+      {
+        "id": 5,
+        "level": 2,
+        "content": "(1) Night operations added on 24 Mar."
+      },
+      {
+        "id": 6,
+        "level": 0,
+        "content": "3. Request acknowledgement of receipt and any conflicts NLT 20 Feb 26."
       }
     ]
   }

@@ -1,16 +1,16 @@
 {
   "metadata": {
-    "packageId": "nldp_1770758957959_position-paper",
+    "packageId": "nldp_template_position-paper",
     "formatVersion": "1.0.0",
-    "createdAt": "2026-02-10T21:29:17.959Z",
+    "createdAt": "2026-02-10T21:29:17.964Z",
     "author": {
       "name": "System Template",
       "unit": "HQMC"
     },
     "package": {
-      "title": "Position/Decision Paper",
+      "title": "Position Paper",
       "description": "Used to advocate for a specific position or decision.",
-      "subject": "POSITION PAPER ON TOPIC",
+      "subject": "CONSOLIDATION OF ADMINISTRATIVE SUPPORT FUNCTIONS ACROSS I MEF MAJOR SUBORDINATE COMMANDS",
       "documentType": "position-paper",
       "tags": [
         "template",
@@ -25,7 +25,7 @@
   "data": {
     "formData": {
       "documentType": "position-paper",
-      "subj": "POSITION PAPER ON TOPIC",
+      "subj": "CONSOLIDATION OF ADMINISTRATIVE SUPPORT FUNCTIONS ACROSS I MEF MAJOR SUBORDINATE COMMANDS",
       "date": "10 Feb 26",
       "classification": "UNCLASSIFIED",
       "drafterName": "Capt J. M. Doe",
@@ -33,22 +33,56 @@
       "drafterOfficeCode": "G-3",
       "drafterPhone": "555-1234",
       "drafterService": "USMC",
-      "drafterAgency": "Unit",
+      "drafterAgency": "I MEF",
       "approverName": "Col I. M. Boss",
       "approverRank": "Col",
       "approverOfficeCode": "G-3",
       "approverPhone": "555-5678",
-      "decisionMode": "SINGLE",
+      "decisionMode": "MULTIPLE_CHOICE",
       "decisionGrid": {
-        "recommenders": [],
+        "recommenders": [
+          {
+            "id": "rec-1",
+            "role": "AC/S G-1",
+            "options": [
+              "COA 1",
+              "COA 2",
+              "COA 3"
+            ]
+          },
+          {
+            "id": "rec-2",
+            "role": "AC/S G-4",
+            "options": [
+              "COA 1",
+              "COA 2",
+              "COA 3"
+            ]
+          },
+          {
+            "id": "rec-3",
+            "role": "AC/S G-8",
+            "options": [
+              "COA 1",
+              "COA 2",
+              "COA 3"
+            ]
+          }
+        ],
         "finalDecision": {
-          "role": "Commander",
+          "role": "CG, I MEF",
           "options": [
-            "Approve",
-            "Disapprove",
-            "Modify"
+            "COA 1",
+            "COA 2",
+            "COA 3",
+            "Disapprove"
           ]
-        }
+        },
+        "coas": [
+          "COA 1: Full Consolidation",
+          "COA 2: Partial Consolidation",
+          "COA 3: Status Quo"
+        ]
       },
       "ssic": "",
       "originatorCode": "",
@@ -73,42 +107,65 @@
       "accentColor": "black"
     },
     "vias": [],
-    "references": [],
-    "enclosures": [],
+    "references": [
+      "(a) MCO 5311.1E",
+      "(b) I MEF CG White Letter 3-25",
+      "(c) GAO Report GAO-25-1234"
+    ],
+    "enclosures": [
+      "(1) Cost-Benefit Analysis",
+      "(2) Implementation Timeline",
+      "(3) Risk Assessment Matrix"
+    ],
     "copyTos": [],
     "paragraphs": [
       {
         "id": 1,
-        "level": 0,
-        "content": "1. BLUF. Bottom Line Up Front...",
+        "level": 1,
+        "content": "Recommend consolidating administrative support functions across I MEF major subordinate commands to reduce redundancy and improve efficiency. This consolidation will save an estimated $2.1M annually and free 45 billets for reallocation to operational units.",
         "title": "BLUF"
       },
       {
         "id": 2,
-        "level": 0,
-        "content": "2. Background. Context of the issue...",
+        "level": 1,
+        "content": "Each MSC currently maintains independent administrative support sections performing overlapping functions including personnel administration, supply management, and financial processing.",
         "title": "Background"
       },
       {
         "id": 3,
-        "level": 0,
-        "content": "3. Discussion. Detailed analysis...",
+        "level": 1,
+        "content": "Three courses of action were evaluated against the criteria of cost savings, operational impact, and implementation feasibility.",
         "title": "Discussion"
       },
       {
         "id": 4,
-        "level": 1,
-        "content": "a. Analysis point 1."
+        "level": 2,
+        "content": "COA 1: Full consolidation into a single I MEF administrative center. Highest savings but greatest operational risk during transition."
       },
       {
         "id": 5,
         "level": 2,
-        "content": "(1) Detail."
+        "content": "COA 2: Partial consolidation of financial and supply functions while retaining distributed personnel administration. Moderate savings with lower risk."
       },
       {
         "id": 6,
-        "level": 0,
-        "content": "4. Recommendation. Specific action to take...",
+        "level": 3,
+        "content": "Financial processing consolidation alone would save an estimated $800K annually."
+      },
+      {
+        "id": 7,
+        "level": 3,
+        "content": "Supply chain consolidation would reduce duplicate inventory by approximately 30%."
+      },
+      {
+        "id": 8,
+        "level": 2,
+        "content": "COA 3: Status quo with improved coordination mechanisms. Lowest risk but minimal savings."
+      },
+      {
+        "id": 9,
+        "level": 1,
+        "content": "Adopt COA 2 (partial consolidation) with a phased implementation beginning Q3 FY26. This balances cost savings against operational risk and can serve as a proof of concept for future full consolidation.",
         "title": "Recommendation"
       }
     ]

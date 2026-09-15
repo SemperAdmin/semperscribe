@@ -9,7 +9,7 @@ import { DecisionPaperTemplate } from './decision-paper';
 import { CoordinationPageTemplate } from './coordination-page';
 import { ExecutiveCorrespondenceTemplate } from './executive-correspondence';
 import { FromToMemoTemplate, LetterheadMemoTemplate, MOATemplate, MOUTemplate } from './memo';
-import { MCOTemplate, BulletinTemplate, ChangeTransmittalTemplate, AssumptionOfCommandTemplate } from './orders';
+import { MCOTemplate, MCOFormatGuideTemplate, BulletinTemplate, ChangeTransmittalTemplate, AssumptionOfCommandTemplate } from './orders';
 import { DLAMemorandumTemplate } from './dla-memorandum';
 import { DLABusinessLetterTemplate } from './dla-business-letter';
 import { ITypeTemplate } from '@/lib/i-type/template';
@@ -27,6 +27,7 @@ export * from './decision-paper';
 export * from './coordination-page';
 export * from './memo';
 export * from './orders';
+export * from './publish';
 export * from './dla-memorandum';
 export * from './dla-business-letter';
 
@@ -65,6 +66,41 @@ export const DOCUMENT_TEMPLATES: Record<string, DocumentTemplate> = {
 
   // I-Type
   'i-type': ITypeTemplate,
+};
+
+/**
+ * The templates published to `public/templates/global` as .nldp files
+ * and listed in Browse Templates, keyed by the FILENAME each is
+ * published under.
+ *
+ * Separate from DOCUMENT_TEMPLATES because that record is keyed by
+ * document TYPE and holds exactly one entry per type - the default a
+ * drafter gets when picking the type in the sidebar. A type may publish
+ * more than one template to the library: the Order ships both a worked
+ * example and a format guide.
+ *
+ * scripts/generate-templates.ts reads this, and
+ * tests/published-templates.test.ts asserts the files on disk still
+ * match it. They had drifted: orders.ts was rebuilt in P3.8 and the
+ * .nldp the picker actually serves was never regenerated, so users were
+ * handed the original skeleton with designators typed into the content
+ * for seven months.
+ */
+export const PUBLISHED_TEMPLATES: Record<string, DocumentTemplate> = {
+  'usmc-basic-letter': BasicLetterTemplate,
+  'business-letter': BusinessLetterTemplate,
+  'endorsement': EndorsementTemplate,
+  'memorandum-for-record': MFRTemplate,
+  'aa-form': AAFormTemplate,
+  'position-paper': PositionPaperTemplate,
+  'information-paper': InformationPaperTemplate,
+  'from-to-memo': FromToMemoTemplate,
+  'letterhead-memo': LetterheadMemoTemplate,
+  'memorandum-of-agreement': MOATemplate,
+  'memorandum-of-understanding': MOUTemplate,
+  'marine-corps-order': MCOTemplate,
+  'marine-corps-order-format-guide': MCOFormatGuideTemplate,
+  'marine-corps-bulletin': BulletinTemplate,
 };
 
 /**

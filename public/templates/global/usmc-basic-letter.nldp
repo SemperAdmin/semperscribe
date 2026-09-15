@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "packageId": "nldp_1770758957939_basic",
+    "packageId": "nldp_template_usmc-basic-letter",
     "formatVersion": "1.0.0",
-    "createdAt": "2026-02-10T21:29:17.939Z",
+    "createdAt": "2026-02-10T21:29:17.964Z",
     "author": {
       "name": "System Template",
       "unit": "HQMC"
@@ -32,8 +32,9 @@
       "to": "Commanding Officer, Destination Unit, City, State Zip",
       "subj": "STANDARD NAVAL LETTER TEMPLATE",
       "sig": "I. M. MARINE",
-      "delegationText": "",
+      "delegationText": "By direction",
       "line1": "",
+      "line1b": "",
       "line2": "",
       "line3": "",
       "endorsementLevel": "",
@@ -49,10 +50,22 @@
       "bodyFont": "times",
       "accentColor": "black"
     },
-    "vias": [],
-    "references": [],
-    "enclosures": [],
-    "copyTos": [],
+    "vias": [
+      "Commanding Officer, Intermediate Unit, Camp Pendleton, CA 92055"
+    ],
+    "references": [
+      "(a) MCO 5216.20B",
+      "(b) SECNAVINST 5216.5E",
+      "(c) CMC ltr 1000 CODE of 10 Jan 26"
+    ],
+    "enclosures": [
+      "(1) Supporting Document A",
+      "(2) Supporting Document B"
+    ],
+    "copyTos": [
+      "Commanding General, I MEF",
+      "Inspector General of the Marine Corps"
+    ],
     "paragraphs": [
       {
         "id": 1,

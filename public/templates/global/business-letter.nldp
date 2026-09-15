@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "packageId": "nldp_1770758957956_business-letter",
+    "packageId": "nldp_template_business-letter",
     "formatVersion": "1.0.0",
-    "createdAt": "2026-02-10T21:29:17.956Z",
+    "createdAt": "2026-02-10T21:29:17.964Z",
     "author": {
       "name": "System Template",
       "unit": "HQMC"
@@ -31,16 +31,17 @@
       "recipientName": "Mr. John Doe",
       "recipientTitle": "Director of Operations",
       "businessName": "Acme Corporation",
-      "recipientAddress": "123 Business Blvd\nCity, State 12345",
+      "recipientAddress": "123 Business Blvd\nSuite 400\nSan Diego, CA 92101",
+      "attentionLine": "Attention: Contracts Division",
       "salutation": "Dear Mr. Doe:",
       "complimentaryClose": "Sincerely,",
       "subj": "BUSINESS LETTER TEMPLATE",
       "sig": "I. M. MARINE",
       "signerRank": "Colonel",
       "signerTitle": "Commanding Officer",
-      "isWindowEnvelope": false,
+      "isWindowEnvelope": true,
       "isShortLetter": false,
-      "isVipMode": false,
+      "isVipMode": true,
       "from": "",
       "to": "",
       "line1": "",
@@ -61,9 +62,18 @@
       "accentColor": "black"
     },
     "vias": [],
-    "references": [],
-    "enclosures": [],
-    "copyTos": [],
+    "references": [
+      "(a) Contract N00024-26-C-1234",
+      "(b) Previous correspondence dtd 5 Jan 26"
+    ],
+    "enclosures": [
+      "(1) Statement of Work",
+      "(2) Cost Estimate"
+    ],
+    "copyTos": [
+      "Contracting Officer, NAVSEA",
+      "Staff Judge Advocate"
+    ],
     "paragraphs": [
       {
         "id": 1,
