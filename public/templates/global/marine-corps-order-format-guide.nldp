@@ -1,0 +1,239 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_marine-corps-order-format-guide",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-02-10T21:29:17.964Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "Marine Corps Order (Format Guide)",
+      "description": "The Order format explained in place: every paragraph says what belongs in it, per MCO 5215.1K. Type over it.",
+      "subject": "SUBJECT IN ALL CAPITALS, ACRONYMS SPELLED OUT",
+      "documentType": "mco",
+      "tags": [
+        "template",
+        "standard"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "mco",
+      "ssic": "5215.1",
+      "originatorCode": "ARDE",
+      "date": "10 Feb 26",
+      "from": "Commandant of the Marine Corps",
+      "to": "Distribution List",
+      "subj": "SUBJECT IN ALL CAPITALS, ACRONYMS SPELLED OUT",
+      "orderPrefix": "MCO",
+      "directiveTitle": "MARINE CORPS ORDER 5215.1K",
+      "bodyFont": "courier",
+      "showLocatorSheet": true,
+      "showRecordOfChanges": true,
+      "showStructuralPages": true,
+      "distribution": {
+        "type": "pcn-with-copy",
+        "pcn": "10200000000",
+        "statementCode": "A",
+        "statementReason": "administrative/operational use",
+        "statementDate": "10 Feb 26",
+        "statementAuthority": "CMC (ARDE)",
+        "copyTo": [
+          {
+            "code": "0000000",
+            "qty": 1
+          }
+        ]
+      },
+      "reports": [
+        {
+          "id": "rpt-1",
+          "title": "Name the report exactly as the tasking paragraph names it",
+          "controlSymbol": "MCO 5215.1K-01",
+          "paragraphRef": "4.c.(2)",
+          "exempt": false
+        }
+      ],
+      "adminSubsections": {
+        "recordsManagement": {
+          "show": true,
+          "content": "State how records created by this Order are managed and disposed of.  Cite the records manual as a reference rather than restating it.",
+          "order": 1
+        },
+        "privacyAct": {
+          "show": true,
+          "content": "Include this subparagraph only when the Order causes personally identifiable information to be collected, used, or maintained.",
+          "order": 2
+        },
+        "reportsRequired": {
+          "show": true,
+          "content": "Point to where the reports are listed.  Every report named here must also appear in the Reports Required section and in the paragraph that tasks it.",
+          "order": 3
+        }
+      },
+      "sig": "I. M. MARINE",
+      "delegationText": "By direction",
+      "line1": "",
+      "line2": "",
+      "line3": "",
+      "endorsementLevel": "",
+      "basicLetterReference": "",
+      "referenceWho": "",
+      "referenceType": "",
+      "referenceDate": "",
+      "startingReferenceLevel": "",
+      "startingEnclosureNumber": "",
+      "startingPageNumber": 1,
+      "previousPackagePageCount": 0,
+      "headerType": "USMC",
+      "accentColor": "black"
+    },
+    "vias": [],
+    "references": [
+      "List references in the order they are first cited in the text",
+      "Cite by designation and date, never by title alone",
+      "A reference cited only in an enclosure is listed in that enclosure"
+    ],
+    "enclosures": [
+      "List enclosures in the order they are first cited",
+      "An enclosure carries its own page numbering",
+      "Required Reports"
+    ],
+    "copyTos": [],
+    "paragraphs": [
+      {
+        "id": 1,
+        "level": 1,
+        "title": "Situation",
+        "content": "State the problem, the background, or the authority that makes this Order necessary.  Cite the governing law or higher directive as reference (a).  Give the reader only what is needed to understand why the Order exists."
+      },
+      {
+        "id": 2,
+        "level": 2,
+        "content": "Subdivide when the background carries more than one idea.  Never subdivide a paragraph into fewer than two parts: if there is an a., there is a b."
+      },
+      {
+        "id": 3,
+        "level": 2,
+        "content": "Each subdivision aligns under the first letter of the paragraph above it, four spaces per level, and never past the fourth (MCO 5215.1K para 33)."
+      },
+      {
+        "id": 4,
+        "level": 1,
+        "title": "Cancellation",
+        "content": "Name the directive this Order cancels, by designation only, in the form used by reference (b).  Cancellation is always the second paragraph.  Delete this paragraph if the Order cancels nothing."
+      },
+      {
+        "id": 5,
+        "level": 1,
+        "title": "Mission",
+        "content": "State in one sentence, in the active voice, what this Order directs.  If the Mission needs subparagraphs, the Order is doing too much."
+      },
+      {
+        "id": 6,
+        "level": 1,
+        "title": "Execution",
+        "content": ""
+      },
+      {
+        "id": 7,
+        "level": 2,
+        "title": "Commander's Intent",
+        "content": "State the purpose and the end state in the commander's own words.  Describe the condition that exists when the Order has worked, not the steps taken to get there."
+      },
+      {
+        "id": 8,
+        "level": 2,
+        "title": "Concept of Operations",
+        "content": "Describe in broad terms how the Order is carried out: who runs the program, through what structure, on what cycle.  Detail belongs under Tasks."
+      },
+      {
+        "id": 9,
+        "level": 3,
+        "content": "Use subparagraphs to separate phases, echelons, or lines of effort."
+      },
+      {
+        "id": 10,
+        "level": 3,
+        "content": "Keep the concept short enough that a reader can hold it in mind while reading the tasks."
+      },
+      {
+        "id": 11,
+        "level": 2,
+        "title": "Tasks",
+        "content": ""
+      },
+      {
+        "id": 12,
+        "level": 3,
+        "content": "One subparagraph per tasked organization, named exactly as the distribution names it.  Start with the staff agency that owns the program."
+      },
+      {
+        "id": 13,
+        "level": 3,
+        "content": "Every task is a directive verb the addressee can act on: appoint, submit, publish, review.  Avoid \"ensure\" where a concrete act is meant."
+      },
+      {
+        "id": 14,
+        "level": 3,
+        "content": "When one organization carries several tasks, list them:"
+      },
+      {
+        "id": 15,
+        "level": 4,
+        "content": "The fourth level, (a), is as deep as the ladder goes before the underlined restart.  If an Order needs more depth than this, restructure it."
+      },
+      {
+        "id": 16,
+        "level": 4,
+        "content": "Any task that produces a recurring report must also be listed in Reports Required with a control symbol."
+      },
+      {
+        "id": 17,
+        "level": 2,
+        "title": "Coordinating Instructions",
+        "content": ""
+      },
+      {
+        "id": 18,
+        "level": 3,
+        "content": "Put here what applies to two or more of the tasked organizations: suspense dates, compliance windows, reporting channels.  A reference cited only inside an enclosure is listed there, not here, as reference (c) notes."
+      },
+      {
+        "id": 19,
+        "level": 3,
+        "content": "Name the point of contact for questions, by staff code rather than by person."
+      },
+      {
+        "id": 20,
+        "level": 1,
+        "title": "Administration and Logistics",
+        "content": "Cover funding, training, and support that the Order requires.  The Records Management, Privacy Act, and Reports Required subparagraphs are added here automatically from the Reports and Admin sections of the form."
+      },
+      {
+        "id": 21,
+        "level": 1,
+        "title": "Command and Signal",
+        "content": ""
+      },
+      {
+        "id": 22,
+        "level": 2,
+        "title": "Command",
+        "content": "State who the Order applies to: the Total Force, the active component, a specific command."
+      },
+      {
+        "id": 23,
+        "level": 2,
+        "title": "Signal",
+        "content": "State when the Order takes effect. \"This Order is effective the date signed\" is the usual form."
+      }
+    ]
+  }
+}

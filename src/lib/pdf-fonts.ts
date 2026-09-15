@@ -30,15 +30,26 @@ export function registerPDFFonts() {
     ],
   });
 
-  // Liberation Mono (Courier New equivalent)
+  // Liberation Mono (Courier New equivalent).
+  //
+  // The bold face is a REAL bold. It used to point at the Regular file,
+  // because only three Liberation files shipped (docs/pdf-export-plan.md
+  // lists them), so every `fontWeight: 'bold'` in a Courier document -
+  // the letterhead department line M-5216.5 App C requires in bold, the
+  // classification banner, any bold heading - rendered at normal weight
+  // in the preview while Word, which has the real Courier New Bold, set
+  // them bold. The two surfaces disagreed and only the preview was
+  // wrong. Italics are still the Regular file: Liberation ships italic
+  // faces, but M-5216.5 2-2.20 admits italics for occasional emphasis
+  // only and nothing in the emitters asks for one yet.
   Font.register({
     family: 'Liberation Mono',
     fonts: [
       { src: getFullFontUrl('/fonts/LiberationMono-Regular.ttf'), fontWeight: 'normal' },
-      // Fallback for missing Bold/Italic fonts
-      { src: getFullFontUrl('/fonts/LiberationMono-Regular.ttf'), fontWeight: 'bold' },
+      { src: getFullFontUrl('/fonts/LiberationMono-Bold.ttf'), fontWeight: 'bold' },
+      // Fallback for the italic faces, which are not shipped.
       { src: getFullFontUrl('/fonts/LiberationMono-Regular.ttf'), fontWeight: 'normal', fontStyle: 'italic' },
-      { src: getFullFontUrl('/fonts/LiberationMono-Regular.ttf'), fontWeight: 'bold', fontStyle: 'italic' },
+      { src: getFullFontUrl('/fonts/LiberationMono-Bold.ttf'), fontWeight: 'bold', fontStyle: 'italic' },
     ],
   });
 

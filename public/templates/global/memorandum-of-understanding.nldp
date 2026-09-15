@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "packageId": "nldp_1770758957963_mou",
+    "packageId": "nldp_template_memorandum-of-understanding",
     "formatVersion": "1.0.0",
-    "createdAt": "2026-02-10T21:29:17.963Z",
+    "createdAt": "2026-02-10T21:29:17.964Z",
     "author": {
       "name": "System Template",
       "unit": "HQMC"
@@ -10,7 +10,7 @@
     "package": {
       "title": "Memorandum of Understanding",
       "description": "General understanding between parties (Non-binding).",
-      "subject": "MEMORANDUM OF UNDERSTANDING BETWEEN ACTIVITY A AND ACTIVITY B",
+      "subject": "MEMORANDUM OF UNDERSTANDING BETWEEN MARINE CORPS BASE QUANTICO AND PRINCE WILLIAM COUNTY FOR EMERGENCY MUTUAL AID",
       "documentType": "mou",
       "tags": [
         "template",
@@ -25,23 +25,37 @@
   "data": {
     "formData": {
       "documentType": "mou",
-      "subj": "MEMORANDUM OF UNDERSTANDING BETWEEN ACTIVITY A AND ACTIVITY B",
+      "subj": "MEMORANDUM OF UNDERSTANDING BETWEEN MARINE CORPS BASE QUANTICO AND PRINCE WILLIAM COUNTY FOR EMERGENCY MUTUAL AID",
       "date": "10 Feb 26",
       "moaData": {
-        "activityA": "Senior Activity",
-        "activityB": "Junior Activity",
+        "activityA": "Marine Corps Base Quantico",
+        "activityB": "Prince William County Emergency Services",
+        "activityAHeader": {
+          "ssic": "3440",
+          "serial": "012",
+          "date": "10 Feb 26"
+        },
+        "activityBHeader": {
+          "ssic": "3440",
+          "serial": "088",
+          "date": "10 Feb 26"
+        },
         "seniorSigner": {
-          "name": "Name",
-          "title": "Title",
-          "activity": "Activity A"
+          "name": "D. W. GARRISON",
+          "title": "Commanding Officer",
+          "activity": "Marine Corps Base Quantico",
+          "activitySymbol": "MCBQ",
+          "date": "10 Feb 26"
         },
         "juniorSigner": {
-          "name": "Name",
-          "title": "Title",
-          "activity": "Activity B"
+          "name": "S. M. COUNTY",
+          "title": "Director, Emergency Services",
+          "activity": "Prince William County",
+          "activitySymbol": "PWC-ES",
+          "date": "10 Feb 26"
         }
       },
-      "ssic": "",
+      "ssic": "3440",
       "originatorCode": "",
       "from": "",
       "to": "",
@@ -64,29 +78,50 @@
       "accentColor": "black"
     },
     "vias": [],
-    "references": [],
-    "enclosures": [],
+    "references": [
+      "(a) DoD Directive 3025.18",
+      "(b) MCO 3440.7B"
+    ],
+    "enclosures": [
+      "(1) Emergency Contact Roster",
+      "(2) Resource Inventory List"
+    ],
     "copyTos": [],
     "paragraphs": [
       {
         "id": 1,
         "level": 0,
-        "content": "1. Purpose."
+        "content": "1. Purpose. This Memorandum of Understanding establishes a mutual aid framework for emergency response between MCB Quantico and Prince William County Emergency Services."
       },
       {
         "id": 2,
         "level": 0,
-        "content": "2. Problem."
+        "content": "2. Problem. Both organizations require supplemental emergency response capabilities during large-scale incidents that exceed organic capacity."
       },
       {
         "id": 3,
         "level": 0,
-        "content": "3. Scope."
+        "content": "3. Scope. This MOU covers fire, rescue, and hazardous materials response within the geographic boundaries of both organizations."
       },
       {
         "id": 4,
         "level": 0,
-        "content": "4. Understanding."
+        "content": "4. Understanding. Both parties understand and acknowledge the following."
+      },
+      {
+        "id": 5,
+        "level": 1,
+        "content": "a. Mutual aid will be provided on an as-available basis without degrading primary mission capabilities."
+      },
+      {
+        "id": 6,
+        "level": 1,
+        "content": "b. Each party will bear its own costs incurred during mutual aid operations."
+      },
+      {
+        "id": 7,
+        "level": 0,
+        "content": "5. Effective Date. This MOU is effective upon signature and may be terminated by either party with 30 days written notice."
       }
     ]
   }

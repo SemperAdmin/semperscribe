@@ -71,6 +71,23 @@ These compound licenses are present but resolve cleanly under their permissive c
 
 Each component is independently approved per OSS Guidance paragraph 3G.
 
+## Bundled Font Assets
+
+These are not npm dependencies. They ship as files under `public/fonts/` and are embedded into every generated PDF, so they are distributed with the application and with its output.
+
+| File | Family | License |
+|------|--------|---------|
+| LiberationSerif-Regular.ttf | Liberation Serif 2.1.5 | SIL OFL 1.1 |
+| LiberationSerif-Bold.ttf | Liberation Serif 2.1.5 | SIL OFL 1.1 |
+| LiberationMono-Regular.ttf | Liberation Mono 2.1.5 | SIL OFL 1.1 |
+| LiberationMono-Bold.ttf | Liberation Mono 2.1.5 | SIL OFL 1.1 |
+
+Source: https://github.com/liberationfonts/liberation-fonts (release 2.1.5). Digitized data copyright (c) 2010 Google Corporation with Reserved Font Names Arimo, Tinos and Cousine; copyright (c) 2012 Red Hat, Inc. with Reserved Font Name Liberation. The full license text ships beside the fonts at `public/fonts/LICENSE-Liberation.txt`, which is what OFL 1.1 clause 2 requires of a redistribution.
+
+The fonts are used because they are metrically compatible with the faces the manuals name: Liberation Serif for Times New Roman and Liberation Mono for Courier New (SECNAV M-5216.5 2-2.20; docs/pdf-export-plan.md). The DOCX emitter declares the real Microsoft names and embeds nothing, so only the PDF path carries these files.
+
+SIL OFL 1.1 is not on the OSS Guidance paragraph 3G approved-without-action list. It is a permissive font-specific license whose only substantive restrictions are on redistribution under a Reserved Font Name and on selling the fonts standalone, neither of which this project does. Per the same paragraph, "Component CIOs may grant permission to use other licenses if required"; expect to seek that approval alongside the axe-core MPL-2.0 item if the PoC moves to a sponsoring DoD Component.
+
 ## License Family Summary
 
 Approximate breakdown of the dependency tree by primary license.
@@ -109,6 +126,7 @@ For an SBOM that includes license fields, see the planned P3-2 cyclonedx-npm int
 - Surface any new copyleft or non-approved license discoveries for review before the affected commit lands.
 - If sharp's transitive role changes from unused to actively exercised, re-evaluate the LGPL distribution obligations.
 - If axe-core moves from dev to runtime dependency, escalate the MPL-2.0 review.
+- If a font file is added to `public/fonts/`, record it in the bundled-font table above and confirm `public/fonts/LICENSE-Liberation.txt` still covers it.
 
 ## Compliance References
 

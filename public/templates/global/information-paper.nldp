@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "packageId": "nldp_1770758957959_information-paper",
+    "packageId": "nldp_template_information-paper",
     "formatVersion": "1.0.0",
-    "createdAt": "2026-02-10T21:29:17.959Z",
+    "createdAt": "2026-02-10T21:29:17.964Z",
     "author": {
       "name": "System Template",
       "unit": "HQMC"
@@ -10,7 +10,7 @@
     "package": {
       "title": "Information Paper",
       "description": "Provides factual information in concise terms.",
-      "subject": "INFORMATION PAPER ON TOPIC",
+      "subject": "FY26 SECOND QUARTER TRAINING READINESS STATUS FOR I MEF UNITS",
       "documentType": "information-paper",
       "tags": [
         "template",
@@ -25,15 +25,15 @@
   "data": {
     "formData": {
       "documentType": "information-paper",
-      "subj": "INFORMATION PAPER ON TOPIC",
+      "subj": "FY26 SECOND QUARTER TRAINING READINESS STATUS FOR I MEF UNITS",
       "date": "10 Feb 26",
       "classification": "UNCLASSIFIED",
-      "drafterName": "Capt J. M. Doe",
-      "drafterRank": "Capt",
-      "drafterOfficeCode": "G-3",
-      "drafterPhone": "555-1234",
+      "drafterName": "Maj R. L. Thompson",
+      "drafterRank": "Maj",
+      "drafterOfficeCode": "G-3/5",
+      "drafterPhone": "555-9876",
       "drafterService": "USMC",
-      "drafterAgency": "Unit",
+      "drafterAgency": "I MEF",
       "ssic": "",
       "originatorCode": "",
       "from": "",
@@ -57,36 +57,59 @@
       "accentColor": "black"
     },
     "vias": [],
-    "references": [],
-    "enclosures": [],
+    "references": [
+      "(a) MCO 1553.3B",
+      "(b) I MEF FY26 Training Plan",
+      "(c) MCTIMS Training Readiness Report dtd 31 Jan 26"
+    ],
+    "enclosures": [
+      "(1) Q2 Training Readiness Dashboard",
+      "(2) MSC Training Completion Summary"
+    ],
     "copyTos": [],
     "paragraphs": [
       {
         "id": 1,
         "level": 1,
-        "content": "Purpose. To provide information regarding...",
+        "content": "To provide the Commanding General an overview of FY26 Q2 training readiness across I MEF major subordinate commands.",
         "title": "Purpose"
       },
       {
         "id": 2,
         "level": 1,
-        "content": "Key Points. Bulletized list of facts...",
+        "content": "",
         "title": "Key Points"
       },
       {
         "id": 3,
         "level": 2,
-        "content": "First fact."
+        "content": "Overall training readiness stands at 91%, a 4% increase from Q1."
       },
       {
         "id": 4,
         "level": 2,
-        "content": "Second fact."
+        "content": "1st Marine Division completed 12 of 14 scheduled battalion-level exercises."
       },
       {
         "id": 5,
         "level": 3,
-        "content": "Detail."
+        "content": "Two exercises were postponed due to range conflicts with MCIWEST maintenance schedule."
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "1st MLG achieved 95% readiness in logistics support operations."
+      },
+      {
+        "id": 7,
+        "level": 2,
+        "content": "Marksmanship requalification rate is at 78%, on track to meet the 100% target by end of FY26."
+      },
+      {
+        "id": 8,
+        "level": 1,
+        "content": "This paper was coordinated with G-3/5 Training, G-1, and all MSC S-3 sections.",
+        "title": "Coordination"
       }
     ]
   }

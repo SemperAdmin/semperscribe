@@ -72,6 +72,22 @@ function rows(items: PdfTextItem[]): Row[] {
     .map((r) => ({ ...r, flat: r.text.replace(/\s/g, '') }));
 }
 
+/**
+ * Assert a vertical gap between two baselines.
+ *
+ * extractPdfTextLayout rounds every y to 0.1 pt, so two gaps that are
+ * byte-identical in the PDF (measured 27.3938 and 27.3937) can read 27.4
+ * and 27.3 once rounded, purely by where the flow above them happens to
+ * land. A toBeCloseTo(x, 1) on a gap is therefore a coin flip: it broke
+ * when the letterhead face changed and moved the whole flow a fraction
+ * of a point. The tolerance is the extraction's own granularity, which
+ * still separates the values under test - they sit a full line apart.
+ */
+function expectGap(actual: number, expected: number, label: string) {
+  expect(Math.abs(actual - expected), `${label}: ${actual} vs ${expected}`)
+    .toBeLessThanOrEqual(0.15);
+}
+
 function rowY(all: Row[], flatNeedle: string): number {
   const hit = all.find((r) => r.flat.includes(flatNeedle));
   expect(hit, `row containing ${flatNeedle}`).toBeDefined();
@@ -96,12 +112,12 @@ describe('D.1 "Copy to:" sits on the second line below the signature line (7-2.1
 
     // The signature block itself is unchanged: the delegation line sits
     // one line below the name.
-    expect(name - delegation).toBeCloseTo(LINE_TIMES, 1);
+    expectGap(name - delegation, LINE_TIMES, 'name to delegation');
     // One blank line then the label: the second line below.
-    expect(delegation - copyTo).toBeCloseTo(LINE_TIMES + BLANK_LINE, 1);
+    expectGap(delegation - copyTo, LINE_TIMES + BLANK_LINE, 'delegation to copy-to');
     // The addressees follow on consecutive lines, no extra gap.
     const first = rowY(all, 'CommandingGeneral,IMEF');
-    expect(copyTo - first).toBeCloseTo(LINE_TIMES, 1);
+    expectGap(copyTo - first, LINE_TIMES, 'copy-to to first entry');
   }, 60000);
 
   it('first endorsement: two line heights below the delegation line', async () => {
@@ -117,7 +133,7 @@ describe('D.1 "Copy to:" sits on the second line below the signature line (7-2.1
     expect(all.some((r) => r.flat.includes('FIRSTENDORSEMENT')), 'endorsement line').toBe(true);
     const delegation = rowY(all, 'Bydirection');
     const copyTo = rowY(all, 'Copyto:');
-    expect(delegation - copyTo).toBeCloseTo(LINE_TIMES + BLANK_LINE, 1);
+    expectGap(delegation - copyTo, LINE_TIMES + BLANK_LINE, 'delegation to copy-to');
   }, 60000);
 
   it('basic letter in Courier: same rule at Courier line height', async () => {
@@ -129,7 +145,7 @@ describe('D.1 "Copy to:" sits on the second line below the signature line (7-2.1
     const all = rows(await extractPdfTextLayout(blob));
     const delegation = rowY(all, 'Bydirection');
     const copyTo = rowY(all, 'Copyto:');
-    expect(delegation - copyTo).toBeCloseTo(LINE_COURIER + BLANK_LINE, 1);
+    expectGap(delegation - copyTo, LINE_COURIER + BLANK_LINE, 'delegation to copy-to');
   }, 60000);
 
   it('a letter without copy-tos ends at the signature block, unchanged', async () => {
@@ -165,8 +181,8 @@ describe('D.1 "Copy to:" sits on the second line below the signature line (7-2.1
     const copyTo = rowY(all, 'Copyto:');
     // The directive branch already carried a one-line top margin on each
     // block, which puts each label on the second line below the one above.
-    expect(delegation - distribution).toBeCloseTo(LINE_COURIER + BLANK_LINE, 1);
-    expect(distribution - copyTo).toBeCloseTo(LINE_COURIER + BLANK_LINE, 1);
+    expectGap(delegation - distribution, LINE_COURIER + BLANK_LINE, 'delegation to distribution');
+    expectGap(distribution - copyTo, LINE_COURIER + BLANK_LINE, 'distribution to copy-to');
   }, 60000);
 });
 

@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "packageId": "nldp_1770758957961_letterhead-memo",
+    "packageId": "nldp_template_letterhead-memo",
     "formatVersion": "1.0.0",
-    "createdAt": "2026-02-10T21:29:17.961Z",
+    "createdAt": "2026-02-10T21:29:17.964Z",
     "author": {
       "name": "System Template",
       "unit": "HQMC"
@@ -10,7 +10,7 @@
     "package": {
       "title": "Letterhead Memorandum",
       "description": "Formal memorandum on command letterhead.",
-      "subject": "LETTERHEAD MEMO SUBJECT",
+      "subject": "ANNUAL TRAINING GUIDANCE FOR FISCAL YEAR 2026",
       "documentType": "letterhead-memo",
       "tags": [
         "template",
@@ -25,13 +25,14 @@
   "data": {
     "formData": {
       "documentType": "letterhead-memo",
-      "ssic": "1000",
-      "originatorCode": "CODE",
+      "ssic": "1500",
+      "originatorCode": "G-3",
       "date": "10 Feb 26",
-      "from": "Commanding Officer",
+      "from": "Commanding General, 1st Marine Division",
       "to": "Distribution List",
-      "subj": "LETTERHEAD MEMO SUBJECT",
+      "subj": "ANNUAL TRAINING GUIDANCE FOR FISCAL YEAR 2026",
       "sig": "I. M. MARINE",
+      "delegationText": "By direction",
       "line1": "",
       "line2": "",
       "line3": "",
@@ -46,33 +47,56 @@
       "previousPackagePageCount": 0,
       "headerType": "USMC",
       "bodyFont": "times",
-      "delegationText": "",
       "accentColor": "black"
     },
     "vias": [],
-    "references": [],
-    "enclosures": [],
-    "copyTos": [],
+    "references": [
+      "(a) MCO 1553.3B",
+      "(b) MCRP 3-0A"
+    ],
+    "enclosures": [
+      "(1) FY26 Training Calendar",
+      "(2) Range Allocation Matrix"
+    ],
+    "copyTos": [
+      "Commanding General, I MEF",
+      "Inspector General"
+    ],
     "paragraphs": [
       {
         "id": 1,
         "level": 0,
-        "content": "1. This is a formal memo."
+        "content": "1. This memorandum provides training guidance for all units assigned to 1st Marine Division during FY26."
       },
       {
         "id": 2,
         "level": 0,
-        "content": "2. Additional details."
+        "content": "2. Commander's Intent. Focus training efforts on combined arms integration and expeditionary operations."
       },
       {
         "id": 3,
         "level": 1,
-        "content": "a. Sub-paragraph."
+        "content": "a. All infantry battalions will complete at least one battalion-level field exercise per quarter."
       },
       {
         "id": 4,
+        "level": 1,
+        "content": "b. Supporting units will integrate with supported maneuver elements during all major exercises."
+      },
+      {
+        "id": 5,
         "level": 2,
-        "content": "(1) Sub-sub-paragraph."
+        "content": "(1) Artillery batteries will conduct a minimum of two live-fire exercises per quarter."
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "(2) Combat engineer units will support breaching operations during each infantry field exercise."
+      },
+      {
+        "id": 7,
+        "level": 0,
+        "content": "3. Report training readiness status monthly per reference (a)."
       }
     ]
   }

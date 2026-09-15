@@ -15,8 +15,8 @@
   },
   {
     "id": "endorsement",
-    "title": "New-Page Endorsement",
-    "description": "Figure 9-1 of SECNAV M-5216.5, the second endorsement: on a new page, repeating the basic letter's SSIC and subject and identifying the basic letter in the endorsement line.",
+    "title": "Endorsement",
+    "description": "Used to forward a basic letter with comments, recommendations, or new information.",
     "documentType": "endorsement",
     "url": "/templates/global/endorsement.nldp"
   },
@@ -50,7 +50,7 @@
   },
   {
     "id": "position-paper",
-    "title": "Position/Decision Paper",
+    "title": "Position Paper",
     "description": "Used to advocate for a specific position or decision.",
     "documentType": "position-paper",
     "url": "/templates/global/position-paper.nldp"
@@ -93,9 +93,16 @@
   {
     "id": "marine-corps-order",
     "title": "Marine Corps Order",
-    "description": "Permanent directive establishing policy.",
+    "description": "A complete worked Order: front matter, five-paragraph body to the fourth level, reports and enclosures.",
     "documentType": "mco",
     "url": "/templates/global/marine-corps-order.nldp"
+  },
+  {
+    "id": "marine-corps-order-format-guide",
+    "title": "Marine Corps Order (Format Guide)",
+    "description": "The Order format explained in place: every paragraph says what belongs in it, per MCO 5215.1K. Type over it.",
+    "documentType": "mco",
+    "url": "/templates/global/marine-corps-order-format-guide.nldp"
   },
   {
     "id": "marine-corps-bulletin",

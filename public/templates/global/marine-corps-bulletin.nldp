@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "packageId": "nldp_1770758957965_bulletin",
+    "packageId": "nldp_template_marine-corps-bulletin",
     "formatVersion": "1.0.0",
-    "createdAt": "2026-02-10T21:29:17.965Z",
+    "createdAt": "2026-02-10T21:29:17.964Z",
     "author": {
       "name": "System Template",
       "unit": "HQMC"
@@ -10,7 +10,7 @@
     "package": {
       "title": "Marine Corps Bulletin",
       "description": "Directive of duration less than 12 months.",
-      "subject": "BULLETIN TITLE",
+      "subject": "ANNUAL RIFLE AND PISTOL MARKSMANSHIP REQUALIFICATION REQUIREMENTS FOR FISCAL YEAR 2026",
       "documentType": "bulletin",
       "tags": [
         "template",
@@ -25,19 +25,53 @@
   "data": {
     "formData": {
       "documentType": "bulletin",
-      "ssic": "1000",
-      "originatorCode": "CODE",
+      "ssic": "1500",
+      "originatorCode": "TRNG",
       "date": "10 Feb 26",
-      "from": "Commanding Officer",
+      "from": "Commandant of the Marine Corps",
       "to": "Distribution List",
-      "subj": "BULLETIN TITLE",
+      "subj": "ANNUAL RIFLE AND PISTOL MARKSMANSHIP REQUALIFICATION REQUIREMENTS FOR FISCAL YEAR 2026",
       "orderPrefix": "MCBul",
+      "directiveTitle": "MARINE CORPS BULLETIN 1500",
       "cancellationDate": "31 Dec 26",
+      "cancellationType": "fixed",
+      "cancellationContingency": "This bulletin is cancelled upon completion of the FY26 requalification cycle or 31 Dec 26, whichever occurs first.",
       "distribution": {
-        "type": "standard",
-        "pcn": "10200000000"
+        "type": "pcn",
+        "pcn": "10200220000",
+        "statementCode": "A",
+        "statementReason": "administrative/operational use",
+        "statementDate": "10 Feb 26",
+        "statementAuthority": "CMC (TRNG)"
+      },
+      "reports": [
+        {
+          "id": "rpt-1",
+          "title": "Quarterly Marksmanship Requalification Progress Report",
+          "controlSymbol": "MCBul 1500-01",
+          "paragraphRef": "3.b.",
+          "exempt": false
+        }
+      ],
+      "adminSubsections": {
+        "recordsManagement": {
+          "show": true,
+          "content": "Records created by this Bulletin shall be managed per SECNAV M-5210.1.",
+          "order": 1
+        },
+        "privacyAct": {
+          "show": false,
+          "content": "",
+          "order": 2
+        },
+        "reportsRequired": {
+          "show": true,
+          "content": "Quarterly progress reports are required per paragraph 3.b.",
+          "order": 3
+        }
       },
       "sig": "I. M. MARINE",
+      "delegationText": "By direction",
       "line1": "",
       "line2": "",
       "line3": "",
@@ -52,48 +86,59 @@
       "previousPackagePageCount": 0,
       "headerType": "USMC",
       "bodyFont": "times",
-      "delegationText": "",
       "accentColor": "black"
     },
     "vias": [],
-    "references": [],
-    "enclosures": [],
+    "references": [
+      "(a) MCO 3574.2L",
+      "(b) MCO 8010.13A",
+      "(c) MARADMIN 045/26"
+    ],
+    "enclosures": [
+      "(1) FY26 Requalification Timeline",
+      "(2) Range Scheduling POC List"
+    ],
     "copyTos": [],
     "paragraphs": [
       {
         "id": 1,
         "level": 1,
-        "content": "Purpose."
+        "content": "Purpose. To establish the annual requalification requirements and timeline for rifle and pistol marksmanship for FY26."
       },
       {
         "id": 2,
         "level": 1,
-        "content": "Background."
+        "content": "Background. Per reference (a), all Marines are required to maintain marksmanship proficiency through annual requalification."
       },
       {
         "id": 3,
         "level": 1,
-        "content": "Action."
+        "content": "Action. Commanding Officers will ensure the following actions are completed."
       },
       {
         "id": 4,
         "level": 2,
-        "content": "First action item."
+        "content": "All Marines will complete rifle requalification NLT 30 Sep 26."
       },
       {
         "id": 5,
-        "level": 3,
-        "content": "Detail."
+        "level": 2,
+        "content": "Marines in designated billets will complete pistol requalification NLT 30 Sep 26."
       },
       {
         "id": 6,
-        "level": 1,
-        "content": "Reserve Applicability."
+        "level": 3,
+        "content": "Pistol qualification is mandatory for officers, SNCOs, and Marines in designated MOSs per reference (b)."
       },
       {
         "id": 7,
         "level": 1,
-        "content": "Cancellation Contingency. This Bulletin is cancelled upon receipt."
+        "content": "Reserve Applicability. This Bulletin applies to all Reserve component Marines. Reserve units will coordinate range time through their respective I-I staffs."
+      },
+      {
+        "id": 8,
+        "level": 1,
+        "content": "Cancellation Contingency. This Bulletin is cancelled upon completion of the FY26 requalification cycle or 31 Dec 26, whichever occurs first."
       }
     ]
   }

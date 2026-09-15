@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "packageId": "nldp_1770758957962_moa",
+    "packageId": "nldp_template_memorandum-of-agreement",
     "formatVersion": "1.0.0",
-    "createdAt": "2026-02-10T21:29:17.962Z",
+    "createdAt": "2026-02-10T21:29:17.964Z",
     "author": {
       "name": "System Template",
       "unit": "HQMC"
@@ -10,7 +10,7 @@
     "package": {
       "title": "Memorandum of Agreement",
       "description": "Agreement between parties (Conditional).",
-      "subject": "MEMORANDUM OF AGREEMENT BETWEEN ACTIVITY A AND ACTIVITY B",
+      "subject": "MEMORANDUM OF AGREEMENT BETWEEN MARINE CORPS INSTALLATIONS WEST AND 1ST MARINE LOGISTICS GROUP FOR SHARED USE OF TRAINING FACILITIES",
       "documentType": "moa",
       "tags": [
         "template",
@@ -25,23 +25,37 @@
   "data": {
     "formData": {
       "documentType": "moa",
-      "subj": "MEMORANDUM OF AGREEMENT BETWEEN ACTIVITY A AND ACTIVITY B",
+      "subj": "MEMORANDUM OF AGREEMENT BETWEEN MARINE CORPS INSTALLATIONS WEST AND 1ST MARINE LOGISTICS GROUP FOR SHARED USE OF TRAINING FACILITIES",
       "date": "10 Feb 26",
       "moaData": {
-        "activityA": "Senior Activity",
-        "activityB": "Junior Activity",
+        "activityA": "Marine Corps Installations West",
+        "activityB": "1st Marine Logistics Group",
+        "activityAHeader": {
+          "ssic": "11000",
+          "serial": "001",
+          "date": "10 Feb 26"
+        },
+        "activityBHeader": {
+          "ssic": "11000",
+          "serial": "045",
+          "date": "10 Feb 26"
+        },
         "seniorSigner": {
-          "name": "Name",
-          "title": "Title",
-          "activity": "Activity A"
+          "name": "R. T. COMMANDER",
+          "title": "Commanding General",
+          "activity": "Marine Corps Installations West",
+          "activitySymbol": "MCIWEST",
+          "date": "10 Feb 26"
         },
         "juniorSigner": {
-          "name": "Name",
-          "title": "Title",
-          "activity": "Activity B"
+          "name": "J. P. LEADER",
+          "title": "Commanding General",
+          "activity": "1st Marine Logistics Group",
+          "activitySymbol": "1st MLG",
+          "date": "10 Feb 26"
         }
       },
-      "ssic": "",
+      "ssic": "11000",
       "originatorCode": "",
       "from": "",
       "to": "",
@@ -64,29 +78,50 @@
       "accentColor": "black"
     },
     "vias": [],
-    "references": [],
-    "enclosures": [],
+    "references": [
+      "(a) MCO 11000.25A",
+      "(b) MCIWEST Policy Letter 3-25"
+    ],
+    "enclosures": [
+      "(1) Facility Usage Schedule",
+      "(2) Maintenance Responsibility Matrix"
+    ],
     "copyTos": [],
     "paragraphs": [
       {
         "id": 1,
         "level": 1,
-        "content": "Purpose."
+        "content": "Purpose. This Memorandum of Agreement establishes the terms and conditions for shared use of training facilities between MCIWEST and 1st MLG."
       },
       {
         "id": 2,
         "level": 1,
-        "content": "Problem."
+        "content": "Problem. Training facility availability has been constrained due to increased operational tempo and concurrent maintenance requirements."
       },
       {
         "id": 3,
         "level": 1,
-        "content": "Scope."
+        "content": "Scope. This agreement applies to all training areas and ranges within MCB Camp Pendleton."
       },
       {
         "id": 4,
         "level": 1,
-        "content": "Agreement."
+        "content": "Agreement. Both parties agree to the following conditions."
+      },
+      {
+        "id": 5,
+        "level": 2,
+        "content": "1st MLG will have priority access to the Logistics Operations Training Facility on Tuesdays and Thursdays."
+      },
+      {
+        "id": 6,
+        "level": 2,
+        "content": "MCIWEST will provide maintenance support for shared facilities per a quarterly maintenance schedule."
+      },
+      {
+        "id": 7,
+        "level": 1,
+        "content": "Effective Date. This agreement is effective upon signature by both parties and remains in effect for 24 months."
       }
     ]
   }

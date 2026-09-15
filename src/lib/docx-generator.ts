@@ -44,6 +44,7 @@ import { isSamePageBlockRender, isSamePageEndorsement, omitsIdentification, endo
 import { generateCitation } from "./citation";
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from "./indent-engine";
 import { resolveBodyFont, resolveHeaderType, isSecnavDirective } from "./font-policy";
+import { getHeadingStyle } from "./heading-policy";
 import { getClassification, bannerText, needsCuiBlock, cuiBlockLines, portionPrefix, paragraphLevel } from "./classification";
 import { parseAndFormatDate, formatBusinessDate } from "./date-utils";
 import { DOC_SETTINGS, TAB_STOPS, INDENTS } from "./doc-settings";
@@ -56,6 +57,7 @@ const MARGIN_LEFT = 1440;
 const MARGIN_RIGHT = 1440;
 
 const FONT_SIZE_BODY = 24; // 12pt (docx uses half-points)
+
 
 // Helper to get font name
 const getFont = (font: 'times' | 'courier') => {
@@ -280,7 +282,15 @@ async function buildDocxParts(
         : 'DEPARTMENT OF THE NAVY';
         
       letterheadParagraphs.push(new Paragraph({
-        children: [new TextRun({ text: headerText, font: 'Arial', bold: true, size: isDLAType ? 24 : 20, color: headerColor })], // DLA: 12pt bold; Navy/USMC: 10pt
+        // The letterhead runs in the document's own face. M-5216.5 App C
+        // para a authorizes Times New Roman, Courier New, Arial and
+        // others for computer-generated letterhead at 10 pt bold for the
+        // department line and 8 pt for the address lines, so the size
+        // rule is what App C fixes, not the face. The hardcoded Arial
+        // disagreed with the PDF (which draws the letterhead in the body
+        // face) and put a third font on a directive that MCO 5215.1K
+        // locks to Courier New.
+        children: [new TextRun({ text: headerText, font, bold: true, size: isDLAType ? 24 : 20, color: headerColor })], // DLA: 12pt bold; Navy/USMC: 10pt
         alignment: AlignmentType.CENTER,
         spacing: { after: 0 },
       }));
@@ -301,7 +311,7 @@ async function buildDocxParts(
       addressLines.forEach(line => {
         if (line) {
           letterheadParagraphs.push(new Paragraph({
-            children: [new TextRun({ text: line, font: 'Arial', size: isDLAType ? 20 : 16, color: headerColor })], // DLA: 10pt; Navy/USMC: 8pt
+            children: [new TextRun({ text: line, font, size: isDLAType ? 20 : 16, color: headerColor })], // DLA: 10pt; Navy/USMC: 8pt
             alignment: AlignmentType.CENTER,
             spacing: { after: 0 },
           }));
@@ -1424,8 +1434,10 @@ async function buildDocxParts(
     // 1. Citation generation (1., a., (1), etc.)
     // 2. Tab stops and indentation per SECNAV M-5216.5
     // 3. Bold/Italic parsing
-    const shouldBoldTitle = !['mco', 'moa', 'mou', 'information-paper', 'position-paper'].includes(formData.documentType);
-    const shouldUppercaseTitle = !['moa', 'mou', 'information-paper', 'position-paper'].includes(formData.documentType);
+    // Heading typography comes from the shared policy so the DOCX and
+    // the PDF cannot disagree: the uppercase rule used to be spelled out
+    // in both files, and the directive fix landed in the PDF only.
+    const heading = getHeadingStyle(formData.documentType);
     const hasNavalSignature = !!formData.sig && !isStaffingPaper &&
         !isDLAMemo && !isDLABusinessLetter && !isCivilianStyle;
     // Business/exec closings also bind to the last body paragraph so
@@ -1433,8 +1445,8 @@ async function buildDocxParts(
     const hasCivilianClosing = isCivilianStyle && !isDLAMemo && !isDLABusinessLetter;
     const keepWithSignature = (hasNavalSignature || hasCivilianClosing) && !!relativeSpecs &&
         index === paragraphsWithContent.length - 1;
-    bodyParagraphs.push(createFormattedParagraph(p, index, paragraphsWithContent, font, "000000", isDirective, shouldBoldTitle, shouldUppercaseTitle, isCivilianStyle, formData.isShortLetter, relativeSpecs?.[index], keepWithSignature,
-        { documentType: formData.documentType, fourDigitNumbering: formData.fourDigitNumbering, chapterNumber: formData.chapterNumber }));
+    bodyParagraphs.push(createFormattedParagraph(p, index, paragraphsWithContent, font, "000000", isDirective, heading.bold, heading.uppercase, isCivilianStyle, formData.isShortLetter, relativeSpecs?.[index], keepWithSignature,
+        { documentType: formData.documentType, fourDigitNumbering: formData.fourDigitNumbering, chapterNumber: formData.chapterNumber }, heading.underline));
 
     // Full blank line between body paragraphs (M-5216.5 7-2.13).
     // Suppressed after the LAST paragraph for correspondence: the

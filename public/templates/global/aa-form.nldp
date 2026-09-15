@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "packageId": "nldp_1770758957958_aa-form",
+    "packageId": "nldp_template_aa-form",
     "formatVersion": "1.0.0",
-    "createdAt": "2026-02-10T21:29:17.958Z",
+    "createdAt": "2026-02-10T21:29:17.964Z",
     "author": {
       "name": "System Template",
       "unit": "HQMC"
@@ -10,7 +10,7 @@
     "package": {
       "title": "NAVMC 10274 (AA Form)",
       "description": "Administrative Action Form used for personnel requests.",
-      "subject": "REQUEST FOR ADMINISTRATIVE ACTION",
+      "subject": "REQUEST FOR SPECIAL LIBERTY",
       "documentType": "aa-form",
       "tags": [
         "template",
@@ -25,13 +25,13 @@
   "data": {
     "formData": {
       "documentType": "aa-form",
-      "actionNo": "",
-      "orgStation": "Unit Name\nAddress\nCity, State Zip",
-      "from": "Rank First MI Last, EDIPI/MOS, USMC",
-      "to": "Commanding General, Higher Headquarters",
-      "subj": "REQUEST FOR ADMINISTRATIVE ACTION",
+      "actionNo": "001-26",
+      "orgStation": "1st Battalion, 5th Marines\n Marine Corps Base Camp Pendleton\nCamp Pendleton, CA 92055",
+      "from": "Cpl John A. Smith, 1234567890/0311, USMC",
+      "to": "Commanding Officer, 1st Battalion, 5th Marines",
+      "subj": "REQUEST FOR SPECIAL LIBERTY",
       "date": "10 Feb 26",
-      "sig": "I. M. MARINE",
+      "sig": "J. A. SMITH",
       "ssic": "5216",
       "originatorCode": "",
       "line1": "",
@@ -51,16 +51,27 @@
       "delegationText": "",
       "accentColor": "black"
     },
-    "vias": [],
-    "references": [],
-    "enclosures": [],
+    "vias": [
+      "Company Commander, Alpha Company"
+    ],
+    "references": [
+      "(a) MCO 1050.3J"
+    ],
+    "enclosures": [
+      "(1) Leave and Liberty Request Form"
+    ],
     "copyTos": [],
     "paragraphs": [
       {
         "id": 1,
         "level": 1,
-        "content": "It is requested that...",
+        "content": "It is requested that special liberty be granted from 14 Feb 26 to 17 Feb 26 in order to attend a family event in San Diego, CA.",
         "isMandatory": true
+      },
+      {
+        "id": 2,
+        "level": 1,
+        "content": "Contact information during the liberty period: (555) 123-4567."
       }
     ]
   }

@@ -86,3 +86,75 @@ describe('DOCX continuation header (default header part)', () => {
     expect(/<w:t[ >]/.test(after[after.length - 1])).toBe(false);
   }, 60000);
 });
+
+/**
+ * Directive continuation pages (MCO 5215.1K para 38; user report
+ * 2026-09-15).
+ *
+ * The ID stack repeats flush right one inch from the page top,
+ * designation then date, originator code omitted. Body text resumes on
+ * the 2nd line below the date, the same rule the naval Subj header
+ * above follows and the same thing the DOCX header's trailing blank
+ * paragraph produces in Word.
+ *
+ * The reported symptom was the date printing THROUGH the first body
+ * line on every page past the first. The body spacer was a flat 48pt
+ * inherited from the civilian branch, which put body text 92pt from the
+ * page top while the two Courier header lines run to 72 + 2 x 13.59 =
+ * 99.18pt. Absolute grid position on one side, a different line metric
+ * on the other, and they met about 7pt short.
+ */
+describe('PDF directive continuation header (page 2+)', () => {
+  const LINE_COURIER = 13.59;
+
+  /** One row per baseline: Courier output emits a run per word. */
+  function rows(items: Awaited<ReturnType<typeof extractPdfTextLayout>>, page: number) {
+    const byY = new Map<number, string>();
+    for (const i of items.filter((x) => x.page === page)) {
+      byY.set(i.y, (byY.get(i.y) ?? '') + i.text);
+    }
+    return [...byY.entries()].sort((a, b) => b[0] - a[0]);
+  }
+
+  it('body resumes on the 2nd line below the date, never on top of it', async () => {
+    const LONG = Array.from({ length: 22 }, (_, i) => ({
+      id: i + 1, level: 1, title: '', content: `Body paragraph ${i + 1}. ` + 'Filler to paginate. '.repeat(6),
+    }));
+    const blob = await generateBasePDFBlob(
+      {
+        ...FIXTURE_FORM_DATA, documentType: 'mco', orderPrefix: 'MCO',
+        ssic: '5215.1K', date: '15 Sep 26', sig: 'I. M. MARINE',
+        subj: 'CONTINUATION GEOMETRY FIXTURE',
+      } as never,
+      [], [], [], [], LONG as never[], [],
+    );
+    const layout = await extractPdfTextLayout(blob);
+    expect(Math.max(...layout.map((i) => i.page)), 'fixture must paginate').toBeGreaterThan(1);
+
+    const page2 = rows(layout, 2);
+    // The stack sits 1 inch from the page top: first baseline one
+    // ascent below 72pt (Liberation Mono ascent at 12pt = 9.99pt).
+    const [designationY, designationText] = page2[0];
+    const [dateY, dateText] = page2[1];
+    expect(designationText, 'designation repeats').toContain('5215.1K');
+    expect(dateText.replace(/ /g, ' '), 'date repeats').toContain('15 Sep 26');
+    expect(792 - designationY, 'stack top at 1 inch').toBeCloseTo(72 + 9.99, 0);
+    expect(designationY - dateY, 'date on the next line').toBeCloseTo(LINE_COURIER, 1);
+
+    const [bodyY, bodyText] = page2[2];
+    expect(bodyText, 'body follows the header').toMatch(/Body paragraph/);
+    // Two lines, to within a point. The exact sub-point lands a little
+    // differently depending on whether the break falls between
+    // paragraphs or inside a wrapped one, so this is deliberately not
+    // pinned tighter than the rule it is testing.
+    const gap = dateY - bodyY;
+    expect(gap, 'body on the 2nd line below the date')
+      .toBeGreaterThan(2 * LINE_COURIER - 1);
+    expect(gap, 'body no further than the 2nd line below')
+      .toBeLessThan(2 * LINE_COURIER + 1);
+    // The reported defect, stated plainly: the date line is clear of the
+    // body by a full line. At the old 48pt spacer this measured 6.4pt
+    // and the two printed over each other.
+    expect(gap, 'date line not overprinted by body text').toBeGreaterThan(LINE_COURIER);
+  }, 60000);
+});

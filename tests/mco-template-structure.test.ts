@@ -87,24 +87,39 @@ describe('records-management template renders without double designators', () =>
 
     // Ruled structure with correct generated designators, including
     // siblings AFTER title-only paragraphs (the count bug regression).
+    // Headings read in the Title Case the template authors, per
+    // M-5216.5 7-2.d and MCO 5216.20B. This list used to spell them in
+    // caps, which pinned the DOCX emitter's uppercase bug in place while
+    // the PDF had already been fixed (commit 309c2aa); see
+    // tests/directive-heading-format.test.ts.
     const expected: [RegExp, string][] = [
-      [/^1\. {2}SITUATION\./, 'para 1'],
-      [/^ {4}a\. {2}The current records/, '1a'],
-      [/^ {4}b\. {2}This Order cancels/, '1b'],
-      [/^2\. {2}CANCELLATION\./, 'para 2'],
-      [/^3\. {2}MISSION\./, 'para 3'],
-      [/^4\. {2}EXECUTION/, 'para 4'],
-      [/^ {4}a\. {2}COMMANDER'S INTENT\./, '4a'],
-      [/^ {4}b\. {2}CONCEPT OF OPERATIONS\./, '4b'],
-      [/^ {8}\(1\) Each command/, '4b(1)'],
-      [/^ {8}\(2\) Results/, '4b(2)'],
-      [/^ {4}c\. {2}TASKS/, '4c'],
-      [/^ {8}\(1\) CMC \(AR\)/, '4c(1)'],
-      [/^ {8}\(2\) Commanding Generals/, '4c(2)'],
-      [/^ {4}d\. {2}COORDINATING INSTRUCTIONS\./, '4d'],
-      [/^5\. {2}ADMINISTRATION AND LOGISTICS/, 'para 5'],
-      [/^ {4}a\. {2}Training requirements/, '5a'],
-      [/^6\. {2}COMMAND AND SIGNAL\./, 'para 6'],
+      [/^1\. {2}Situation\. {2}Federal law/, 'para 1'],
+      [/^ {4}a\. {2}The program established by Marine Corps Order \(MCO\) 5210\.11F/, '1a'],
+      [/^ {4}b\. {2}Inspections conducted during FY25/, '1b'],
+      [/^2\. {2}Cancellation\. {2}MCO 5210\.11F\./, 'para 2'],
+      [/^3\. {2}Mission\. {2}Establish policy/, 'para 3'],
+      [/^4\. {2}Execution/, 'para 4'],
+      [/^ {4}a\. {2}Commander's Intent\./, '4a'],
+      [/^ {4}b\. {2}Concept of Operations\./, '4b'],
+      [/^ {8}\(1\) CMC \(AR\) sets policy/, '4b(1)'],
+      [/^ {8}\(2\) Commands execute the program/, '4b(2)'],
+      [/^ {4}c\. {2}Tasks/, '4c'],
+      [/^ {8}\(1\) CMC \(AR\) will serve/, '4c(1)'],
+      [/^ {8}\(2\) Commander, Marine Corps Systems Command/, '4c(2)'],
+      [/^ {8}\(3\) Commanding Generals and Commanding Officers/, '4c(3)'],
+      // The fourth level, as deep as MCO 5215.1K para 33 goes before
+      // the underlined restart. The template shows it so a drafter can
+      // see the whole ladder; nothing else in the suite renders it from
+      // real template data.
+      [/^ {12}\(a\) Appoint a command Records Manager/, '4c(3)(a)'],
+      [/^ {12}\(b\) Conduct an annual records management assessment/, '4c(3)(b)'],
+      [/^ {4}d\. {2}Coordinating Instructions/, '4d'],
+      [/^ {8}\(1\) Commands will complete an initial compliance/, '4d(1)'],
+      [/^ {8}\(2\) Questions concerning this Order/, '4d(2)'],
+      [/^5\. {2}Administration and Logistics\./, 'para 5'],
+      [/^6\. {2}Command and Signal/, 'para 6'],
+      [/^ {4}a\. {2}Command\. {2}This Order is applicable/, '6a'],
+      [/^ {4}b\. {2}Signal\. {2}This Order is effective/, '6b'],
     ];
     let cursor = 0;
     for (const [re, name] of expected) {

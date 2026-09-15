@@ -100,3 +100,23 @@ export const COMMON_RESTRICTION_REASONS = [
   'critical technology',
   'operational security'
 ];
+
+/**
+ * The Administration and Logistics subsections a directive starts with.
+ *
+ * A function, not a frozen object: each document needs its own copy, and
+ * a shared literal would let one document's edits reach another.
+ *
+ * This lives here because the shape used to be spelled out in the page's
+ * initial useState and NOWHERE else - blankFormData, which every draft,
+ * template, .nldp and share-link load runs through, left the key
+ * undefined. The reports sync then read
+ * `prev.adminSubsections!.reportsRequired` through a non-null assertion
+ * that was not true, and loading any directive template with reports
+ * enabled threw a TypeError.
+ */
+export const defaultAdminSubsections = (): import('@/types').AdminSubsections => ({
+  recordsManagement: { show: false, content: '', order: 0 },
+  privacyAct: { show: false, content: '', order: 0 },
+  reportsRequired: { show: false, content: 'None.', order: 0 },
+});
