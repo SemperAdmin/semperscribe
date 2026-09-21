@@ -13,6 +13,7 @@ import { MCOTemplate, MCOFormatGuideTemplate, BulletinTemplate, ChangeTransmitta
 import { DLAMemorandumTemplate } from './dla-memorandum';
 import { DLABusinessLetterTemplate } from './dla-business-letter';
 import { ITypeTemplate } from '@/lib/i-type/template';
+import { blankVolumeTemplate, multiChapterVolumeTemplate } from './volume';
 
 // Re-export all templates
 export * from './types';
@@ -30,6 +31,7 @@ export * from './orders';
 export * from './publish';
 export * from './dla-memorandum';
 export * from './dla-business-letter';
+export * from './volume';
 
 // Master Registry
 export const DOCUMENT_TEMPLATES: Record<string, DocumentTemplate> = {
@@ -66,7 +68,24 @@ export const DOCUMENT_TEMPLATES: Record<string, DocumentTemplate> = {
 
   // I-Type
   'i-type': ITypeTemplate,
+
+  // Volume: the default a drafter gets when picking the type is the
+  // blank starter; the worked multi-chapter example is available via
+  // DOCUMENT_TEMPLATES lookups but is not itself keyed by typeId since
+  // this record holds one entry per type.
+  'volume': blankVolumeTemplate(),
 };
+
+/**
+ * The Volume type's worked, multi-chapter starter. Not entered into
+ * DOCUMENT_TEMPLATES (that record holds exactly one - the blank
+ * default - per type; see AssumptionOfCommandTemplate/MCOTemplate for
+ * the same "worked example is a second, separately-named template"
+ * pattern used for Orders) or PUBLISHED_TEMPLATES (that record's
+ * createTemplatePackage() assumes letter-shaped defaultData - see the
+ * NOTE ON THE SHAPE comment in publish.ts - which a VolumeDoc is not).
+ */
+export const VolumeMultiChapterTemplate: DocumentTemplate = multiChapterVolumeTemplate();
 
 /**
  * The templates published to `public/templates/global` as .nldp files

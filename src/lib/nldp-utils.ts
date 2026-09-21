@@ -215,7 +215,11 @@ export async function createNLDPFile(
       // break idempotent ingest (round-trip requirement).
       ...(config.lastModified ? { lastModified: config.lastModified } : {}),
       status: config.status ?? 'draft'
-    }
+    },
+    // 1.2: the Volume document type is authored through its own store
+    // rather than the shared letter fields above; copy it through
+    // verbatim when the caller supplies one.
+    ...(config.volumeDoc ? { volume: config.volumeDoc } : {})
   };
 
   // Sanitize the data
