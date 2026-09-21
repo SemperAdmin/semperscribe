@@ -222,6 +222,20 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
   },
   amhs: async () => new Blob([], { type: 'text/plain' }), // AMHS doesn't use PDF
   'coordination-page': generateCoordinationPagePdf,
+  // Volume registration lands ahead of its dedicated PDF pipeline (a later
+  // task in the 2026-09-20-volume-directive plan). Placeholder keeps this
+  // Record<PdfPipeline, ...> exhaustive without faking a real render.
+  volume: async () => {
+    const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+    const doc = await PDFDocument.create();
+    const page = doc.addPage([612, 792]);
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    page.drawText('Volume PDF pipeline not yet implemented.', {
+      x: 72, y: 700, size: 12, font, color: rgb(0.1, 0.1, 0.1),
+    });
+    const bytes = await doc.save();
+    return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+  },
 };
 
 /**
