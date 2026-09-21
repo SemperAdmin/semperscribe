@@ -50,6 +50,36 @@ function resolveParent(chapters: Chapter[], path: VolumePath): { list: unknown[]
   return { list: node.children, index: subPath[subPath.length - 1] };
 }
 
+function normalizeSubParas(subs: SubPara[]): void {
+  subs.forEach((sub, idx) => {
+    sub.seq = idx + 1;
+    normalizeSubParas(sub.children);
+  });
+}
+
+/**
+ * Rewrites every stored `number`/`seq` field to match its array position
+ * (1-based), in place. The editor always displays designators computed
+ * from array index (per designators.ts), while the PDF layout engine
+ * (src/lib/volume/layout.ts) prints designators from these stored fields.
+ * Calling this after every structural mutation (add/move/remove) keeps the
+ * two in agreement — without it, e.g. deleting section 1 of 2 leaves the
+ * survivor at seq:2/index:0, so the editor shows "0101" while the PDF
+ * prints "0102".
+ */
+function normalizeNumbering(chapters: Chapter[]): void {
+  chapters.forEach((chapter, ci) => {
+    chapter.number = ci + 1;
+    chapter.sections.forEach((section, si) => {
+      section.seq = si + 1;
+      section.paragraphs.forEach((paragraph, pi) => {
+        paragraph.seq = pi + 1;
+        normalizeSubParas(paragraph.children);
+      });
+    });
+  });
+}
+
 export function blankVolume(): VolumeDoc {
   return {
     documentType: 'volume',
@@ -85,18 +115,22 @@ export const useVolumeStore = create<VolumeState>((set) => ({
   setDoc: (doc) => set({ doc }),
   updateMeta: (patch) => set((s) => ({ doc: { ...s.doc, volume: { ...s.doc.volume, ...patch } } })),
   addChapter: () => set((s) => {
-    const number = s.doc.chapters.length + 1;
-    return { doc: { ...s.doc, chapters: [...s.doc.chapters, { number, title: '', changeLog: [], sections: [{ seq: 1, title: '', paragraphs: [] }], figures: [] }] } };
+    const chapters = structuredClone(s.doc.chapters);
+    chapters.push({ number: chapters.length + 1, title: '', changeLog: [], sections: [{ seq: 1, title: '', paragraphs: [] }], figures: [] });
+    normalizeNumbering(chapters);
+    return { doc: { ...s.doc, chapters } };
   }),
   addSection: (ci) => set((s) => {
     const chapters = structuredClone(s.doc.chapters);
     chapters[ci].sections.push({ seq: chapters[ci].sections.length + 1, title: '', paragraphs: [] });
+    normalizeNumbering(chapters);
     return { doc: { ...s.doc, chapters } };
   }),
   addParagraph: (ci, si) => set((s) => {
     const chapters = structuredClone(s.doc.chapters);
     const paras = chapters[ci].sections[si].paragraphs;
     paras.push({ seq: paras.length + 1, title: '', body: [{ runs: [{ text: '' }] }], children: [] });
+    normalizeNumbering(chapters);
     return { doc: { ...s.doc, chapters } };
   }),
   addSubPara: (path) => set((s) => {
@@ -114,6 +148,7 @@ export const useVolumeStore = create<VolumeState>((set) => ({
       body: [{ runs: [{ text: '' }] }],
       children: [],
     });
+    normalizeNumbering(chapters);
     return { doc: { ...s.doc, chapters } };
   }),
   updateBlock: (path, blockIdx, block) => set((s) => {
@@ -136,12 +171,14 @@ export const useVolumeStore = create<VolumeState>((set) => ({
     const target = index + dir;
     if (target < 0 || target >= list.length) return { doc: s.doc };
     [list[index], list[target]] = [list[target], list[index]];
+    normalizeNumbering(chapters);
     return { doc: { ...s.doc, chapters } };
   }),
   removeNode: (path) => set((s) => {
     const chapters = structuredClone(s.doc.chapters);
     const { list, index } = resolveParent(chapters, path);
     list.splice(index, 1);
+    normalizeNumbering(chapters);
     return { doc: { ...s.doc, chapters } };
   }),
 }));
