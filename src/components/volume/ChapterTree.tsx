@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { BlockEditor } from './BlockEditor';
+import { ChapterChangeLog } from './ChapterChangeLog';
+import { FigurePanel } from './FigurePanel';
 import { ChevronUp, ChevronDown, Trash2, Plus, ListTree } from 'lucide-react';
 import type { Block, Chapter, Paragraph, Section, SubPara } from '@/lib/schemas/volume-schema';
 
@@ -243,6 +245,11 @@ function ChapterNode({ chapter, chapterIdx }: { chapter: Chapter; chapterIdx: nu
         <Button type="button" variant="outline" size="sm" onClick={() => addSection(chapterIdx)}>
           <Plus className="w-4 h-4 mr-1" /> Add Section
         </Button>
+
+        {/* Findings 11/12: per-chapter change log and figure authoring -
+            previously no UI existed for either. */}
+        <ChapterChangeLog chapter={chapter} chapterIdx={chapterIdx} />
+        <FigurePanel chapter={chapter} chapterIdx={chapterIdx} />
       </CardContent>
     </Card>
   );

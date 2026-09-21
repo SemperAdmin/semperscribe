@@ -18,9 +18,19 @@ interface BlockEditorProps {
  * and "Insert link" flags apply to that whole run. A richer per-span editor
  * (multiple runs per block, partial selections) is out of scope for this
  * tree-authoring pass.
+ *
+ * Finding 2: a Block with 2+ runs (the blue/hyperlink run model - e.g.
+ * "plain text " + a linked run + " more text") used to be silently
+ * collapsed to `block.runs[0]` alone: every OTHER run's text, flags, and
+ * href were dropped from view entirely, and the first keystroke wrote back
+ * a single-run array, permanently destroying them. Until this editor grows
+ * real per-span editing, a multi-run block renders read-only (ALL of it,
+ * every run's text joined, so nothing is hidden) instead of a lossy,
+ * writable single-run view.
  */
 export function BlockEditor({ block, onChange, label }: BlockEditorProps) {
   const [linkOpen, setLinkOpen] = useState(false);
+  const isMultiRun = block.runs.length > 1;
   const run: Run = block.runs[0] ?? { text: '' };
   const [linkUrl, setLinkUrl] = useState(run.href ?? '');
 
@@ -34,6 +44,23 @@ export function BlockEditor({ block, onChange, label }: BlockEditorProps) {
     const { link: _link, href: _href, ...rest } = run;
     onChange({ ...block, runs: [rest] });
   };
+
+  if (isMultiRun) {
+    const fullText = block.runs.map((r) => r.text).join('');
+    return (
+      <div className="space-y-1.5">
+        <Textarea
+          value={fullText}
+          readOnly
+          aria-label={label ?? 'Block text'}
+          className="min-h-[60px] text-sm bg-muted/40 cursor-not-allowed"
+        />
+        <p className="text-xs text-muted-foreground italic">
+          multi-run block — edited flags preserved
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-1.5">

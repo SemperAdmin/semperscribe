@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-import type { Block, Chapter, Paragraph, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
+import type { Block, Chapter, Figure, Paragraph, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
+
+type ChapterChangeRow = Chapter['changeLog'][number];
 
 /**
  * Identifies a node in the chapter tree by index path:
@@ -108,6 +110,19 @@ interface VolumeState {
   updateNodeTitle: (path: VolumePath, title: string) => void;
   moveNode: (path: VolumePath, dir: -1 | 1) => void;
   removeNode: (path: VolumePath) => void;
+  // Finding 11: per-chapter change log rows (MetaPanel only ever handled
+  // the volume-level changeLog, so a chapter's own change log - the
+  // chapter-divider table's data source, layout.ts's layoutChapterDivider -
+  // had no authoring path at all).
+  addChapterChangeRow: (chapterIdx: number) => void;
+  updateChapterChangeRow: (chapterIdx: number, rowIdx: number, patch: Partial<ChapterChangeRow>) => void;
+  removeChapterChangeRow: (chapterIdx: number, rowIdx: number) => void;
+  // Finding 12: per-chapter figure authoring (release-one scope: image +
+  // caption + legend lines; Figure.anchor honoring and size caps are OUT of
+  // this wave - figures stay end-of-chapter, per the finding's ruling).
+  addFigure: (chapterIdx: number, figure: Omit<Figure, 'number'>) => void;
+  updateFigure: (chapterIdx: number, figureIdx: number, patch: Partial<Figure>) => void;
+  removeFigure: (chapterIdx: number, figureIdx: number) => void;
 }
 
 export const useVolumeStore = create<VolumeState>((set) => ({
@@ -191,6 +206,44 @@ export const useVolumeStore = create<VolumeState>((set) => ({
     const { list, index } = resolveParent(chapters, path);
     list.splice(index, 1);
     normalizeNumbering(chapters);
+    return { doc: { ...s.doc, chapters } };
+  }),
+  addChapterChangeRow: (chapterIdx) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    chapters[chapterIdx].changeLog.push({ version: '', pageParagraph: '', summary: '', dateOfChange: '' });
+    return { doc: { ...s.doc, chapters } };
+  }),
+  updateChapterChangeRow: (chapterIdx, rowIdx, patch) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    const row = chapters[chapterIdx].changeLog[rowIdx];
+    if (row) chapters[chapterIdx].changeLog[rowIdx] = { ...row, ...patch };
+    return { doc: { ...s.doc, chapters } };
+  }),
+  removeChapterChangeRow: (chapterIdx, rowIdx) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    chapters[chapterIdx].changeLog = chapters[chapterIdx].changeLog.filter((_, i) => i !== rowIdx);
+    return { doc: { ...s.doc, chapters } };
+  }),
+  addFigure: (chapterIdx, figure) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    const figures = chapters[chapterIdx].figures;
+    // Finding 12: figure numbering is derived from array position (matches
+    // the same "designators are derived, not authored" convention as
+    // sections/paragraphs/sub-paragraphs elsewhere in this store).
+    figures.push({ ...figure, number: figures.length + 1 });
+    return { doc: { ...s.doc, chapters } };
+  }),
+  updateFigure: (chapterIdx, figureIdx, patch) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    const figure = chapters[chapterIdx].figures[figureIdx];
+    if (figure) chapters[chapterIdx].figures[figureIdx] = { ...figure, ...patch };
+    return { doc: { ...s.doc, chapters } };
+  }),
+  removeFigure: (chapterIdx, figureIdx) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    chapters[chapterIdx].figures = chapters[chapterIdx].figures
+      .filter((_, i) => i !== figureIdx)
+      .map((f, i) => ({ ...f, number: i + 1 }));
     return { doc: { ...s.doc, chapters } };
   }),
 }));

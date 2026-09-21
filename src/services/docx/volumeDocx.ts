@@ -217,8 +217,15 @@ function decodeDataUrl(dataUrl: string): Uint8Array {
 
 // Fixed box (pixels, ~4.7in x 3.1in at 96dpi). Real pixel dimensions of an
 // arbitrary data-URL image aren't known without an image-decoding library,
-// so (like the PDF path centers into a fixed box preserving aspect ratio)
-// this generator uses one conservative box rather than measuring the image.
+// so this generator uses one conservative box rather than measuring the
+// image. UNLIKE the PDF path (which computes a scale from the image's real
+// dimensions to fit this box while preserving aspect ratio - see
+// volumeGenerator.ts's `paintItem`'s 'figure' case), docx's `ImageRun`
+// transformation stretches the image to fill `FIGURE_BOX` exactly: an
+// image whose aspect ratio doesn't match 450:300 (3:2) DISTORTS. Fixing
+// that would need the same image-dimension-probing this comment says isn't
+// available; this is a known, out-of-scope limitation of this wave (see
+// task-19-report.md), not an oversight.
 const FIGURE_BOX = { width: 450, height: 300 };
 
 function figureParagraphs(figure: Figure): Paragraph[] {
