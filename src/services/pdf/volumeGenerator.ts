@@ -54,6 +54,24 @@ function decodeDataUrl(dataUrl: string): { mime: string; bytes: Uint8Array } {
   return { mime, bytes };
 }
 
+/** Bordered box + label, painted in place of a figure whose image failed to embed. */
+function drawFigurePlaceholder(page: PDFPage, item: Extract<PaintItem, { kind: 'figure' }>, font: PDFFont) {
+  const { x, y, width, height, figureNumber } = item;
+  page.drawRectangle({
+    x, y, width, height,
+    borderColor: BLACK, borderWidth: 0.75,
+    color: rgb(1, 1, 1),
+  });
+  const label = `Figure ${figureNumber}: image could not be embedded`;
+  const size = 10;
+  const textWidth = font.widthOfTextAtSize(label, size);
+  page.drawText(label, {
+    x: x + (width - textWidth) / 2,
+    y: y + height / 2,
+    size, font, color: BLACK,
+  });
+}
+
 function paintTemplate(page: PDFPage, laidOutPage: LaidOutPage, doc: VolumeDoc, font: PDFFont) {
   // Running head center: policy title, upper-cased.
   drawCentered(page, doc.order.policyTitle.toUpperCase(), CENTER_X, RUNNING_HEAD_CENTER_Y, 12, font);
@@ -92,8 +110,15 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
       // optimization only. Hyperlink annotation rectangles are computed
       // below from each segment's OWN measured width and x-advance as we
       // walk item.segments — never derived from the merged drawText
-      // buffer — so two adjacent link runs with different hrefs each get
-      // their own rectangle instead of collapsing into one.
+      // buffer above — so two adjacent link runs with different hrefs
+      // each get their own rectangle instead of collapsing into one.
+      //
+      // wrapRuns tokenizes on word boundaries, so a single link run like
+      // "this link" arrives as multiple segments (word, space, word) that
+      // all share the same underlying `run`/href. We accumulate a
+      // contiguous run of same-href segments into ONE rectangle (flushing
+      // whenever the href changes, a non-link segment appears, or the
+      // line ends) rather than emitting one rectangle per word-token.
       let x = item.x;
       let bufferText = '';
       let bufferColor = BLACK;
@@ -104,6 +129,22 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
         page.drawText(bufferText, { x: bufferX, y: item.y, size: item.sizePt, font: bufferFont, color: bufferColor });
         bufferText = '';
       };
+
+      let linkHref: string | undefined;
+      let linkStartX = x;
+      let linkWidth = 0;
+      const flushLink = () => {
+        if (linkHref === undefined) return;
+        const underlineY = item.y - 1.5;
+        page.drawLine({
+          start: { x: linkStartX, y: underlineY }, end: { x: linkStartX + linkWidth, y: underlineY },
+          thickness: 0.5, color: BLUE,
+        });
+        addLinkAnnotation(pdfDoc, page, linkStartX, item.y, linkWidth, item.sizePt, linkHref);
+        linkHref = undefined;
+        linkWidth = 0;
+      };
+
       for (const segment of item.segments) {
         const isLink = !!(segment.run.link && segment.run.href);
         const color = segment.run.changed || segment.run.link ? BLUE : BLACK;
@@ -121,17 +162,20 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
         bufferText += segment.text;
 
         if (isLink) {
-          // Underline + link annotation over exactly this segment's box.
-          const underlineY = item.y - 1.5;
-          page.drawLine({
-            start: { x, y: underlineY }, end: { x: x + segWidth, y: underlineY },
-            thickness: 0.5, color: BLUE,
-          });
-          addLinkAnnotation(pdfDoc, page, x, item.y, segWidth, item.sizePt, segment.run.href!);
+          if (linkHref !== segment.run.href) {
+            flushLink();
+            linkHref = segment.run.href;
+            linkStartX = x;
+            linkWidth = 0;
+          }
+          linkWidth += segWidth;
+        } else {
+          flushLink();
         }
         x += segWidth;
       }
       flush();
+      flushLink();
       break;
     }
     case 'table': {
@@ -168,19 +212,26 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
       break;
     }
     case 'figure': {
-      const { mime, bytes } = decodeDataUrl(item.image);
-      const embedded = mime === 'image/jpeg' || mime === 'image/jpg'
-        ? await pdfDoc.embedJpg(bytes)
-        : await pdfDoc.embedPng(bytes);
+      // A malformed/unsupported image must not abort the whole export — one
+      // bad figure degrades to a labeled placeholder, the rest of the
+      // document still paints and generateVolumePdf still resolves.
+      try {
+        const { mime, bytes } = decodeDataUrl(item.image);
+        const embedded = mime === 'image/jpeg' || mime === 'image/jpg'
+          ? await pdfDoc.embedJpg(bytes)
+          : await pdfDoc.embedPng(bytes);
 
-      // Fit the embedded image inside the reserved box, preserving aspect
-      // ratio (pixel dimensions aren't known until now), then center it.
-      const scale = Math.min(item.width / embedded.width, item.height / embedded.height);
-      const drawW = embedded.width * scale;
-      const drawH = embedded.height * scale;
-      const drawX = item.x + (item.width - drawW) / 2;
-      const drawY = item.y + (item.height - drawH) / 2;
-      page.drawImage(embedded, { x: drawX, y: drawY, width: drawW, height: drawH });
+        // Fit the embedded image inside the reserved box, preserving aspect
+        // ratio (pixel dimensions aren't known until now), then center it.
+        const scale = Math.min(item.width / embedded.width, item.height / embedded.height);
+        const drawW = embedded.width * scale;
+        const drawH = embedded.height * scale;
+        const drawX = item.x + (item.width - drawW) / 2;
+        const drawY = item.y + (item.height - drawH) / 2;
+        page.drawImage(embedded, { x: drawX, y: drawY, width: drawW, height: drawH });
+      } catch {
+        drawFigurePlaceholder(page, item, fonts.regular);
+      }
       break;
     }
     default:
