@@ -112,7 +112,19 @@ interface VolumeState {
 
 export const useVolumeStore = create<VolumeState>((set) => ({
   doc: blankVolume(),
-  setDoc: (doc) => set({ doc }),
+  // Finding 6: import (useImportExport.ts) and template-load both hand a
+  // whole doc straight to setDoc, bypassing the same renumbering every
+  // other mutator runs through. A hand-edited/imported file whose seq/number
+  // fields drifted from array position (e.g. a survivor left at seq:2 after
+  // an external tool removed its sibling) would silently reintroduce the
+  // editor/PDF numbering mismatch normalizeNumbering exists to prevent.
+  // structuredClone first since normalizeNumbering mutates in place and the
+  // caller may still hold a reference to the doc it passed in.
+  setDoc: (doc) => set(() => {
+    const cloned = structuredClone(doc);
+    normalizeNumbering(cloned.chapters);
+    return { doc: cloned };
+  }),
   updateMeta: (patch) => set((s) => ({ doc: { ...s.doc, volume: { ...s.doc.volume, ...patch } } })),
   addChapter: () => set((s) => {
     const chapters = structuredClone(s.doc.chapters);

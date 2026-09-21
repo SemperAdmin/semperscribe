@@ -45,6 +45,19 @@ describe('volumeStore', () => {
       expect(doc.chapters[0].title).toBe('Second Chapter');
     });
 
+    // Finding 6: setDoc (used by import and template-load) used to bypass
+    // normalizeNumbering entirely, so a hand-edited/imported file whose
+    // seq fields drifted from array position reintroduced the editor/PDF
+    // numbering mismatch.
+    it('setDoc normalizes a doc whose survivor section has seq:2 at index 0', () => {
+      const { setDoc } = useVolumeStore.getState();
+      const doc = blankVolume();
+      doc.chapters[0].sections = [{ seq: 2, title: 'Survivor', paragraphs: [] }];
+      setDoc(doc);
+      const stored = useVolumeStore.getState().doc;
+      expect(stored.chapters[0].sections[0].seq).toBe(1);
+    });
+
     it('removeNode renumbers a survivor sub-paragraph to seq 1', () => {
       const { addParagraph, addSubPara, removeNode } = useVolumeStore.getState();
       addParagraph(0, 0);

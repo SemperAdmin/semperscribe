@@ -4,8 +4,9 @@
  * reader rejects the other's files.
  */
 import { describe, it, expect } from 'vitest';
-import { importNLDPFile, validateNLDPFile } from '@/lib/nldp-utils';
+import { createNLDPFile, importNLDPFile, validateNLDPFile } from '@/lib/nldp-utils';
 import { NLDP_CONSTANTS } from '@/lib/nldp-format';
+import { blankVolume } from '@/store/volumeStore';
 
 /** A faithful 1.0 file: no designators, no cited citations. */
 const V10_FILE = {
@@ -64,5 +65,28 @@ describe('NLDP 1.0 compatibility', () => {
     const result = validateNLDPFile(future);
     expect(result.isValid).toBe(false);
     expect(result.errors.join(' ')).toContain('Unsupported version');
+  });
+});
+
+// Finding 7: a deployed 1.1 reader whitelists ['1.0', '1.1'] and rejects
+// anything else. Stamping every export '1.2' (the schema's overall CURRENT
+// max version) would make that reader reject ordinary letter exports that
+// carry no volume payload at all. Only an export that actually carries
+// data.volume needs — and gets — the 1.2 stamp.
+describe('NLDP export version stamp (finding 7)', () => {
+  it('a letter export (no volume payload) stamps 1.1, not 1.2', async () => {
+    const file = await createNLDPFile({ documentType: 'mco' }, [], [], [], [], []);
+    expect(file.version).toBe('1.1');
+    expect(file.metadata.formatVersion).toBe('1.1');
+  });
+
+  it('a volume export (config.volumeDoc supplied) stamps 1.2', async () => {
+    const file = await createNLDPFile(
+      { documentType: 'volume' }, [], [], [], [], [],
+      { volumeDoc: blankVolume() },
+    );
+    expect(file.version).toBe('1.2');
+    expect(file.metadata.formatVersion).toBe('1.2');
+    expect(file.data.volume).toBeDefined();
   });
 });
