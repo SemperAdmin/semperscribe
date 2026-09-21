@@ -1,6 +1,6 @@
 import { PDFArray, PDFDocument, PDFName, PDFString, rgb, StandardFonts, type PDFFont, type PDFPage } from 'pdf-lib';
 import type { VolumeDoc } from '@/lib/schemas/volume-schema';
-import { formatDate, layoutVolume, PAGE_H, PAGE_W, type Page as LaidOutPage, type PaintItem } from '@/lib/volume/layout';
+import { formatDate, layoutVolume, LEADING, PAGE_H, PAGE_W, type Page as LaidOutPage, type PaintItem } from '@/lib/volume/layout';
 
 const BLACK = rgb(0, 0, 0);
 const BLUE = rgb(0, 0, 1);
@@ -76,10 +76,44 @@ function paintTemplate(page: PDFPage, laidOutPage: LaidOutPage, doc: VolumeDoc, 
   // Running head center: policy title, upper-cased.
   drawCentered(page, doc.order.policyTitle.toUpperCase(), CENTER_X, RUNNING_HEAD_CENTER_Y, 12, font);
 
-  // Running head left: "Volume N" or "Volume N, Chapter M" on body pages.
-  const leftText = laidOutPage.band === 'body' && laidOutPage.chapter !== undefined
-    ? `Volume ${doc.volume.number}, Chapter ${laidOutPage.chapter}`
-    : `Volume ${doc.volume.number}`;
+  // Running head left.
+  //
+  // Task 18 finding D: measured directly off the real MCO 5800.16 Vol 1,
+  // Vol 4 and Vol 17 PDFs (running head rows, y > 700, on the title page,
+  // the references pages and the body pages of each): every one of them
+  // uses the SAME two-line running head (center title alone on the top
+  // line, left label + right designator on the line below) on EVERY page
+  // - front matter, references, and body alike. There is no page anywhere
+  // that merges the left label onto the center title's baseline; that
+  // idea, floated as this finding's original hypothesis, did not survive
+  // measuring the real PDFs and was dropped (see task-18-report.md for the
+  // measured rows).
+  //
+  // What *is* real and was a genuine bug: the left label's *text* varies
+  // by page band, and single-chapter volumes never get a ", Chapter N"
+  // suffix:
+  //  - reference-band pages print the literal word "References" (both
+  //    Vol 1 and Vol 17, single- and multi-chapter alike; e.g. Vol 17
+  //    page index 2 prints "References" at the same y as every other
+  //    page's left label).
+  //  - a single-chapter volume's body pages print bare "Volume {n}" -
+  //    Vol 17 prints "Volume 17" on every one of its body pages, NEVER
+  //    "Volume 17, Chapter 1" (our old code appended the chapter suffix
+  //    whenever `band === 'body'`, regardless of chapter count).
+  //  - a multi-chapter volume's body pages DO print the two-part
+  //    "Volume {n}, Chapter {m}" form (Vol 1 prints "Volume 1, Chapter 1"
+  //    on its body pages) - unchanged from before.
+  //  - every other page (front matter: title/verso/TOC) prints bare
+  //    "Volume {n}".
+  const multiChapter = doc.chapters.length > 1;
+  let leftText: string;
+  if (laidOutPage.band === 'ref') {
+    leftText = 'References';
+  } else if (laidOutPage.band === 'body' && laidOutPage.chapter !== undefined && multiChapter) {
+    leftText = `Volume ${doc.volume.number}, Chapter ${laidOutPage.chapter}`;
+  } else {
+    leftText = `Volume ${doc.volume.number}`;
+  }
   page.drawText(leftText, { x: LEFT_X, y: RUNNING_HEAD_LEFT_Y, size: 12, font, color: BLACK });
 
   // Running head right: designator and volume, then the last-updated date
@@ -184,16 +218,26 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
       break;
     }
     case 'table': {
-      const { x, y, cols, colWidths, rows, rowHeight } = item;
+      // Task 18 finding A: each cell is pre-wrapped to its own column width
+      // (see `addTable` in lib/volume/layout.ts), and each row's height
+      // (`rowHeights`/`headerHeight`) already accounts for the tallest
+      // wrapped cell in that row, so painting each cell's lines top-down
+      // never crosses into the next column or the next row.
+      const { x, y, colWidths, headerLines, headerHeight, rows, rowHeights } = item;
       const width = colWidths.reduce((a, b) => a + b, 0);
-      const numRows = rows.length + 1; // + header
-      const top = y + rowHeight - 3;
-      const bottom = top - numRows * rowHeight;
+      const allRowHeights = [headerHeight, ...rowHeights];
+      const allRowsLines = [headerLines, ...rows];
+      const top = y + headerHeight - 3;
+      const totalHeight = allRowHeights.reduce((a, b) => a + b, 0);
+      const bottom = top - totalHeight;
       const size = 11;
+      const lineStep = LEADING;
 
-      // Horizontal grid lines (numRows + 1 of them).
-      for (let r = 0; r <= numRows; r++) {
-        const ly = top - r * rowHeight;
+      // Horizontal grid lines, one per row boundary (rows can differ in height).
+      let ly = top;
+      page.drawLine({ start: { x, y: ly }, end: { x: x + width, y: ly }, thickness: 0.75, color: BLACK });
+      for (const h of allRowHeights) {
+        ly -= h;
         page.drawLine({ start: { x, y: ly }, end: { x: x + width, y: ly }, thickness: 0.75, color: BLACK });
       }
       // Vertical grid lines (one per column boundary, plus the outer edges).
@@ -204,15 +248,26 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
         page.drawLine({ start: { x: vx, y: top }, end: { x: vx, y: bottom }, thickness: 0.75, color: BLACK });
       }
 
-      // Header + data row text.
-      for (let r = 0; r < numRows; r++) {
-        const cells = r === 0 ? cols : rows[r - 1];
-        const baselineY = top - (r + 1) * rowHeight + 4;
+      // Header + data row text: each cell's own wrapped lines are painted
+      // top-down within that row's band, never spilling past the column's
+      // right edge (they were wrapped to fit it) or the row below (the row
+      // height already grew to fit the tallest cell).
+      let rowTop = top;
+      for (let r = 0; r < allRowsLines.length; r++) {
+        const cells = allRowsLines[r];
+        const rowH = allRowHeights[r];
         let cx = x;
         for (let c = 0; c < cells.length; c++) {
-          page.drawText(String(cells[c] ?? ''), { x: cx + 4, y: baselineY, size, font: fonts.regular, color: BLACK });
+          const lines = cells[c];
+          const cellTopBaseline = rowTop - lineStep + 2;
+          for (let li = 0; li < lines.length; li++) {
+            page.drawText(lines[li], {
+              x: cx + 4, y: cellTopBaseline - li * lineStep, size, font: fonts.regular, color: BLACK,
+            });
+          }
           cx += colWidths[c] ?? 0;
         }
+        rowTop -= rowH;
       }
       break;
     }

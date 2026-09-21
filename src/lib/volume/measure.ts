@@ -39,3 +39,27 @@ export function wrapRuns(
   if (line.length > 0) pushLine();
   return lines;
 }
+
+/**
+ * Word-wraps plain text to fit within `maxWidth` (a plain pixel/point width,
+ * not tied to page coordinates like `wrapRuns`) - used by the table painter
+ * so a cell's text wraps within its own column instead of overflowing into
+ * the next column (Task 18 finding A).
+ */
+export function wrapPlainText(text: string, maxWidth: number, sizePt: number): string[] {
+  const words = text.split(/\s+/).filter(w => w.length > 0);
+  if (words.length === 0) return [''];
+  const lines: string[] = [];
+  let current = '';
+  for (const w of words) {
+    const candidate = current ? `${current} ${w}` : w;
+    if (current && measureText(candidate, sizePt) > maxWidth) {
+      lines.push(current);
+      current = w;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) lines.push(current);
+  return lines.length > 0 ? lines : [''];
+}

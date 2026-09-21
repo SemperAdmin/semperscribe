@@ -139,6 +139,89 @@ describe('volume Vol 17 render (no real PDF required)', () => {
     expect(findIncludes(rows, 'DISTRIBUTION')).toBeTruthy();
     expect(findIncludes(rows, 'PCN 10209190801')).toBeTruthy();
   });
+
+  // Task 18 finding A: the change-table painter used to draw every cell's
+  // full text at a fixed x with no wrapping, so a wide header like "VOLUME
+  // VERSION" ran straight across the column boundary into "SUMMARY OF
+  // CHANGE" (they extracted, garbled together, as
+  // "VOLUME VERSIONSUMMARY OF CHANGE"). Cells now word-wrap within their
+  // own column (lib/volume/layout.ts's `addTable`), so the two header
+  // cells extract as separate text rows whose x-ranges never intersect.
+  it('finding A: change-table header cells wrap within their own column and never overlap', async () => {
+    const rows = await ourRows();
+    // No row is the old garbled merge of the two header cells.
+    expect(rows.some(r => r.text.includes('VOLUME VERSIONSUMMARY'))).toBe(false);
+    const volCol = rows.find(r => r.text === 'VOLUME' || r.text === 'VOLUME VERSION');
+    const summaryCol = rows.find(r => r.text.startsWith('SUMMARY OF CHANGE'));
+    expect(volCol, '"VOLUME"/"VOLUME VERSION" header cell not found').toBeTruthy();
+    expect(summaryCol, '"SUMMARY OF CHANGE" header cell not found').toBeTruthy();
+    // Different columns of the same table row: "SUMMARY OF CHANGE" must
+    // start well to the right of where "VOLUME"/"VOLUME VERSION" sits,
+    // never sharing x-space with it.
+    expect(summaryCol!.x).toBeGreaterThan(volCol!.x + 50);
+  });
+
+  // Task 18 finding B: dot leaders used to start before a long TOC label
+  // finished measuring (the old font metrics under-measured every
+  // uppercase character - see finding C's fix in font-metrics.ts), so
+  // leaders painted on top of the label's own tail characters
+  // ("PURPOS.E....", "TH.E...Y...E...A..R"). The label's first line must
+  // now extract as a contiguous, un-garbled run, and any leader dots on
+  // its final line must start strictly after the label text ends.
+  it('finding B: TOC leader starts after the label, never overlapping it', async () => {
+    const rows = await ourRows();
+    // The TOC's "0101. PURPOSE" entry (section 0101 is titled "PURPOSE").
+    const purpose = rows.find(r => r.text.includes('PURPOSE') && r.text.startsWith('0101'));
+    expect(purpose, 'TOC "0101. PURPOSE" entry not found').toBeTruthy();
+    expect(purpose!.text).toBe('0101. PURPOSE'); // contiguous, not garbled by an overlapping leader
+    const leaderRow = rows.find(r => r.y === purpose!.y && /^\s*\.+$/.test(r.text));
+    expect(leaderRow, 'dot leader for the "0101. PURPOSE" TOC row not found').toBeTruthy();
+    // The leader must start to the right of the whole label, not somewhere
+    // inside it (a real overlap would put the leader's x under 100).
+    expect(leaderRow!.x).toBeGreaterThan(purpose!.x + 60);
+  });
+
+  // Task 18 finding C (critical, data loss): section 0107's long heading
+  // ("...AWARD (CPOY-A)") used to run off the right edge of the physical
+  // page - the layout's own width estimate (measureText, backed by
+  // font-metrics.ts) fell back to a uniform 0.5em for every uppercase
+  // character (the generator's charset never included A-Z), so it never
+  // triggered a wrap even though the REAL Times New Roman glyphs pdf-lib
+  // paints are much wider. The closing "(CPOY-A)" landed past x=612 (the
+  // page's own right edge) and was invisible. Root-cause fix: regenerate
+  // font-metrics.ts with the full character set (scripts/
+  // generate-font-metrics.mjs), so wrapRuns's decisions match pdf-lib's
+  // real paint widths and the heading wraps instead of overflowing.
+  it('finding C: section 0107\'s heading wraps and keeps the closing "(CPOY-A)" on the page', async () => {
+    const rows = await ourRows();
+    const closing = findIncludes(rows, '(CPOY-A)');
+    expect(closing, 'heading text "(CPOY-A)" was dropped/truncated').toBeTruthy();
+    expect(closing!.x).toBeLessThan(540); // must sit left of the right margin, not off the page
+  });
+
+  // Task 18 finding D: single-chapter volumes (Vol 17 has one chapter)
+  // never print ", Chapter N" in the running head's left label - verified
+  // against the real Vol 1, Vol 4 and Vol 17 PDFs (see task-18-report.md):
+  // all three print bare "Volume {n}" on every page, including body
+  // pages, and switch to the literal word "References" on reference-band
+  // pages. Only a MULTI-chapter volume's body pages add the ", Chapter M"
+  // suffix (e.g. Vol 1 prints "Volume 1, Chapter 1" on its body pages).
+  it('finding D: single-chapter running head never prints a ", Chapter N" suffix', async () => {
+    const rows = await ourRows();
+    expect(rows.some(r => r.text.includes('Chapter'))).toBe(false);
+    expect(findIncludes(rows, 'Volume 17')).toBeTruthy();
+    expect(findIncludes(rows, 'References')).toBeTruthy();
+  });
+
+  // Task 18 finding E: the real Vol 17 PDF prints the bare literal
+  // "Report Required:" or nothing at all; "See Volume text for details."
+  // was invented text with no backing field in the schema
+  // (`reportRequired` is a plain boolean).
+  it('finding E: prints the bare "Report Required:" label with no invented text', async () => {
+    const rows = await ourRows();
+    expect(findIncludes(rows, 'Report Required:')).toBeTruthy();
+    expect(rows.some(r => r.text.includes('See Volume text for details'))).toBe(false);
+  });
 });
 
 describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF', () => {

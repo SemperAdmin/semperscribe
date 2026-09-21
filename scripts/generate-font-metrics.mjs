@@ -15,9 +15,27 @@ import { fileURLToPath } from 'url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// Every character a paragraph designator prefix uses:
-// digits, lowercase letters, parens, period, space, nbsp.
-const CHARS = '0123456789abcdefghijklmnopqrstuvwxyz().  ';
+// Every character volume documents actually render: digits, upper- and
+// lowercase letters (headings/designators are upper-cased; body prose is
+// mixed case), common ASCII punctuation seen across the volume fixtures
+// (quotes, dashes, brackets, etc.), space, nbsp, and the handful of
+// non-ASCII marks used in real MCO text (section sign, en/em dash, curly
+// quotes).
+//
+// Task 18 finding C: the old charset omitted uppercase letters entirely, so
+// measureText/wrapRuns fell back to a uniform 0.5em per uppercase
+// character. Since every section/paragraph heading is upper-cased, that
+// silently under-measured heading width against the real Times New Roman
+// metrics pdf-lib paints with - long headings (e.g. Vol 17 section 0107,
+// "...AWARD (CPOY-A)") were never wrapped and ran off the physical page
+// edge instead.
+const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const LOWER = 'abcdefghijklmnopqrstuvwxyz';
+const DIGITS = '0123456789';
+const PUNCT = '().,-:;!?"\'/[]{}\\|<>=+*&%$#@^_~`';
+const SPACES = '  ';
+const EXTRA = '§–—‘’“”'; // § – — ‘ ’ “ ”
+const CHARS = DIGITS + LOWER + UPPER + PUNCT + SPACES + EXTRA;
 
 function extract(fontPath) {
   const font = fontkit.openSync(fontPath);
@@ -50,5 +68,5 @@ const body =
 
 writeFileSync(path.join(ROOT, 'src/lib/font-metrics.ts'), body);
 console.log('Wrote src/lib/font-metrics.ts');
-console.log('Serif spot checks: 1=%s .=%s a=%s (=%s', serif['1'], serif['.'], serif['a'], serif['(']);
+console.log('Serif spot checks: 1=%s .=%s a=%s (=%s A=%s M=%s', serif['1'], serif['.'], serif['a'], serif['('], serif['A'], serif['M']);
 console.log('Mono spot check (equal expected): 1=%s m=%s', mono['1'], mono['m']);

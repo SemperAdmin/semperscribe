@@ -2,7 +2,7 @@ import type { Block, Chapter, Figure, Paragraph, Run, Section, SubPara, VolumeDo
 import { paragraphDesignator, referenceDesignator, sectionDesignator, subParaDesignator } from '@/lib/volume/designators';
 import { designatorX, RUNOVER_X, textStartX } from '@/lib/volume/volume-indent';
 import { bodyPageLabel, refPageLabel, toRoman } from '@/lib/volume/page-bands';
-import { measureText, wrapRuns, type WrappedSegment } from '@/lib/volume/measure';
+import { measureText, wrapPlainText, wrapRuns, type WrappedSegment } from '@/lib/volume/measure';
 
 // ---------------------------------------------------------------------------
 // Page geometry (US Letter, 1" margins).
@@ -71,10 +71,13 @@ export interface TableItem {
   x: number;
   y: number;
   width: number;
-  cols: string[];
   colWidths: number[];
-  rows: string[][];
-  rowHeight: number;
+  /** Header cells, each already word-wrapped to fit its column width. */
+  headerLines: string[][];
+  headerHeight: number;
+  /** Data rows, each cell already word-wrapped to fit its column width. */
+  rows: string[][][];
+  rowHeights: number[];
 }
 export type PaintItem = LineItem | HeadingItem | FigureItem | TableItem;
 
@@ -219,14 +222,38 @@ class PageCursor {
     }
   }
 
-  /** A bordered grid: header row + data rows, painted by the PDF pass. */
+  /**
+   * A bordered grid: header row + data rows, painted by the PDF pass.
+   *
+   * Task 18 finding A: cell text used to paint at a fixed x with no
+   * wrapping, so anything wider than its column ran straight across the
+   * boundary into the next column (e.g. "VOLUME VERSION" bleeding into
+   * "SUMMARY OF CHANGE"). Every cell is now word-wrapped to fit within its
+   * own column width here at layout time, and each row's height grows to
+   * fit the tallest cell in that row (the header row and data rows can
+   * each have a different number of wrapped lines).
+   */
   addTable(cols: string[], colWidths: number[], rows: string[][]) {
-    const rowHeight = LEADING + 6;
-    const totalHeight = (rows.length + 1) * rowHeight;
+    const sizePt = 11;
+    const cellPadX = 4;
+    const wrapCell = (text: string, colWidth: number) =>
+      wrapPlainText(String(text ?? ''), Math.max(colWidth - cellPadX * 2, 1), sizePt);
+    const rowHeightFor = (cellLines: string[][]) =>
+      Math.max(1, ...cellLines.map(lines => lines.length)) * LEADING + 6;
+
+    const headerLines = cols.map((c, i) => wrapCell(c, colWidths[i] ?? 0));
+    const headerHeight = rowHeightFor(headerLines);
+    const rowsLines = rows.map(r => r.map((cell, i) => wrapCell(cell, colWidths[i] ?? 0)));
+    const rowHeights = rowsLines.map(rowHeightFor);
+
+    const totalHeight = headerHeight + rowHeights.reduce((a, b) => a + b, 0);
     if (this.y - totalHeight < BOTTOM_Y) this.newPage();
     const y = this.y;
     const width = colWidths.reduce((a, b) => a + b, 0);
-    this.current.items.push({ kind: 'table', x: MARGIN, y, width, cols, colWidths, rows, rowHeight });
+    this.current.items.push({
+      kind: 'table', x: MARGIN, y, width, colWidths,
+      headerLines, headerHeight, rows: rowsLines, rowHeights,
+    });
     this.y -= totalHeight;
   }
 
@@ -444,7 +471,13 @@ function layoutTitlePage(doc: VolumeDoc, nextRoman: () => string): Page[] {
 
   if (v.reportRequired) {
     cursor.addGap();
-    cursor.addLines(leftParagraph('Report Required: See Volume text for details.'));
+    // Task 18 finding E: the real Vol 17 PDF prints exactly "Report
+    // Required:" with nothing appended - the trailing "See Volume text for
+    // details." sentence was invented, not sourced from any stored field
+    // (`reportRequired` is a plain boolean; there is no free-text value to
+    // print verbatim). Verified against the real PDF: page 0, y=266.8,
+    // text is the bare literal "Report Required:" only.
+    cursor.addLines(leftParagraph('Report Required:'));
   }
 
   cursor.addGap();
