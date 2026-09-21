@@ -37,7 +37,7 @@ const V10_FILE = {
 describe('NLDP 1.0 compatibility', () => {
   it('1.0 remains a supported version', () => {
     expect(NLDP_CONSTANTS.SUPPORTED_VERSIONS).toContain('1.0');
-    expect(NLDP_CONSTANTS.CURRENT_VERSION).toBe('1.1');
+    expect(NLDP_CONSTANTS.CURRENT_VERSION).toBe('1.2');
   });
 
   it('a 1.0 file validates under the 1.1 reader', () => {
