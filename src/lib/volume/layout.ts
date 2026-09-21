@@ -1,4 +1,4 @@
-import type { Block, Chapter, Paragraph, Run, Section, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
+import type { Block, Chapter, Figure, Paragraph, Run, Section, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
 import { paragraphDesignator, referenceDesignator, sectionDesignator, subParaDesignator } from '@/lib/volume/designators';
 import { designatorX, RUNOVER_X, textStartX } from '@/lib/volume/volume-indent';
 import { bodyPageLabel, refPageLabel, toRoman } from '@/lib/volume/page-bands';
@@ -45,6 +45,7 @@ export interface FigureItem {
   width: number;
   height: number;
   figureNumber: number;
+  image: string;
 }
 export interface TableItem {
   kind: 'table';
@@ -215,6 +216,24 @@ class PageCursor {
     if (this.y < BOTTOM_Y) this.newPage();
   }
 
+  /**
+   * A centered figure box, scaled to fit at layout time to the text width and
+   * a fixed max height (or remaining page height if smaller). The painter
+   * fits the actual image into this box preserving aspect ratio, since pixel
+   * dimensions of a data-URL image aren't known here.
+   */
+  addFigure(image: string, figureNumber: number) {
+    const maxHeight = 300;
+    const minRoom = 120;
+    if (this.y - BOTTOM_Y < minRoom) this.newPage();
+    const available = this.y - BOTTOM_Y;
+    const height = Math.min(maxHeight, available);
+    const width = RIGHT_EDGE - MARGIN;
+    const y = this.y - height;
+    this.current.items.push({ kind: 'figure', x: MARGIN, y, width, height, figureNumber, image });
+    this.y = y;
+  }
+
   finish(): Page[] {
     if (this.current.items.length > 0 || this.pages.length === 0) this.pages.push(this.current);
     return this.pages;
@@ -316,6 +335,24 @@ function layoutSection(
     for (const para of section.paragraphs) {
       layoutParagraph(cursor, chapter, section.seq, para);
     }
+  }
+}
+
+/**
+ * A figure block: centered graphic box, centered "Figure {n}" caption, then
+ * optional legend lines — each figure registers its own level-1 TOC entry.
+ */
+function layoutFigure(cursor: PageCursor, figure: Figure, toc: TocEntry[]) {
+  cursor.addFigure(figure.image, figure.number);
+  cursor.addGap(6);
+  cursor.addLines(centeredLine(`Figure ${figure.number}`), BODY_SIZE_PT);
+  toc.push({
+    label: `FIGURE ${figure.number}: ${figure.caption.toUpperCase()}`,
+    page: cursor.currentLabel(),
+    level: 1,
+  });
+  for (const line of figure.legend ?? []) {
+    cursor.addLines(centeredLine(line), BODY_SIZE_PT);
   }
 }
 
@@ -495,6 +532,11 @@ function layoutBody(doc: VolumeDoc, toc: TocEntry[]): Page[] {
 
     for (const section of chapter.sections) {
       layoutSection(cursor, chapter.number, section, doc.volume.sectionPeriod, toc);
+      cursor.addGap();
+    }
+
+    for (const figure of chapter.figures) {
+      layoutFigure(cursor, figure, toc);
       cursor.addGap();
     }
 
