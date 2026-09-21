@@ -1,0 +1,131 @@
+{
+  "documentType": "volume",
+  "order": {
+    "designator": "MCO 5800.16",
+    "policyTitle": "LEGAL SUPPORT AND ADMINISTRATION MANUAL",
+    "sponsorCode": "JA"
+  },
+  "volume": {
+    "number": 6,
+    "title": "INTERNATIONAL AND OPERATIONAL LAW",
+    "titleQuoted": true,
+    "originalPublicationDate": "2018-02-20",
+    "lastUpdatedDate": "2018-02-20",
+    "distribution": { "kind": "statementA" },
+    "submitChangesTo": "CMC (JA)\n3000 Marine Corps Pentagon\nWashington, DC 20350-3000",
+    "sectionPeriod": false,
+    "pageBand": "auto"
+  },
+  "changeLog": [
+    { "version": "Original", "summary": "Initial publication of Volume 6.", "originationDate": "2018-02-20", "dateOfChanges": "N/A" }
+  ],
+  "references": [
+    { "text": "SECNAVINST 5430.7R" },
+    { "text": "SECNAVINST 5430.27D" },
+    { "text": "SECNAVINST 5430.25E" },
+    { "text": "MCO 5430.2" },
+    { "text": "MCO 5800.14" }
+  ],
+  "chapters": [
+    {
+      "number": 1,
+      "title": "INTERNATIONAL AND OPERATIONAL LAW",
+      "changeLog": [
+        { "version": "1", "pageParagraph": "1-4", "summary": "Clarified Section 0103 personnel roles and responsibilities.", "dateOfChange": "2018-02-20" }
+      ],
+      "sections": [
+        {
+          "seq": 1,
+          "title": "PURPOSE",
+          "body": [
+            {
+              "runs": [
+                { "text": "This Volume promulgates Marine Corps policy for the provision of international and operational law support throughout the Total Force and establishes service-wide standards for the performance of international and operational law." }
+              ]
+            }
+          ],
+          "paragraphs": []
+        },
+        {
+          "seq": 2,
+          "title": "GENERAL",
+          "body": [
+            {
+              "runs": [
+                { "text": "The increasing scope, complexity, and intensity of international and operational law issues that arise during the planning and execution of military operations demands increasing knowledge and expertise by judge advocates. Judge advocates practicing in the international and operational law arena must be conversant with the numerous manuals, orders, and publications to guide judge advocates on substantive legal issues as well as issues of training, organizing, and administration for the practice of international and operational law." }
+              ]
+            }
+          ],
+          "paragraphs": []
+        },
+        {
+          "seq": 3,
+          "title": "PERSONNEL",
+          "paragraphs": [
+            {
+              "seq": 1,
+              "title": "Roles and Responsibilities of Judge Advocates in the Provision of International and Operational Law Support",
+              "body": [],
+              "children": [
+                {
+                  "seq": 1,
+                  "style": "upper",
+                  "title": "General",
+                  "body": [
+                    {
+                      "runs": [
+                        { "text": "Within the Marine Corps, international and operational law support is provided to commanders, their staffs, and their Marines by judge advocates in their role as command advisors. This support is provided primarily by the Office of the SJA organic to the command element of the Marine Air Ground Task Forces (MAGTF) and the headquarters of the Marine service component commands." }
+                      ]
+                    }
+                  ],
+                  "children": []
+                },
+                {
+                  "seq": 2,
+                  "style": "upper",
+                  "title": "Structured Billets",
+                  "body": [
+                    {
+                      "runs": [
+                        { "text": "The following billets are essential to the provision of international and operational law advice and support." }
+                      ]
+                    }
+                  ],
+                  "children": [
+                    {
+                      "seq": 1,
+                      "style": "arabic",
+                      "title": "Staff Judge Advocate",
+                      "body": [
+                        {
+                          "runs": [
+                            { "text": "Provide overall, unfettered command advice on international and operational law issues to the Commander; serve as the legal advisor who provides advice to the staff on international laws, foreign national laws, and applicable domestic laws and regulations; serve as the legal advisor for operational exercises and contingencies and provide legal advice during the Marine Corps Planning Process and the development of Operation Plans (OPLANS)/Operation Orders (OPORDS); and serve as the key staff interface with external organizations such as non-governmental organizations or international organizations during contingency operations." }
+                          ]
+                        }
+                      ],
+                      "children": []
+                    },
+                    {
+                      "seq": 2,
+                      "style": "arabic",
+                      "title": "Operational Law Attorney",
+                      "body": [
+                        {
+                          "runs": [
+                            { "text": "Provide advice to the SJA and staff on international laws, foreign national laws, and applicable domestic laws and regulations; provide advice to the SJA and staff on the LOW and the development, formulation, and interpretation of the ROE; conduct LOW and other operational law training for all deploying personnel; assist the Operations Section (S-3) with ROE and Escalation of Force training, as necessary; coordinate with servicing legal assistance attorneys for the provision of legal assistance to Marines preparing for deployment." }
+                          ]
+                        }
+                      ],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "figures": []
+    }
+  ]
+}

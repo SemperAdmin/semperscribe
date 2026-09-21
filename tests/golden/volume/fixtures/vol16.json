@@ -1,0 +1,183 @@
+{
+  "documentType": "volume",
+  "order": {
+    "designator": "MCO 5800.16",
+    "policyTitle": "LEGAL SUPPORT AND ADMINISTRATION MANUAL",
+    "sponsorCode": "JA"
+  },
+  "volume": {
+    "number": 16,
+    "title": "MILITARY JUSTICE",
+    "titleQuoted": false,
+    "originalPublicationDate": "2020-06-19",
+    "lastUpdatedDate": "2021-07-14",
+    "distribution": { "kind": "statementA" },
+    "submitChangesTo": "CMC (JA)\n3000 Marine Corps Pentagon\nWashington, DC 20350-3000",
+    "sectionPeriod": true,
+    "pageBand": "auto"
+  },
+  "changeLog": [
+    { "version": "Revision", "summary": "Full revision of Volume 16.", "originationDate": "2020-06-19", "dateOfChanges": "2021-07-14" }
+  ],
+  "references": [
+    { "text": "SECNAVINST 5430.7R CH-2" },
+    { "text": "SECNAVINST 5430.27E" },
+    { "text": "SECNAVINST 5430.25F" },
+    { "text": "JAGINST 5813.2" },
+    { "text": "Manual for Courts-Martial, United States (2019 ed.)" }
+  ],
+  "chapters": [
+    {
+      "number": 1,
+      "title": "GENERAL PROVISIONS",
+      "changeLog": [
+        { "version": "1", "pageParagraph": "1-3", "summary": "Restated Section 0103 supervisory roles.", "dateOfChange": "2021-07-14" }
+      ],
+      "sections": [
+        {
+          "seq": 1,
+          "title": "PURPOSE",
+          "body": [
+            {
+              "runs": [
+                { "text": "This Volume promulgates Service standards, policies, and procedures for the provision and functional supervision of military justice within the Marine Corps, as provided for in law, regulations, and rules of professional conduct." }
+              ]
+            }
+          ],
+          "paragraphs": []
+        },
+        {
+          "seq": 2,
+          "title": "APPLICABILITY",
+          "body": [
+            {
+              "runs": [
+                { "text": "This Volume applies to the Marine Corps Total Force, with the exception of personnel who serve in billets within the Defense Services Organization (DSO) and the Victims' Legal Counsel Organization (VLCO). Nothing in this Volume restricts the legal services provided by members of the DSO or the VLCO, whose missions, duties, and responsibilities are covered in detail in Volumes 3 and 4 of this Manual." }
+              ]
+            }
+          ],
+          "paragraphs": []
+        },
+        {
+          "seq": 3,
+          "title": "GENERAL",
+          "paragraphs": [
+            {
+              "seq": 3,
+              "title": "Role of the Staff Judge Advocate to the Commandant of the Marine Corps in Military Justice",
+              "body": [
+                {
+                  "runs": [
+                    { "text": "The Staff Judge Advocate to the Commandant of the Marine Corps (SJA to CMC) exercises overall functional supervision of legal services and professional responsibility oversight within the Marine Corps, as described in Article 6, Uniform Code of Military Justice (UCMJ), 10 U.S.C. § 8046, SECNAVINST 5430.27E, and JAGINST 5803.1E." }
+                  ]
+                }
+              ],
+              "children": [
+                {
+                  "seq": 1,
+                  "style": "upper",
+                  "title": "Functional Supervision",
+                  "body": [
+                    {
+                      "runs": [
+                        { "text": "Functional supervision includes the authority to formulate, promulgate, inspect, and enforce uniform standards and procedures for the performance of military justice tasks, but does not include direction and control of individual personnel." }
+                      ]
+                    }
+                  ],
+                  "children": []
+                },
+                {
+                  "seq": 2,
+                  "style": "upper",
+                  "title": "Rules Counsel",
+                  "body": [
+                    {
+                      "runs": [
+                        { "text": "The SJA to CMC serves as Rules Counsel for matters of professional responsibility within the Marine Corps. As Rules Counsel, the SJA to CMC has the responsibility to exercise professional responsibility oversight over all Marine Corps judge advocates who are not assigned as a trial judge or appellate judge." }
+                      ]
+                    }
+                  ],
+                  "children": [
+                    {
+                      "seq": 1,
+                      "style": "arabic",
+                      "title": "Informal Complaints",
+                      "body": [
+                        {
+                          "runs": [
+                            { "text": "Informal professional responsibility complaints regarding Marine Corps judge advocates serving as trial counsel will be resolved within the Trial Services Organization." }
+                          ]
+                        }
+                      ],
+                      "children": []
+                    },
+                    {
+                      "seq": 2,
+                      "style": "arabic",
+                      "title": "Formal Complaints",
+                      "body": [
+                        {
+                          "runs": [
+                            { "text": "Formal professional responsibility complaints regarding Marine Corps trial counsel will be forwarded to CMC (JCA) via the responsible RTC and the CTC." }
+                          ]
+                        }
+                      ],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "figures": []
+    },
+    {
+      "number": 17,
+      "title": "GENERAL POST-TRIAL PROCESSING",
+      "changeLog": [
+        { "version": "1", "pageParagraph": "133", "summary": "Updated certified record of trial distribution timelines.", "dateOfChange": "2021-07-14" }
+      ],
+      "sections": [
+        {
+          "seq": 1,
+          "title": "PURPOSE",
+          "body": [
+            {
+              "runs": [
+                { "text": "This Chapter promulgates uniform policies, standards, and procedures for post-trial processing of courts-martial in the United States Marine Corps. Post-trial processing for all Navy and Marine Corps cases is governed by JAG/CNLSCINST 5814.1D." }
+              ]
+            }
+          ],
+          "paragraphs": []
+        },
+        {
+          "seq": 2,
+          "title": "APPLICABILITY",
+          "body": [
+            {
+              "runs": [
+                { "text": "This Order applies to Marines and sailors assigned to the Legal Service Support Sections (LSSSs) including court-reporters, personnel in the Post-Trial/Review Offices, trial counsel, defense counsel, and members of the complex trial teams." }
+              ]
+            }
+          ],
+          "paragraphs": []
+        },
+        {
+          "seq": 3,
+          "title": "PREPARATION AND DISTRIBUTION OF CERTIFIED RECORDS OF TRIAL",
+          "body": [
+            {
+              "runs": [
+                { "text": "The government will ensure timely post-trial processing of military justice cases. Each case shall have a separate record maintained of the proceedings. Article 140a, UCMJ and JAGINST 5813.2 require that electronic trial court filings and records be made available to public within 45 days of certification of the record of trial." }
+              ]
+            }
+          ],
+          "paragraphs": []
+        }
+      ],
+      "figures": []
+    }
+  ]
+}
