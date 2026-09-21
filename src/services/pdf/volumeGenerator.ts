@@ -69,8 +69,41 @@ function paintItem(page: PDFPage, item: PaintItem, font: PDFFont) {
       flush();
       break;
     }
+    case 'table': {
+      const { x, y, cols, colWidths, rows, rowHeight } = item;
+      const width = colWidths.reduce((a, b) => a + b, 0);
+      const numRows = rows.length + 1; // + header
+      const top = y + rowHeight - 3;
+      const bottom = top - numRows * rowHeight;
+      const size = 11;
+
+      // Horizontal grid lines (numRows + 1 of them).
+      for (let r = 0; r <= numRows; r++) {
+        const ly = top - r * rowHeight;
+        page.drawLine({ start: { x, y: ly }, end: { x: x + width, y: ly }, thickness: 0.75, color: BLACK });
+      }
+      // Vertical grid lines (one per column boundary, plus the outer edges).
+      let vx = x;
+      page.drawLine({ start: { x: vx, y: top }, end: { x: vx, y: bottom }, thickness: 0.75, color: BLACK });
+      for (const w of colWidths) {
+        vx += w;
+        page.drawLine({ start: { x: vx, y: top }, end: { x: vx, y: bottom }, thickness: 0.75, color: BLACK });
+      }
+
+      // Header + data row text.
+      for (let r = 0; r < numRows; r++) {
+        const cells = r === 0 ? cols : rows[r - 1];
+        const baselineY = top - (r + 1) * rowHeight + 4;
+        let cx = x;
+        for (let c = 0; c < cells.length; c++) {
+          page.drawText(String(cells[c] ?? ''), { x: cx + 4, y: baselineY, size, font, color: BLACK });
+          cx += colWidths[c] ?? 0;
+        }
+      }
+      break;
+    }
     default:
-      // Figures and tables are painted in a later task.
+      // Figures are painted in a later task.
       break;
   }
 }

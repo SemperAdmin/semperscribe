@@ -1,8 +1,8 @@
-import type { Block, Paragraph, Run, Section, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
-import { paragraphDesignator, sectionDesignator, subParaDesignator } from '@/lib/volume/designators';
+import type { Block, Chapter, Paragraph, Run, Section, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
+import { paragraphDesignator, referenceDesignator, sectionDesignator, subParaDesignator } from '@/lib/volume/designators';
 import { designatorX, RUNOVER_X, textStartX } from '@/lib/volume/volume-indent';
-import { bodyPageLabel, toRoman } from '@/lib/volume/page-bands';
-import { wrapRuns, type WrappedSegment } from '@/lib/volume/measure';
+import { bodyPageLabel, refPageLabel, toRoman } from '@/lib/volume/page-bands';
+import { measureText, wrapRuns, type WrappedSegment } from '@/lib/volume/measure';
 
 // ---------------------------------------------------------------------------
 // Page geometry (US Letter, 1" margins).
@@ -16,8 +16,10 @@ export const BOTTOM_Y = MARGIN;
 export const LEADING = 12.6;
 export const GAP = 25;
 export const RIGHT_EDGE = PAGE_W - MARGIN;
+export const CENTER_X = PAGE_W / 2;
 
 const BODY_SIZE_PT = 11;
+const HEADING_SIZE_PT = 12;
 
 // ---------------------------------------------------------------------------
 // Output types
@@ -49,7 +51,10 @@ export interface TableItem {
   x: number;
   y: number;
   width: number;
-  height: number;
+  cols: string[];
+  colWidths: number[];
+  rows: string[][];
+  rowHeight: number;
 }
 export type PaintItem = LineItem | HeadingItem | FigureItem | TableItem;
 
@@ -96,6 +101,11 @@ class PageCursor {
   /** Ensure there is room for one more line before appending. */
   private ensureRoom() {
     if (this.y < BOTTOM_Y + LEADING) this.newPage();
+  }
+
+  /** Force the next content onto a fresh page (no-op if current page is empty). */
+  breakPage() {
+    if (this.current.items.length > 0) this.newPage();
   }
 
   currentLabel(): string {
@@ -151,6 +161,55 @@ class PageCursor {
     }
   }
 
+  /**
+   * A TOC line: label left at the margin (wrapped continuation indented
+   * slightly under the title text, not back to the margin), a dotted leader,
+   * and the page label right-aligned to RIGHT_EDGE.
+   */
+  addTocEntry(label: string, pageLabel: string, sizePt = BODY_SIZE_PT) {
+    const reserveW = 70; // room for leader + page label on the last line
+    const lines = wrapRuns([{ text: label }], MARGIN, MARGIN + 18, RIGHT_EDGE - reserveW, sizePt);
+    if (lines.length === 0) lines.push({ segments: [], x: MARGIN });
+    for (let i = 0; i < lines.length; i++) {
+      this.ensureRoom();
+      const y = this.y;
+      const isLast = i === lines.length - 1;
+      const lineText = lines[i].segments.map(s => s.text).join('');
+      this.current.items.push({ kind: 'line', x: lines[i].x, y, segments: lines[i].segments, sizePt });
+      if (isLast) {
+        const endX = lines[i].x + measureText(lineText, sizePt);
+        const pageW = measureText(pageLabel, sizePt);
+        const targetX = RIGHT_EDGE - pageW;
+        const dotWidth = measureText('.', sizePt);
+        const gap = Math.max(0, targetX - endX - dotWidth);
+        const dotCount = dotWidth > 0 ? Math.floor(gap / dotWidth) : 0;
+        if (dotCount > 0) {
+          const leader = ' ' + '.'.repeat(dotCount);
+          this.current.items.push({
+            kind: 'line', x: endX, y, sizePt,
+            segments: [{ text: leader, run: { text: leader } }],
+          });
+        }
+        this.current.items.push({
+          kind: 'line', x: targetX, y, sizePt,
+          segments: [{ text: pageLabel, run: { text: pageLabel } }],
+        });
+      }
+      this.y -= LEADING;
+    }
+  }
+
+  /** A bordered grid: header row + data rows, painted by the PDF pass. */
+  addTable(cols: string[], colWidths: number[], rows: string[][]) {
+    const rowHeight = LEADING + 6;
+    const totalHeight = (rows.length + 1) * rowHeight;
+    if (this.y - totalHeight < BOTTOM_Y) this.newPage();
+    const y = this.y;
+    const width = colWidths.reduce((a, b) => a + b, 0);
+    this.current.items.push({ kind: 'table', x: MARGIN, y, width, cols, colWidths, rows, rowHeight });
+    this.y -= totalHeight;
+  }
+
   addGap(gap = GAP) {
     this.y -= gap;
     if (this.y < BOTTOM_Y) this.newPage();
@@ -160,6 +219,40 @@ class PageCursor {
     if (this.current.items.length > 0 || this.pages.length === 0) this.pages.push(this.current);
     return this.pages;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Small text-layout helpers shared by front matter builders.
+// ---------------------------------------------------------------------------
+function centeredLine(text: string, sizePt = BODY_SIZE_PT): { segments: WrappedSegment[]; x: number }[] {
+  const w = measureText(text, sizePt);
+  return [{ segments: [{ text, run: { text } }], x: CENTER_X - w / 2 }];
+}
+function leftParagraph(text: string, sizePt = BODY_SIZE_PT) {
+  return wrapRuns([{ text }], MARGIN, MARGIN, RIGHT_EDGE, sizePt);
+}
+
+const LEGEND_TEXT = 'Hyperlinks are denoted by bold, italic, blue and underlined font.';
+const VOLUME_CHANGE_POLICY_BOILERPLATE = [
+  'The date in the upper right corner of each page is the date this Volume was originally published; it does not change unless the Volume undergoes a full revision.',
+  'The date in the upper left corner of each page, shown in blue, is the date this Volume was last updated. Text added or changed since original publication is also shown in blue.',
+];
+const CHAPTER_CHANGE_POLICY_BOILERPLATE = [
+  'The date in the upper right corner of each page is the date this Chapter was originally published; it does not change unless the Volume undergoes a full revision.',
+  'The date in the upper left corner of each page, shown in blue, is the date this Chapter was last updated. Text added or changed since original publication is also shown in blue.',
+];
+const REFERENCES_SUMMARY_BOILERPLATE =
+  'This list of references is updated as the Volume is changed. Each change affecting the references must be annotated accordingly.';
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** Normalizes an ISO (or already-formatted) date to the canonical `DD Mon YYYY`. */
+function formatDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? '');
+  if (!m) return iso ?? '';
+  const [, y, mo, d] = m;
+  const monthIdx = Number(mo) - 1;
+  if (monthIdx < 0 || monthIdx > 11) return iso;
+  return `${Number(d)} ${MONTHS[monthIdx]} ${y}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -220,67 +313,151 @@ function layoutSection(
 }
 
 // ---------------------------------------------------------------------------
-// Front matter
+// Front matter: title page, blank verso.
 // ---------------------------------------------------------------------------
-function layoutFrontMatter(doc: VolumeDoc): Page[] {
-  let romanIdx = 1;
-  const nextRoman = () => toRoman(romanIdx++);
+function layoutTitlePage(doc: VolumeDoc, nextRoman: () => string): Page[] {
+  const cursor = new PageCursor('front', nextRoman);
+  const v = doc.volume;
 
-  const pages: Page[] = [];
+  cursor.addLines(centeredLine(`VOLUME ${v.number}`, HEADING_SIZE_PT), HEADING_SIZE_PT);
+  const titleText = v.titleQuoted !== false ? `"${v.title}"` : v.title;
+  cursor.addLines(centeredLine(titleText, HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addLines(centeredLine(`SUMMARY OF VOLUME ${v.number} CHANGES`, HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addGap();
 
-  // Title page.
-  const titleCursor = new PageCursor('front', nextRoman);
-  titleCursor.addLines(
-    wrapRuns([{ text: doc.order.designator }], MARGIN, RUNOVER_X, RIGHT_EDGE, 14),
-    14,
-  );
-  titleCursor.addLines(
-    wrapRuns([{ text: doc.order.policyTitle }], MARGIN, RUNOVER_X, RIGHT_EDGE, 12),
-    12,
-  );
-  titleCursor.addLines(
-    wrapRuns(
-      [{ text: `VOLUME ${doc.volume.number}: ${doc.volume.title}` }],
-      MARGIN,
-      RUNOVER_X,
-      RIGHT_EDGE,
-      12,
-    ),
-    12,
-  );
-  pages.push(...titleCursor.finish());
+  cursor.addLines(centeredLine(LEGEND_TEXT));
+  cursor.addGap();
 
-  // Blank verso page.
-  pages.push({ label: nextRoman(), band: 'front', items: [] });
-
-  // References list + summary (still front-matter roman pages).
-  const refListCursor = new PageCursor('front', nextRoman);
-  refListCursor.addLines(
-    wrapRuns([{ text: 'REFERENCES' }], designatorX(1), RUNOVER_X, RIGHT_EDGE, BODY_SIZE_PT),
-    BODY_SIZE_PT,
-    'heading',
-  );
-  for (const ref of doc.references) {
-    refListCursor.addLines(
-      wrapRuns([{ text: ref.text }], designatorX(1), RUNOVER_X, RIGHT_EDGE, BODY_SIZE_PT),
-    );
+  for (const line of VOLUME_CHANGE_POLICY_BOILERPLATE) {
+    cursor.addLines(leftParagraph(line));
   }
-  pages.push(...refListCursor.finish());
 
-  // TOC placeholder page — entries are collected during the body walk that
-  // follows (see layoutVolume); the real TOC page is composed in Task 10.
-  pages.push({ label: nextRoman(), band: 'front', items: [] });
+  if (v.cancellation) {
+    cursor.addGap();
+    cursor.addLines(leftParagraph(`CANCELLATION: ${v.cancellation}`));
+  }
 
-  return pages;
+  cursor.addGap();
+  const seedRow = ['ORIGINAL VOLUME', 'N/A', formatDate(v.originalPublicationDate), 'N/A'];
+  const changeRows = doc.changeLog.length > 0
+    ? doc.changeLog.map(r => [r.version, r.summary, r.originationDate, r.dateOfChanges])
+    : [seedRow];
+  cursor.addTable(
+    ['VOLUME VERSION', 'SUMMARY OF CHANGE', 'ORIGINATION DATE', 'DATE OF CHANGES'],
+    [90, 198, 90, 90],
+    changeRows,
+  );
+
+  if (v.reportRequired) {
+    cursor.addGap();
+    cursor.addLines(leftParagraph('Report Required: See Volume text for details.'));
+  }
+
+  cursor.addGap();
+  cursor.addLines(leftParagraph('Submit recommended changes to this Volume, via the proper channels, to:'));
+  for (const line of v.submitChangesTo.split('\n')) {
+    cursor.addLines(leftParagraph(line));
+  }
+
+  cursor.addGap();
+  const distText = v.distribution.kind === 'pcn'
+    ? `DISTRIBUTION: PCN ${v.distribution.value ?? ''}`
+    : 'DISTRIBUTION STATEMENT A: Approved for public release; distribution is unlimited.';
+  cursor.addLines(leftParagraph(distText));
+
+  return cursor.finish();
+}
+
+function blankVersoPage(label: string): Page {
+  const text = '(This page intentionally left blank)';
+  const line = centeredLine(text, BODY_SIZE_PT)[0];
+  return {
+    label,
+    band: 'front',
+    items: [{ kind: 'line', x: line.x, y: TOP_TEXT_Y, segments: line.segments, sizePt: BODY_SIZE_PT }],
+  };
 }
 
 // ---------------------------------------------------------------------------
-// layoutVolume
+// References — its own REF-{n} band, independent of front-matter pagination.
 // ---------------------------------------------------------------------------
-export function layoutVolume(doc: VolumeDoc): LaidOutDoc {
-  const toc: TocEntry[] = [];
-  const frontPages = layoutFrontMatter(doc);
+function layoutReferences(doc: VolumeDoc): { pages: Page[]; firstLabel: string } {
+  let refIdx = 0;
+  const labelFn = () => refPageLabel(++refIdx);
+  const cursor = new PageCursor('ref', labelFn);
+  const firstLabel = cursor.currentLabel();
 
+  cursor.addLines(centeredLine('REFERENCES', HEADING_SIZE_PT), HEADING_SIZE_PT, 'heading');
+  for (const [i, ref] of doc.references.entries()) {
+    cursor.addDesignatedLines(referenceDesignator(i), 1, [{ text: ref.text }]);
+  }
+
+  cursor.breakPage();
+  cursor.addLines(centeredLine('"REFERENCES"', HEADING_SIZE_PT), HEADING_SIZE_PT, 'heading');
+  cursor.addGap();
+  cursor.addLines(leftParagraph(REFERENCES_SUMMARY_BOILERPLATE));
+
+  return { pages: cursor.finish(), firstLabel };
+}
+
+// ---------------------------------------------------------------------------
+// Table of contents — built once the body walk has resolved every entry's
+// page label.
+// ---------------------------------------------------------------------------
+function layoutToc(doc: VolumeDoc, toc: TocEntry[], nextRoman: () => string): Page[] {
+  const cursor = new PageCursor('front', nextRoman);
+  cursor.addLines(
+    centeredLine(`VOLUME ${doc.volume.number}: ${doc.volume.title.toUpperCase()}`, HEADING_SIZE_PT),
+    HEADING_SIZE_PT,
+  );
+  cursor.addLines(centeredLine('TABLE OF CONTENTS', HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addGap();
+
+  for (const entry of toc) {
+    cursor.addTocEntry(entry.label, entry.page);
+  }
+
+  return cursor.finish();
+}
+
+// ---------------------------------------------------------------------------
+// Chapter divider ("Summary of Substantive Changes") + "CHAPTER {M}" title.
+// ---------------------------------------------------------------------------
+function layoutChapterDivider(cursor: PageCursor, doc: VolumeDoc, chapter: Chapter) {
+  cursor.addLines(
+    centeredLine(`VOLUME ${doc.volume.number}: CHAPTER ${chapter.number}`, HEADING_SIZE_PT),
+    HEADING_SIZE_PT,
+  );
+  cursor.addLines(centeredLine(`"${chapter.title.toUpperCase()}"`, HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addLines(centeredLine('SUMMARY OF SUBSTANTIVE CHANGES', HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addGap();
+
+  cursor.addLines(centeredLine(LEGEND_TEXT));
+  cursor.addGap();
+
+  for (const line of CHAPTER_CHANGE_POLICY_BOILERPLATE) {
+    cursor.addLines(leftParagraph(line));
+  }
+  cursor.addGap();
+
+  cursor.addTable(
+    ['CHAPTER VERSION', 'PAGE/PARAGRAPH', 'SUMMARY OF SUBSTANTIVE CHANGES', 'DATE OF CHANGE'],
+    [80, 90, 208, 90],
+    chapter.changeLog.map(r => [r.version, r.pageParagraph, r.summary, r.dateOfChange]),
+  );
+}
+
+function layoutChapterTitlePage(cursor: PageCursor, chapter: Chapter) {
+  cursor.breakPage();
+  cursor.addLines(centeredLine(`CHAPTER ${chapter.number}`, HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addLines(centeredLine(chapter.title.toUpperCase(), HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addGap();
+}
+
+// ---------------------------------------------------------------------------
+// Body: chapter dividers + chapter title pages + sections/paragraphs.
+// ---------------------------------------------------------------------------
+function layoutBody(doc: VolumeDoc, toc: TocEntry[]): Page[] {
   const multiChapter = doc.chapters.length > 1;
   const band = doc.volume.pageBand;
   const useChapterPage = band === 'chapter-page' || (band === 'auto' && multiChapter);
@@ -297,6 +474,16 @@ export function layoutVolume(doc: VolumeDoc): LaidOutDoc {
     };
     const cursor = new PageCursor('body', labelFn, chapter.number);
 
+    // Divider is page 1 of the chapter — its page counter continues below.
+    layoutChapterDivider(cursor, doc, chapter);
+    toc.push({
+      label: `CHAPTER ${chapter.number}: ${chapter.title.toUpperCase()}`,
+      page: cursor.currentLabel(),
+      level: 0,
+    });
+
+    layoutChapterTitlePage(cursor, chapter);
+
     for (const section of chapter.sections) {
       layoutSection(cursor, chapter.number, section, doc.volume.sectionPeriod, toc);
       cursor.addGap();
@@ -305,8 +492,33 @@ export function layoutVolume(doc: VolumeDoc): LaidOutDoc {
     bodyPages.push(...cursor.finish());
   }
 
+  return bodyPages;
+}
+
+// ---------------------------------------------------------------------------
+// layoutVolume
+// ---------------------------------------------------------------------------
+export function layoutVolume(doc: VolumeDoc): LaidOutDoc {
+  const toc: TocEntry[] = [];
+
+  // References first: its REF-{n} band is independent of front-matter/body
+  // pagination, so it can be laid out before either.
+  const { pages: refPages, firstLabel: refFirstLabel } = layoutReferences(doc);
+  toc.push({ label: 'REFERENCES', page: refFirstLabel, level: 0 });
+
+  // Body walk resolves every section/chapter TOC entry's final page label.
+  const bodyPages = layoutBody(doc, toc);
+
+  // Front matter: title page + verso consume roman i/ii; the TOC (built last,
+  // now that every entry above is resolved) continues the same roman count.
+  let romanIdx = 1;
+  const nextRoman = () => toRoman(romanIdx++);
+  const titlePages = layoutTitlePage(doc, nextRoman);
+  const versoPage = blankVersoPage(nextRoman());
+  const tocPages = layoutToc(doc, toc, nextRoman);
+
   return {
-    pages: [...frontPages, ...bodyPages],
+    pages: [...titlePages, versoPage, ...refPages, ...tocPages, ...bodyPages],
     toc,
   };
 }
