@@ -116,6 +116,17 @@ class PageCursor {
   }
 
   private newPage() {
+    // Finding 5: guard against emitting an empty page. Every call site below
+    // (ensureRoom, breakPage, addTable's pagination) may invoke newPage()
+    // when the current page has not yet received any items (e.g. a fresh
+    // page whose very first item still doesn't fit some conservative
+    // estimate). Pushing `this.current` unconditionally in that case would
+    // insert a blank page into the document; instead, just reset `y` and
+    // keep accumulating onto the same (still-empty) page.
+    if (this.current.items.length === 0) {
+      this.y = TOP_TEXT_Y;
+      return;
+    }
     this.pages.push(this.current);
     this.current = { label: this.labelFn(), band: this.band, chapter: this.chapter, items: [] };
     this.y = TOP_TEXT_Y;
@@ -232,6 +243,13 @@ class PageCursor {
    * own column width here at layout time, and each row's height grows to
    * fit the tallest cell in that row (the header row and data rows can
    * each have a different number of wrapped lines).
+   *
+   * Finding 5: this used to emit ONE atomic TableItem sized to the whole
+   * table regardless of how much of the page remained, so a long change
+   * log (e.g. a 60-row log) painted rows straight past the bottom margin
+   * (negative y, off the physical page) instead of paginating. The table
+   * now splits across as many TableItems/pages as it needs, repeating the
+   * header row at the top of each page it spills onto.
    */
   addTable(cols: string[], colWidths: number[], rows: string[][]) {
     const sizePt = 11;
@@ -245,16 +263,38 @@ class PageCursor {
     const headerHeight = rowHeightFor(headerLines);
     const rowsLines = rows.map(r => r.map((cell, i) => wrapCell(cell, colWidths[i] ?? 0)));
     const rowHeights = rowsLines.map(rowHeightFor);
-
-    const totalHeight = headerHeight + rowHeights.reduce((a, b) => a + b, 0);
-    if (this.y - totalHeight < BOTTOM_Y) this.newPage();
-    const y = this.y;
     const width = colWidths.reduce((a, b) => a + b, 0);
-    this.current.items.push({
-      kind: 'table', x: MARGIN, y, width, colWidths,
-      headerLines, headerHeight, rows: rowsLines, rowHeights,
-    });
-    this.y -= totalHeight;
+
+    let idx = 0;
+    do {
+      // Start a fresh page for this chunk if the header alone won't fit
+      // where we are AND this page already carries other content (never
+      // force a blank page just to re-flow onto an identical empty one).
+      if (this.y - headerHeight < BOTTOM_Y && this.current.items.length > 0) this.newPage();
+
+      const chunkRows: string[][][] = [];
+      const chunkHeights: number[] = [];
+      let used = headerHeight;
+      while (idx < rowsLines.length) {
+        const rowH = rowHeights[idx];
+        // Always take at least one row per chunk (even if it alone
+        // overflows the page) so a single oversized row can't loop forever.
+        if (chunkRows.length > 0 && this.y - (used + rowH) < BOTTOM_Y) break;
+        chunkRows.push(rowsLines[idx]);
+        chunkHeights.push(rowH);
+        used += rowH;
+        idx++;
+      }
+
+      const y = this.y;
+      this.current.items.push({
+        kind: 'table', x: MARGIN, y, width, colWidths,
+        headerLines, headerHeight, rows: chunkRows, rowHeights: chunkHeights,
+      });
+      this.y -= used;
+
+      if (idx < rowsLines.length) this.newPage();
+    } while (idx < rowsLines.length);
   }
 
   addGap(gap = GAP) {
@@ -338,6 +378,86 @@ export function formatDate(iso: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Shared running-head / footer composition (Finding 3).
+//
+// Before this, volumeGenerator.ts's `paintTemplate` and volumeDocx.ts's
+// `buildChapterHeader`/`buildChapterFooter` each carried their own copy of
+// the running-head left-label rule (bare "Volume N" vs "Volume N, Chapter M"
+// vs the literal word "References") and the last-updated-date formatting.
+// They drifted: the DOCX path never picked up the T17/T18 PDF fixes (the
+// single-chapter volume never gets a ", Chapter N" suffix; the date prints
+// through formatDate instead of the raw ISO string), and the DOCX front
+// matter had no running head/footer furniture at all. Both generators now
+// derive the running-head text and the footer's static prefix/numeral style
+// from these two functions, following the same "exported single source of
+// truth" pattern LEGEND_TEXT and the *_BOILERPLATE arrays above already use.
+// ---------------------------------------------------------------------------
+export interface RunningHeadParts {
+  /** Running head center line: the policy title, upper-cased. */
+  center: string;
+  /** Running head left label: band-dependent (References / Volume N / Volume N, Chapter M). */
+  left: string;
+  /** Running head right, top line: designator + volume tag, e.g. "MCO 5800.16 · V17". */
+  rightTop: string;
+  /** Running head right, second line: the last-updated date, canonically formatted. */
+  rightDate: string;
+}
+
+/**
+ * The running-head text for a page in the given band (and, for a body page,
+ * its chapter). See paintTemplate in services/pdf/volumeGenerator.ts for the
+ * measured provenance of the left-label rule (Task 18 finding D): reference
+ * pages print the literal word "References"; a single-chapter volume's body
+ * pages print bare "Volume {n}"; a multi-chapter volume's body pages print
+ * "Volume {n}, Chapter {m}"; every other page (front matter) prints bare
+ * "Volume {n}".
+ */
+export function runningHeadParts(doc: VolumeDoc, band: Page['band'], chapter?: number): RunningHeadParts {
+  const multiChapter = doc.chapters.length > 1;
+  let left: string;
+  if (band === 'ref') {
+    left = 'References';
+  } else if (band === 'body' && chapter !== undefined && multiChapter) {
+    left = `Volume ${doc.volume.number}, Chapter ${chapter}`;
+  } else {
+    left = `Volume ${doc.volume.number}`;
+  }
+  return {
+    center: doc.order.policyTitle.toUpperCase(),
+    left,
+    rightTop: `${doc.order.designator} · V${doc.volume.number}`,
+    rightDate: formatDate(doc.volume.lastUpdatedDate),
+  };
+}
+
+export interface FooterScheme {
+  /** Literal text painted/typed immediately before the page-number value, e.g. "REF-" or "3-". */
+  prefix: string;
+  /** Numeral style for the page-number value itself. */
+  format: 'decimal' | 'lowerRoman';
+}
+
+/**
+ * The footer's page-number SCHEME for a given band — not a resolved string.
+ * The PDF path already resolves concrete per-page label strings at layout
+ * time (bodyPageLabel/refPageLabel/toRoman in lib/volume/page-bands.ts,
+ * baked into each Page.label as it's produced); this is for the DOCX path,
+ * which lets Word compute and paint its own page numbers (see the module
+ * docstring in volumeDocx.ts) but needs the same prefix/numeral rules to
+ * build its `PageNumber` field runs, instead of a separate, partially-wrong
+ * copy of the rule (Finding 3: DOCX's front matter — title/verso/references/
+ * TOC — had no footer, and thus no numbering scheme, at all).
+ */
+export function footerScheme(band: Page['band'], opts: { chapter?: number; useChapterPage?: boolean } = {}): FooterScheme {
+  if (band === 'ref') return { prefix: 'REF-', format: 'decimal' };
+  if (band === 'body' && opts.useChapterPage && opts.chapter !== undefined) {
+    return { prefix: `${opts.chapter}-`, format: 'decimal' };
+  }
+  if (band === 'body') return { prefix: '', format: 'decimal' };
+  return { prefix: '', format: 'lowerRoman' };
+}
+
+// ---------------------------------------------------------------------------
 // Body-block layout helpers
 // ---------------------------------------------------------------------------
 function layoutBlockLines(cursor: PageCursor, block: Block, x: number) {
@@ -400,18 +520,30 @@ function layoutSection(
 ) {
   const designator = sectionDesignator(chapter, section.seq, sectionPeriod);
   const headingText = section.title.toUpperCase();
+  // Finding 13 (T8): capture the page label BEFORE laying out the heading,
+  // not after. A long heading can wrap onto a second line and, if that
+  // line lands past the bottom margin, paginate onto the NEXT page - so
+  // reading currentLabel() after addDesignatedLines recorded the page of
+  // the heading's LAST wrapped line instead of where it starts.
+  const headingPage = cursor.currentLabel();
   cursor.addDesignatedLines(designator, 1, [{ text: headingText }], BODY_SIZE_PT, 'heading');
-  toc.push({ label: `${designator} ${headingText}`.trim(), page: cursor.currentLabel(), level: 1 });
+  toc.push({ label: `${designator} ${headingText}`.trim(), page: headingPage, level: 1 });
 
+  // Finding 1: `body` and `paragraphs` are not mutually exclusive in the
+  // schema (SectionSchema permits both, and the editor offers both "Add
+  // text" and "Add Paragraph" on the same section - ChapterTree.tsx), but
+  // this used to be an if/else that silently dropped whichever one it
+  // didn't pick. Render flush-left body blocks first, then numbered
+  // paragraphs, so a section carrying both loses neither.
   if (section.body && section.body.length > 0) {
     section.body.forEach((block, i) => {
       if (i > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
       layoutBlockLines(cursor, block, designatorX(1));
     });
-  } else {
-    for (const para of section.paragraphs) {
-      layoutParagraph(cursor, chapter, section.seq, para);
-    }
+    if (section.paragraphs.length > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
+  }
+  for (const para of section.paragraphs) {
+    layoutParagraph(cursor, chapter, section.seq, para);
   }
 }
 
@@ -570,7 +702,9 @@ function layoutChapterDivider(cursor: PageCursor, doc: VolumeDoc, chapter: Chapt
   cursor.addGap();
 
   cursor.addTable(
-    ['CHAPTER VERSION', 'PAGE/PARAGRAPH', 'SUMMARY OF SUBSTANTIVE CHANGES', 'DATE OF CHANGE'],
+    // Finding 15 (T10): format spec §4.6 verbatim header, with spaces
+    // around the slash.
+    ['CHAPTER VERSION', 'PAGE / PARAGRAPH', 'SUMMARY OF SUBSTANTIVE CHANGES', 'DATE OF CHANGE'],
     [80, 90, 208, 90],
     chapter.changeLog.map(r => [r.version, r.pageParagraph, r.summary, r.dateOfChange]),
   );
@@ -602,12 +736,19 @@ function layoutBody(doc: VolumeDoc, toc: TocEntry[]): Page[] {
       return bodyPageLabel({ chapter: chapter.number, page: pageNum, multiChapter, band });
     };
     const cursor = new PageCursor('body', labelFn, chapter.number);
+    // Finding 14 (T10): capture the chapter's TOC page label right after
+    // constructing its cursor - i.e. the divider's own first page - not
+    // after laying out the divider. The divider's change table can itself
+    // paginate (finding 5), so reading currentLabel() after
+    // layoutChapterDivider recorded whatever page the divider table
+    // happened to spill onto instead of the chapter's actual first page.
+    const chapterFirstLabel = cursor.currentLabel();
 
     // Divider is page 1 of the chapter — its page counter continues below.
     layoutChapterDivider(cursor, doc, chapter);
     toc.push({
       label: `CHAPTER ${chapter.number}: ${chapter.title.toUpperCase()}`,
-      page: cursor.currentLabel(),
+      page: chapterFirstLabel,
       level: 0,
     });
 

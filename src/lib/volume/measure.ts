@@ -1,9 +1,22 @@
-import { SERIF_EM_WIDTHS } from '@/lib/font-metrics';
+import { SERIF_BOLD_ITALIC_EM_WIDTHS, SERIF_EM_WIDTHS } from '@/lib/font-metrics';
 import type { Run } from '@/lib/schemas/volume-schema';
 
-export function measureText(s: string, sizePt: number): number {
+/**
+ * Finding 9: a hyperlink run is PAINTED bold-italic (volumeGenerator.ts's
+ * `fonts.link`, pdf-lib's TimesRomanBoldItalic - per the format standard,
+ * LEGEND_TEXT: "Hyperlinks are denoted by bold, italic, blue and underlined
+ * font"), but this used to measure EVERY run with the regular-weight table
+ * regardless. Bold glyphs are wider than regular ones, so any text sharing a
+ * line with a link segment could be positioned too far left of where it
+ * actually paints - in the worst case, overrunning the right margin
+ * (RIGHT_EDGE/540) because the line never wrapped where it should have.
+ * `bold` selects the bold-italic-derived table (see font-metrics.ts's doc
+ * comment on SERIF_BOLD_ITALIC_EM_WIDTHS for its own provenance/fallback).
+ */
+export function measureText(s: string, sizePt: number, bold = false): number {
+  const table = bold ? SERIF_BOLD_ITALIC_EM_WIDTHS : SERIF_EM_WIDTHS;
   let em = 0;
-  for (const ch of s) em += SERIF_EM_WIDTHS[ch] ?? 0.5;
+  for (const ch of s) em += table[ch] ?? 0.5;
   return em * sizePt;
 }
 
@@ -26,7 +39,11 @@ export function wrapRuns(
   const pushLine = () => { lines.push({ segments: line, x: curX }); line = []; };
   for (const w of words) {
     const isSpace = /^\s+$/.test(w.text);
-    const wWidth = measureText(w.text, sizePt);
+    // Finding 9: matches volumeGenerator.ts's own `isLink` predicate
+    // (paintItem) exactly, so a word wraps based on the same width it will
+    // actually be painted at.
+    const isLink = !!(w.run.link && w.run.href);
+    const wWidth = measureText(w.text, sizePt, isLink);
     if (!isSpace && used + wWidth > rightEdgeX && line.length > 0) {
       pushLine();
       curX = runoverX; used = curX;

@@ -1,6 +1,6 @@
 import { PDFArray, PDFDocument, PDFName, PDFString, rgb, StandardFonts, type PDFFont, type PDFPage } from 'pdf-lib';
 import type { VolumeDoc } from '@/lib/schemas/volume-schema';
-import { formatDate, layoutVolume, LEADING, PAGE_H, PAGE_W, type Page as LaidOutPage, type PaintItem } from '@/lib/volume/layout';
+import { layoutVolume, LEADING, PAGE_H, PAGE_W, runningHeadParts, type Page as LaidOutPage, type PaintItem } from '@/lib/volume/layout';
 
 const BLACK = rgb(0, 0, 0);
 const BLUE = rgb(0, 0, 1);
@@ -14,14 +14,65 @@ const CENTER_X = 306;
 const RIGHT_EDGE_X = 540;
 const LEFT_X = 72;
 
+// ---------------------------------------------------------------------------
+// Finding 10: a single character a font's encoding can't represent (every
+// font embedded here - pdf-lib's StandardFonts.TimesRoman/
+// TimesRomanBoldItalic - uses WinAnsi encoding, which doesn't cover e.g.
+// '→' or '≥') used to throw all the way out of `font.widthOfTextAtSize`/
+// `page.drawText` and abort the ENTIRE `generateVolumePdf` call, no matter
+// where in the document the character appeared. `safeText` replaces ONLY
+// the characters the given font actually can't encode - checked one at a
+// time against the font itself, never a hand-maintained WinAnsi charset,
+// so it stays correct if the paint font ever changes - with '?', so the
+// rest of the document still paints and the export still resolves. Every
+// width computation and drawText/drawText-adjacent call below runs on the
+// sanitized string so a paint-time replacement never causes a measured
+// width to mismatch what's actually drawn.
+// ---------------------------------------------------------------------------
+const encodableCache = new WeakMap<PDFFont, Map<string, boolean>>();
+
+function canEncode(font: PDFFont, ch: string): boolean {
+  let cache = encodableCache.get(font);
+  if (!cache) {
+    cache = new Map();
+    encodableCache.set(font, cache);
+  }
+  const cached = cache.get(ch);
+  if (cached !== undefined) return cached;
+  let ok = true;
+  try {
+    font.widthOfTextAtSize(ch, 12);
+  } catch {
+    ok = false;
+  }
+  cache.set(ch, ok);
+  return ok;
+}
+
+function safeText(font: PDFFont, text: string): string {
+  let out = '';
+  let changed = false;
+  for (const ch of text) {
+    if (canEncode(font, ch)) {
+      out += ch;
+    } else {
+      out += '?';
+      changed = true;
+    }
+  }
+  return changed ? out : text;
+}
+
 function drawCentered(page: PDFPage, text: string, centerX: number, y: number, size: number, font: PDFFont, color = BLACK) {
-  const width = font.widthOfTextAtSize(text, size);
-  page.drawText(text, { x: centerX - width / 2, y, size, font, color });
+  const safe = safeText(font, text);
+  const width = font.widthOfTextAtSize(safe, size);
+  page.drawText(safe, { x: centerX - width / 2, y, size, font, color });
 }
 
 function drawRightAligned(page: PDFPage, text: string, rightX: number, y: number, size: number, font: PDFFont, color = BLACK) {
-  const width = font.widthOfTextAtSize(text, size);
-  page.drawText(text, { x: rightX - width, y, size, font, color });
+  const safe = safeText(font, text);
+  const width = font.widthOfTextAtSize(safe, size);
+  page.drawText(safe, { x: rightX - width, y, size, font, color });
 }
 
 /** Adds a low-level PDF link annotation (URI action) covering the given rect. */
@@ -62,7 +113,7 @@ function drawFigurePlaceholder(page: PDFPage, item: Extract<PaintItem, { kind: '
     borderColor: BLACK, borderWidth: 0.75,
     color: rgb(1, 1, 1),
   });
-  const label = `Figure ${figureNumber}: image could not be embedded`;
+  const label = safeText(font, `Figure ${figureNumber}: image could not be embedded`);
   const size = 10;
   const textWidth = font.widthOfTextAtSize(label, size);
   page.drawText(label, {
@@ -73,59 +124,21 @@ function drawFigurePlaceholder(page: PDFPage, item: Extract<PaintItem, { kind: '
 }
 
 function paintTemplate(page: PDFPage, laidOutPage: LaidOutPage, doc: VolumeDoc, font: PDFFont) {
-  // Running head center: policy title, upper-cased.
-  drawCentered(page, doc.order.policyTitle.toUpperCase(), CENTER_X, RUNNING_HEAD_CENTER_Y, 12, font);
+  // Finding 3: the running-head text (center/left/right-top/right-date) is
+  // now composed by the single shared `runningHeadParts` (lib/volume/
+  // layout.ts) also consumed by the DOCX generator, instead of each
+  // generator carrying its own copy of the left-label band rule and date
+  // formatting. See runningHeadParts's doc comment for the measured
+  // provenance of the two-line layout and the left-label rule (Task 18
+  // finding D) and formatDate's doc comment for the date fix (Task 17).
+  const parts = runningHeadParts(doc, laidOutPage.band, laidOutPage.chapter);
+  drawCentered(page, parts.center, CENTER_X, RUNNING_HEAD_CENTER_Y, 12, font);
+  page.drawText(safeText(font, parts.left), { x: LEFT_X, y: RUNNING_HEAD_LEFT_Y, size: 12, font, color: BLACK });
+  drawRightAligned(page, parts.rightTop, RIGHT_EDGE_X, RUNNING_HEAD_RIGHT_Y, 12, font);
+  drawRightAligned(page, parts.rightDate, RIGHT_EDGE_X, DATE_LINE_Y, 12, font);
 
-  // Running head left.
-  //
-  // Task 18 finding D: measured directly off the real MCO 5800.16 Vol 1,
-  // Vol 4 and Vol 17 PDFs (running head rows, y > 700, on the title page,
-  // the references pages and the body pages of each): every one of them
-  // uses the SAME two-line running head (center title alone on the top
-  // line, left label + right designator on the line below) on EVERY page
-  // - front matter, references, and body alike. There is no page anywhere
-  // that merges the left label onto the center title's baseline; that
-  // idea, floated as this finding's original hypothesis, did not survive
-  // measuring the real PDFs and was dropped (see task-18-report.md for the
-  // measured rows).
-  //
-  // What *is* real and was a genuine bug: the left label's *text* varies
-  // by page band, and single-chapter volumes never get a ", Chapter N"
-  // suffix:
-  //  - reference-band pages print the literal word "References" (both
-  //    Vol 1 and Vol 17, single- and multi-chapter alike; e.g. Vol 17
-  //    page index 2 prints "References" at the same y as every other
-  //    page's left label).
-  //  - a single-chapter volume's body pages print bare "Volume {n}" -
-  //    Vol 17 prints "Volume 17" on every one of its body pages, NEVER
-  //    "Volume 17, Chapter 1" (our old code appended the chapter suffix
-  //    whenever `band === 'body'`, regardless of chapter count).
-  //  - a multi-chapter volume's body pages DO print the two-part
-  //    "Volume {n}, Chapter {m}" form (Vol 1 prints "Volume 1, Chapter 1"
-  //    on its body pages) - unchanged from before.
-  //  - every other page (front matter: title/verso/TOC) prints bare
-  //    "Volume {n}".
-  const multiChapter = doc.chapters.length > 1;
-  let leftText: string;
-  if (laidOutPage.band === 'ref') {
-    leftText = 'References';
-  } else if (laidOutPage.band === 'body' && laidOutPage.chapter !== undefined && multiChapter) {
-    leftText = `Volume ${doc.volume.number}, Chapter ${laidOutPage.chapter}`;
-  } else {
-    leftText = `Volume ${doc.volume.number}`;
-  }
-  page.drawText(leftText, { x: LEFT_X, y: RUNNING_HEAD_LEFT_Y, size: 12, font, color: BLACK });
-
-  // Running head right: designator and volume, then the last-updated date
-  // below it. Task 17 finding: this used to draw the raw stored string, so
-  // an ISO-dated document (the schema's convention, matching vol6.json/
-  // vol16.json/vol17.json) printed "2021-02-10" instead of the source
-  // format "10 Feb 2021". formatDate is a no-op on a string that isn't
-  // ISO `YYYY-MM-DD`, so an already-formatted date still prints unchanged.
-  drawRightAligned(page, `${doc.order.designator} · V${doc.volume.number}`, RIGHT_EDGE_X, RUNNING_HEAD_RIGHT_Y, 12, font);
-  drawRightAligned(page, formatDate(doc.volume.lastUpdatedDate), RIGHT_EDGE_X, DATE_LINE_Y, 12, font);
-
-  // Footer: page label, centered.
+  // Footer: page label, centered. Already resolved to a concrete string at
+  // layout time (bodyPageLabel/refPageLabel/toRoman, lib/volume/page-bands.ts).
   drawCentered(page, laidOutPage.label, CENTER_X, FOOTER_Y, 11.5, font);
 }
 
@@ -188,7 +201,11 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
         const isLink = !!(segment.run.link && segment.run.href);
         const color = segment.run.changed || segment.run.link ? BLUE : BLACK;
         const segFont = isLink ? fonts.link : fonts.regular;
-        const segWidth = segFont.widthOfTextAtSize(segment.text, item.sizePt);
+        // Finding 10: sanitize BEFORE measuring, so the width used to
+        // advance `x` (and to size the link's underline/annotation rect
+        // below) always matches what actually gets painted.
+        const segText = safeText(segFont, segment.text);
+        const segWidth = segFont.widthOfTextAtSize(segText, item.sizePt);
 
         if (bufferText.length === 0) {
           bufferX = x;
@@ -198,7 +215,7 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
         }
         bufferColor = color;
         bufferFont = segFont;
-        bufferText += segment.text;
+        bufferText += segText;
 
         if (isLink) {
           if (linkHref !== segment.run.href) {
@@ -261,7 +278,7 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
           const lines = cells[c];
           const cellTopBaseline = rowTop - lineStep + 2;
           for (let li = 0; li < lines.length; li++) {
-            page.drawText(lines[li], {
+            page.drawText(safeText(fonts.regular, lines[li]), {
               x: cx + 4, y: cellTopBaseline - li * lineStep, size, font: fonts.regular, color: BLACK,
             });
           }
@@ -310,7 +327,16 @@ export async function generateVolumePdf(doc: VolumeDoc): Promise<Blob> {
     const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
     paintTemplate(page, laidOutPage, doc, fonts.regular);
     for (const item of laidOutPage.items) {
-      await paintItem(pdfDoc, page, item, fonts);
+      try {
+        await paintItem(pdfDoc, page, item, fonts);
+      } catch (error) {
+        // Finding 10, defense in depth: `safeText` above removes the known
+        // cause (an unencodable character reaching drawText/
+        // widthOfTextAtSize), but one bad item must still never abort the
+        // whole export - skip just this item and keep painting the rest of
+        // the document.
+        console.error('Volume PDF: failed to paint an item, skipping it', error);
+      }
     }
   }
 
