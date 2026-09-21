@@ -416,6 +416,11 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                     label="Marine Corps Bulletin"
                   />
                   <DocumentTypeButton
+                    active={documentType === 'volume'}
+                    onClick={() => handleSelect('volume')}
+                    label="Volume"
+                  />
+                  <DocumentTypeButton
                     active={documentType === 'secnav-instruction'}
                     onClick={() => handleSelect('secnav-instruction')}
                     label="SECNAV Instruction"
