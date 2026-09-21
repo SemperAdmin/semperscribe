@@ -274,8 +274,15 @@ export const REFERENCES_SUMMARY_BOILERPLATE = [
 ];
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-/** Normalizes an ISO (or already-formatted) date to the canonical `DD Mon YYYY`. */
-function formatDate(iso: string): string {
+/**
+ * Normalizes an ISO (or already-formatted) date to the canonical `DD Mon
+ * YYYY` the source volumes print (e.g. Vol 17's "10 Feb 2021"). Exported so
+ * volumeGenerator.ts's running head can format `doc.volume.lastUpdatedDate`
+ * the same way (Task 17 finding: the running head used to print the raw
+ * `lastUpdatedDate` string, so an ISO-dated document printed "2021-02-10"
+ * instead of "10 Feb 2021").
+ */
+export function formatDate(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? '');
   if (!m) return iso ?? '';
   const [, y, mo, d] = m;

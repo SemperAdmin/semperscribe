@@ -1,0 +1,262 @@
+{
+  "metadata": {
+    "packageId": "nldp_template_mco-5800-16-volume-17-verification",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-02-10T21:29:17.964Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "MCO 5800.16 Volume 17 (Verification)",
+      "description": "Judge Advocate Division Awards Program — a faithful transcription of the published Volume, for placement verification against the source PDF.",
+      "subject": "TEMPLATE",
+      "documentType": "volume",
+      "tags": [
+        "template",
+        "standard"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "volume"
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": [],
+    "volume": {
+      "documentType": "volume",
+      "order": {
+        "designator": "MCO 5800.16",
+        "policyTitle": "LEGAL SUPPORT AND ADMINISTRATION MANUAL",
+        "sponsorCode": "JA"
+      },
+      "volume": {
+        "number": 17,
+        "title": "JUDGE ADVOCATE DIVISION AWARDS PROGRAM",
+        "titleQuoted": false,
+        "originalPublicationDate": "2021-02-10",
+        "lastUpdatedDate": "2021-02-10",
+        "distribution": {
+          "kind": "pcn",
+          "value": "10209190801"
+        },
+        "submitChangesTo": "CMC (JA)\n3000 Marine Corps Pentagon\nWashington, DC 20350-3000",
+        "cancellation": "MCO 1650.62",
+        "reportRequired": true,
+        "sectionPeriod": true,
+        "pageBand": "auto"
+      },
+      "changeLog": [
+        {
+          "version": "ORIGINAL VOLUME",
+          "summary": "N/A",
+          "originationDate": "10 Feb 2021",
+          "dateOfChanges": "N/A"
+        }
+      ],
+      "references": [
+        {
+          "text": "MCO 1650.62"
+        },
+        {
+          "text": "SECNAV M-5210.1 CH-1"
+        },
+        {
+          "text": "MCO 5210.11F"
+        },
+        {
+          "text": "5 U.S.C. 552a"
+        },
+        {
+          "text": "SECNAVINST 5211.5F"
+        }
+      ],
+      "chapters": [
+        {
+          "number": 1,
+          "title": "JUDGE ADVOCATE DIVISION AWARDS PROGRAM",
+          "changeLog": [],
+          "sections": [
+            {
+              "seq": 1,
+              "title": "PURPOSE",
+              "body": [
+                {
+                  "runs": [
+                    {
+                      "text": "To establish and provide guidance on the annual Staff Judge Advocate to the Commandant (SJA to CMC) approved awards that are available to recognize 44XX Marines. Awards serve to appropriately recognize exceptionally meritorious service, outstanding achievement, and other acts or services that are above and beyond normal expectations."
+                    }
+                  ]
+                }
+              ],
+              "paragraphs": []
+            },
+            {
+              "seq": 2,
+              "title": "BRIGADIER GENERAL MICHAEL E. RICH TRIAL COUNSEL OF THE YEAR AWARD",
+              "body": [
+                {
+                  "runs": [
+                    {
+                      "text": "Brigadier General Rich was the SJA to CMC from 1988 to 1990, and in his honor, the Brigadier General Michael E. Rich Litigator of the Year Award was established by MCO 1650.62. This order cancels MCO 1650.62 and renames this award the Brigadier General Michael E. Rich Trial Counsel of the Year Award."
+                    }
+                  ]
+                },
+                {
+                  "runs": [
+                    {
+                      "text": "Each Regional Trial Counsel (RTC) will nominate one Trial Counsel from their region to compete for selection as the Brigadier General Michael E. Rich Trial Counsel of the Year. Nomination format, deadlines, and qualifications will be announced in the annual SJA to CMC's Awards Announcement. The Deputy Director for Military Justice and Community Development will recommend a panel of board members for appointment by the SJA to CMC. The board will review the nomination packages and select the winner. The SJA to CMC will present the award at an appropriate location designated in the annual SJA to CMC's Awards Announcement."
+                    }
+                  ]
+                }
+              ],
+              "paragraphs": []
+            },
+            {
+              "seq": 3,
+              "title": "TRIAL SERVICES ORGANIZATION ENLISTED MARINE OF THE YEAR AWARD",
+              "body": [
+                {
+                  "runs": [
+                    {
+                      "text": "Each RTC will nominate one Legal Services Specialist in the Trial Services Organization (TSO) from their region to compete for selection as the Trial Services Organization Enlisted Marine of the Year. Nomination format, deadlines, and qualifications will be announced in the annual SJA to CMC's Awards Announcement. The Deputy Director for Military Justice and Community Development will recommend a panel of board members for appointment by the SJA to CMC. The board will review the nomination packages and select the winner. The SJA to CMC will present the award at an appropriate location designated in the annual SJA to CMC's Awards Announcement."
+                    }
+                  ]
+                }
+              ],
+              "paragraphs": []
+            },
+            {
+              "seq": 4,
+              "title": "DEFENSE COUNSEL OF THE YEAR AWARD",
+              "body": [
+                {
+                  "runs": [
+                    {
+                      "text": "Each Regional Defense Counsel (RDC) will nominate one Defense Counsel from their region to compete for selection as the Marine Corps Defense Counsel of the Year. Nomination format, deadlines, and qualifications will be announced in the annual SJA to CMC's Awards Announcement. The Chief Defense Counsel will recommend a panel of board members for appointment by the SJA to CMC. The board will review the nomination packages and select the winner. The SJA to CMC will present the award at an appropriate location designated in the annual SJA to CMC's Awards Announcement."
+                    }
+                  ]
+                }
+              ],
+              "paragraphs": []
+            },
+            {
+              "seq": 5,
+              "title": "DEFENSE SERVICES ORGANIZATION ENLISTED MARINE OF THE YEAR AWARD",
+              "body": [
+                {
+                  "runs": [
+                    {
+                      "text": "Each RDC will nominate one Legal Service Specialist in the Defense Services Organization (DSO) from their region to compete for selection as the DSO Enlisted Marine of the Year. Nomination format, deadlines, and qualifications will be announced in the annual SJA to CMC's Awards Announcement. The Chief Defense Counsel will recommend a panel of board members for appointment by the SJA to CMC. The board will review the nomination packages and select the winner. The SJA to CMC will present the award at an appropriate location designated in the annual SJA to CMC's Awards Announcement."
+                    }
+                  ]
+                }
+              ],
+              "paragraphs": []
+            },
+            {
+              "seq": 6,
+              "title": "VICTIMS' LEGAL COUNSEL OF THE YEAR AWARD",
+              "body": [
+                {
+                  "runs": [
+                    {
+                      "text": "Each Regional Victims' Legal Counsel (RVLC) will nominate one VLC from their region to compete for selection as the Victims' Legal Counsel of the Year. Nomination format, deadlines, and qualifications will be announced in the annual SJA to CMC's Awards Announcement. The Officer-in-Charge, Victims' Legal Counsel Organization (OIC, VLCO) will recommend a panel of board members for appointment by the SJA to CMC. The board will review the nomination packages and select the winner. The SJA to CMC will present the award at an appropriate location designated in the annual SJA to CMC's Awards Announcement."
+                    }
+                  ]
+                }
+              ],
+              "paragraphs": []
+            },
+            {
+              "seq": 7,
+              "title": "VICTIMS' LEGAL COUNSEL ORGANIZATION CIVILIAN PARALEGAL OF THE YEAR AWARD (CPOY-A)",
+              "body": [
+                {
+                  "runs": [
+                    {
+                      "text": "Each RVLC may nominate one civilian paralegal from their region to compete for selection as the Victims' Legal Counsel Organization Civilian Paralegal of the Year. Nomination format, deadlines, and qualifications will be announced in the annual SJA to CMC's Awards Announcement. The OIC, VLCO will recommend a panel of board members for appointment by the SJA to CMC. The board will review the nomination packages and select the winner. The SJA to CMC will present the award at an appropriate location designated in the annual SJA to CMC's Awards Announcement."
+                    }
+                  ]
+                }
+              ],
+              "paragraphs": []
+            },
+            {
+              "seq": 8,
+              "title": "LEGAL SERVICES MARINE OF THE YEAR AWARD",
+              "body": [
+                {
+                  "runs": [
+                    {
+                      "text": "The SJA to CMC will annually recognize one Legal Services Specialist as the Legal Services Marine of the Year. The Legal Services Chief of the Marine Corps (LSC) will annually solicit nominations from the entire Marine Corps Legal Community for the Legal Services Marine of the Year Award through the annual SJA to CMC's Awards Announcement."
+                    }
+                  ]
+                },
+                {
+                  "runs": [
+                    {
+                      "text": "Nomination format, deadlines, and qualifications will be announced in the annual SJA to CMC's Awards Announcement. The LSC will recommend a panel of board members for appointment by the SJA to CMC. The LSC may either be a member of the board or may provide non-binding input to the board on the strength of the nominees. The board will review the nomination packages and select the winner. The SJA to CMC will present the award at a time to be coordinated with the Legal Services Support Section-Officer-in-Charge (LSSS-OIC) or Staff Judge Advocate where the Marine selected is physically employed."
+                    }
+                  ]
+                }
+              ],
+              "paragraphs": []
+            },
+            {
+              "seq": 9,
+              "title": "COMMANDANT'S AWARD FOR EXCELLENCE IN LEGAL ASSISTANCE (CAELA) – INDIVIDUAL AND OFFICE",
+              "body": [
+                {
+                  "runs": [
+                    {
+                      "text": "The delivery of quality legal assistance (LA) services is an essential element of readiness and morale. The purpose of the CAELA is to promote the delivery of quality legal assistance services by recognizing both LA offices and LA office staff members for their outstanding achievements, efforts, and innovation in legal assistance."
+                    }
+                  ]
+                },
+                {
+                  "runs": [
+                    {
+                      "text": "Annually, every LSSS-OIC will submit their nomination for the CAELA Individual Award and the CAELA Office Award to the Head of the Legal Assistance Branch (JLA). Nomination format, deadlines, and qualifications will be announced in the annual SJA to CMC's Awards Announcement. JLA will compile a board of civilians and Marines familiar with the nuances of a legal assistance office. The board will review the nomination packages and recommend the winner. JLA will submit the board's recommendations to the SJA to CMC, who will forward his or her recommendations to the CMC for final approval. The SJA to CMC will present the awards at a time to be coordinated with the LSSS-OIC where the selected Marine and office are physically employed."
+                    }
+                  ]
+                }
+              ],
+              "paragraphs": []
+            },
+            {
+              "seq": 10,
+              "title": "EXTERNAL AWARDS",
+              "body": [
+                {
+                  "runs": [
+                    {
+                      "text": "Multiple Non-Federal Entities (NFEs) request Judge Advocate Division to forward nominations for awards each year. Examples of these types of awards include the Judge Advocate Association (JAA) Lifetime Achievement Award, JAA Judicial Service Award, American Bar Association (ABA) Young Lawyer's Division Award, and the ABA Career Armed Services Award, to name a few."
+                    }
+                  ]
+                },
+                {
+                  "runs": [
+                    {
+                      "text": "As NFEs open their awards to receive nominations, Judge Advocate Division will publish the nomination format, deadlines, and qualifications to the entire fleet. The nominations for the various awards will be screened by the SJA to CMC and provided to the appropriate NFE as required. Individual NFEs will announce the respective winners each year."
+                    }
+                  ]
+                }
+              ],
+              "paragraphs": []
+            }
+          ],
+          "figures": []
+        }
+      ]
+    }
+  }
+}

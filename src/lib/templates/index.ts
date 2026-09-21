@@ -14,6 +14,7 @@ import { DLAMemorandumTemplate } from './dla-memorandum';
 import { DLABusinessLetterTemplate } from './dla-business-letter';
 import { ITypeTemplate } from '@/lib/i-type/template';
 import { blankVolumeTemplate, multiChapterVolumeTemplate } from './volume';
+import { vol17VerificationTemplate } from './vol17-verification';
 
 // Re-export all templates
 export * from './types';
@@ -32,6 +33,7 @@ export * from './publish';
 export * from './dla-memorandum';
 export * from './dla-business-letter';
 export * from './volume';
+export * from './vol17-verification';
 
 // Master Registry
 export const DOCUMENT_TEMPLATES: Record<string, DocumentTemplate> = {
@@ -120,6 +122,12 @@ export const PUBLISHED_TEMPLATES: Record<string, DocumentTemplate> = {
   'marine-corps-order': MCOTemplate,
   'marine-corps-order-format-guide': MCOFormatGuideTemplate,
   'marine-corps-bulletin': BulletinTemplate,
+
+  // Task 17: the Vol 17 verification template, published like any other
+  // template (see createTemplatePackage's typeId === 'volume' branch in
+  // publish.ts) so it is reachable from the same Templates picker every
+  // other document type uses, not a Volume-only side door.
+  'mco-5800-16-volume-17-verification': vol17VerificationTemplate(),
 };
 
 /**

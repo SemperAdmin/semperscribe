@@ -1,6 +1,6 @@
 import { PDFArray, PDFDocument, PDFName, PDFString, rgb, StandardFonts, type PDFFont, type PDFPage } from 'pdf-lib';
 import type { VolumeDoc } from '@/lib/schemas/volume-schema';
-import { layoutVolume, PAGE_H, PAGE_W, type Page as LaidOutPage, type PaintItem } from '@/lib/volume/layout';
+import { formatDate, layoutVolume, PAGE_H, PAGE_W, type Page as LaidOutPage, type PaintItem } from '@/lib/volume/layout';
 
 const BLACK = rgb(0, 0, 0);
 const BLUE = rgb(0, 0, 1);
@@ -82,9 +82,14 @@ function paintTemplate(page: PDFPage, laidOutPage: LaidOutPage, doc: VolumeDoc, 
     : `Volume ${doc.volume.number}`;
   page.drawText(leftText, { x: LEFT_X, y: RUNNING_HEAD_LEFT_Y, size: 12, font, color: BLACK });
 
-  // Running head right: designator and volume, then the last-updated date below it.
+  // Running head right: designator and volume, then the last-updated date
+  // below it. Task 17 finding: this used to draw the raw stored string, so
+  // an ISO-dated document (the schema's convention, matching vol6.json/
+  // vol16.json/vol17.json) printed "2021-02-10" instead of the source
+  // format "10 Feb 2021". formatDate is a no-op on a string that isn't
+  // ISO `YYYY-MM-DD`, so an already-formatted date still prints unchanged.
   drawRightAligned(page, `${doc.order.designator} · V${doc.volume.number}`, RIGHT_EDGE_X, RUNNING_HEAD_RIGHT_Y, 12, font);
-  drawRightAligned(page, doc.volume.lastUpdatedDate, RIGHT_EDGE_X, DATE_LINE_Y, 12, font);
+  drawRightAligned(page, formatDate(doc.volume.lastUpdatedDate), RIGHT_EDGE_X, DATE_LINE_Y, 12, font);
 
   // Footer: page label, centered.
   drawCentered(page, laidOutPage.label, CENTER_X, FOOTER_Y, 11.5, font);

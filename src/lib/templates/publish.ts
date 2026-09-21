@@ -43,6 +43,15 @@ export interface TemplatePackage {
     enclosures: unknown[];
     copyTos: unknown[];
     paragraphs: unknown[];
+    /**
+     * Task 17: a Volume template's entire document travels here, verbatim,
+     * the same way a live Volume document travels as `data.volume` in an
+     * exported .nldp (see nldp-format.ts's NLDPData.volume and
+     * useImportExport.ts's handleImport, which already reads this field
+     * and calls `useVolumeStore.getState().setDoc()` with it). Absent for
+     * every non-Volume template.
+     */
+    volume?: unknown;
   };
 }
 
@@ -59,6 +68,49 @@ export interface TemplatePackage {
 export const TEMPLATE_PACKAGE_EPOCH = '2026-02-10T21:29:17.964Z';
 
 export function createTemplatePackage(id: string, template: DocumentTemplate): TemplatePackage {
+  // Task 17: Volume is authored through its own store (useVolumeStore) and
+  // its own schema (VolumeDoc) - see volume.ts's asTemplateData comment -
+  // which does not fit the letter-shaped destructure below at all (no
+  // vias/enclosures/copyTos/paragraphs, and `references` means something
+  // different: {text, order}[] against a Volume, not a letter's citation
+  // list). Forcing it through that destructure silently drops the document
+  // into `data.formData` as stray keys and never produces the `data.volume`
+  // payload handleImport() actually reads, so a published Volume template
+  // would fetch, "succeed", and load nothing into useVolumeStore. Branch
+  // here instead: `data.formData` carries just enough for the type switch
+  // (documentType), and the whole document rides as `data.volume`, exactly
+  // like a live Volume document's own .nldp export. This branch is kept
+  // separate from (rather than merged with) the letter-shaped path below
+  // so the byte-for-byte package format every OTHER template has already
+  // published stays untouched.
+  if (template.typeId === 'volume') {
+    return {
+      metadata: {
+        packageId: `nldp_template_${id}`,
+        formatVersion: '1.0.0',
+        createdAt: TEMPLATE_PACKAGE_EPOCH,
+        author: { name: 'System Template', unit: 'HQMC' },
+        package: {
+          title: template.name,
+          description: template.description,
+          subject: 'TEMPLATE',
+          documentType: template.typeId,
+          tags: ['template', 'standard'],
+        },
+        checksums: { dataHash: '', crc32: '' },
+      },
+      data: {
+        formData: { documentType: 'volume' },
+        vias: [],
+        references: [],
+        enclosures: [],
+        copyTos: [],
+        paragraphs: [],
+        volume: template.defaultData,
+      },
+    };
+  }
+
   // defaultData merges formData with the document's arrays; the package
   // format keeps them apart.
   const {
