@@ -251,19 +251,22 @@ function leftParagraph(text: string, sizePt = BODY_SIZE_PT) {
   return wrapRuns([{ text }], MARGIN, MARGIN, RIGHT_EDGE, sizePt);
 }
 
-const LEGEND_TEXT = 'Hyperlinks are denoted by bold, italic, blue and underlined font.';
+// Exported so other emitters (e.g. the DOCX generator, src/services/docx/volumeDocx.ts)
+// can share these canonical strings as a single source of truth rather than
+// duplicating them.
+export const LEGEND_TEXT = 'Hyperlinks are denoted by bold, italic, blue and underlined font.';
 // Canonical text transcribed verbatim from the published volumes — do not
 // paraphrase; see task-10-report.md fix-round 1 for provenance.
-const VOLUME_CHANGE_POLICY_BOILERPLATE = [
+export const VOLUME_CHANGE_POLICY_BOILERPLATE = [
   'The original publication date of this Marine Corps Order (right header) will not change unless/until a full revision of the MCO has been conducted.',
   'The date denoted by blue font (left header) will reflect the date this Volume was last updated.',
   'All Volume changes denoted in blue font will reset to black font upon a full revision of this Volume.',
 ];
-const CHAPTER_CHANGE_POLICY_BOILERPLATE = [
+export const CHAPTER_CHANGE_POLICY_BOILERPLATE = [
   'The original publication date of this Marine Corps Order (MCO) Volume (right header) will not change unless/until a full revision of the MCO has been conducted.',
   'All Volume changes denoted in blue font will reset to black font upon a full revision of this Volume.',
 ];
-const REFERENCES_SUMMARY_BOILERPLATE = [
+export const REFERENCES_SUMMARY_BOILERPLATE = [
   'As changes are made within this MCO Volume, the References list will also update.',
   'Annotation of each update/change/addition to the References list is required.',
   'The original publication date this MCO (right header) will not change unless/until a full revision of the MCO has been conducted.',
