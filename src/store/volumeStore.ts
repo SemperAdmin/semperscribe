@@ -1,5 +1,54 @@
 import { create } from 'zustand';
-import type { VolumeDoc } from '@/lib/schemas/volume-schema';
+import type { Block, Chapter, Paragraph, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
+
+/**
+ * Identifies a node in the chapter tree by index path:
+ * - `{ chapter }` -> the chapter itself
+ * - `{ chapter, section }` -> a section
+ * - `{ chapter, section, paragraph }` -> a paragraph
+ * - `{ chapter, section, paragraph, sub: [i, j, ...] }` -> a (possibly
+ *   nested) sub-paragraph, walked via `children[i].children[j]...`.
+ */
+export interface VolumePath {
+  chapter: number;
+  section?: number;
+  paragraph?: number;
+  sub?: number[];
+}
+
+type TreeNode = Chapter | { title: string; body?: Block[] } | Paragraph | SubPara;
+
+function resolveNode(chapters: Chapter[], path: VolumePath): TreeNode {
+  const chapter = chapters[path.chapter];
+  if (path.section === undefined) return chapter;
+  const section = chapter.sections[path.section];
+  if (path.paragraph === undefined) return section;
+  const paragraph = section.paragraphs[path.paragraph];
+  const subPath = path.sub ?? [];
+  let node: Paragraph | SubPara = paragraph;
+  for (const idx of subPath) node = node.children[idx];
+  return node;
+}
+
+/** Returns the array containing the addressed node, and its index in it. */
+function resolveParent(chapters: Chapter[], path: VolumePath): { list: unknown[]; index: number } {
+  if (path.section === undefined) {
+    return { list: chapters, index: path.chapter };
+  }
+  const chapter = chapters[path.chapter];
+  if (path.paragraph === undefined) {
+    return { list: chapter.sections, index: path.section };
+  }
+  const section = chapter.sections[path.section];
+  const subPath = path.sub ?? [];
+  if (subPath.length === 0) {
+    return { list: section.paragraphs, index: path.paragraph };
+  }
+  const paragraph = section.paragraphs[path.paragraph];
+  let node: Paragraph | SubPara = paragraph;
+  for (let i = 0; i < subPath.length - 1; i++) node = node.children[subPath[i]];
+  return { list: node.children, index: subPath[subPath.length - 1] };
+}
 
 export function blankVolume(): VolumeDoc {
   return {
@@ -22,6 +71,13 @@ interface VolumeState {
   addChapter: () => void;
   addSection: (chapterIdx: number) => void;
   addParagraph: (chapterIdx: number, sectionIdx: number) => void;
+  /** Adds a sub-paragraph under the paragraph or sub-para named by `path`. */
+  addSubPara: (path: VolumePath) => void;
+  /** Sets (or appends, when `blockIdx === body.length`) a body block. */
+  updateBlock: (path: VolumePath, blockIdx: number, block: Block) => void;
+  updateNodeTitle: (path: VolumePath, title: string) => void;
+  moveNode: (path: VolumePath, dir: -1 | 1) => void;
+  removeNode: (path: VolumePath) => void;
 }
 
 export const useVolumeStore = create<VolumeState>((set) => ({
@@ -41,6 +97,51 @@ export const useVolumeStore = create<VolumeState>((set) => ({
     const chapters = structuredClone(s.doc.chapters);
     const paras = chapters[ci].sections[si].paragraphs;
     paras.push({ seq: paras.length + 1, title: '', body: [{ runs: [{ text: '' }] }], children: [] });
+    return { doc: { ...s.doc, chapters } };
+  }),
+  addSubPara: (path) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    const paragraph = chapters[path.chapter].sections[path.section!].paragraphs[path.paragraph!];
+    const subPath = path.sub ?? [];
+    let container: Paragraph | SubPara = paragraph;
+    for (const idx of subPath) container = container.children[idx];
+    const depth = subPath.length;
+    const style: 'upper' | 'arabic' = depth === 0 ? 'upper' : 'arabic';
+    container.children.push({
+      seq: container.children.length + 1,
+      style,
+      title: '',
+      body: [{ runs: [{ text: '' }] }],
+      children: [],
+    });
+    return { doc: { ...s.doc, chapters } };
+  }),
+  updateBlock: (path, blockIdx, block) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    const node = resolveNode(chapters, path) as { body?: Block[] };
+    const body = node.body ?? (node.body = []);
+    if (blockIdx < body.length) body[blockIdx] = block;
+    else body.push(block);
+    return { doc: { ...s.doc, chapters } };
+  }),
+  updateNodeTitle: (path, title) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    const node = resolveNode(chapters, path) as { title?: string };
+    node.title = title;
+    return { doc: { ...s.doc, chapters } };
+  }),
+  moveNode: (path, dir) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    const { list, index } = resolveParent(chapters, path);
+    const target = index + dir;
+    if (target < 0 || target >= list.length) return { doc: s.doc };
+    [list[index], list[target]] = [list[target], list[index]];
+    return { doc: { ...s.doc, chapters } };
+  }),
+  removeNode: (path) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    const { list, index } = resolveParent(chapters, path);
+    list.splice(index, 1);
     return { doc: { ...s.doc, chapters } };
   }),
 }));

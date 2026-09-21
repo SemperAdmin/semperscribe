@@ -33,6 +33,7 @@ import { SignatureFieldSection } from './SignatureFieldSection';
 import { DecisionGridSection } from '@/components/letter/DecisionGridSection';
 import { CoordinationPageForm } from '@/components/letter/CoordinationPageForm';
 import { ITypeFormSections } from '@/components/itype/ITypeFormSections';
+import { VolumeEditor } from '@/components/volume/VolumeEditor';
 
 interface DocumentLayoutProps {
   /** E.3: the letter a same-page endorsement is added to. */
@@ -217,6 +218,11 @@ export function DocumentLayout({
           formData={formData}
           setFormData={setFormData}
         />
+      ) : formData.documentType === 'volume' ? (
+        // The Volume document type is authored entirely through its own
+        // zustand store (useVolumeStore), not the shared letter FormData,
+        // so it mounts standalone here like the i-type exclusive view.
+        <VolumeEditor />
       ) : features.isAMHS ? (
         <AMHSEditor
           formData={formData}
