@@ -18,6 +18,25 @@ export const GAP = 25;
 export const RIGHT_EDGE = PAGE_W - MARGIN;
 export const CENTER_X = PAGE_W / 2;
 
+/**
+ * The extra vertical space inserted between two consecutive body `Block`s
+ * within the same section/paragraph/sub-para body (i.e. a real paragraph
+ * break within one designated item), on top of the ordinary `LEADING` step
+ * that already separates any two lines.
+ *
+ * Task 17 fix round 1: measured directly from the real MCO 5800.16 Vol 17
+ * PDF (four samples, sections 0102/0108/0109/0110 - the last line of one
+ * paragraph to the first line of the next): y-deltas of 25.3, 25.4, 25.3,
+ * 25.3pt (avg 25.325pt). That is, within measurement/font-metric rounding,
+ * exactly `2 * LEADING` (25.2pt) - one blank line - not the larger `GAP`
+ * (25pt is coincidentally close in magnitude to `2 * LEADING`, but `GAP` is
+ * used for structural spacing - between a table and the text before/after
+ * it, before a figure, etc. - not for prose paragraph breaks). So the
+ * ADDITIONAL space needed on top of the LEADING step already taken between
+ * any two lines is one more LEADING: `25.325 - 12.6 ≈ 12.7 ≈ LEADING`.
+ */
+export const INTER_PARAGRAPH_GAP = LEADING;
+
 const BODY_SIZE_PT = 11;
 const HEADING_SIZE_PT = 12;
 
@@ -299,12 +318,29 @@ function layoutBlockLines(cursor: PageCursor, block: Block, x: number) {
   cursor.addLines(lines);
 }
 
+/**
+ * Lays out any body Blocks after the first (which the caller already fed to
+ * `addDesignatedLines` alongside the designator/title) back at the item's
+ * run-over column, with `INTER_PARAGRAPH_GAP` inserted before each one so a
+ * real paragraph break inside one designated item reads as a blank line,
+ * matching the source (see INTER_PARAGRAPH_GAP's measurement note).
+ */
+function layoutContinuationBlocks(cursor: PageCursor, blocks: Block[]) {
+  for (const block of blocks) {
+    cursor.addGap(INTER_PARAGRAPH_GAP);
+    layoutBlockLines(cursor, block, RUNOVER_X);
+  }
+}
+
 function layoutSubPara(cursor: PageCursor, sub: SubPara, level: 1 | 2 | 3 | 4) {
   const designator = subParaDesignator(sub.style, sub.seq);
+  const [firstBlock, ...restBlocks] = sub.body;
+  const firstRuns = firstBlock ? firstBlock.runs : [];
   const bodyRuns = sub.title
-    ? [{ text: `${sub.title}. ` }, ...sub.body.flatMap(b => b.runs)]
-    : sub.body.flatMap(b => b.runs);
+    ? [{ text: `${sub.title}. ` }, ...firstRuns]
+    : firstRuns;
   cursor.addDesignatedLines(designator, level, bodyRuns);
+  layoutContinuationBlocks(cursor, restBlocks);
   for (const child of sub.children) {
     // Each child's own `style` (upper under a paragraph, arabic under an
     // upper) is set on the node already; layout only advances the indent level.
@@ -316,10 +352,13 @@ function layoutSubPara(cursor: PageCursor, sub: SubPara, level: 1 | 2 | 3 | 4) {
 function layoutParagraph(cursor: PageCursor, chapter: number, sectionSeq: number, para: Paragraph) {
   const level = 2 as const;
   const designator = paragraphDesignator(chapter, sectionSeq, para.seq);
+  const [firstBlock, ...restBlocks] = para.body;
+  const firstRuns = firstBlock ? firstBlock.runs : [];
   const bodyRuns = para.title
-    ? [{ text: `${para.title}. ` }, ...para.body.flatMap(b => b.runs)]
-    : para.body.flatMap(b => b.runs);
+    ? [{ text: `${para.title}. ` }, ...firstRuns]
+    : firstRuns;
   cursor.addDesignatedLines(designator, level, bodyRuns);
+  layoutContinuationBlocks(cursor, restBlocks);
   for (const sub of para.children) {
     layoutSubPara(cursor, sub, 3);
   }
@@ -338,9 +377,10 @@ function layoutSection(
   toc.push({ label: `${designator} ${headingText}`.trim(), page: cursor.currentLabel(), level: 1 });
 
   if (section.body && section.body.length > 0) {
-    for (const block of section.body) {
+    section.body.forEach((block, i) => {
+      if (i > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
       layoutBlockLines(cursor, block, designatorX(1));
-    }
+    });
   } else {
     for (const para of section.paragraphs) {
       layoutParagraph(cursor, chapter, section.seq, para);

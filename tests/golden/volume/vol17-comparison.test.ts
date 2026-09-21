@@ -15,7 +15,6 @@ import { VolumeSchema } from '@/lib/schemas/volume-schema';
 import { generateVolumePdf } from '@/services/pdf/volumeGenerator';
 
 const REAL_PDF = 'C:\\Users\\barbc\\Downloads\\01_USMC_OFFICIAL\\MCO_Orders\\MCO 5800.16 Vol.17.pdf';
-const TOL = 2; // pt, per the brief, unless a check says otherwise.
 
 interface MeasuredRow { page: number; x: number; y: number; size: number; text: string }
 
@@ -44,6 +43,25 @@ function findStartsWith(rows: MeasuredRow[], prefix: string): MeasuredRow | unde
  * exact-string match would be brittle without being any more meaningful. */
 function findIncludes(rows: MeasuredRow[], needle: string): MeasuredRow | undefined {
   return rows.find(r => r.text.includes(needle));
+}
+
+/**
+ * Reconstructs footer labels (y < 45) by joining same-page chunks left to
+ * right. Both renderers put the whole footer on one line, but pypdf can
+ * split a chunk like "1-2" into "1"/"-"/"2" (kerning pairs) where our own
+ * `drawText` call keeps it as one piece - joining by page makes the two
+ * comparable regardless of how many text-showing operations either PDF
+ * used.
+ */
+function footerLabels(rows: MeasuredRow[]): string[] {
+  const byPage = new Map<number, MeasuredRow[]>();
+  for (const r of rows) {
+    if (r.y >= 45) continue;
+    if (!byPage.has(r.page)) byPage.set(r.page, []);
+    byPage.get(r.page)!.push(r);
+  }
+  return [...byPage.values()].map(chunks =>
+    [...chunks].sort((a, b) => a.x - b.x).map(c => c.text).join(''));
 }
 
 describe('volume Vol 17 render (no real PDF required)', () => {
@@ -78,16 +96,38 @@ describe('volume Vol 17 render (no real PDF required)', () => {
     expect(findIncludes(rows, 'LEGAL SUPPORT AND ADMINISTRATION MANUAL')).toBeTruthy();
   });
 
-  it('uses a bare sequential footer (auto band, single chapter)', async () => {
+  it('uses chapter-page footer labels ("1-1".."1-4"), per pageBand: chapter-page', async () => {
     const rows = await ourRows();
     // Title page: roman numeral.
     expect(rows.some(r => r.y < 45 && r.text.trim() === 'i')).toBe(true);
-    // Body pages: bare number, not "1-2" chapter-page style, because Vol
-    // 17 has exactly one chapter and volume.pageBand is 'auto' (see
-    // layoutBody in lib/volume/layout.ts: useChapterPage is true only for
-    // 'chapter-page' or 'auto' + multiChapter).
-    expect(rows.some(r => r.y < 45 && /^\d+$/.test(r.text.trim()))).toBe(true);
-    expect(rows.some(r => r.y < 45 && /^\d+-\d+$/.test(r.text.trim()))).toBe(false);
+    // Body pages: "1-N" chapter-page style. Fix round 1: the brief's
+    // controller ruling set volume.pageBand explicitly to 'chapter-page'
+    // for Vol 17 (the real source volumes are genuinely inconsistent here -
+    // Vol 6 prints bare sequential numbers and stays on 'auto' - so this is
+    // a per-volume data choice, not a change to the 'auto' heuristic itself;
+    // see layoutBody in lib/volume/layout.ts, unchanged).
+    const labels = footerLabels(rows).filter(l => /^\d+-\d+$/.test(l));
+    expect(labels.sort()).toEqual(['1-1', '1-2', '1-3', '1-4']);
+    expect(rows.some(r => r.y < 45 && /^\d+$/.test(r.text.trim()))).toBe(false);
+  });
+
+  it('inserts a visible paragraph break between two Blocks in the same section body', async () => {
+    const rows = await ourRows();
+    // Section 0102's two paragraphs: near the end of the first ("...and
+    // renames this award the Brigadier General Michael E. Rich...") and the
+    // start of the second ("Each Regional Trial Counsel (RTC) will
+    // nominate..."). This substring (not the paragraph's literal last
+    // words) is the anchor because the real PDF splits "...Trial Counsel of
+    // the Year Award." across a word-kerning boundary ("...Awa" + "rd."),
+    // which would make an exact-tail match brittle across the two PDFs.
+    const endOfFirst = findIncludes(rows, 'and renames this award the Brigadier General Michael E. Rich');
+    const startOfSecond = findIncludes(rows, 'Each Regional Trial Counsel (RTC) will nominate');
+    expect(endOfFirst, 'end of 0102 paragraph 1 not found').toBeTruthy();
+    expect(startOfSecond, 'start of 0102 paragraph 2 not found').toBeTruthy();
+    const gap = endOfFirst!.y - startOfSecond!.y;
+    // One ordinary line step (LEADING ~12.6) plus the inter-paragraph gap
+    // (also ~12.6, see INTER_PARAGRAPH_GAP) - i.e. roughly 2x LEADING, not 1x.
+    expect(gap).toBeGreaterThan(20);
   });
 
   it('prints the title-page summary block', async () => {
@@ -159,32 +199,52 @@ describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF'
   });
 
   /**
-   * KNOWN, REPORTED MISMATCH (do not weaken this to pass - see the Task 17
-   * report). Our body-page footer scheme is bare sequential numbers ("1",
-   * "2", "3", ...): volume.pageBand is 'auto' and Vol 17 has exactly one
-   * chapter, and layoutBody's rule is "chapter-page" numbering only for
-   * 'chapter-page' or 'auto' + MULTI-chapter (lib/volume/layout.ts). The
-   * real, published Vol 17 instead prints chapter-page style body numbers
-   * ("1-1", "1-2", "1-3", "1-4") despite having only one chapter. This test
-   * asserts what OUR renderer actually does (so a regression here is
-   * caught) and separately records the real PDF's scheme so the mismatch
-   * is visible in the test output rather than silently asserted away.
+   * Fix round 1 (controller ruling): Vol 6 prints bare sequential body
+   * numbers and Vol 17 prints chapter-page style ("1-1".."1-4") despite
+   * both having a single chapter - the source volumes are genuinely
+   * inconsistent, which is exactly what the `pageBand` field is for. Vol
+   * 17's fixture now sets `pageBand: 'chapter-page'` explicitly (the
+   * `auto` heuristic itself, which Vol 6's fidelity fixture depends on, is
+   * unchanged). This test reads the real footer labels off the extraction
+   * rows (not a hardcoded list) and asserts our render uses the same
+   * scheme with the same labels.
    */
-  it('records the real PDF body footer scheme (chapter-page) vs. ours (bare sequential) - reported mismatch', async () => {
+  it('body-page footers use the same chapter-page scheme, with the same labels, in both documents', async () => {
     const ours = await ourRows();
     const real = measureFile(REAL_PDF);
 
-    // Ours: bare sequential, per the 'auto' + single-chapter rule.
-    expect(ours.some(r => r.y < 45 && /^\d+$/.test(r.text.trim()))).toBe(true);
+    const ourChapterPageFooters = footerLabels(ours).filter(l => /^\d+-\d+$/.test(l)).sort();
+    const realChapterPageFooters = footerLabels(real).filter(l => /^\d+-\d+$/.test(l)).sort();
 
-    // Real: reconstruct the footer label on a body page by joining the
-    // digit/hyphen chunks pypdf split "1-2" into ('1', '-', '2').
-    const bodyFooterChunks = real.filter(r => r.y < 45 && r.page >= 3 && r.page <= 6);
-    const footerText = bodyFooterChunks
-      .sort((a, b) => a.page - b.page || a.x - b.x)
-      .map(r => r.text)
-      .join('');
-    expect(footerText, 'real Vol 17 body footers').toMatch(/1-1.*1-2.*1-3.*1-4/);
+    expect(ourChapterPageFooters.length, 'our render has no chapter-page footers').toBeGreaterThan(0);
+    expect(realChapterPageFooters.length, 'real PDF has no chapter-page footers').toBeGreaterThan(0);
+    expect(ourChapterPageFooters).toEqual(realChapterPageFooters);
+  });
+
+  /**
+   * Fix round 1 (controller ruling): the real PDF places a blank-line gap
+   * between paragraphs within one section body (measured ~25.3pt, i.e. one
+   * extra LEADING on top of the ordinary line step - see
+   * INTER_PARAGRAPH_GAP's doc comment in lib/volume/layout.ts for the full
+   * measurement). Section 0102 has two paragraphs in both documents, so its
+   * paragraph-break y-gap is directly comparable.
+   */
+  it('the inter-paragraph gap in section 0102 matches the real PDF within 2pt', async () => {
+    const ours = await ourRows();
+    const real = measureFile(REAL_PDF);
+
+    const ourEnd = findIncludes(ours, 'and renames this award the Brigadier General Michael E. Rich');
+    const ourStart = findIncludes(ours, 'Each Regional Trial Counsel (RTC) will nominate');
+    const realEnd = findIncludes(real, 'and renames this award the Brigadier General Michael E. Rich');
+    const realStart = findIncludes(real, 'Each Regional Trial Counsel (RTC) will nominate');
+    expect(ourEnd, 'our render is missing the end of 0102 paragraph 1').toBeTruthy();
+    expect(ourStart, 'our render is missing the start of 0102 paragraph 2').toBeTruthy();
+    expect(realEnd, 'real PDF is missing the end of 0102 paragraph 1').toBeTruthy();
+    expect(realStart, 'real PDF is missing the start of 0102 paragraph 2').toBeTruthy();
+
+    const ourGap = ourEnd!.y - ourStart!.y;
+    const realGap = realEnd!.y - realStart!.y;
+    expect(Math.abs(ourGap - realGap), `our gap ${ourGap} vs real gap ${realGap}`).toBeLessThanOrEqual(2);
   });
 
   it('title-page summary block lines are present in both documents', async () => {
