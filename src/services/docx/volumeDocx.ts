@@ -32,6 +32,7 @@ import type {
   VolumeDoc,
 } from '@/lib/schemas/volume-schema';
 import {
+  correspondenceDesignator,
   paragraphDesignator,
   referenceDesignator,
   sectionDesignator,
@@ -249,9 +250,58 @@ function figureParagraphs(figure: Figure): Paragraph[] {
 // ---------------------------------------------------------------------------
 // Sections / paragraphs / sub-paragraphs
 // ---------------------------------------------------------------------------
+function isCorrespondence(block: Block): boolean {
+  return block.ladder === 'correspondence';
+}
+
+/**
+ * Finding 8: mirrors layout.ts's identical fix (see its doc comment on
+ * layoutBodyBlocks for the full rationale). A Block flagged
+ * `ladder: 'correspondence'` was accepted by the schema but had no
+ * consumer, so an embedded verbatim document (format spec §2's
+ * "Embedded-content ladder") rendered as plain, undesignated text merged
+ * into the surrounding paragraph. Here, a contiguous run of correspondence
+ * blocks gets its own depth-0 a./b./c.-designated Paragraph, one indent
+ * level deeper than `level`; ordinary blocks are still merged together
+ * into one plain Paragraph exactly as before.
+ */
+function bodyBlockParagraphs(blocks: Block[], level: Level): Paragraph[] {
+  const out: Paragraph[] = [];
+  let correspondenceSeq = 0;
+  let plain: Block[] = [];
+  const flushPlain = () => {
+    if (plain.length === 0) return;
+    out.push(new Paragraph({ indent: { left: 0, firstLine: 0 }, children: blocksToChildren(plain) }));
+    plain = [];
+  };
+  for (const block of blocks) {
+    if (isCorrespondence(block)) {
+      flushPlain();
+      correspondenceSeq += 1;
+      const corrLevel = Math.min(level + 1, 4) as Level;
+      out.push(designatedParagraph(correspondenceDesignator(0, correspondenceSeq), corrLevel, undefined, [block]));
+    } else {
+      correspondenceSeq = 0;
+      plain.push(block);
+    }
+  }
+  flushPlain();
+  return out;
+}
+
 function subParaParagraphs(sub: SubPara, level: Level): Paragraph[] {
   const designator = subParaDesignator(sub.style, sub.seq);
-  const out: Paragraph[] = [designatedParagraph(designator, level, sub.title, sub.body)];
+  const firstBlock = sub.body[0];
+  // Finding 8: a correspondence-ladder first block must NOT be merged onto
+  // the sub-paragraph's own designator/title line - it gets its own
+  // a./b./c. designator via bodyBlockParagraphs below.
+  const mergeFirst = firstBlock !== undefined && !isCorrespondence(firstBlock);
+  const firstBody = mergeFirst ? [firstBlock] : [];
+  const restBlocks = mergeFirst ? sub.body.slice(1) : sub.body;
+  const out: Paragraph[] = [
+    designatedParagraph(designator, level, sub.title, firstBody),
+    ...bodyBlockParagraphs(restBlocks, level),
+  ];
   for (const child of sub.children) {
     const childLevel = Math.min(level + 1, 4) as Level;
     out.push(...subParaParagraphs(child, childLevel));
@@ -261,7 +311,15 @@ function subParaParagraphs(sub: SubPara, level: Level): Paragraph[] {
 
 function paragraphParagraphs(chapterNumber: number, sectionSeq: number, para: VolParagraph): Paragraph[] {
   const designator = paragraphDesignator(chapterNumber, sectionSeq, para.seq);
-  const out: Paragraph[] = [designatedParagraph(designator, 2, para.title, para.body)];
+  const firstBlock = para.body[0];
+  // Finding 8: see subParaParagraphs's identical comment.
+  const mergeFirst = firstBlock !== undefined && !isCorrespondence(firstBlock);
+  const firstBody = mergeFirst ? [firstBlock] : [];
+  const restBlocks = mergeFirst ? para.body.slice(1) : para.body;
+  const out: Paragraph[] = [
+    designatedParagraph(designator, 2, para.title, firstBody),
+    ...bodyBlockParagraphs(restBlocks, 2),
+  ];
   for (const sub of para.children) out.push(...subParaParagraphs(sub, 3));
   return out;
 }
@@ -282,9 +340,8 @@ function sectionParagraphs(chapterNumber: number, section: Section, sectionPerio
   // exclusive in the schema, so both render (body first, flush left, then
   // numbered paragraphs) instead of an if/else that dropped one of them.
   if (section.body && section.body.length > 0) {
-    for (const block of section.body) {
-      out.push(new Paragraph({ indent: { left: 0, firstLine: 0 }, children: blocksToChildren([block]) }));
-    }
+    // Finding 8: honors any `correspondence`-ladder blocks in the section body.
+    out.push(...bodyBlockParagraphs(section.body, 1));
   }
   for (const para of section.paragraphs) out.push(...paragraphParagraphs(chapterNumber, section.seq, para));
   return out;

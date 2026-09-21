@@ -1,5 +1,5 @@
 import type { Block, Chapter, Figure, Paragraph, Run, Section, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
-import { paragraphDesignator, referenceDesignator, sectionDesignator, subParaDesignator } from '@/lib/volume/designators';
+import { correspondenceDesignator, paragraphDesignator, referenceDesignator, sectionDesignator, subParaDesignator } from '@/lib/volume/designators';
 import { designatorX, RUNOVER_X, textStartX } from '@/lib/volume/volume-indent';
 import { bodyPageLabel, refPageLabel, toRoman } from '@/lib/volume/page-bands';
 import { measureText, wrapPlainText, wrapRuns, type WrappedSegment } from '@/lib/volume/measure';
@@ -465,29 +465,68 @@ function layoutBlockLines(cursor: PageCursor, block: Block, x: number) {
   cursor.addLines(lines);
 }
 
+function isCorrespondence(block: Block | undefined): boolean {
+  return block?.ladder === 'correspondence';
+}
+
 /**
- * Lays out any body Blocks after the first (which the caller already fed to
- * `addDesignatedLines` alongside the designator/title) back at the item's
- * run-over column, with `INTER_PARAGRAPH_GAP` inserted before each one so a
- * real paragraph break inside one designated item reads as a blank line,
- * matching the source (see INTER_PARAGRAPH_GAP's measurement note).
+ * Lays out a body's Blocks, with `INTER_PARAGRAPH_GAP` inserted before each
+ * one after the first so a real paragraph break inside one designated item
+ * reads as a blank line, matching the source (see INTER_PARAGRAPH_GAP's
+ * measurement note).
+ *
+ * Finding 8: a Block flagged `ladder: 'correspondence'` was accepted by the
+ * schema (BlockSchema.ladder) but had no consumer at all - the flag was
+ * silently ignored, so an embedded verbatim document (format spec §2's
+ * "Embedded-content ladder": a secondary a./(1)/(a) naval-letter-style
+ * ladder for samples reproduced inside a volume, distinct from the
+ * volume's own structural CCSSPP designators) rendered as indistinguishable
+ * flush-margin prose with no designators of its own.
+ *
+ * The schema doesn't model nested correspondence sub-levels - a Block is
+ * flat text, not a tree, so there's nowhere to store a (1)/(a) depth on an
+ * individual block. The simplest behavior that's still spec-conformant and
+ * fully representable by the data we have: a contiguous run of
+ * `correspondence` blocks within one body numbers as its own depth-0
+ * a./b./c. sequence (`correspondenceDesignator(0, seq)`), restarting
+ * whenever a non-correspondence block interrupts it or a new body starts,
+ * laid out one structural indent step deeper than the body's own `level` -
+ * using the SAME designatorX/textStartX ladder geometry as every other
+ * designated item in this module, so the embedded ladder reads as visually
+ * nested without inventing new geometry. Deeper (1)/(a) correspondence
+ * levels would need a richer (nested) Block model and are out of scope for
+ * this minimal, faithful implementation.
  */
-function layoutContinuationBlocks(cursor: PageCursor, blocks: Block[]) {
-  for (const block of blocks) {
-    cursor.addGap(INTER_PARAGRAPH_GAP);
-    layoutBlockLines(cursor, block, RUNOVER_X);
-  }
+function layoutBodyBlocks(cursor: PageCursor, blocks: Block[], x: number, level: 1 | 2 | 3 | 4) {
+  let correspondenceSeq = 0;
+  blocks.forEach((block, i) => {
+    if (i > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
+    if (block.ladder === 'correspondence') {
+      correspondenceSeq += 1;
+      const corrLevel = Math.min(level + 1, 4) as 1 | 2 | 3 | 4;
+      cursor.addDesignatedLines(correspondenceDesignator(0, correspondenceSeq), corrLevel, block.runs);
+    } else {
+      correspondenceSeq = 0;
+      layoutBlockLines(cursor, block, x);
+    }
+  });
 }
 
 function layoutSubPara(cursor: PageCursor, sub: SubPara, level: 1 | 2 | 3 | 4) {
   const designator = subParaDesignator(sub.style, sub.seq);
-  const [firstBlock, ...restBlocks] = sub.body;
-  const firstRuns = firstBlock ? firstBlock.runs : [];
+  const firstBlock = sub.body[0];
+  // Finding 8: a correspondence-ladder first block must NOT be merged onto
+  // the sub-paragraph's own designator/title line - it gets its own
+  // a./b./c. designator via layoutBodyBlocks below, same as every other
+  // correspondence block in this body.
+  const mergeFirst = firstBlock !== undefined && !isCorrespondence(firstBlock);
+  const firstRuns = mergeFirst ? firstBlock.runs : [];
+  const restBlocks = mergeFirst ? sub.body.slice(1) : sub.body;
   const bodyRuns = sub.title
     ? [{ text: `${sub.title}. ` }, ...firstRuns]
     : firstRuns;
   cursor.addDesignatedLines(designator, level, bodyRuns);
-  layoutContinuationBlocks(cursor, restBlocks);
+  layoutBodyBlocks(cursor, restBlocks, RUNOVER_X, level);
   for (const child of sub.children) {
     // Each child's own `style` (upper under a paragraph, arabic under an
     // upper) is set on the node already; layout only advances the indent level.
@@ -499,13 +538,18 @@ function layoutSubPara(cursor: PageCursor, sub: SubPara, level: 1 | 2 | 3 | 4) {
 function layoutParagraph(cursor: PageCursor, chapter: number, sectionSeq: number, para: Paragraph) {
   const level = 2 as const;
   const designator = paragraphDesignator(chapter, sectionSeq, para.seq);
-  const [firstBlock, ...restBlocks] = para.body;
-  const firstRuns = firstBlock ? firstBlock.runs : [];
+  const firstBlock = para.body[0];
+  // Finding 8: see layoutSubPara's identical comment - a correspondence
+  // first block gets its own a./b./c. designator instead of being merged
+  // onto the paragraph's own designator/title line.
+  const mergeFirst = firstBlock !== undefined && !isCorrespondence(firstBlock);
+  const firstRuns = mergeFirst ? firstBlock.runs : [];
+  const restBlocks = mergeFirst ? para.body.slice(1) : para.body;
   const bodyRuns = para.title
     ? [{ text: `${para.title}. ` }, ...firstRuns]
     : firstRuns;
   cursor.addDesignatedLines(designator, level, bodyRuns);
-  layoutContinuationBlocks(cursor, restBlocks);
+  layoutBodyBlocks(cursor, restBlocks, RUNOVER_X, level);
   for (const sub of para.children) {
     layoutSubPara(cursor, sub, 3);
   }
@@ -536,10 +580,9 @@ function layoutSection(
   // didn't pick. Render flush-left body blocks first, then numbered
   // paragraphs, so a section carrying both loses neither.
   if (section.body && section.body.length > 0) {
-    section.body.forEach((block, i) => {
-      if (i > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
-      layoutBlockLines(cursor, block, designatorX(1));
-    });
+    // Finding 8: honors any `correspondence`-ladder blocks in the section
+    // body (see layoutBodyBlocks's doc comment).
+    layoutBodyBlocks(cursor, section.body, designatorX(1), 1);
     if (section.paragraphs.length > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
   }
   for (const para of section.paragraphs) {

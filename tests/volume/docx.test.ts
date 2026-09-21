@@ -114,6 +114,29 @@ describe('generateVolumeDocx', () => {
     expect(xml).toContain('w:pStyle w:val="Heading2"');
   });
 
+  // Finding 8: mirrors layout.test.ts - a correspondence block sequence
+  // must render its own a./b. designators in the DOCX output too.
+  it('renders a correspondence block sequence with a./b. designators (finding 8)', async () => {
+    const d = blankVolume();
+    d.chapters[0].sections[0].paragraphs.push({
+      seq: 1,
+      title: '',
+      body: [
+        { runs: [{ text: 'Intro line before the embedded sample.' }] },
+        { ladder: 'correspondence', runs: [{ text: 'First embedded item.' }] },
+        { ladder: 'correspondence', runs: [{ text: 'Second embedded item.' }] },
+      ],
+      children: [],
+    });
+    const blob = await generateVolumeDocx(d);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file('word/document.xml')!.async('string');
+    expect(xml).toContain('First embedded item.');
+    expect(xml).toContain('Second embedded item.');
+    expect(xml).toMatch(/>a\.\s*</);
+    expect(xml).toMatch(/>b\.\s*</);
+  });
+
   it('renders a changed run in blue (0000FF)', async () => {
     const d = blankVolume();
     d.chapters[0].sections[0].paragraphs.push({

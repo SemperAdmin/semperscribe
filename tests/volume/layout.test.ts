@@ -166,4 +166,43 @@ describe('layoutVolume', () => {
     expect(blob.size).toBeGreaterThan(0);
     expect(blob.type).toBe('application/pdf');
   });
+
+  // Finding 8: `Block.ladder === 'correspondence'` was accepted by the
+  // schema but had no consumer - a sequence of correspondence-flagged
+  // blocks must now render its own a./b./c. designators (format spec §2's
+  // "Embedded-content ladder"), separate from the surrounding structural
+  // CCSSPP designators.
+  it('renders a correspondence block sequence with a./b. designators (finding 8)', () => {
+    const d = sampleDoc();
+    d.chapters[0].sections[0] = {
+      seq: 1,
+      title: 'PURPOSE',
+      paragraphs: [
+        {
+          seq: 1,
+          title: '',
+          body: [
+            { runs: [{ text: 'Intro line before the embedded sample.' }] },
+            { ladder: 'correspondence', runs: [{ text: 'First embedded item.' }] },
+            { ladder: 'correspondence', runs: [{ text: 'Second embedded item.' }] },
+          ],
+          children: [],
+        },
+      ],
+    };
+    const out = layoutVolume(d);
+    const items = out.pages.flatMap(p => p.items);
+    // The designator is its own standalone segment/item (addDesignatedLines
+    // pushes it separately from the body text it shares a line with), so
+    // this looks for an exact "a."/"b." designator item, not a substring
+    // match against arbitrary body prose.
+    const hasDesignator = (label: string) =>
+      items.some(i => 'segments' in i && i.segments.some(s => s.text === label));
+    expect(hasDesignator('a.')).toBe(true);
+    expect(hasDesignator('b.')).toBe(true);
+
+    const allText = items.flatMap(i => ('segments' in i ? i.segments.map(s => s.text) : [])).join('');
+    expect(allText).toContain('First embedded item.');
+    expect(allText).toContain('Second embedded item.');
+  });
 });
