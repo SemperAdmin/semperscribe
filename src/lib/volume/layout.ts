@@ -233,16 +233,23 @@ function leftParagraph(text: string, sizePt = BODY_SIZE_PT) {
 }
 
 const LEGEND_TEXT = 'Hyperlinks are denoted by bold, italic, blue and underlined font.';
+// Canonical text transcribed verbatim from the published volumes — do not
+// paraphrase; see task-10-report.md fix-round 1 for provenance.
 const VOLUME_CHANGE_POLICY_BOILERPLATE = [
-  'The date in the upper right corner of each page is the date this Volume was originally published; it does not change unless the Volume undergoes a full revision.',
-  'The date in the upper left corner of each page, shown in blue, is the date this Volume was last updated. Text added or changed since original publication is also shown in blue.',
+  'The original publication date of this Marine Corps Order (right header) will not change unless/until a full revision of the MCO has been conducted.',
+  'The date denoted by blue font (left header) will reflect the date this Volume was last updated.',
+  'All Volume changes denoted in blue font will reset to black font upon a full revision of this Volume.',
 ];
 const CHAPTER_CHANGE_POLICY_BOILERPLATE = [
-  'The date in the upper right corner of each page is the date this Chapter was originally published; it does not change unless the Volume undergoes a full revision.',
-  'The date in the upper left corner of each page, shown in blue, is the date this Chapter was last updated. Text added or changed since original publication is also shown in blue.',
+  'The original publication date of this Marine Corps Order (MCO) Volume (right header) will not change unless/until a full revision of the MCO has been conducted.',
+  'All Volume changes denoted in blue font will reset to black font upon a full revision of this Volume.',
 ];
-const REFERENCES_SUMMARY_BOILERPLATE =
-  'This list of references is updated as the Volume is changed. Each change affecting the references must be annotated accordingly.';
+const REFERENCES_SUMMARY_BOILERPLATE = [
+  'As changes are made within this MCO Volume, the References list will also update.',
+  'Annotation of each update/change/addition to the References list is required.',
+  'The original publication date this MCO (right header) will not change unless/until a full revision of the MCO has been conducted.',
+  'The date denoted by blue font (left header) will reflect the date these References were last updated as changes/revisions are made within this MCO.',
+];
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 /** Normalizes an ISO (or already-formatted) date to the canonical `DD Mon YYYY`. */
@@ -395,7 +402,9 @@ function layoutReferences(doc: VolumeDoc): { pages: Page[]; firstLabel: string }
   cursor.breakPage();
   cursor.addLines(centeredLine('"REFERENCES"', HEADING_SIZE_PT), HEADING_SIZE_PT, 'heading');
   cursor.addGap();
-  cursor.addLines(leftParagraph(REFERENCES_SUMMARY_BOILERPLATE));
+  for (const line of REFERENCES_SUMMARY_BOILERPLATE) {
+    cursor.addLines(leftParagraph(line));
+  }
 
   return { pages: cursor.finish(), firstLabel };
 }
