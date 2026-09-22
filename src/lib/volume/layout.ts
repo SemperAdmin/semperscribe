@@ -586,6 +586,41 @@ function centeredParagraphRuns(runs: Run[], sizePt = BODY_SIZE_PT, inset = 0) {
  */
 const TITLE_BOILERPLATE_INSET = 11.7;
 
+/**
+ * Task 25 fix 5: the divider's (chapter and appendix alike) centered
+ * boilerplate paragraphs wrap NARROWER than the title page's - a bigger
+ * inset than `TITLE_BOILERPLATE_INSET` - because the divider's box template
+ * is itself narrower/more indented than the title page's (real Vol 17 PDF,
+ * fontmap.py: divider box `re [85.104, 489.79, 441.94, 214.34]`, page index
+ * 3, vs. the title page's `re [73.224, 466.39, 465.7, 239.66]`, page index
+ * 0), plus additional text padding within that box.
+ *
+ * Derived the same way as `TITLE_BOILERPLATE_INSET` - from the first
+ * boilerplate paragraph's measured first-line x - but the divider's own
+ * CHAPTER_CHANGE_POLICY_BOILERPLATE text differs from the title page's
+ * VOLUME_CHANGE_POLICY_BOILERPLATE (it additionally reads "...Marine Corps
+ * Order (MCO) Volume (right header)..."), so the two boilerplates wrap at
+ * different widths even though both boxes use the same nominal geometry.
+ * Measured on the real chapter divider (fontmap.py, page index 3): first
+ * boilerplate line "The original publication date of this Marine Corps
+ * Order (MCO) Volume (right header)" starts at x=112.9 (inset = 112.9 - 72 =
+ * 40.9) and, by centered symmetry, ends at x = 2*CENTER_X - 112.9 = 499.1
+ * (inset = 540 - 499.1 = 40.9 too). Re-confirmed against the SECOND
+ * boilerplate line too ("All Volume changes denoted in blue font will reset
+ * to black font upon a full revision of this" / "Volume." - starts at
+ * x=104.7 on the same page): computing the exact word-wrap boundary each
+ * line's own measured width implies (the range of wrap widths consistent
+ * with THAT word wrapping and not the next word) gives two overlapping
+ * windows whose intersection is ~31.0-32.8pt - 32.0 sits inside both, and
+ * reproduces the identical word-wrap point (`wrapRuns`) for both lines as
+ * the real PDF, unlike either paragraph's own naive x-derived value (40.9 or
+ * 32.7) alone. Re-confirmed identical on the Appendix A divider (page index
+ * 7 - same two wrap points, modulo the published PDF's own ~11.5 vs 11.0pt
+ * font-size rounding noise between the two divider instances, which doesn't
+ * change which word each line wraps after).
+ */
+const DIVIDER_BOILERPLATE_INSET = 32.0;
+
 // ---------------------------------------------------------------------------
 // Task 20: styled-run builders for the front matter's fixed literal text -
 // measured directly against the real Vol 17 PDF (task-20-report.md). Kept
@@ -717,6 +752,32 @@ export function titlePageChangeRows(doc: VolumeDoc): { rows: string[][]; shading
     rows: [seedRow, blankRow, blankRow, blankRow],
     shading: [[false, false, false, false], blankShading, blankShading, blankShading],
   };
+}
+
+/**
+ * Task 25 fix 4: the divider's own change table (chapter AND appendix alike)
+ * appends 4 blank template rows below whatever real changeLog rows already
+ * exist, with NO shading on any of them - shared by the PDF (layoutDivider
+ * below) and DOCX (volumeDocx.ts's buildDividerChildren) generators, the
+ * same "single source of truth" pattern `titlePageChangeRows` above already
+ * uses for the title page's analogous (but shaded, 3-row) template.
+ *
+ * Measured directly against the real Vol 17 PDF (fontmap.py + raw content-
+ * stream `re`/`f*` row-rule extraction): both the chapter divider (page
+ * index 3) and the Appendix A divider (page index 7) draw exactly 6
+ * horizontal row-boundary rules below the box (5 row bands: the 2-line
+ * header + 4 data rows), and neither page contains any text between the
+ * header and the footer, nor any gray-fill ("0.8xx g") operator anywhere on
+ * the page - i.e. all 4 rows are genuinely blank AND unshaded, unlike the
+ * title page's own 3 blank rows (which DO shade their ORIGINATION DATE
+ * column).
+ */
+export function dividerChangeRows(
+  changeLog: { version: string; pageParagraph: string; summary: string; dateOfChange: string }[],
+): string[][] {
+  const rows = changeLog.map(r => [r.version, r.pageParagraph, r.summary, r.dateOfChange]);
+  const blankRow = ['', '', '', ''];
+  return [...rows, blankRow, blankRow, blankRow, blankRow];
 }
 
 // ---------------------------------------------------------------------------
@@ -1152,7 +1213,15 @@ function layoutReferences(doc: VolumeDoc): { pages: Page[]; firstLabel: string }
   const cursor = new PageCursor('ref', labelFn);
   const firstLabel = cursor.currentLabel();
 
-  cursor.addLines(centeredLine('REFERENCES', HEADING_SIZE_PT), HEADING_SIZE_PT, 'heading');
+  // Task 25 fix 2: bold - measured directly against the real Vol 17 PDF
+  // (fontmap.py, page index 2, y=691.4): "REFERENCES" extracts with a
+  // `/TimesNewRomanPS-BoldMT` BaseFont, unlike the ordinary regular-weight
+  // reference-list body text below it. Previously painted plain.
+  cursor.addLines(
+    centeredRuns([{ text: 'REFERENCES', bold: true }], HEADING_SIZE_PT),
+    HEADING_SIZE_PT,
+    'heading',
+  );
   for (const [i, ref] of doc.references.entries()) {
     cursor.addDesignatedLines(referenceDesignator(i), 1, [{ text: ref.text }]);
   }
@@ -1257,16 +1326,26 @@ function layoutDivider(cursor: PageCursor, doc: VolumeDoc, ctx: DividerContext) 
   // Task 22: the appendix divider's heading prints TWO spaces after the
   // colon ("VOLUME 17:  APPENDIX A") - measured verbatim as a single
   // text-showing operation on the real PDF (fontmap.py, page index 7,
-  // y=680.3) - unlike the chapter divider's single space. The appendix
-  // title is NOT quoted (unlike the chapter's `"${title}"`), but IS
-  // bold+underlined, same as the chapter's quoted title (confirmed via a
-  // measured underline rect at x=172.13,y=651.94,w=267.77 on the same page).
+  // y=680.3) - unlike the chapter divider's single space.
+  //
+  // Task 25 fix 3: quoting follows `doc.volume.titleQuoted` - the SAME flag
+  // the title page's own title uses (layoutTitlePage above) - instead of
+  // hardcoding quotes on for the chapter divider and off for the appendix
+  // divider. Vol 17's own fixture has `titleQuoted: false`, and its real
+  // chapter divider (fontmap.py, page index 3) prints the bare
+  // "JUDGE ADVOCATE DIVISION AWARDS PROGRAM" with no quote glyphs at all -
+  // the previous hardcoded `"${title}"` was simply wrong for this volume (it
+  // happened to look plausible only because no test asserted the absence of
+  // quotes). A `titleQuoted: true` volume (Vol 1 style) still gets its
+  // chapter title quoted, same as its title page. Both titles stay
+  // bold+underlined regardless of quoting (confirmed via a measured
+  // underline rect at x=172.13,y=651.94,w=267.77 on the Appendix A divider).
+  const quoted = doc.volume.titleQuoted !== false;
   const headingText = ctx.kind === 'chapter'
     ? `VOLUME ${doc.volume.number}: CHAPTER ${ctx.chapter.number}`
     : `VOLUME ${doc.volume.number}:  APPENDIX ${ctx.appendix.letter}`;
-  const titleText = ctx.kind === 'chapter'
-    ? `"${ctx.chapter.title.toUpperCase()}"`
-    : ctx.appendix.title.toUpperCase();
+  const rawTitle = ctx.kind === 'chapter' ? ctx.chapter.title : ctx.appendix.title;
+  const titleText = quoted ? `"${rawTitle.toUpperCase()}"` : rawTitle.toUpperCase();
   const changeLog = ctx.kind === 'chapter' ? ctx.chapter.changeLog : ctx.appendix.changeLog;
 
   // Task 21 finding 3: same rhythm fix as layoutTitlePage - one blank line
@@ -1295,9 +1374,16 @@ function layoutDivider(cursor: PageCursor, doc: VolumeDoc, ctx: DividerContext) 
   // underlines "full revision" (re-confirmed: no underline rect near either
   // phrase on page index 3, nor on the appendix divider's page index 7),
   // unlike the title page's third paragraph.
+  //
+  // Task 25 fix 5: wraps at `DIVIDER_BOILERPLATE_INSET` (narrower than the
+  // title page's own `TITLE_BOILERPLATE_INSET`) - see that constant's doc
+  // comment for the measured provenance (real wrap points on both the
+  // chapter and Appendix A dividers).
   CHAPTER_CHANGE_POLICY_BOILERPLATE.forEach((line, i) => {
     if (i > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
-    cursor.addLines(centeredParagraphRuns(styleBoilerplateRuns(line, { underlineFullRevision: false })));
+    cursor.addLines(
+      centeredParagraphRuns(styleBoilerplateRuns(line, { underlineFullRevision: false }), BODY_SIZE_PT, DIVIDER_BOILERPLATE_INSET),
+    );
   });
 
   // Task 23 fix 1: bottom-edge gap - measured DIFFERENTLY from the title
@@ -1329,7 +1415,10 @@ function layoutDivider(cursor: PageCursor, doc: VolumeDoc, ctx: DividerContext) 
   // so the table's own top border lands exactly at `boxBottomY` instead of
   // overlapping backward into the boilerplate text above it.
   cursor.addGap(tableHeaderHeight(tableCols, tableColWidths) - 3);
-  cursor.addTable(tableCols, tableColWidths, changeLog.map(r => [r.version, r.pageParagraph, r.summary, r.dateOfChange]));
+  // Task 25 fix 4: appends 4 blank, unshaded template rows below whatever
+  // real changeLog rows exist - see `dividerChangeRows`'s doc comment for the
+  // measured provenance (both the chapter and Appendix A dividers).
+  cursor.addTable(tableCols, tableColWidths, dividerChangeRows(changeLog));
 }
 
 function layoutChapterTitlePage(cursor: PageCursor, chapter: Chapter) {

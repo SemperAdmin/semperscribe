@@ -406,20 +406,25 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
           const lines = cells[c];
           const cellTopBaseline = rowTop - lineStep + 2;
           const colWidth = colWidths[c] ?? 0;
-          // Task 21 finding 5: real Vol 17 header cells are centered per
-          // column (measured x's: VOLUME/VERSION roughly centered in col1,
-          // SUMMARY OF CHANGE at 179.8, ORIGINATION/DATE at 356/380,
-          // DATE OF/CHANGES at 464/467), and data cells are centered too -
-          // EXCEPT column 0's data (the version/label column, e.g.
-          // "ORIGINAL VOLUME"), which hugs the left edge (measured x=79.9,
-          // i.e. the same `+4` padding every cell used to use everywhere).
-          const isHeader = r === 0;
-          const hugLeft = !isHeader && c === 0;
+          // Task 21 finding 5 / Task 25 fix 1: real Vol 17 header cells are
+          // centered per column (measured x's: VOLUME/VERSION roughly
+          // centered in col1, SUMMARY OF CHANGE at 179.8, ORIGINATION/DATE at
+          // 356/380, DATE OF/CHANGES at 464/467). Task 21 also measured
+          // column 0's DATA cell (e.g. "ORIGINAL VOLUME", x=79.9) and read it
+          // as left-hugging against an ASSUMED 90pt-wide column - but
+          // re-measured against the real grid-line rects themselves
+          // (fontmap.py + raw `re`/`f*` content-stream extraction, page index
+          // 0), column 0 is actually only 66.48pt wide (x=73.22..139.70), not
+          // 90pt. Re-deriving that same x=79.9 as a CENTERED position in the
+          // narrower real column matches exactly (e.g. "ORIGINAL", 53.15pt
+          // wide at Times-Roman 11pt, centered on that column's x=106.46
+          // midpoint starts at x=79.88 - and the header's own "VOLUME"/
+          // "VERSION" cells in the SAME narrow column check out the same
+          // way). Column 0's data cell is centered like every other cell, not
+          // left-hugging - the previous `hugLeft` exception was wrong.
           for (let li = 0; li < lines.length; li++) {
             const lineText = safeText(rowFont, lines[li]);
-            const cellX = hugLeft
-              ? cx + 4
-              : cx + Math.max(0, colWidth - rowFont.widthOfTextAtSize(lineText, size)) / 2;
+            const cellX = cx + Math.max(0, colWidth - rowFont.widthOfTextAtSize(lineText, size)) / 2;
             page.drawText(lineText, {
               x: cellX, y: cellTopBaseline - li * lineStep, size, font: rowFont, color: BLACK,
             });

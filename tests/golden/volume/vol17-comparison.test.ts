@@ -72,13 +72,32 @@ function isItalicFont(font: string): boolean {
   return /italic/i.test(font);
 }
 
-async function ourRows(): Promise<MeasuredRow[]> {
+/** Renders our own Vol 17 fixture to a temp PDF file and returns its path. */
+async function ourPdfPath(): Promise<string> {
   const doc = VolumeSchema.parse(JSON.parse(readFileSync(join(__dirname, 'fixtures', 'vol17.json'), 'utf8')));
   const blob = await generateVolumePdf(doc);
   const dir = mkdtempSync(join(tmpdir(), 'vol17-'));
   const pdf = join(dir, 'v.pdf');
   writeFileSync(pdf, Buffer.from(await blob.arrayBuffer()));
-  return measureFile(pdf);
+  return pdf;
+}
+
+async function ourRows(): Promise<MeasuredRow[]> {
+  return measureFile(await ourPdfPath());
+}
+
+/**
+ * Task 25 fix 4: counts a table's horizontal row-boundary lines on a given
+ * PDF page within [yLow, yHigh] - see measure-table-rows.py's module doc
+ * comment for why this works across both renderers (our own pdf-lib stroked
+ * lines vs. the real PDF's thin filled rects) despite the different drawing
+ * primitives.
+ */
+function countRowBoundaries(pdfPath: string, page: number, yLow: number, yHigh: number): number {
+  const out = execFileSync('python', [
+    join(__dirname, 'measure-table-rows.py'), pdfPath, String(page), String(yLow), String(yHigh),
+  ]).toString();
+  return Number(out.trim());
 }
 
 /** First row on any page whose text starts with `prefix`. */
@@ -381,6 +400,54 @@ describe('volume Vol 17 render (no real PDF required)', () => {
     const sameLine = rows.filter(r => r.y === entry!.y);
     expect(sameLine.some(r => r.text.includes('A-2'))).toBe(true);
   });
+
+  // Task 25 fix 2: the References page's own centered "REFERENCES" heading
+  // paints bold - measured directly against the real Vol 17 PDF (fontmap.py,
+  // page index 2, y=691.4): a `/TimesNewRomanPS-BoldMT` BaseFont, unlike the
+  // ordinary regular-weight reference-list body text below it.
+  it('Task 25 fix 2: the References page heading "REFERENCES" is bold', async () => {
+    const rows = await ourRows();
+    const heading = rows.find(r => r.text === 'REFERENCES');
+    expect(heading, '"REFERENCES" heading not found').toBeTruthy();
+    expect(isBoldFont(heading!.font)).toBe(true);
+  });
+
+  // Task 25 fix 3: the divider's title-quoting follows `doc.volume.
+  // titleQuoted` instead of being hardcoded on. The Vol 17 fixture sets
+  // `titleQuoted: false`, and the real chapter divider (fontmap.py, page
+  // index 3) prints the bare "JUDGE ADVOCATE DIVISION AWARDS PROGRAM" with
+  // no quote glyphs at all.
+  it('Task 25 fix 3: the chapter divider title has no quote characters (titleQuoted: false)', async () => {
+    const rows = await ourRows();
+    const dividerTitle = findIncludes(rows, 'JUDGE ADVOCATE DIVISION AWARDS PROGRAM');
+    expect(dividerTitle, 'chapter divider title line not found').toBeTruthy();
+    expect(dividerTitle!.text).not.toContain('"');
+  });
+
+  // Task 25 fix 4: the chapter divider's change table carries 4 blank,
+  // UNSHADED template rows below its header even when the chapter's own
+  // changeLog is empty (Vol 17's fixture chapter has no changeLog entries) -
+  // matching the real PDF's own row-rule count (see the vs-real-PDF describe
+  // block below for the direct row-count comparison). Verified here via the
+  // laid-out `TableItem` directly (not the exported PDF's text extraction,
+  // since blank rows paint no text): `dividerChangeRows`'s row count plus its
+  // header, for a page-cursor context, isn't independently observable except
+  // through the shared `layoutVolume` output.
+  it('Task 25 fix 4: chapter and appendix divider tables have 4 blank, unshaded rows below the header', () => {
+    const doc = VolumeSchema.parse(JSON.parse(readFileSync(join(__dirname, 'fixtures', 'vol17.json'), 'utf8')));
+    const out = layoutVolume(doc);
+    const dividerTables = out.pages
+      .flatMap(p => p.items)
+      .filter((i): i is Extract<typeof i, { kind: 'table' }> => i.kind === 'table')
+      .filter(t => t.headerLines.flat().join(' ').includes('CHAPTER'));
+    expect(dividerTables.length).toBeGreaterThan(0);
+    for (const table of dividerTables) {
+      // changeLog is empty for both the fixture's chapter and appendix, so
+      // the table's only rows are the 4 blank template rows.
+      expect(table.rows.length).toBe(4);
+      expect(table.rowShading, 'expected no shading on the divider table').toBeFalsy();
+    }
+  });
 });
 
 describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF', () => {
@@ -650,5 +717,99 @@ describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF'
     expect(real.some(r => r.text === 'APPENDICES')).toBe(true);
     expect(findIncludes(ours, 'GLOSSARY OF ACRONYMS AND ABBREVIATIONS')).toBeTruthy();
     expect(findIncludes(real, 'GLOSSARY OF ACRONYMS AND ABBREVIATIONS')).toBeTruthy();
+  });
+
+  // Task 25 fix 2: bold/regular weight parity for the References page's own
+  // heading, matching the real PDF (fontmap.py, page index 2, y=691.4).
+  it('Task 25 fix 2: "REFERENCES" heading bold weight matches the real PDF', async () => {
+    const ours = await ourRows();
+    const real = measureFile(REAL_PDF);
+    const ourHeading = ours.find(r => r.text === 'REFERENCES');
+    const realHeading = real.find(r => r.text === 'REFERENCES');
+    expect(ourHeading, 'our render is missing the "REFERENCES" heading').toBeTruthy();
+    expect(realHeading, 'real PDF is missing the "REFERENCES" heading').toBeTruthy();
+    expect(isBoldFont(ourHeading!.font)).toBe(true);
+    expect(isBoldFont(realHeading!.font)).toBe(true);
+  });
+
+  // Task 25 fix 3: neither document quotes the chapter divider's title
+  // (Vol 17's `titleQuoted: false`) - measured directly against the real
+  // chapter divider (fontmap.py, page index 3): "JUDGE ADVOCATE DIVISION
+  // AWARDS PROGRAM" prints with no quote glyphs.
+  it('Task 25 fix 3: neither document quotes the chapter divider title', async () => {
+    const ours = await ourRows();
+    const real = measureFile(REAL_PDF);
+    const ourTitle = findIncludes(ours, 'JUDGE ADVOCATE DIVISION AWARDS PROGRAM');
+    const realTitle = findIncludes(real, 'JUDGE ADVOCATE DIVISION AWARDS PROGRAM');
+    expect(ourTitle, 'our render is missing the chapter divider title').toBeTruthy();
+    expect(realTitle, 'real PDF is missing the chapter divider title').toBeTruthy();
+    expect(ourTitle!.text).not.toContain('"');
+    expect(realTitle!.text).not.toContain('"');
+  });
+
+  /**
+   * Task 25 fix 4: the chapter divider's change table has the same number of
+   * row-boundary lines (header + data rows) in both documents - 6 in the
+   * real PDF (a 2-line header + 4 blank data rows; see
+   * lib/volume/layout.ts's `dividerChangeRows` doc comment for the
+   * content-stream-level measurement). The page index and y-window are
+   * located dynamically (the header cell text "CHAPTER", the box's
+   * boilerplate ends well above y=520 in both documents, and neither
+   * document has any other content below the table before its footer) so
+   * this isn't hostage to either renderer's own page-numbering scheme.
+   */
+  it('Task 25 fix 4: the chapter divider table has the same row-rule count as the real PDF', async () => {
+    const ourPath = await ourPdfPath();
+    const ours = measureFile(ourPath);
+    const real = measureFile(REAL_PDF);
+
+    const ourDividerHeader = ours.find(r => r.text === 'CHAPTER');
+    const realDividerHeader = real.find(r => r.text === 'CHAPTER');
+    expect(ourDividerHeader, 'our render is missing the divider table\'s "CHAPTER" header cell').toBeTruthy();
+    expect(realDividerHeader, 'real PDF is missing the divider table\'s "CHAPTER" header cell').toBeTruthy();
+
+    const ourCount = countRowBoundaries(ourPath, ourDividerHeader!.page, 200, 520);
+    const realCount = countRowBoundaries(REAL_PDF, realDividerHeader!.page, 200, 520);
+    expect(realCount, 'sanity: real PDF row count').toBe(6);
+    expect(ourCount).toBe(realCount);
+  });
+
+  /**
+   * Task 25 fix 5: the divider's first boilerplate paragraph wraps at the
+   * same word in both documents - mirrors the title page's identical Task 23
+   * fix 2 test above, but for the divider's own (longer) boilerplate text
+   * and its narrower `DIVIDER_BOILERPLATE_INSET` wrap width.
+   */
+  it('Task 25 fix 5: the divider\'s first boilerplate paragraph wraps at the same word in both documents', async () => {
+    const ours = await ourRows();
+    const real = measureFile(REAL_PDF);
+
+    // The title page's OWN first boilerplate paragraph also starts "The
+    // original publication..." (VOLUME_CHANGE_POLICY_BOILERPLATE), so a
+    // bare `findIncludes` could match that page instead of the divider's -
+    // scope the search to the divider's own page (located via its table's
+    // "CHAPTER" header cell, unique to the divider).
+    const ourDividerPage = ours.find(r => r.text === 'CHAPTER')?.page;
+    const realDividerPage = real.find(r => r.text === 'CHAPTER')?.page;
+    expect(ourDividerPage, 'our render is missing the divider table').toBeDefined();
+    expect(realDividerPage, 'real PDF is missing the divider table').toBeDefined();
+
+    // A short anchor: the real PDF splits this line into several
+    // text-showing chunks (kerning boundaries), and "The original
+    // publication" is reliably its own first chunk on both documents (see
+    // `lineTextAtY`'s doc comment for why the FULL line is reconstructed
+    // separately below rather than matched in one call).
+    const ourAnchor = ours.find(r => r.page === ourDividerPage && r.text.includes('The original publication'));
+    const realAnchor = real.find(r => r.page === realDividerPage && r.text.includes('The original publication'));
+    expect(ourAnchor, 'our render is missing the divider\'s first boilerplate paragraph').toBeTruthy();
+    expect(realAnchor, 'real PDF is missing the divider\'s first boilerplate paragraph').toBeTruthy();
+
+    const ourLine1 = lineTextAtY(ours, ourAnchor!.page, ourAnchor!.y).replace(/\s+/g, '');
+    const realLine1 = lineTextAtY(real, realAnchor!.page, realAnchor!.y).replace(/\s+/g, '');
+    expect(ourLine1).toBe(realLine1);
+    // Guards against a vacuous pass: the wrap must land after "(right
+    // header)", not spill "will" onto the same line.
+    expect(ourLine1.endsWith('header)')).toBe(true);
+    expect(ourLine1).not.toContain('will');
   });
 });

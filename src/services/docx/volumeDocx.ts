@@ -44,6 +44,7 @@ import {
 } from '@/lib/volume/designators';
 import {
   CHAPTER_CHANGE_POLICY_BOILERPLATE,
+  dividerChangeRows,
   footerScheme,
   legendRuns,
   REFERENCES_SUMMARY_BOILERPLATE,
@@ -251,6 +252,13 @@ function centeredRunsPara(runs: Run[], size = BODY_SIZE, heading?: HeadingValue,
  * boilerplate/CANCELLATION paragraphs.
  */
 const TITLE_BOILERPLATE_INSET_TWIPS = 234;
+/**
+ * Task 25 fix 5: DOCX mirror of the PDF path's `DIVIDER_BOILERPLATE_INSET`
+ * (lib/volume/layout.ts) - 32.0pt converted to twips (32.0 * 20 = 640). See
+ * that constant's doc comment for the measured provenance; the divider's
+ * boilerplate text wraps narrower than the title page's own boilerplate.
+ */
+const DIVIDER_BOILERPLATE_INSET_TWIPS = 640;
 function leftPara(text: string): Paragraph {
   return new Paragraph({ children: [new TextRun({ text, font: FONT, size: BODY_SIZE })] });
 }
@@ -295,10 +303,13 @@ function changeTable(headers: string[], rows: string[][], shading?: boolean[][])
     insideHorizontal: border,
     insideVertical: border,
   };
-  // Task 21 finding 5: real Vol 17 header cells are centered per column, and
-  // data cells are centered too EXCEPT column 0 (the version/label column,
-  // e.g. "ORIGINAL VOLUME"), which hugs the left edge (measured x=79.9 vs.
-  // a centered x elsewhere) - see volumeGenerator.ts's identical PDF fix.
+  // Task 21 finding 5 / Task 25 fix 1: real Vol 17 header cells are centered
+  // per column, and data cells are centered too - INCLUDING column 0 (the
+  // version/label column, e.g. "ORIGINAL VOLUME"): its measured x=79.9 was
+  // originally read as left-hugging against an assumed 90pt-wide column, but
+  // re-measured against the real grid-line rects, that column is only
+  // 66.48pt wide and x=79.9 is exactly its centered position - see
+  // volumeGenerator.ts's identical PDF fix for the full measurement.
   const headerRow = new TableRow({
     children: headers.map(
       (h) =>
@@ -327,7 +338,7 @@ function changeTable(headers: string[], rows: string[][], shading?: boolean[][])
               shading: shading?.[ri]?.[ci] ? { fill: SHADE_GRAY, type: ShadingType.CLEAR, color: 'auto' } : undefined,
               children: [
                 new Paragraph({
-                  alignment: ci === 0 ? undefined : AlignmentType.CENTER,
+                  alignment: AlignmentType.CENTER,
                   children: [new TextRun({ text: cell, font: FONT, size: BODY_SIZE })],
                 }),
               ],
@@ -655,7 +666,11 @@ function buildTitlePageChildren(doc: VolumeDoc): (Paragraph | Table)[] {
 
 function buildReferencesChildren(doc: VolumeDoc): (Paragraph | Table)[] {
   const children: (Paragraph | Table)[] = [];
-  children.push(centered('REFERENCES', TITLE_SIZE));
+  // Task 25 fix 2: bold - measured directly against the real Vol 17 PDF
+  // (page index 2, y=691.4): "REFERENCES" extracts with a
+  // `/TimesNewRomanPS-BoldMT` BaseFont - see layout.ts's identical PDF fix
+  // in layoutReferences for the full measurement.
+  children.push(centeredRunsPara([{ text: 'REFERENCES', bold: true }], TITLE_SIZE));
   doc.references.forEach((ref, i) => {
     children.push(designatedParagraph(referenceDesignator(i), 1, undefined, textBlock(ref.text)));
   });
@@ -770,14 +785,20 @@ function buildDividerChildren(doc: VolumeDoc, ctx: DocxDividerContext): (Paragra
 
   // Task 22: the appendix divider's heading prints TWO spaces after the
   // colon ("VOLUME 17:  APPENDIX A" - measured verbatim against the real
-  // PDF, see layoutDivider's identical comment); its title is unquoted but
-  // still bold+underlined, unlike the chapter's quoted `"${title}"`.
+  // PDF, see layoutDivider's identical comment).
+  //
+  // Task 25 fix 3: quoting follows `doc.volume.titleQuoted` - the same flag
+  // the title page uses - instead of hardcoding quotes on for the chapter
+  // divider and off for the appendix divider. See layoutDivider's identical
+  // fix in lib/volume/layout.ts for the measured provenance (Vol 17's real
+  // chapter divider prints its title with no quote glyphs at all). Both
+  // titles stay bold+underlined regardless of quoting.
+  const quoted = doc.volume.titleQuoted !== false;
   const headingText = ctx.kind === 'chapter'
     ? `VOLUME ${doc.volume.number}: CHAPTER ${ctx.chapter.number}`
     : `VOLUME ${doc.volume.number}:  APPENDIX ${ctx.appendix.letter}`;
-  const titleText = ctx.kind === 'chapter'
-    ? `"${ctx.chapter.title.toUpperCase()}"`
-    : ctx.appendix.title.toUpperCase();
+  const rawTitle = ctx.kind === 'chapter' ? ctx.chapter.title : ctx.appendix.title;
+  const titleText = quoted ? `"${rawTitle.toUpperCase()}"` : rawTitle.toUpperCase();
   const changeLog = ctx.kind === 'chapter' ? ctx.chapter.changeLog : ctx.appendix.changeLog;
 
   // "Summary of Substantive Changes" box + change table. Task 20: same
@@ -799,9 +820,14 @@ function buildDividerChildren(doc: VolumeDoc, ctx: DocxDividerContext): (Paragra
   // copy of the "...full revision..." sentence is NOT underlined, unlike
   // the title page's third paragraph (re-confirmed on the appendix divider
   // too - no underline rect near either boilerplate line).
+  // Task 25 fix 5: wraps at `DIVIDER_BOILERPLATE_INSET_TWIPS` (narrower than
+  // the title page's own `TITLE_BOILERPLATE_INSET_TWIPS`) - see that
+  // constant's doc comment for the measured provenance.
   CHAPTER_CHANGE_POLICY_BOILERPLATE.forEach((line, i) => {
     if (i > 0) boxChildren.push(blankLine());
-    boxChildren.push(centeredRunsPara(styleBoilerplateRuns(line, { underlineFullRevision: false })));
+    boxChildren.push(
+      centeredRunsPara(styleBoilerplateRuns(line, { underlineFullRevision: false }), BODY_SIZE, undefined, DIVIDER_BOILERPLATE_INSET_TWIPS),
+    );
   });
   children.push(boxedBlock(boxChildren));
   children.push(
@@ -809,7 +835,10 @@ function buildDividerChildren(doc: VolumeDoc, ctx: DocxDividerContext): (Paragra
       // Finding 15 (T10): format spec §4.6 verbatim header, with spaces
       // around the slash.
       ['CHAPTER VERSION', 'PAGE / PARAGRAPH', 'SUMMARY OF SUBSTANTIVE CHANGES', 'DATE OF CHANGE'],
-      changeLog.map((r) => [r.version, r.pageParagraph, r.summary, r.dateOfChange]),
+      // Task 25 fix 4: 4 blank, unshaded template rows below whatever real
+      // changeLog rows exist - see `dividerChangeRows`'s doc comment
+      // (lib/volume/layout.ts) for the measured provenance.
+      dividerChangeRows(changeLog),
     ),
   );
 
