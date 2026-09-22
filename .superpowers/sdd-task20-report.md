@@ -84,3 +84,26 @@ All 22 tests in this file pass, including against the real PDF at `C:\Users\barb
 
 ## Commits
 See git log on this branch: `fix(volume): title-page/divider/header styling fidelity (Task 20)`, covering the schema/layout/PDF/DOCX styling implementation and the measure-pdf.py/vol17-comparison.test.ts additions together.
+
+## Fix round 1 (reviewer findings)
+
+### CRITICAL — `addBox` called after `addTable` (wrong page when the table paginates)
+
+Reviewer reproduced: vol17 fixture + a 15-entry `changeLog` put the title-page box on page index 1 instead of 0; a 40-entry log put it on the table's last page; same failure mode on the chapter divider with a 20-entry chapter `changeLog`.
+
+Root cause: `PageCursor.addBox` pushes straight onto `this.current.items` with no pagination logic of its own — it's a pure overlay, by design (see `BoxItem`'s doc comment). Both call sites captured `boxTopY`/`boxBottomY` correctly but then called `cursor.addGap(...)` and `cursor.addTable(...)` (which CAN call `this.newPage()` internally when the table's rows overflow the current page — Finding 5's pagination) **before** calling `addBox`. By the time `addBox` ran, `cursor.current` could already be a later, mostly-empty page (holding only the table's spillover rows), so the box — still carrying the ORIGINAL page's y-coordinates — landed there instead of on the page with the actual "VOLUME {n} .. CANCELLATION" text.
+
+Fix (`src/lib/volume/layout.ts`, both `layoutTitlePage` and `layoutChapterDivider`): moved `cursor.addBox(boxTopY, boxBottomY)` to run immediately after `boxBottomY` is captured, before the `addGap`/`addTable` calls that might paginate. At that point `cursor.current` is still guaranteed to be the page holding the box's own text, regardless of anything the table does afterward.
+
+Regression tests added (`tests/volume/layout.test.ts`):
+- `keeps the title-page box on the title page even when its change table paginates (fix round 1)`: a 15-row title-page `changeLog` with long wrapping summaries (asserted to actually force `tableItems.length > 1`, i.e. genuinely exercises pagination); asserts exactly 2 `box` items total (title page + divider, the divider always gets one too) and that the title page (found by its `VOLUME {n}` heading text) contains one of them.
+- `keeps the chapter-divider box on the divider page even when its change table paginates (fix round 1)`: a 20-row chapter `changeLog`, same pagination assertion, then asserts the divider page (found by its `SUMMARY OF SUBSTANTIVE CHANGES` heading text) contains one of the 2 box items.
+
+Both tests failed against the pre-fix code (confirmed by reverting the fix locally and re-running) and pass after it.
+
+### MINOR — `pickFont`'s italic-only fallback undocumented
+
+`volumeGenerator.ts`'s `pickFont` silently falls back to `fonts.regular` for a run with `italic: true` but `bold` unset (no dedicated non-bold italic font is embedded). Added a comment on that fallback line documenting the limitation: italic is only supported paired with bold (the legend's styled phrase, or a real hyperlink), no current caller ever produces italic-only runs, and the fix if one is ever needed would be embedding `TimesRomanItalic`. No font-embedding change was made, per the reviewer's instruction.
+
+### Verification
+`npx vitest run tests/volume/ tests/golden/volume/` → 105/105 pass (103 prior + 2 new regression tests); `npm run typecheck`, `npm run typecheck:tests`, `npm run lint` all clean.

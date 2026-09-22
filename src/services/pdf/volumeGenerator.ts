@@ -183,6 +183,14 @@ function pickFont(run: Run, fonts: Fonts): PDFFont {
   const isLink = !!(run.link && run.href);
   if (isLink || (run.bold && run.italic)) return fonts.boldItalic;
   if (run.bold) return fonts.bold;
+  // Fix round 1 (reviewer finding, minor): an italic-only run (italic set,
+  // bold not) has no dedicated embedded font and silently falls back to
+  // regular - only italic PAIRED with bold (the legend's styled phrase, or
+  // a real hyperlink) is supported here. No current caller produces
+  // italic-only runs (legendRuns/styleBoilerplateRuns never set `italic`
+  // without also setting `bold`), so this is a documented limitation, not
+  // an observed bug; embedding a plain TimesRomanItalic would be the fix if
+  // an italic-only run is ever needed.
   return fonts.regular;
 }
 

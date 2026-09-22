@@ -1,6 +1,6 @@
 // tests/volume/layout.test.ts
 import { describe, it, expect } from 'vitest';
-import { layoutVolume, BOTTOM_Y, type TableItem } from '@/lib/volume/layout';
+import { layoutVolume, BOTTOM_Y, type BoxItem, type TableItem } from '@/lib/volume/layout';
 import { blankVolume } from '@/store/volumeStore';
 import { generateVolumePdf } from '@/services/pdf/volumeGenerator';
 
@@ -204,5 +204,73 @@ describe('layoutVolume', () => {
     const allText = items.flatMap(i => ('segments' in i ? i.segments.map(s => s.text) : [])).join('');
     expect(allText).toContain('First embedded item.');
     expect(allText).toContain('Second embedded item.');
+  });
+
+  // Task 20, fix round 1 (reviewer finding, CRITICAL): `addBox` used to run
+  // AFTER `addTable`, so a change table long enough to paginate (Finding
+  // 5's identical pagination) left the box attached to whatever page
+  // `addTable` happened to finish on - a stray rectangle on the WRONG page,
+  // with no box at all around the actual "VOLUME {n} .. CANCELLATION" text.
+  // Reviewer reproduced with a 15-entry title-page changeLog (box lands on
+  // page index 1 instead of 0) and a 20-entry chapter changeLog (same bug
+  // on the divider). Fixed by capturing the box immediately after
+  // `boxBottomY`, before `addTable` runs, at both call sites.
+  it('keeps the title-page box on the title page even when its change table paginates (fix round 1)', () => {
+    const d = sampleDoc();
+    // Long summaries force multi-line wrapped rows, so 15 rows comfortably
+    // overflow one page below the title block and force addTable to
+    // paginate (mirrors the reviewer's repro).
+    d.changeLog = Array.from({ length: 15 }, (_, i) => ({
+      version: `${i + 1}`,
+      summary:
+        `Change number ${i + 1}: a summary long enough to wrap across several lines within its own ` +
+        'column, so this table needs enough rows and enough height per row to force pagination.',
+      originationDate: '2020-01-01',
+      dateOfChanges: '2020-01-02',
+    }));
+    const out = layoutVolume(d);
+
+    // The table really did paginate (otherwise this test isn't exercising
+    // the bug at all).
+    const tableItems = out.pages.flatMap(p => p.items).filter((i): i is TableItem => i.kind === 'table');
+    expect(tableItems.length, 'expected the 15-row change table to paginate').toBeGreaterThan(1);
+
+    // One box for the title page, one for the chapter divider (the divider
+    // always gets its own box too - layoutChapterDivider - regardless of
+    // whether the title page's OWN change table paginates).
+    const boxItems = out.pages.flatMap(p => p.items).filter((i): i is BoxItem => i.kind === 'box');
+    expect(boxItems.length).toBe(2);
+
+    const titlePage = out.pages.find(p =>
+      p.items.some(i => 'segments' in i && i.segments.some(s => s.text === `VOLUME ${d.volume.number}`)),
+    );
+    expect(titlePage, `"VOLUME ${d.volume.number}" heading page not found`).toBeTruthy();
+    expect(boxItems.some(b => titlePage!.items.includes(b))).toBe(true);
+  });
+
+  it('keeps the chapter-divider box on the divider page even when its change table paginates (fix round 1)', () => {
+    const d = sampleDoc();
+    d.chapters[0].changeLog = Array.from({ length: 20 }, (_, i) => ({
+      version: `${i + 1}`,
+      pageParagraph: '0101',
+      summary:
+        `Change number ${i + 1}: a summary long enough to wrap across several lines within its own ` +
+        'column, so this table needs enough rows and enough height per row to force pagination.',
+      dateOfChange: '2020-01-02',
+    }));
+    const out = layoutVolume(d);
+
+    const tableItems = out.pages.flatMap(p => p.items).filter((i): i is TableItem => i.kind === 'table');
+    expect(tableItems.length, 'expected the 20-row chapter change table to paginate').toBeGreaterThan(1);
+
+    // One box for the (changeLog-free) title page, one for the divider.
+    const boxItems = out.pages.flatMap(p => p.items).filter((i): i is BoxItem => i.kind === 'box');
+    expect(boxItems.length).toBe(2);
+
+    const dividerPage = out.pages.find(
+      p => p.items.some(i => 'segments' in i && i.segments.some(s => s.text === 'SUMMARY OF SUBSTANTIVE CHANGES')),
+    );
+    expect(dividerPage, 'chapter divider page not found').toBeTruthy();
+    expect(boxItems.some(b => dividerPage!.items.includes(b))).toBe(true);
   });
 });

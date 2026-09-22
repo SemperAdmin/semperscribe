@@ -801,6 +801,16 @@ function layoutTitlePage(doc: VolumeDoc, nextRoman: () => string): Page[] {
   }
 
   const boxBottomY = cursor.currentY();
+  // Fix round 1 (reviewer finding, CRITICAL): addBox must be called HERE,
+  // before addTable - not after it. addTable can paginate onto a new page
+  // (Finding 5's pagination, e.g. a long changeLog), which would leave a
+  // stray box - painted with THIS page's y-coordinates - attached to
+  // whatever page addTable happened to finish on instead of the page that
+  // actually holds the "VOLUME {n} .. CANCELLATION" text it's meant to
+  // enclose. Capturing it immediately, while `cursor.current` is still
+  // guaranteed to be that page, is what makes it correct regardless of how
+  // the table itself paginates.
+  cursor.addBox(boxTopY, boxBottomY);
   const { rows: changeRows, shading } = titlePageChangeRows(doc);
   const tableCols = ['VOLUME VERSION', 'SUMMARY OF CHANGE', 'ORIGINATION DATE', 'DATE OF CHANGES'];
   const tableColWidths = [90, 198, 90, 90];
@@ -815,7 +825,6 @@ function layoutTitlePage(doc: VolumeDoc, nextRoman: () => string): Page[] {
   // as measured on the real Vol 17 PDF (task-20-report.md).
   cursor.addGap(tableHeaderHeight(tableCols, tableColWidths) - 3);
   cursor.addTable(tableCols, tableColWidths, changeRows, shading);
-  cursor.addBox(boxTopY, boxBottomY);
 
   if (v.reportRequired) {
     cursor.addGap();
@@ -931,6 +940,12 @@ function layoutChapterDivider(cursor: PageCursor, doc: VolumeDoc, chapter: Chapt
   }
 
   const boxBottomY = cursor.currentY();
+  // Fix round 1 (reviewer finding, CRITICAL): see layoutTitlePage's
+  // identical comment - addBox must run BEFORE addTable, while
+  // `cursor.current` is still guaranteed to be the page holding this
+  // divider's text block, since addTable can paginate a long chapter
+  // changeLog onto later pages.
+  cursor.addBox(boxTopY, boxBottomY);
   // Finding 15 (T10): format spec §4.6 verbatim header, with spaces around
   // the slash.
   const tableCols = ['CHAPTER VERSION', 'PAGE / PARAGRAPH', 'SUMMARY OF SUBSTANTIVE CHANGES', 'DATE OF CHANGE'];
@@ -940,7 +955,6 @@ function layoutChapterDivider(cursor: PageCursor, doc: VolumeDoc, chapter: Chapt
   // overlapping backward into the boilerplate text above it.
   cursor.addGap(tableHeaderHeight(tableCols, tableColWidths) - 3);
   cursor.addTable(tableCols, tableColWidths, chapter.changeLog.map(r => [r.version, r.pageParagraph, r.summary, r.dateOfChange]));
-  cursor.addBox(boxTopY, boxBottomY);
 }
 
 function layoutChapterTitlePage(cursor: PageCursor, chapter: Chapter) {
