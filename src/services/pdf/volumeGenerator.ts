@@ -262,12 +262,26 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
       let ulWidth = 0;
       let ulColor = BLACK;
       let ulHref: string | undefined;
+      // Task 24: a BOLD underlined run (the title-page/divider heading
+      // title, "TABLE OF CONTENTS", "CANCELLATION", ...) paints a thicker
+      // underline rule than a regular-weight one (e.g. the third boilerplate
+      // paragraph's underlined "full revision") - measured directly against
+      // the real Vol 17 PDF's content stream (`re` ops near each phrase's
+      // baseline, page index 0): the bold "JUDGE ADVOCATE DIVISION AWARDS
+      // PROGRAM" underline is `re 171.29 655.66 269.57 1.08` and the bold
+      // "CANCELLATION" underline is `re 226.37 491.35 89.904 1.08` - both
+      // 1.08pt thick, matching the measured header-rule thickness
+      // (HEADER_RULE_THICKNESS_PT) exactly - while the regular-weight "full
+      // revision" underline is `re 402.82 517.27 53.4 0.47998`, ~0.48pt, i.e.
+      // the old flat 0.5pt this used to paint everywhere. So only bold runs
+      // get the thicker rule; a non-bold underline keeps the old thickness.
+      let ulBold = false;
       const flushUnderline = () => {
         if (!ulActive) return;
         const underlineY = item.y - 1.5;
         page.drawLine({
           start: { x: ulStartX, y: underlineY }, end: { x: ulStartX + ulWidth, y: underlineY },
-          thickness: 0.5, color: ulColor,
+          thickness: ulBold ? HEADER_RULE_THICKNESS_PT : 0.5, color: ulColor,
         });
         if (ulHref !== undefined) addLinkAnnotation(pdfDoc, page, ulStartX, item.y, ulWidth, item.sizePt, ulHref);
         ulActive = false;
@@ -299,12 +313,17 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
 
         if (shouldUnderline) {
           const linkHrefChanged = isLink && ulHref !== run.href;
-          if (!ulActive || linkHrefChanged) {
+          // Task 24: a bold/non-bold boundary within a contiguous
+          // underlined stretch also flushes - the two weights paint at
+          // different thicknesses, so they can't share one drawLine call.
+          const boldChanged = ulActive && ulBold !== !!run.bold;
+          if (!ulActive || linkHrefChanged || boldChanged) {
             flushUnderline();
             ulActive = true;
             ulStartX = x;
             ulWidth = 0;
             ulHref = isLink ? run.href : undefined;
+            ulBold = !!run.bold;
           }
           ulColor = color;
           ulWidth += segWidth;

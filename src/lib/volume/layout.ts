@@ -144,6 +144,18 @@ export interface TocEntry {
   appendix?: boolean;
   appendixLetter?: string;
   appendixTitle?: string;
+  /**
+   * Task 24: renders the entry's label+leader+page all in BOLD instead of
+   * the ordinary regular weight - measured directly against the real Vol 17
+   * TOC page (fontmap.py, page index 1, y=656.4): the "REFERENCES" entry's
+   * label, dotted leader, AND page label ("REF 1") all extract with a
+   * `/TimesNewRomanPS-BoldMT` BaseFont, unlike every other entry on the same
+   * page (plain `/TimesNewRomanPSMT`). Vol 17 has no other bold TOC entry to
+   * generalize from, so this is set only where a caller (layoutVolume, for
+   * the "REFERENCES" entry) explicitly measured it - not inferred from any
+   * other flag.
+   */
+  bold?: boolean;
 }
 export interface LaidOutDoc {
   pages: Page[];
@@ -298,22 +310,22 @@ class PageCursor {
    * which differ only in how the label ITSELF is positioned/wrapped, not in
    * how the leader/page tail is painted.
    */
-  private addTocLeaderAndPage(y: number, lineEndX: number, pageLabel: string, sizePt: number) {
-    const pageW = measureText(pageLabel, sizePt);
+  private addTocLeaderAndPage(y: number, lineEndX: number, pageLabel: string, sizePt: number, bold = false) {
+    const pageW = measureText(pageLabel, sizePt, bold);
     const targetX = RIGHT_EDGE - pageW;
-    const dotWidth = measureText('.', sizePt);
+    const dotWidth = measureText('.', sizePt, bold);
     const gap = Math.max(0, targetX - lineEndX - dotWidth);
     const dotCount = dotWidth > 0 ? Math.floor(gap / dotWidth) : 0;
     if (dotCount > 0) {
       const leader = ' ' + '.'.repeat(dotCount);
       this.current.items.push({
         kind: 'line', x: lineEndX, y, sizePt,
-        segments: [{ text: leader, run: { text: leader } }],
+        segments: [{ text: leader, run: { text: leader, bold } }],
       });
     }
     this.current.items.push({
       kind: 'line', x: targetX, y, sizePt,
-      segments: [{ text: pageLabel, run: { text: pageLabel } }],
+      segments: [{ text: pageLabel, run: { text: pageLabel, bold } }],
     });
   }
 
@@ -322,9 +334,9 @@ class PageCursor {
    * slightly under the title text, not back to the margin), a dotted leader,
    * and the page label right-aligned to RIGHT_EDGE.
    */
-  addTocEntry(label: string, pageLabel: string, sizePt = BODY_SIZE_PT) {
+  addTocEntry(label: string, pageLabel: string, sizePt = BODY_SIZE_PT, bold = false) {
     const reserveW = 70; // room for leader + page label on the last line
-    const lines = wrapRuns([{ text: label }], MARGIN, MARGIN + 18, RIGHT_EDGE - reserveW, sizePt);
+    const lines = wrapRuns([{ text: label, bold }], MARGIN, MARGIN + 18, RIGHT_EDGE - reserveW, sizePt);
     if (lines.length === 0) lines.push({ segments: [], x: MARGIN });
     for (let i = 0; i < lines.length; i++) {
       this.ensureRoom();
@@ -333,8 +345,8 @@ class PageCursor {
       const lineText = lines[i].segments.map(s => s.text).join('');
       this.current.items.push({ kind: 'line', x: lines[i].x, y, segments: lines[i].segments, sizePt });
       if (isLast) {
-        const endX = lines[i].x + measureText(lineText, sizePt);
-        this.addTocLeaderAndPage(y, endX, pageLabel, sizePt);
+        const endX = lines[i].x + measureText(lineText, sizePt, bold);
+        this.addTocLeaderAndPage(y, endX, pageLabel, sizePt, bold);
       }
       this.y -= LEADING;
     }
@@ -799,6 +811,10 @@ export interface FooterScheme {
  *
  * Task 22: `band: 'appendix'` uses the appendix's own letter-prefixed band
  * ("A-1", "A-2", ...), passed via `opts.appendix`.
+ *
+ * The `ref` band's prefix stays `REF-` (hyphen) - see `refPageLabel`'s doc
+ * comment in page-bands.ts for the measured provenance and the user's
+ * explicit 2026-09-21 ratification of keeping the hyphen form.
  */
 export function footerScheme(
   band: Page['band'],
@@ -1097,6 +1113,13 @@ function layoutTitlePage(doc: VolumeDoc, nextRoman: () => string): Page[] {
 
   cursor.addGap();
   cursor.addLines(leftParagraph('Submit recommended changes to this Volume, via the proper channels, to:'));
+  // Task 24: one blank line (`INTER_PARAGRAPH_GAP`) before the address block
+  // - measured directly against the real Vol 17 PDF (fontmap.py, page index
+  // 0): "Submit recommended changes..." at y=241.6 down to "CMC (JA)" at
+  // y=216.3 is a 25.3pt gap (one blank line), while every subsequent address
+  // line (y=216.3 -> 203.5 -> 190.9) steps by the bare ~12.6-12.8pt LEADING
+  // with no extra gap between them.
+  cursor.addGap(INTER_PARAGRAPH_GAP);
   for (const line of v.submitChangesTo.split('\n')) {
     cursor.addLines(leftParagraph(line));
   }
@@ -1153,15 +1176,29 @@ function layoutToc(doc: VolumeDoc, toc: TocEntry[], nextRoman: () => string): Pa
   // Task 21 finding 6: both title lines paint bold in the real PDF, and
   // "TABLE OF CONTENTS" is additionally underlined - measured at page index
   // 1, y=694.3/669.0 (task21-findings.md); ours painted both plain.
+  //
+  // Task 24: one blank line (`INTER_PARAGRAPH_GAP`) between the two title
+  // lines - re-measured directly against the real Vol 17 TOC page
+  // (fontmap.py, page index 1): "VOLUME 17: ..." at y=694.3 down to "TABLE
+  // OF CONTENTS" at y=669.0 is a 25.3pt gap (one blank line), not the bare
+  // ~12.6pt `addLines`' own trailing LEADING step alone produced before this
+  // fix.
   cursor.addLines(
     centeredRuns([{ text: `VOLUME ${doc.volume.number}: ${doc.volume.title.toUpperCase()}`, bold: true }], HEADING_SIZE_PT),
     HEADING_SIZE_PT,
   );
+  cursor.addGap(INTER_PARAGRAPH_GAP);
   cursor.addLines(
     centeredRuns([{ text: 'TABLE OF CONTENTS', bold: true, underline: true }], HEADING_SIZE_PT),
     HEADING_SIZE_PT,
   );
-  cursor.addGap();
+
+  // Task 24: NO extra gap here - the real PDF's first entry ("REFERENCES")
+  // sits directly under "TABLE OF CONTENTS" with only the ordinary single
+  // LEADING step (y=669.0 -> 656.4, a 12.6pt gap), not the `GAP` (25pt) this
+  // used to insert. The prior `cursor.addGap()` call that lived here is
+  // removed; the first entry now paints right after the heading's own
+  // trailing `addLines` decrement.
 
   // Task 21 finding 6: entries are double-spaced (a blank line between
   // consecutive entries - measured ~29pt entry-to-entry vs. ~14.5pt for a
@@ -1180,7 +1217,9 @@ function layoutToc(doc: VolumeDoc, toc: TocEntry[], nextRoman: () => string): Pa
     } else if (entry.appendix) {
       cursor.addAppendixTocEntry(entry.appendixLetter ?? '', entry.appendixTitle ?? entry.label, entry.page);
     } else {
-      cursor.addTocEntry(entry.label, entry.page);
+      // Task 24: the "REFERENCES" entry (and only that entry - see
+      // TocEntry.bold's doc comment) renders label+leader+page all bold.
+      cursor.addTocEntry(entry.label, entry.page, BODY_SIZE_PT, !!entry.bold);
     }
   });
 
@@ -1425,10 +1464,25 @@ function layoutAppendices(doc: VolumeDoc, toc: TocEntry[]): Page[] {
 export function layoutVolume(doc: VolumeDoc): LaidOutDoc {
   const toc: TocEntry[] = [];
 
-  // References first: its REF-{n} band is independent of front-matter/body
-  // pagination, so it can be laid out before either.
+  // References: computed (not yet PLACED) before the body walk. Its REF-{n}
+  // band is independent of front-matter/body pagination, so its page labels
+  // can be resolved before either - the TOC needs the resolved
+  // `refFirstLabel` below regardless of where the reference pages themselves
+  // end up in the final page sequence.
+  //
+  // Task 24: the real Vol 17 PDF's own PLACEMENT order is title (i) -> blank
+  // verso (ii) -> TABLE OF CONTENTS (iii...) -> REFERENCES (REF band) ->
+  // chapter divider/body (fontmap.py: page index 0 = title/footer "i", index
+  // 1 = TOC/footer "ii", index 2 = REFERENCES/footer "REF-1", index 3 =
+  // chapter divider/footer "1-1") - TOC immediately after the verso, BEFORE
+  // References, not after. This is a pure re-ordering of the final `pages`
+  // array below; the two-phase label resolution is unaffected (References'
+  // own labels never depended on body/TOC layout, and the TOC below still
+  // waits for every entry - including this one - to be resolved first).
   const { pages: refPages, firstLabel: refFirstLabel } = layoutReferences(doc);
-  toc.push({ label: 'REFERENCES', page: refFirstLabel, level: 0 });
+  // Task 24: this entry renders bold (label+leader+page) in the TOC - see
+  // TocEntry.bold's doc comment for the measured provenance.
+  toc.push({ label: 'REFERENCES', page: refFirstLabel, level: 0, bold: true });
 
   // Body walk resolves every section/chapter TOC entry's final page label.
   const bodyPages = layoutBody(doc, toc);
@@ -1446,8 +1500,10 @@ export function layoutVolume(doc: VolumeDoc): LaidOutDoc {
   const versoPage = blankVersoPage(nextRoman());
   const tocPages = layoutToc(doc, toc, nextRoman);
 
+  // Task 24: TOC placed immediately after the verso, References placed
+  // after the TOC - see the ordering note above.
   return {
-    pages: [...titlePages, versoPage, ...refPages, ...tocPages, ...bodyPages, ...appendixPages],
+    pages: [...titlePages, versoPage, ...tocPages, ...refPages, ...bodyPages, ...appendixPages],
     toc,
   };
 }

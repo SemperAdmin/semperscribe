@@ -460,9 +460,17 @@ Block  = Paragraph of runs: [ { text, changed?, link?, href? } ]   // §7
 
 1. Emit **Volume Title Page** (§4.1) → roman `i`.
 2. Emit blank verso if parity requires → `ii`.
-3. Emit **References** list + summary (§4.4) → `REF-{n}`.
-4. Emit **Table of Contents** (§4.3) — generated last-pass once page numbers are
-   known (two-pass layout, or reserve-and-fill).
+3. Emit **Table of Contents** (§4.3) — generated last-pass once page numbers are
+   known (two-pass layout, or reserve-and-fill); PLACED immediately after the
+   blank verso, continuing the same roman count.
+4. Emit **References** list + summary (§4.4) → `REF-{n}`, its own independent
+   band, placed after the TOC. (Task 24: this is the real Vol 17 PDF's own
+   measured placement order — title `i` → blank verso `ii` → TOC `iii...` →
+   References `REF-{n}` → chapter divider/body — now adopted as the
+   standard rendering order. Note the TOC's own page-number RESOLUTION is
+   still two-pass and label-order-independent: every entry, including the
+   "REFERENCES" one, is resolved before the TOC is laid out, regardless of
+   where the reference pages themselves end up in the final page sequence.)
 5. For each chapter M:
    a. Emit **Chapter Divider** (§4.5).
    b. Emit blank verso if needed.

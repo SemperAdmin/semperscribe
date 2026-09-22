@@ -154,6 +154,15 @@ function runToChildren(run: Run, size = BODY_SIZE): ParaChild[] {
       color,
       bold: run.bold || undefined,
       italics: run.italic || undefined,
+      // Task 24: the PDF path paints a thicker underline rule under BOLD
+      // furniture text (title-page/divider headings, "CANCELLATION") than a
+      // regular-weight underline - see volumeGenerator.ts's `ulBold`
+      // handling for the measured provenance. DOCX has no equivalent knob:
+      // `underline: {}` requests Word's default single-underline style, and
+      // its actual stroke weight is rendered by Word itself (driven by the
+      // font/size, not a value docx.js can set per-run) - there is nothing
+      // to make heavier here. Left as the plain default for every run,
+      // bold or not.
       underline: run.underline ? {} : undefined,
     }),
   ];
@@ -537,14 +546,24 @@ function buildFooter(
 }
 
 // ---------------------------------------------------------------------------
-// Front matter: title page, references, TOC field - each its OWN Word
+// Front matter: title page, TOC field, references - each its OWN Word
 // section (Finding 3), because each carries a different running-head left
-// label and a different page-number band (roman front matter, "REF-n"
-// references, roman again for the TOC, continuing the same roman count -
-// mirroring lib/volume/layout.ts's layoutVolume: title+verso are roman i/ii,
-// references are their own independent REF-{n} band, and the TOC continues
-// the same roman count after them). Before this fix, ALL of front matter
-// was one Word section with NO headers/footers at all.
+// label and a different page-number band (roman front matter, roman
+// continuing for the TOC, then "REF-{n}" references - mirroring
+// lib/volume/layout.ts's layoutVolume: title+verso are roman i/ii, the TOC
+// continues the same roman count right after them, and References are
+// their OWN independent "REF-{n}" band placed after the TOC). Before this
+// fix, ALL of front matter was one Word section with NO headers/footers at
+// all.
+//
+// Task 24: reordered to TOC-then-References (was References-then-TOC) to
+// match the real Vol 17 PDF's own front-matter order (fontmap.py: page
+// index 0 = title/"i", index 1 = TOC/"ii", index 2 = References/"REF-1") -
+// see layoutVolume's identical Task 24 comment for the full measurement.
+// This also fixes the TOC section's roman-numeral continuation: since it no
+// longer follows a section that restarts its OWN page-number counter at 1
+// (References), the TOC's un-`start`ed `pageNumbers` now genuinely continues
+// the physical page count from the title+verso section directly before it.
 // ---------------------------------------------------------------------------
 function buildTitlePageChildren(doc: VolumeDoc): (Paragraph | Table)[] {
   const v = doc.volume;
@@ -616,6 +635,12 @@ function buildTitlePageChildren(doc: VolumeDoc): (Paragraph | Table)[] {
 
   children.push(blankLine());
   children.push(leftPara('Submit recommended changes to this Volume, via the proper channels, to:'));
+  // Task 24: one blank line before the address block - see layout.ts's
+  // identical fix in layoutTitlePage for the measured evidence (real Vol 17
+  // PDF, page index 0: "Submit recommended changes..." to "CMC (JA)" is a
+  // 25.3pt gap, one blank line; every subsequent address line steps by the
+  // bare LEADING with no extra gap).
+  children.push(blankLine());
   for (const line of v.submitChangesTo.split('\n')) children.push(leftPara(line));
 
   children.push(blankLine());
@@ -650,8 +675,21 @@ function buildTocChildren(doc: VolumeDoc): (Paragraph | Table)[] {
     // "TABLE OF CONTENTS" is additionally underlined (measured at page
     // index 1, y=694.3/669.0) - previously plain here.
     centeredRunsPara([{ text: `VOLUME ${v.number}: ${v.title.toUpperCase()}`, bold: true }], TITLE_SIZE),
-    centeredRunsPara([{ text: 'TABLE OF CONTENTS', bold: true, underline: true }], TITLE_SIZE),
+    // Task 24: one blank line between the two title lines - re-measured
+    // directly against the real Vol 17 TOC page (fontmap.py, page index 1):
+    // "VOLUME 17: ..." at y=694.3 down to "TABLE OF CONTENTS" at y=669.0 is
+    // a 25.3pt gap (one blank line). See layout.ts's identical fix in
+    // layoutToc for the PDF path's copy of this same measurement.
     blankLine(),
+    centeredRunsPara([{ text: 'TABLE OF CONTENTS', bold: true, underline: true }], TITLE_SIZE),
+    // Task 24: NO blank line here (was `blankLine()`, moved above) - the
+    // real PDF's first entry ("REFERENCES") sits directly under "TABLE OF
+    // CONTENTS" at only the ordinary single-line step (y=669.0 -> 656.4, a
+    // 12.6pt gap), not a full blank line. The `TableOfContents` field below
+    // is Word's own native field (its per-entry spacing comes from Word's
+    // built-in TOC1/TOC2 paragraph styles, outside docx.js's control), so
+    // this can only fix the gap ABOVE the field, not literally the field's
+    // own first generated entry.
     // Finding 4: TableOfContents rebuilds from paragraphs styled Heading1/
     // Heading2 (headingStyleRange '1-2') - see the chapter title (Heading1)
     // and section heading (Heading2, sectionParagraphs above) paragraphs
@@ -680,26 +718,17 @@ function buildFrontMatterSections(doc: VolumeDoc): ISectionOptions[] {
     children: buildTitlePageChildren(doc),
   };
 
-  const referencesSection: ISectionOptions = {
-    properties: {
-      page: {
-        ...pageGeometry,
-        // "REF-n" band, its own independent counter restarting at 1.
-        pageNumbers: { start: 1, formatType: docxNumberFormat(footerScheme('ref').format) },
-      },
-    },
-    headers: { default: buildHeader(doc, 'ref') },
-    footers: { default: buildFooter('ref') },
-    children: buildReferencesChildren(doc),
-  };
-
   const tocSection: ISectionOptions = {
     properties: {
       page: {
         ...pageGeometry,
         // Roman numerals CONTINUING the title/verso count - no `start`,
         // since OOXML page numbering continues from the previous section
-        // unless a section explicitly restarts it.
+        // unless a section explicitly restarts it. Task 24: this section now
+        // directly follows `titleSection` (was preceded by `referencesSection`
+        // restarting its own counter), so the continuation is genuinely from
+        // the title+verso page count, not from whatever count References'
+        // own restart left behind.
         pageNumbers: { formatType: docxNumberFormat(footerScheme('front').format) },
       },
     },
@@ -708,7 +737,22 @@ function buildFrontMatterSections(doc: VolumeDoc): ISectionOptions[] {
     children: buildTocChildren(doc),
   };
 
-  return [titleSection, referencesSection, tocSection];
+  const referencesSection: ISectionOptions = {
+    properties: {
+      page: {
+        ...pageGeometry,
+        // "REF-{n}" band, its own independent counter restarting at 1.
+        pageNumbers: { start: 1, formatType: docxNumberFormat(footerScheme('ref').format) },
+      },
+    },
+    headers: { default: buildHeader(doc, 'ref') },
+    footers: { default: buildFooter('ref') },
+    children: buildReferencesChildren(doc),
+  };
+
+  // Task 24: TOC placed immediately after the title/verso section,
+  // References placed after the TOC - see the ordering note above.
+  return [titleSection, tocSection, referencesSection];
 }
 
 // ---------------------------------------------------------------------------

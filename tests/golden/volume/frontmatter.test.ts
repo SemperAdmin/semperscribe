@@ -29,4 +29,32 @@ describe('front matter', () => {
     const tocEntry = out.toc.find(e => e.label.includes('PURPOSE'));
     expect(tocEntry?.page).toBeTruthy();
   });
+
+  // Task 24: the real Vol 17 PDF's own front-matter placement order is
+  // title (i) -> blank verso (ii) -> TABLE OF CONTENTS (iii...) ->
+  // REFERENCES (REF band) -> chapter divider/body - TOC immediately after
+  // the verso, BEFORE References. Cheap regression guard: whichever page
+  // paints the "TABLE OF CONTENTS" heading must come before the first
+  // `band: 'ref'` page in the final page sequence.
+  it('places the TOC before the References band (Task 24 order)', () => {
+    const out = layoutVolume(doc());
+    const tocPageIdx = out.pages.findIndex(p =>
+      p.items.some(i => JSON.stringify(i).includes('TABLE OF CONTENTS')),
+    );
+    const refPageIdx = out.pages.findIndex(p => p.band === 'ref');
+    expect(tocPageIdx).toBeGreaterThanOrEqual(0);
+    expect(refPageIdx).toBeGreaterThanOrEqual(0);
+    expect(tocPageIdx).toBeLessThan(refPageIdx);
+  });
+
+  // Task 24: the "REFERENCES" TOC entry renders bold (label+leader+page) -
+  // measured directly against the real Vol 17 TOC page (fontmap.py, page
+  // index 1, y=656.4: a `/TimesNewRomanPS-BoldMT` BaseFont, unlike every
+  // other entry on the same page) - see TocEntry.bold's doc comment in
+  // lib/volume/layout.ts.
+  it('renders the REFERENCES TOC entry bold (Task 24)', () => {
+    const out = layoutVolume(doc());
+    const refEntry = out.toc.find(e => e.label === 'REFERENCES');
+    expect(refEntry?.bold).toBe(true);
+  });
 });

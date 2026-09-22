@@ -9,6 +9,17 @@ export function toRoman(n: number): string {
   return out;
 }
 
+/**
+ * The References band's page label: `REF-{n}` (hyphen). Vol 17's own TOC
+ * entry measures with a space (fontmap.py, page index 1, y=656.4: raw
+ * content-stream operand `['R', 5, 'E', 4, 'F', -8, ' 1']`), while that same
+ * document's References page footer prints the hyphen form (`REF-1`) - an
+ * internal inconsistency in the source between its own footer and its own
+ * TOC. Task 24: the user explicitly ratified KEEPING the hyphen form here
+ * (2026-09-21), since it matches the wider volume set and Vol 17's spaced
+ * TOC form is the outlier - see format spec §14's "Accepted canonical
+ * deltas vs. Vol 17". Do not change this to match Vol 17's TOC spelling.
+ */
 export function refPageLabel(n: number): string { return `REF-${n}`; }
 
 /** Task 22: an appendix's own "{LETTER}-{n}" band, restarting at 1 per
