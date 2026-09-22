@@ -42,8 +42,16 @@ export function wrapRuns(
     // Finding 9: matches volumeGenerator.ts's own `isLink` predicate
     // (paintItem) exactly, so a word wraps based on the same width it will
     // actually be painted at.
-    const isLink = !!(w.run.link && w.run.href);
-    const wWidth = measureText(w.text, sizePt, isLink);
+    //
+    // Task 20: a run explicitly flagged `bold` (e.g. the title-page/divider
+    // headings, CANCELLATION, or a boilerplate's styled "blue font"/"full
+    // revision" phrase - see layout.ts's legendRuns/styleBoilerplateRuns)
+    // must measure at the same bold-derived widths a link run already did,
+    // for the same reason: bold glyphs are wider than regular ones, so
+    // mismeasuring would let a bold segment overrun the right margin before
+    // wrapRuns decided to wrap.
+    const isBold = !!(w.run.link && w.run.href) || !!w.run.bold;
+    const wWidth = measureText(w.text, sizePt, isBold);
     if (!isSpace && used + wWidth > rightEdgeX && line.length > 0) {
       pushLine();
       curX = runoverX; used = curX;
@@ -63,14 +71,14 @@ export function wrapRuns(
  * so a cell's text wraps within its own column instead of overflowing into
  * the next column (Task 18 finding A).
  */
-export function wrapPlainText(text: string, maxWidth: number, sizePt: number): string[] {
+export function wrapPlainText(text: string, maxWidth: number, sizePt: number, bold = false): string[] {
   const words = text.split(/\s+/).filter(w => w.length > 0);
   if (words.length === 0) return [''];
   const lines: string[] = [];
   let current = '';
   for (const w of words) {
     const candidate = current ? `${current} ${w}` : w;
-    if (current && measureText(candidate, sizePt) > maxWidth) {
+    if (current && measureText(candidate, sizePt, bold) > maxWidth) {
       lines.push(current);
       current = w;
     } else {

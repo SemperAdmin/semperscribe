@@ -17,6 +17,7 @@ import {
   TableCell,
   AlignmentType,
   BorderStyle,
+  ShadingType,
   WidthType,
   VerticalAlign,
   type ISectionOptions,
@@ -40,11 +41,12 @@ import {
 } from '@/lib/volume/designators';
 import {
   CHAPTER_CHANGE_POLICY_BOILERPLATE,
-  formatDate,
   footerScheme,
-  LEGEND_TEXT,
+  legendRuns,
   REFERENCES_SUMMARY_BOILERPLATE,
   runningHeadParts,
+  styleBoilerplateRuns,
+  titlePageChangeRows,
   VOLUME_CHANGE_POLICY_BOILERPLATE,
   type FooterScheme,
   type Page as LaidOutPage,
@@ -63,7 +65,10 @@ const PAGE_HEIGHT = 15840;
 const MARGIN = 1440; // 1"
 
 const BODY_SIZE = 22; // 11pt, half-points
-const RUNNING_HEAD_SIZE = 24; // 12pt
+// Task 20: measured bold, 11pt on every page (title page, chapter divider,
+// body pages alike) - supersedes the previous regular-12pt running head
+// (task-20-report.md; mirrors volumeGenerator.ts's identical PDF fix).
+const RUNNING_HEAD_SIZE = 22; // 11pt
 const FOOTER_SIZE = 23; // 11.5pt
 const TITLE_SIZE = 24; // 12pt, used for divider/title headings
 
@@ -75,6 +80,16 @@ function ladderIndent(level: Level): number {
 }
 
 const BLUE = '0000FF';
+// Task 20: the real Vol 17 PDF's "blue" literal text (the legend's styled
+// hyperlink-description phrase, and the boilerplate's "blue font" phrase)
+// paints a muted blue-gray, not the vivid pure blue used for change-tracked
+// ("changed") text and real hyperlink runs - measured directly off the
+// source PDF's non-stroking color (task-20-report.md; mirrors
+// volumeGenerator.ts's TITLE_BLUE).
+const TITLE_BLUE = '8496B0';
+// Task 20: ~0.85 gray, matching the real title page's 3 blank change-table
+// rows' shaded ORIGINATION DATE cells (task-20-report.md).
+const SHADE_GRAY = 'D9D9D9';
 
 type ParaChild = TextRun | ExternalHyperlink;
 type HeadingValue = (typeof HeadingLevel)[keyof typeof HeadingLevel];
@@ -82,7 +97,16 @@ type HeadingValue = (typeof HeadingLevel)[keyof typeof HeadingLevel];
 // ---------------------------------------------------------------------------
 // Run / block helpers
 // ---------------------------------------------------------------------------
-function runToChildren(run: Run): ParaChild[] {
+/**
+ * Task 20: generalized to also paint a plain (non-hyperlink) run's own
+ * `bold`/`italic`/`underline`/`color` style hints (see the RunSchema doc
+ * comment in lib/schemas/volume-schema.ts) - not just body content's
+ * `changed`/`link` flags - so the same styled-run builders the PDF path
+ * uses (legendRuns/styleBoilerplateRuns, lib/volume/layout.ts) can be
+ * reused here verbatim instead of a parallel DOCX-only styling scheme.
+ * `size` defaults to BODY_SIZE but front-matter headings pass TITLE_SIZE.
+ */
+function runToChildren(run: Run, size = BODY_SIZE): ParaChild[] {
   if (run.link && run.href) {
     return [
       new ExternalHyperlink({
@@ -91,7 +115,7 @@ function runToChildren(run: Run): ParaChild[] {
           new TextRun({
             text: run.text,
             font: FONT,
-            size: BODY_SIZE,
+            size,
             color: BLUE,
             bold: true,
             italics: true,
@@ -101,14 +125,22 @@ function runToChildren(run: Run): ParaChild[] {
       }),
     ];
   }
+  const color = run.changed ? BLUE : run.color === 'blue' ? TITLE_BLUE : undefined;
   return [
     new TextRun({
       text: run.text,
       font: FONT,
-      size: BODY_SIZE,
-      color: run.changed ? BLUE : undefined,
+      size,
+      color,
+      bold: run.bold || undefined,
+      italics: run.italic || undefined,
+      underline: run.underline ? {} : undefined,
     }),
   ];
+}
+
+function runsToChildren(runs: Run[], size = BODY_SIZE): ParaChild[] {
+  return runs.flatMap(r => runToChildren(r, size));
 }
 
 function blocksToChildren(blocks: Block[]): ParaChild[] {
@@ -158,8 +190,25 @@ function centered(text: string, size = BODY_SIZE, heading?: HeadingValue): Parag
     children: [new TextRun({ text, font: FONT, size })],
   });
 }
+/**
+ * Task 20: like `centered`, but for a line built from several styled
+ * `Run`s (e.g. a bold/underlined heading, or the hyperlink legend's
+ * regular/bold-italic/bold segments) via the same `runToChildren` that
+ * `blocksToChildren` uses for body content.
+ */
+function centeredRunsPara(runs: Run[], size = BODY_SIZE, heading?: HeadingValue): Paragraph {
+  return new Paragraph({
+    ...(heading ? { heading } : {}),
+    alignment: AlignmentType.CENTER,
+    children: runsToChildren(runs, size),
+  });
+}
 function leftPara(text: string): Paragraph {
   return new Paragraph({ children: [new TextRun({ text, font: FONT, size: BODY_SIZE })] });
+}
+/** Like `leftPara`, but for a line built from several styled `Run`s. */
+function leftParaRuns(runs: Run[]): Paragraph {
+  return new Paragraph({ children: runsToChildren(runs) });
 }
 function blankLine(): Paragraph {
   return new Paragraph({ children: [new TextRun({ text: '', font: FONT, size: BODY_SIZE })] });
@@ -168,7 +217,31 @@ function pageBreak(): Paragraph {
   return new Paragraph({ children: [new PageBreak()] });
 }
 
-function changeTable(headers: string[], rows: string[][]): Table {
+/**
+ * Task 20: boxes a run of paragraphs in one outer rectangle, mirroring the
+ * real Vol 17 PDF's title-page/chapter-divider layout (the whole "VOLUME
+ * {n} .. CANCELLATION" text block sits inside a bordered box - see BoxItem's
+ * doc comment in lib/volume/layout.ts and task-20-report.md). DOCX has no
+ * direct equivalent of an overlay rectangle spanning several paragraphs, so
+ * this uses the standard Word technique of a single borderless-margin,
+ * single-cell Table as the box - the caller follows it immediately with the
+ * actual change-log Table (no blank paragraph between) so the two appear
+ * as one attached grid, same as the PDF.
+ */
+function boxedBlock(children: Paragraph[]): Table {
+  const border = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: { top: border, bottom: border, left: border, right: border },
+    rows: [
+      new TableRow({
+        children: [new TableCell({ borders: { top: border, bottom: border, left: border, right: border }, children })],
+      }),
+    ],
+  });
+}
+
+function changeTable(headers: string[], rows: string[][], shading?: boolean[][]): Table {
   const border = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
   const borders = {
     top: border,
@@ -189,12 +262,16 @@ function changeTable(headers: string[], rows: string[][]): Table {
     ),
   });
   const dataRows = rows.map(
-    (row) =>
+    (row, ri) =>
       new TableRow({
         children: row.map(
-          (cell) =>
+          (cell, ci) =>
             new TableCell({
               borders,
+              // Task 20: the 3 blank rows below the real title page's
+              // ORIGINAL row shade their ORIGINATION DATE cell light gray
+              // (see titlePageChangeRows, lib/volume/layout.ts).
+              shading: shading?.[ri]?.[ci] ? { fill: SHADE_GRAY, type: ShadingType.CLEAR, color: 'auto' } : undefined,
               children: [new Paragraph({ children: [new TextRun({ text: cell, font: FONT, size: BODY_SIZE })] })],
             }),
         ),
@@ -369,17 +446,26 @@ function docxNumberFormat(format: FooterScheme['format']): (typeof NumberFormat)
 
 function buildHeader(doc: VolumeDoc, band: LaidOutPage['band'], chapter?: number): Header {
   const parts = runningHeadParts(doc, band, chapter);
+  // Task 20: the whole running head is bold at 11pt (RUNNING_HEAD_SIZE -
+  // see its doc comment). The left label and the right-top designator line
+  // are additionally underlined (measured as a single rule under that row
+  // in the PDF - task-20-report.md; DOCX has no shared "row" for two
+  // separately-aligned paragraphs, so each run is underlined on its own
+  // instead of drawing one shared rule). The center policy title and the
+  // date line are bold but NOT underlined.
   return new Header({
     children: [
-      centered(parts.center, RUNNING_HEAD_SIZE),
-      new Paragraph({ children: [new TextRun({ text: parts.left, font: FONT, size: RUNNING_HEAD_SIZE })] }),
+      centeredRunsPara([{ text: parts.center, bold: true }], RUNNING_HEAD_SIZE),
       new Paragraph({
-        alignment: AlignmentType.RIGHT,
-        children: [new TextRun({ text: parts.rightTop, font: FONT, size: RUNNING_HEAD_SIZE })],
+        children: [new TextRun({ text: parts.left, font: FONT, size: RUNNING_HEAD_SIZE, bold: true, underline: {} })],
       }),
       new Paragraph({
         alignment: AlignmentType.RIGHT,
-        children: [new TextRun({ text: parts.rightDate, font: FONT, size: RUNNING_HEAD_SIZE })],
+        children: [new TextRun({ text: parts.rightTop, font: FONT, size: RUNNING_HEAD_SIZE, bold: true, underline: {} })],
+      }),
+      new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        children: [new TextRun({ text: parts.rightDate, font: FONT, size: RUNNING_HEAD_SIZE, bold: true })],
       }),
     ],
   });
@@ -407,33 +493,39 @@ function buildTitlePageChildren(doc: VolumeDoc): (Paragraph | Table)[] {
   const v = doc.volume;
   const children: (Paragraph | Table)[] = [];
 
-  children.push(centered(`VOLUME ${v.number}`, TITLE_SIZE));
+  // Task 20: the "VOLUME {n} .. CANCELLATION" block boxes together and
+  // joins directly into the change table below it (see boxedBlock's doc
+  // comment) - collected into its own array instead of pushed straight
+  // onto `children`.
+  const boxChildren: Paragraph[] = [];
+  boxChildren.push(centeredRunsPara([{ text: `VOLUME ${v.number}`, bold: true }], TITLE_SIZE));
   const titleText = v.titleQuoted !== false ? `"${v.title}"` : v.title;
-  children.push(centered(titleText, TITLE_SIZE));
-  children.push(centered(`SUMMARY OF VOLUME ${v.number} CHANGES`, TITLE_SIZE));
-  children.push(blankLine());
+  boxChildren.push(centeredRunsPara([{ text: titleText, bold: true, underline: true }], TITLE_SIZE));
+  boxChildren.push(centeredRunsPara([{ text: `SUMMARY OF VOLUME ${v.number} CHANGES`, bold: true }], TITLE_SIZE));
+  boxChildren.push(blankLine());
 
-  children.push(centered(LEGEND_TEXT));
-  children.push(blankLine());
+  boxChildren.push(centeredRunsPara(legendRuns()));
+  boxChildren.push(blankLine());
 
-  for (const line of VOLUME_CHANGE_POLICY_BOILERPLATE) children.push(leftPara(line));
-
-  if (v.cancellation) {
-    children.push(blankLine());
-    children.push(leftPara(`CANCELLATION: ${v.cancellation}`));
+  for (const line of VOLUME_CHANGE_POLICY_BOILERPLATE) {
+    boxChildren.push(leftParaRuns(styleBoilerplateRuns(line, { underlineFullRevision: true })));
   }
 
-  children.push(blankLine());
-  // Finding 3: dates format through the same shared formatDate
-  // (lib/volume/layout.ts) the PDF path uses, instead of printing the raw
-  // ISO string (e.g. "2018-02-20" instead of "20 Feb 2018").
-  const seedRow = ['ORIGINAL VOLUME', 'N/A', formatDate(v.originalPublicationDate), 'N/A'];
-  const changeRows =
-    doc.changeLog.length > 0
-      ? doc.changeLog.map((r) => [r.version, r.summary, r.originationDate, r.dateOfChanges])
-      : [seedRow];
+  if (v.cancellation) {
+    boxChildren.push(blankLine());
+    boxChildren.push(
+      leftParaRuns([{ text: 'CANCELLATION', bold: true, underline: true }, { text: `: ${v.cancellation}` }]),
+    );
+  }
+  children.push(boxedBlock(boxChildren));
+
+  // Finding 3 / Task 20: rows (dates formatted through the shared
+  // formatDate, lib/volume/layout.ts) and gray-shading flags now come from
+  // the shared titlePageChangeRows (also used by layout.ts's
+  // layoutTitlePage), so the two generators can't drift.
+  const { rows: changeRows, shading } = titlePageChangeRows(doc);
   children.push(
-    changeTable(['VOLUME VERSION', 'SUMMARY OF CHANGE', 'ORIGINATION DATE', 'DATE OF CHANGES'], changeRows),
+    changeTable(['VOLUME VERSION', 'SUMMARY OF CHANGE', 'ORIGINATION DATE', 'DATE OF CHANGES'], changeRows, shading),
   );
 
   if (v.reportRequired) {
@@ -547,14 +639,25 @@ function buildChapterSection(doc: VolumeDoc, chapter: Chapter, useChapterPage: b
   const children: (Paragraph | Table)[] = [];
 
   // Divider: "Summary of Substantive Changes" + chapter change table.
-  children.push(centered(`VOLUME ${doc.volume.number}: CHAPTER ${chapter.number}`, TITLE_SIZE));
-  children.push(centered(`"${chapter.title.toUpperCase()}"`, TITLE_SIZE));
-  children.push(centered('SUMMARY OF SUBSTANTIVE CHANGES', TITLE_SIZE));
-  children.push(blankLine());
-  children.push(centered(LEGEND_TEXT));
-  children.push(blankLine());
-  for (const line of CHAPTER_CHANGE_POLICY_BOILERPLATE) children.push(leftPara(line));
-  children.push(blankLine());
+  // Task 20: same bordered-box-then-table treatment as the title page
+  // (measured on the real Vol 17 chapter divider page too -
+  // task-20-report.md) - see boxedBlock's doc comment.
+  const boxChildren: Paragraph[] = [];
+  boxChildren.push(
+    centeredRunsPara([{ text: `VOLUME ${doc.volume.number}: CHAPTER ${chapter.number}`, bold: true }], TITLE_SIZE),
+  );
+  boxChildren.push(centeredRunsPara([{ text: `"${chapter.title.toUpperCase()}"`, bold: true, underline: true }], TITLE_SIZE));
+  boxChildren.push(centeredRunsPara([{ text: 'SUMMARY OF SUBSTANTIVE CHANGES', bold: true }], TITLE_SIZE));
+  boxChildren.push(blankLine());
+  boxChildren.push(centeredRunsPara(legendRuns()));
+  boxChildren.push(blankLine());
+  for (const line of CHAPTER_CHANGE_POLICY_BOILERPLATE) {
+    // Task 20: measured against the real PDF, the divider's copy of the
+    // "...full revision..." sentence is NOT underlined, unlike the title
+    // page's copy of the same sentence (task-20-report.md).
+    boxChildren.push(leftParaRuns(styleBoilerplateRuns(line, { underlineFullRevision: false })));
+  }
+  children.push(boxedBlock(boxChildren));
   children.push(
     changeTable(
       // Finding 15 (T10): format spec §4.6 verbatim header, with spaces
@@ -567,9 +670,19 @@ function buildChapterSection(doc: VolumeDoc, chapter: Chapter, useChapterPage: b
   // Chapter title page. Combined into ONE heading paragraph carrying
   // HeadingLevel.HEADING_1 (Finding 4) so Word's TOC field (buildTocChildren
   // above) finds a chapter entry - previously two plain centered lines with
-  // no heading style at all.
+  // no heading style at all. Task 20: measured bold on the real chapter
+  // title page (task-20-report.md) - the run's own `bold: true` overrides
+  // the Heading1 style's `bold: false` default (set below in
+  // generateVolumeDocx, for the TOC field's sake) the same way direct
+  // formatting always wins over paragraph style in OOXML.
   children.push(pageBreak());
-  children.push(centered(`CHAPTER ${chapter.number}: ${chapter.title.toUpperCase()}`, TITLE_SIZE, HeadingLevel.HEADING_1));
+  children.push(
+    centeredRunsPara(
+      [{ text: `CHAPTER ${chapter.number}: ${chapter.title.toUpperCase()}`, bold: true }],
+      TITLE_SIZE,
+      HeadingLevel.HEADING_1,
+    ),
+  );
   children.push(blankLine());
 
   for (const section of chapter.sections) {

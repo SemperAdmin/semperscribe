@@ -1,14 +1,24 @@
 import { PDFArray, PDFDocument, PDFName, PDFString, rgb, StandardFonts, type PDFFont, type PDFPage } from 'pdf-lib';
-import type { VolumeDoc } from '@/lib/schemas/volume-schema';
+import type { Run, VolumeDoc } from '@/lib/schemas/volume-schema';
 import { layoutVolume, LEADING, PAGE_H, PAGE_W, runningHeadParts, type Page as LaidOutPage, type PaintItem } from '@/lib/volume/layout';
 
 const BLACK = rgb(0, 0, 0);
 const BLUE = rgb(0, 0, 1);
+// Task 20: the real Vol 17 PDF's "blue" literal text (the legend's styled
+// hyperlink-description phrase, and the boilerplate's "blue font" phrase)
+// paints a muted blue-gray, not the vivid pure blue used elsewhere for
+// change-tracked ("changed") text and real hyperlink runs - measured
+// directly off the source PDF's non-stroking color (task-20-report.md).
+const TITLE_BLUE = rgb(0.518, 0.588, 0.69);
 
-const RUNNING_HEAD_CENTER_Y = 745;
-const RUNNING_HEAD_LEFT_Y = 731;
-const RUNNING_HEAD_RIGHT_Y = 731;
-const DATE_LINE_Y = 717;
+// Task 20: measured bold, 11pt on every page (title page, chapter divider,
+// and body pages alike) - supersedes the previous regular-12pt running
+// head (task-20-report.md).
+const RUNNING_HEAD_SIZE_PT = 11;
+const RUNNING_HEAD_CENTER_Y = 745.8;
+const RUNNING_HEAD_LEFT_Y = 733.2;
+const RUNNING_HEAD_RIGHT_Y = 733.2;
+const DATE_LINE_Y = 720.5;
 const FOOTER_Y = 38.6;
 const CENTER_X = 306;
 const RIGHT_EDGE_X = 540;
@@ -123,7 +133,7 @@ function drawFigurePlaceholder(page: PDFPage, item: Extract<PaintItem, { kind: '
   });
 }
 
-function paintTemplate(page: PDFPage, laidOutPage: LaidOutPage, doc: VolumeDoc, font: PDFFont) {
+function paintTemplate(page: PDFPage, laidOutPage: LaidOutPage, doc: VolumeDoc, fonts: Fonts) {
   // Finding 3: the running-head text (center/left/right-top/right-date) is
   // now composed by the single shared `runningHeadParts` (lib/volume/
   // layout.ts) also consumed by the DOCX generator, instead of each
@@ -131,20 +141,56 @@ function paintTemplate(page: PDFPage, laidOutPage: LaidOutPage, doc: VolumeDoc, 
   // formatting. See runningHeadParts's doc comment for the measured
   // provenance of the two-line layout and the left-label rule (Task 18
   // finding D) and formatDate's doc comment for the date fix (Task 17).
+  //
+  // Task 20: the whole running head paints bold at 11pt on every page (see
+  // RUNNING_HEAD_SIZE_PT's doc comment) - previously regular at 12pt.
   const parts = runningHeadParts(doc, laidOutPage.band, laidOutPage.chapter);
-  drawCentered(page, parts.center, CENTER_X, RUNNING_HEAD_CENTER_Y, 12, font);
-  page.drawText(safeText(font, parts.left), { x: LEFT_X, y: RUNNING_HEAD_LEFT_Y, size: 12, font, color: BLACK });
-  drawRightAligned(page, parts.rightTop, RIGHT_EDGE_X, RUNNING_HEAD_RIGHT_Y, 12, font);
-  drawRightAligned(page, parts.rightDate, RIGHT_EDGE_X, DATE_LINE_Y, 12, font);
+  const font = fonts.bold;
+  drawCentered(page, parts.center, CENTER_X, RUNNING_HEAD_CENTER_Y, RUNNING_HEAD_SIZE_PT, font);
+  page.drawText(safeText(font, parts.left), {
+    x: LEFT_X, y: RUNNING_HEAD_LEFT_Y, size: RUNNING_HEAD_SIZE_PT, font, color: BLACK,
+  });
+  drawRightAligned(page, parts.rightTop, RIGHT_EDGE_X, RUNNING_HEAD_RIGHT_Y, RUNNING_HEAD_SIZE_PT, font);
+  drawRightAligned(page, parts.rightDate, RIGHT_EDGE_X, DATE_LINE_Y, RUNNING_HEAD_SIZE_PT, font);
+
+  // Task 20: a single full-width rule sits immediately under the
+  // left-label/right-designator row only - NOT under the center policy
+  // title or the date row below it (measured as one continuous rect
+  // spanning the full text width at that row's y, task-20-report.md).
+  page.drawLine({
+    start: { x: LEFT_X, y: RUNNING_HEAD_LEFT_Y - 2 },
+    end: { x: RIGHT_EDGE_X, y: RUNNING_HEAD_LEFT_Y - 2 },
+    thickness: 0.75,
+    color: BLACK,
+  });
 
   // Footer: page label, centered. Already resolved to a concrete string at
   // layout time (bodyPageLabel/refPageLabel/toRoman, lib/volume/page-bands.ts).
-  drawCentered(page, laidOutPage.label, CENTER_X, FOOTER_Y, 11.5, font);
+  drawCentered(page, laidOutPage.label, CENTER_X, FOOTER_Y, 11.5, fonts.regular);
 }
 
 interface Fonts {
   regular: PDFFont;
-  link: PDFFont; // bold+italic, used for hyperlink runs per the format standard
+  bold: PDFFont; // Task 20: running head + title-page/divider headings + table headers
+  // bold+italic - used for real hyperlink runs AND for any run explicitly
+  // flagged both `bold` and `italic` (e.g. the hyperlink legend's styled
+  // phrase, which looks like a link but isn't one - see pickFont below).
+  boldItalic: PDFFont;
+}
+
+/** Picks the paint font for a styled `Run` (see pickColor for its color). */
+function pickFont(run: Run, fonts: Fonts): PDFFont {
+  const isLink = !!(run.link && run.href);
+  if (isLink || (run.bold && run.italic)) return fonts.boldItalic;
+  if (run.bold) return fonts.bold;
+  return fonts.regular;
+}
+
+/** Picks the paint color for a styled `Run` (see pickFont for its font). */
+function pickColor(run: Run) {
+  if (run.changed || run.link) return BLUE;
+  if (run.color === 'blue') return TITLE_BLUE;
+  return BLACK;
 }
 
 async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fonts: Fonts) {
@@ -182,28 +228,41 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
         bufferText = '';
       };
 
-      let linkHref: string | undefined;
-      let linkStartX = x;
-      let linkWidth = 0;
-      const flushLink = () => {
-        if (linkHref === undefined) return;
+      // Task 20: generalized from the old link-only underline accumulator
+      // to cover ANY run flagged `underline` (title-page/divider styled
+      // text - the legend phrase, "full revision", "CANCELLATION" - not
+      // just real hyperlinks), while still drawing the link annotation
+      // rectangle for actual link runs. A contiguous stretch of
+      // underline-worthy segments (same rule as before: flush on href
+      // change, on losing the underline flag, or at line end) still paints
+      // ONE underline rule, not one per word-token.
+      let ulActive = false;
+      let ulStartX = x;
+      let ulWidth = 0;
+      let ulColor = BLACK;
+      let ulHref: string | undefined;
+      const flushUnderline = () => {
+        if (!ulActive) return;
         const underlineY = item.y - 1.5;
         page.drawLine({
-          start: { x: linkStartX, y: underlineY }, end: { x: linkStartX + linkWidth, y: underlineY },
-          thickness: 0.5, color: BLUE,
+          start: { x: ulStartX, y: underlineY }, end: { x: ulStartX + ulWidth, y: underlineY },
+          thickness: 0.5, color: ulColor,
         });
-        addLinkAnnotation(pdfDoc, page, linkStartX, item.y, linkWidth, item.sizePt, linkHref);
-        linkHref = undefined;
-        linkWidth = 0;
+        if (ulHref !== undefined) addLinkAnnotation(pdfDoc, page, ulStartX, item.y, ulWidth, item.sizePt, ulHref);
+        ulActive = false;
+        ulHref = undefined;
+        ulWidth = 0;
       };
 
       for (const segment of item.segments) {
-        const isLink = !!(segment.run.link && segment.run.href);
-        const color = segment.run.changed || segment.run.link ? BLUE : BLACK;
-        const segFont = isLink ? fonts.link : fonts.regular;
+        const run = segment.run;
+        const isLink = !!(run.link && run.href);
+        const shouldUnderline = isLink || !!run.underline;
+        const color = pickColor(run);
+        const segFont = pickFont(run, fonts);
         // Finding 10: sanitize BEFORE measuring, so the width used to
-        // advance `x` (and to size the link's underline/annotation rect
-        // below) always matches what actually gets painted.
+        // advance `x` (and to size the underline/annotation rect below)
+        // always matches what actually gets painted.
         const segText = safeText(segFont, segment.text);
         const segWidth = segFont.widthOfTextAtSize(segText, item.sizePt);
 
@@ -217,21 +276,24 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
         bufferFont = segFont;
         bufferText += segText;
 
-        if (isLink) {
-          if (linkHref !== segment.run.href) {
-            flushLink();
-            linkHref = segment.run.href;
-            linkStartX = x;
-            linkWidth = 0;
+        if (shouldUnderline) {
+          const linkHrefChanged = isLink && ulHref !== run.href;
+          if (!ulActive || linkHrefChanged) {
+            flushUnderline();
+            ulActive = true;
+            ulStartX = x;
+            ulWidth = 0;
+            ulHref = isLink ? run.href : undefined;
           }
-          linkWidth += segWidth;
+          ulColor = color;
+          ulWidth += segWidth;
         } else {
-          flushLink();
+          flushUnderline();
         }
         x += segWidth;
       }
       flush();
-      flushLink();
+      flushUnderline();
       break;
     }
     case 'table': {
@@ -240,7 +302,7 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
       // (`rowHeights`/`headerHeight`) already accounts for the tallest
       // wrapped cell in that row, so painting each cell's lines top-down
       // never crosses into the next column or the next row.
-      const { x, y, colWidths, headerLines, headerHeight, rows, rowHeights } = item;
+      const { x, y, colWidths, headerLines, headerHeight, rows, rowHeights, rowShading } = item;
       const width = colWidths.reduce((a, b) => a + b, 0);
       const allRowHeights = [headerHeight, ...rowHeights];
       const allRowsLines = [headerLines, ...rows];
@@ -249,6 +311,28 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
       const bottom = top - totalHeight;
       const size = 11;
       const lineStep = LEADING;
+
+      // Task 20: gray-fill any shaded cells FIRST, so the grid lines and
+      // text painted below land on top of the fill, not under it. Measured
+      // ~0.85 gray on the real Vol 17 title page's 3 blank change-table
+      // rows (task-20-report.md).
+      if (rowShading) {
+        let bandTop = top - headerHeight;
+        for (let r = 0; r < rows.length; r++) {
+          const shadeRow = rowShading[r];
+          const rowH = rowHeights[r];
+          if (shadeRow) {
+            let cx = x;
+            for (let c = 0; c < colWidths.length; c++) {
+              if (shadeRow[c]) {
+                page.drawRectangle({ x: cx, y: bandTop - rowH, width: colWidths[c] ?? 0, height: rowH, color: rgb(0.85, 0.85, 0.85) });
+              }
+              cx += colWidths[c] ?? 0;
+            }
+          }
+          bandTop -= rowH;
+        }
+      }
 
       // Horizontal grid lines, one per row boundary (rows can differ in height).
       let ly = top;
@@ -273,19 +357,30 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
       for (let r = 0; r < allRowsLines.length; r++) {
         const cells = allRowsLines[r];
         const rowH = allRowHeights[r];
+        // Task 20: the header row (r === 0) paints bold on every measured
+        // table (title-page and chapter-divider change tables both -
+        // task-20-report.md); data rows stay regular.
+        const rowFont = r === 0 ? fonts.bold : fonts.regular;
         let cx = x;
         for (let c = 0; c < cells.length; c++) {
           const lines = cells[c];
           const cellTopBaseline = rowTop - lineStep + 2;
           for (let li = 0; li < lines.length; li++) {
-            page.drawText(safeText(fonts.regular, lines[li]), {
-              x: cx + 4, y: cellTopBaseline - li * lineStep, size, font: fonts.regular, color: BLACK,
+            page.drawText(safeText(rowFont, lines[li]), {
+              x: cx + 4, y: cellTopBaseline - li * lineStep, size, font: rowFont, color: BLACK,
             });
           }
           cx += colWidths[c] ?? 0;
         }
         rowTop -= rowH;
       }
+      break;
+    }
+    case 'box': {
+      // Task 20: an unfilled bordered rectangle around the title-page/
+      // divider text block (see BoxItem's doc comment in lib/volume/layout.ts).
+      const { x, yTop, yBottom, width } = item;
+      page.drawRectangle({ x, y: yBottom, width, height: yTop - yBottom, borderColor: BLACK, borderWidth: 0.75 });
       break;
     }
     case 'figure': {
@@ -320,12 +415,13 @@ export async function generateVolumePdf(doc: VolumeDoc): Promise<Blob> {
   const laidOut = layoutVolume(doc);
   const pdfDoc = await PDFDocument.create();
   const regular = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-  const link = await pdfDoc.embedFont(StandardFonts.TimesRomanBoldItalic);
-  const fonts: Fonts = { regular, link };
+  const bold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+  const boldItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanBoldItalic);
+  const fonts: Fonts = { regular, bold, boldItalic };
 
   for (const laidOutPage of laidOut.pages) {
     const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
-    paintTemplate(page, laidOutPage, doc, fonts.regular);
+    paintTemplate(page, laidOutPage, doc, fonts);
     for (const item of laidOutPage.items) {
       try {
         await paintItem(pdfDoc, page, item, fonts);

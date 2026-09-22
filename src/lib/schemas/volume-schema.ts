@@ -5,6 +5,17 @@ const RunSchema = z.object({
   changed: z.boolean().optional(),
   link: z.boolean().optional(),
   href: z.string().optional(),
+  // Task 20: style hints for synthetic front-matter/divider runs (title-page
+  // headings, the hyperlink legend, and the fixed boilerplate's literal
+  // styled phrases - see lib/volume/layout.ts's legendRuns/
+  // styleBoilerplateRuns) - measured directly against the real Vol 17 PDF
+  // (task-20-report.md). Real document content never sets these; they exist
+  // so layout.ts/volumeDocx.ts can express "this literal run is bold/
+  // italic/underlined/blue" without inventing a parallel run type.
+  bold: z.boolean().optional(),
+  italic: z.boolean().optional(),
+  underline: z.boolean().optional(),
+  color: z.enum(['blue']).optional(),
 });
 const BlockSchema = z.object({
   runs: z.array(RunSchema),

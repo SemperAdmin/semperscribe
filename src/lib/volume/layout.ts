@@ -78,8 +78,30 @@ export interface TableItem {
   /** Data rows, each cell already word-wrapped to fit its column width. */
   rows: string[][][];
   rowHeights: number[];
+  /**
+   * Task 20: per-row, per-column shading flags (parallel to `rows`), used by
+   * the title-page change table's 3 blank rows below the ORIGINAL row - the
+   * real Vol 17 PDF fills their ORIGINATION DATE cell light gray (~0.85
+   * gray). `undefined` (or a row with no `true` entries) paints normally.
+   */
+  rowShading?: (boolean[] | undefined)[];
 }
-export type PaintItem = LineItem | HeadingItem | FigureItem | TableItem;
+/**
+ * Task 20: an unfilled bordered rectangle - real Vol 17's title page and
+ * chapter divider box the whole "VOLUME {n} .. CANCELLATION" text block in
+ * one outer rectangle, with the change table's own top border immediately
+ * below it (no visible gap - see layoutTitlePage/layoutChapterDivider). This
+ * is a pure overlay: it doesn't consume cursor space, so it never affects
+ * pagination/wrapping of anything else on the page.
+ */
+export interface BoxItem {
+  kind: 'box';
+  x: number;
+  yTop: number;
+  yBottom: number;
+  width: number;
+}
+export type PaintItem = LineItem | HeadingItem | FigureItem | TableItem | BoxItem;
 
 export interface Page {
   label: string;
@@ -95,6 +117,26 @@ export interface TocEntry {
 export interface LaidOutDoc {
   pages: Page[];
   toc: TocEntry[];
+}
+
+// ---------------------------------------------------------------------------
+// Change-table cell wrapping/row-height math, shared by PageCursor.addTable
+// below AND (Task 20) by layoutTitlePage/layoutChapterDivider, which need to
+// know a table's HEADER height up front - before calling addTable - to size
+// the gap that puts the bordered box's bottom edge just above the table's
+// own top border without the two overlapping (see BoxItem's doc comment).
+// ---------------------------------------------------------------------------
+const TABLE_SIZE_PT = 11;
+const TABLE_CELL_PAD_X = 4;
+function wrapTableCell(text: string, colWidth: number, bold = false): string[] {
+  return wrapPlainText(String(text ?? ''), Math.max(colWidth - TABLE_CELL_PAD_X * 2, 1), TABLE_SIZE_PT, bold);
+}
+function tableRowHeight(cellLines: string[][]): number {
+  return Math.max(1, ...cellLines.map(lines => lines.length)) * LEADING + 6;
+}
+/** The rendered height of `cols`' header row (always bold - see addTable). */
+export function tableHeaderHeight(cols: string[], colWidths: number[]): number {
+  return tableRowHeight(cols.map((c, i) => wrapTableCell(c, colWidths[i] ?? 0, true)));
 }
 
 // ---------------------------------------------------------------------------
@@ -144,6 +186,20 @@ class PageCursor {
 
   currentLabel(): string {
     return this.current.label;
+  }
+
+  /** The y-coordinate the NEXT item would be painted at (before it's added). */
+  currentY(): number {
+    return this.y;
+  }
+
+  /**
+   * An unfilled bordered rectangle, painted as a pure overlay (see BoxItem's
+   * doc comment) - callers capture `yTop`/`yBottom` via `currentY()` around
+   * whatever content the box should enclose.
+   */
+  addBox(yTop: number, yBottom: number, x = MARGIN, width = RIGHT_EDGE - MARGIN) {
+    this.current.items.push({ kind: 'box', x, yTop, yBottom, width });
   }
 
   /** A single flush line, e.g. a plain body block with no designator. */
@@ -251,18 +307,15 @@ class PageCursor {
    * now splits across as many TableItems/pages as it needs, repeating the
    * header row at the top of each page it spills onto.
    */
-  addTable(cols: string[], colWidths: number[], rows: string[][]) {
-    const sizePt = 11;
-    const cellPadX = 4;
-    const wrapCell = (text: string, colWidth: number) =>
-      wrapPlainText(String(text ?? ''), Math.max(colWidth - cellPadX * 2, 1), sizePt);
-    const rowHeightFor = (cellLines: string[][]) =>
-      Math.max(1, ...cellLines.map(lines => lines.length)) * LEADING + 6;
-
-    const headerLines = cols.map((c, i) => wrapCell(c, colWidths[i] ?? 0));
-    const headerHeight = rowHeightFor(headerLines);
-    const rowsLines = rows.map(r => r.map((cell, i) => wrapCell(cell, colWidths[i] ?? 0)));
-    const rowHeights = rowsLines.map(rowHeightFor);
+  addTable(cols: string[], colWidths: number[], rows: string[][], shading?: boolean[][]) {
+    // Task 20: header cells now paint bold (see paintItem's 'table' case in
+    // volumeGenerator.ts) - wrap them at bold widths too, or a header word
+    // that just fits at regular width could overrun its column once painted
+    // bold.
+    const headerLines = cols.map((c, i) => wrapTableCell(c, colWidths[i] ?? 0, true));
+    const headerHeight = tableRowHeight(headerLines);
+    const rowsLines = rows.map(r => r.map((cell, i) => wrapTableCell(cell, colWidths[i] ?? 0)));
+    const rowHeights = rowsLines.map(tableRowHeight);
     const width = colWidths.reduce((a, b) => a + b, 0);
 
     let idx = 0;
@@ -274,6 +327,7 @@ class PageCursor {
 
       const chunkRows: string[][][] = [];
       const chunkHeights: number[] = [];
+      const chunkShading: (boolean[] | undefined)[] = [];
       let used = headerHeight;
       while (idx < rowsLines.length) {
         const rowH = rowHeights[idx];
@@ -282,6 +336,7 @@ class PageCursor {
         if (chunkRows.length > 0 && this.y - (used + rowH) < BOTTOM_Y) break;
         chunkRows.push(rowsLines[idx]);
         chunkHeights.push(rowH);
+        chunkShading.push(shading?.[idx]);
         used += rowH;
         idx++;
       }
@@ -290,6 +345,7 @@ class PageCursor {
       this.current.items.push({
         kind: 'table', x: MARGIN, y, width, colWidths,
         headerLines, headerHeight, rows: chunkRows, rowHeights: chunkHeights,
+        rowShading: chunkShading.some(Boolean) ? chunkShading : undefined,
       });
       this.y -= used;
 
@@ -330,11 +386,75 @@ class PageCursor {
 // Small text-layout helpers shared by front matter builders.
 // ---------------------------------------------------------------------------
 function centeredLine(text: string, sizePt = BODY_SIZE_PT): { segments: WrappedSegment[]; x: number }[] {
-  const w = measureText(text, sizePt);
-  return [{ segments: [{ text, run: { text } }], x: CENTER_X - w / 2 }];
+  return centeredRuns([{ text }], sizePt);
+}
+/**
+ * Task 20: like `centeredLine`, but for a line built from several styled
+ * `Run`s (e.g. the hyperlink legend's regular/bold-italic/bold segments) -
+ * centered as ONE line, never wrapped, so its total width is measured
+ * up-front (respecting each run's own `bold` hint - see measure.ts's
+ * `wrapRuns` for why bold must use the bold-derived width table) rather than
+ * going through wrapRuns.
+ */
+function centeredRuns(runs: Run[], sizePt = BODY_SIZE_PT): { segments: WrappedSegment[]; x: number }[] {
+  const totalWidth = runs.reduce((w, r) => w + measureText(r.text, sizePt, !!r.bold), 0);
+  return [{ segments: runs.map(r => ({ text: r.text, run: r })), x: CENTER_X - totalWidth / 2 }];
 }
 function leftParagraph(text: string, sizePt = BODY_SIZE_PT) {
-  return wrapRuns([{ text }], MARGIN, MARGIN, RIGHT_EDGE, sizePt);
+  return leftParagraphRuns([{ text }], sizePt);
+}
+/** Like `leftParagraph`, but for a line built from several styled `Run`s. */
+function leftParagraphRuns(runs: Run[], sizePt = BODY_SIZE_PT) {
+  return wrapRuns(runs, MARGIN, MARGIN, RIGHT_EDGE, sizePt);
+}
+
+// ---------------------------------------------------------------------------
+// Task 20: styled-run builders for the front matter's fixed literal text -
+// measured directly against the real Vol 17 PDF (task-20-report.md). Kept
+// alongside the plain-text *_TEXT/*_BOILERPLATE constants below (still
+// exported verbatim for DOCX/tests that just need the plain string) rather
+// than replacing them, per the same "single source of truth" pattern.
+// ---------------------------------------------------------------------------
+
+/**
+ * The hyperlink legend, split into its three measured runs: regular lead-in,
+ * a bold-italic-blue-underlined phrase (matching the format standard's own
+ * description of what a hyperlink looks like), and a bold trailing period.
+ * Concatenating every run's `text` reproduces `LEGEND_TEXT` exactly.
+ */
+export function legendRuns(): Run[] {
+  return [
+    { text: 'Hyperlinks are denoted by ' },
+    { text: 'bold, italic, blue and underlined font', bold: true, italic: true, underline: true, color: 'blue' },
+    { text: '.', bold: true },
+  ];
+}
+
+/**
+ * Styles a boilerplate line's fixed literal phrases: every "blue font"
+ * occurrence paints blue, and (only where the caller says so - see the
+ * measured difference between the title page's and the chapter divider's
+ * copy of the same sentence, task-20-report.md) "full revision" is
+ * underlined. Concatenating every returned run's `text` reproduces the
+ * input `text` exactly.
+ */
+export function styleBoilerplateRuns(text: string, opts: { underlineFullRevision?: boolean } = {}): Run[] {
+  const phrases: { phrase: string; style: Partial<Run> }[] = [{ phrase: 'blue font', style: { color: 'blue' } }];
+  if (opts.underlineFullRevision) phrases.push({ phrase: 'full revision', style: { underline: true } });
+
+  const pattern = new RegExp(`(${phrases.map(p => p.phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'g');
+  const runs: Run[] = [];
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = pattern.exec(text))) {
+    if (m.index > lastIndex) runs.push({ text: text.slice(lastIndex, m.index) });
+    const matched = m[0];
+    const found = phrases.find(p => p.phrase === matched);
+    runs.push({ text: matched, ...(found?.style ?? {}) });
+    lastIndex = m.index + matched.length;
+  }
+  if (lastIndex < text.length) runs.push({ text: text.slice(lastIndex) });
+  return runs;
 }
 
 // Exported so other emitters (e.g. the DOCX generator, src/services/docx/volumeDocx.ts)
@@ -375,6 +495,38 @@ export function formatDate(iso: string): string {
   const monthIdx = Number(mo) - 1;
   if (monthIdx < 0 || monthIdx > 11) return iso;
   return `${Number(d)} ${MONTHS[monthIdx]} ${y}`;
+}
+
+/**
+ * Task 20: the title-page change table's rows and gray-shading flags -
+ * shared by the PDF (layoutTitlePage below) and DOCX (volumeDocx.ts's
+ * buildTitlePageChildren) generators, per the same "single source of truth"
+ * pattern LEGEND_TEXT/formatDate/runningHeadParts already use.
+ *
+ * Measured directly against the real Vol 17 PDF (task-20-report.md): with no
+ * recorded changes yet, the table shows the synthesized ORIGINAL row
+ * followed by exactly 3 blank rows, each with its ORIGINATION DATE cell
+ * shaded light gray (~0.85 gray) - a fixed template for future changes to
+ * be filled in by hand. Once a real changeLog exists, this volume-specific
+ * template no longer applies (out of measured scope for a populated log),
+ * so those rows print exactly as authored, unshaded.
+ */
+export function titlePageChangeRows(doc: VolumeDoc): { rows: string[][]; shading?: boolean[][] } {
+  const v = doc.volume;
+  if (doc.changeLog.length > 0) {
+    return { rows: doc.changeLog.map(r => [r.version, r.summary, r.originationDate, r.dateOfChanges]) };
+  }
+  const seedRow = ['ORIGINAL VOLUME', 'N/A', formatDate(v.originalPublicationDate), 'N/A'];
+  const blankRow = ['', '', '', ''];
+  return {
+    rows: [seedRow, blankRow, blankRow, blankRow],
+    shading: [
+      [false, false, false, false],
+      [false, false, true, false],
+      [false, false, true, false],
+      [false, false, true, false],
+    ],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -615,34 +767,55 @@ function layoutTitlePage(doc: VolumeDoc, nextRoman: () => string): Page[] {
   const cursor = new PageCursor('front', nextRoman);
   const v = doc.volume;
 
-  cursor.addLines(centeredLine(`VOLUME ${v.number}`, HEADING_SIZE_PT), HEADING_SIZE_PT);
+  // Task 20: the whole "VOLUME {n} .. CANCELLATION" block sits inside one
+  // bordered box in the real PDF, with the change table's own top border
+  // immediately below it (no gap - see BoxItem's doc comment and the
+  // `cursor.addBox` call below, in place of the `addGap()` this used to have
+  // right before `addTable`).
+  const boxTopY = cursor.currentY() + LEADING;
+
+  cursor.addLines(centeredRuns([{ text: `VOLUME ${v.number}`, bold: true }], HEADING_SIZE_PT), HEADING_SIZE_PT);
   const titleText = v.titleQuoted !== false ? `"${v.title}"` : v.title;
-  cursor.addLines(centeredLine(titleText, HEADING_SIZE_PT), HEADING_SIZE_PT);
-  cursor.addLines(centeredLine(`SUMMARY OF VOLUME ${v.number} CHANGES`, HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addLines(centeredRuns([{ text: titleText, bold: true, underline: true }], HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addLines(
+    centeredRuns([{ text: `SUMMARY OF VOLUME ${v.number} CHANGES`, bold: true }], HEADING_SIZE_PT),
+    HEADING_SIZE_PT,
+  );
   cursor.addGap();
 
-  cursor.addLines(centeredLine(LEGEND_TEXT));
+  cursor.addLines(centeredRuns(legendRuns()));
   cursor.addGap();
 
   for (const line of VOLUME_CHANGE_POLICY_BOILERPLATE) {
-    cursor.addLines(leftParagraph(line));
+    cursor.addLines(leftParagraphRuns(styleBoilerplateRuns(line, { underlineFullRevision: true })));
   }
 
   if (v.cancellation) {
     cursor.addGap();
-    cursor.addLines(leftParagraph(`CANCELLATION: ${v.cancellation}`));
+    cursor.addLines(
+      leftParagraphRuns([
+        { text: 'CANCELLATION', bold: true, underline: true },
+        { text: `: ${v.cancellation}` },
+      ]),
+    );
   }
 
-  cursor.addGap();
-  const seedRow = ['ORIGINAL VOLUME', 'N/A', formatDate(v.originalPublicationDate), 'N/A'];
-  const changeRows = doc.changeLog.length > 0
-    ? doc.changeLog.map(r => [r.version, r.summary, r.originationDate, r.dateOfChanges])
-    : [seedRow];
-  cursor.addTable(
-    ['VOLUME VERSION', 'SUMMARY OF CHANGE', 'ORIGINATION DATE', 'DATE OF CHANGES'],
-    [90, 198, 90, 90],
-    changeRows,
-  );
+  const boxBottomY = cursor.currentY();
+  const { rows: changeRows, shading } = titlePageChangeRows(doc);
+  const tableCols = ['VOLUME VERSION', 'SUMMARY OF CHANGE', 'ORIGINATION DATE', 'DATE OF CHANGES'];
+  const tableColWidths = [90, 198, 90, 90];
+  // Task 20: the table's own top border paints at `y + headerHeight - 3`
+  // (see volumeGenerator.ts's 'table' case), i.e. ABOVE the cursor position
+  // addTable is called at - so closing the gap to zero (as a naive "join
+  // them directly" read of the measurement would do) makes the header row
+  // overlap backward into the CANCELLATION line above it. Sizing the gap to
+  // `headerHeight - 3` instead makes that top border land EXACTLY at
+  // `boxBottomY`, so the box's bottom edge and the table's top border
+  // coincide with no overlap and only a hairline-thin visual gap above it -
+  // as measured on the real Vol 17 PDF (task-20-report.md).
+  cursor.addGap(tableHeaderHeight(tableCols, tableColWidths) - 3);
+  cursor.addTable(tableCols, tableColWidths, changeRows, shading);
+  cursor.addBox(boxTopY, boxBottomY);
 
   if (v.reportRequired) {
     cursor.addGap();
@@ -728,35 +901,54 @@ function layoutToc(doc: VolumeDoc, toc: TocEntry[], nextRoman: () => string): Pa
 // Chapter divider ("Summary of Substantive Changes") + "CHAPTER {M}" title.
 // ---------------------------------------------------------------------------
 function layoutChapterDivider(cursor: PageCursor, doc: VolumeDoc, chapter: Chapter) {
+  // Task 20: same bordered-box-then-table treatment as layoutTitlePage
+  // (measured on the real Vol 17 chapter divider page too - task-20-report.md).
+  const boxTopY = cursor.currentY() + LEADING;
+
   cursor.addLines(
-    centeredLine(`VOLUME ${doc.volume.number}: CHAPTER ${chapter.number}`, HEADING_SIZE_PT),
+    centeredRuns([{ text: `VOLUME ${doc.volume.number}: CHAPTER ${chapter.number}`, bold: true }], HEADING_SIZE_PT),
     HEADING_SIZE_PT,
   );
-  cursor.addLines(centeredLine(`"${chapter.title.toUpperCase()}"`, HEADING_SIZE_PT), HEADING_SIZE_PT);
-  cursor.addLines(centeredLine('SUMMARY OF SUBSTANTIVE CHANGES', HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addLines(
+    centeredRuns([{ text: `"${chapter.title.toUpperCase()}"`, bold: true, underline: true }], HEADING_SIZE_PT),
+    HEADING_SIZE_PT,
+  );
+  cursor.addLines(
+    centeredRuns([{ text: 'SUMMARY OF SUBSTANTIVE CHANGES', bold: true }], HEADING_SIZE_PT),
+    HEADING_SIZE_PT,
+  );
   cursor.addGap();
 
-  cursor.addLines(centeredLine(LEGEND_TEXT));
+  cursor.addLines(centeredRuns(legendRuns()));
   cursor.addGap();
 
   for (const line of CHAPTER_CHANGE_POLICY_BOILERPLATE) {
-    cursor.addLines(leftParagraph(line));
+    // Task 20: measured against the real PDF, the divider's copy of the
+    // "...full revision..." sentence is NOT underlined, unlike the title
+    // page's copy of the same sentence (task-20-report.md) - a genuine
+    // per-page inconsistency in the source document, not a bug.
+    cursor.addLines(leftParagraphRuns(styleBoilerplateRuns(line, { underlineFullRevision: false })));
   }
-  cursor.addGap();
 
-  cursor.addTable(
-    // Finding 15 (T10): format spec §4.6 verbatim header, with spaces
-    // around the slash.
-    ['CHAPTER VERSION', 'PAGE / PARAGRAPH', 'SUMMARY OF SUBSTANTIVE CHANGES', 'DATE OF CHANGE'],
-    [80, 90, 208, 90],
-    chapter.changeLog.map(r => [r.version, r.pageParagraph, r.summary, r.dateOfChange]),
-  );
+  const boxBottomY = cursor.currentY();
+  // Finding 15 (T10): format spec §4.6 verbatim header, with spaces around
+  // the slash.
+  const tableCols = ['CHAPTER VERSION', 'PAGE / PARAGRAPH', 'SUMMARY OF SUBSTANTIVE CHANGES', 'DATE OF CHANGE'];
+  const tableColWidths = [80, 90, 208, 90];
+  // Task 20: see layoutTitlePage's identical comment - this sizes the gap
+  // so the table's own top border lands exactly at `boxBottomY` instead of
+  // overlapping backward into the boilerplate text above it.
+  cursor.addGap(tableHeaderHeight(tableCols, tableColWidths) - 3);
+  cursor.addTable(tableCols, tableColWidths, chapter.changeLog.map(r => [r.version, r.pageParagraph, r.summary, r.dateOfChange]));
+  cursor.addBox(boxTopY, boxBottomY);
 }
 
 function layoutChapterTitlePage(cursor: PageCursor, chapter: Chapter) {
   cursor.breakPage();
-  cursor.addLines(centeredLine(`CHAPTER ${chapter.number}`, HEADING_SIZE_PT), HEADING_SIZE_PT);
-  cursor.addLines(centeredLine(chapter.title.toUpperCase(), HEADING_SIZE_PT), HEADING_SIZE_PT);
+  // Task 20: measured bold on the real Vol 17 chapter title page (page
+  // index 4 - task-20-report.md), matching the divider/title-page headings.
+  cursor.addLines(centeredRuns([{ text: `CHAPTER ${chapter.number}`, bold: true }], HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addLines(centeredRuns([{ text: chapter.title.toUpperCase(), bold: true }], HEADING_SIZE_PT), HEADING_SIZE_PT);
   cursor.addGap();
 }
 

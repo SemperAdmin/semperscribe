@@ -16,11 +16,31 @@ import { generateVolumePdf } from '@/services/pdf/volumeGenerator';
 
 const REAL_PDF = 'C:\\Users\\barbc\\Downloads\\01_USMC_OFFICIAL\\MCO_Orders\\MCO 5800.16 Vol.17.pdf';
 
-interface MeasuredRow { page: number; x: number; y: number; size: number; text: string }
+// Task 20: `font` is an ADDITIVE field on measure-pdf.py's output (the
+// embedded font's BaseFont, subset-tag stripped) - every existing
+// field/consumer is unchanged; it lets the weight-fidelity assertions below
+// tell Bold/BoldItalic/regular apart without changing anything that already
+// worked off x/y/size/text.
+interface MeasuredRow { page: number; x: number; y: number; size: number; text: string; font: string }
 
 function measureFile(pdfPath: string): MeasuredRow[] {
   const out = execFileSync('python', [join(__dirname, 'measure-pdf.py'), pdfPath]).toString();
   return JSON.parse(out) as MeasuredRow[];
+}
+
+/**
+ * Task 20: our render embeds pdf-lib's StandardFonts ("Times-Bold",
+ * "Times-BoldItalic", ...) while the real PDF embeds actual Times New Roman
+ * ("TimesNewRomanPS-BoldMT", ...) - different BaseFont naming schemes, but
+ * both spell out "Bold"/"Italic" in the weight/style the row was painted
+ * with, so a case-insensitive substring check is font-family-agnostic and
+ * works for either document.
+ */
+function isBoldFont(font: string): boolean {
+  return /bold/i.test(font);
+}
+function isItalicFont(font: string): boolean {
+  return /italic/i.test(font);
 }
 
 async function ourRows(): Promise<MeasuredRow[]> {
@@ -222,6 +242,35 @@ describe('volume Vol 17 render (no real PDF required)', () => {
     expect(findIncludes(rows, 'Report Required:')).toBeTruthy();
     expect(rows.some(r => r.text.includes('See Volume text for details'))).toBe(false);
   });
+
+  // Task 20: title-page/divider styling fidelity - measured directly
+  // against the real Vol 17 PDF (task-20-report.md). "VOLUME 17", the
+  // hyperlink legend's styled phrase, and the change-table headers all
+  // paint bold (the legend phrase bold-ITALIC specifically); ordinary body
+  // text stays regular.
+  it('Task 20: paints "VOLUME 17", the legend phrase, and table headers bold', async () => {
+    const rows = await ourRows();
+    const volumeHeading = findIncludes(rows, 'VOLUME 17');
+    expect(volumeHeading, '"VOLUME 17" heading not found').toBeTruthy();
+    expect(isBoldFont(volumeHeading!.font)).toBe(true);
+
+    const legendPhrase = findIncludes(rows, 'bold, italic, blue and underlined font');
+    expect(legendPhrase, 'legend styled phrase not found').toBeTruthy();
+    expect(isBoldFont(legendPhrase!.font)).toBe(true);
+    expect(isItalicFont(legendPhrase!.font)).toBe(true);
+
+    const tableHeader = rows.find(r => r.text === 'VOLUME' || r.text === 'VOLUME VERSION');
+    expect(tableHeader, 'change-table header cell not found').toBeTruthy();
+    expect(isBoldFont(tableHeader!.font)).toBe(true);
+
+    // Ordinary body text (section 0101's opening line) stays regular -
+    // Vol 17's body-section headings measured regular too (task-20-report.md),
+    // so bolding is confined to the front-matter/divider styling this task
+    // covers, not body text.
+    const bodyText = findIncludes(rows, 'To establish and provide guidance');
+    expect(bodyText, 'section 0101 body text not found').toBeTruthy();
+    expect(isBoldFont(bodyText!.font)).toBe(false);
+  });
 });
 
 describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF', () => {
@@ -337,5 +386,47 @@ describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF'
       expect(findIncludes(ours, needle), `our render is missing "${needle}"`).toBeTruthy();
       expect(findIncludes(real, needle), `real PDF is missing "${needle}"`).toBeTruthy();
     }
+  });
+
+  /**
+   * Task 20: weight-fidelity parity - the real Vol 17 PDF paints "VOLUME
+   * 17", the hyperlink legend's styled phrase (bold-ITALIC specifically),
+   * "CANCELLATION", and the change-table headers all bold; body text (and,
+   * per the same measurement, Vol 17's own body-section headings) stays
+   * regular. Both documents must agree on which is which - not just that
+   * the text is present (see the section above).
+   */
+  it('Task 20: our render matches the real PDF\'s bold/italic weighting on the title page', async () => {
+    const ours = await ourRows();
+    const real = measureFile(REAL_PDF);
+
+    for (const [needle, expectBold, expectItalic] of [
+      ['VOLUME 17', true, false],
+      ['bold, italic, blue and underlined font', true, true],
+      ['CANCELLATION', true, false],
+    ] as const) {
+      const ourRow = findIncludes(ours, needle);
+      const realRow = findIncludes(real, needle);
+      expect(ourRow, `our render is missing "${needle}"`).toBeTruthy();
+      expect(realRow, `real PDF is missing "${needle}"`).toBeTruthy();
+      expect(isBoldFont(ourRow!.font), `our "${needle}" bold=${isBoldFont(ourRow!.font)}`).toBe(expectBold);
+      expect(isBoldFont(realRow!.font), `real "${needle}" bold=${isBoldFont(realRow!.font)}`).toBe(expectBold);
+      expect(isItalicFont(ourRow!.font)).toBe(expectItalic);
+      expect(isItalicFont(realRow!.font)).toBe(expectItalic);
+    }
+
+    const ourHeader = ours.find(r => r.text === 'VOLUME' || r.text === 'VOLUME VERSION');
+    const realHeader = real.find(r => r.text === 'VOLUME' || r.text === 'VOLUME VERSION');
+    expect(ourHeader, 'our render is missing the change-table header cell').toBeTruthy();
+    expect(realHeader, 'real PDF is missing the change-table header cell').toBeTruthy();
+    expect(isBoldFont(ourHeader!.font)).toBe(true);
+    expect(isBoldFont(realHeader!.font)).toBe(true);
+
+    const ourBody = findIncludes(ours, 'To establish and provide guidance');
+    const realBody = findIncludes(real, 'To establish and provide guidance');
+    expect(ourBody, 'our render is missing the 0101 body text').toBeTruthy();
+    expect(realBody, 'real PDF is missing the 0101 body text').toBeTruthy();
+    expect(isBoldFont(ourBody!.font)).toBe(false);
+    expect(isBoldFont(realBody!.font)).toBe(false);
   });
 });
