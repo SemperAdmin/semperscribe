@@ -83,4 +83,4 @@ All 22 tests in this file pass, including against the real PDF at `C:\Users\barb
 - `titlePageChangeRows`'s 3-blank-shaded-row template only activates when `doc.changeLog` is empty (matching the real Vol 17's own "no changes yet" state, which is what was measured). The Vol 17 test fixture already carries one explicit `changeLog` entry, so that specific fixture's render does NOT exercise the blank-row/shading path — I verified it separately with a throwaway `blankVolume()` render (not committed) rather than adding a new fixture, since none of the required test files needed it.
 
 ## Commits
-See git log on this branch for the two commits: schema/layout/PDF/DOCX styling implementation, and the measure-pdf.py/vol17-comparison.test.ts additions.
+See git log on this branch: `fix(volume): title-page/divider/header styling fidelity (Task 20)`, covering the schema/layout/PDF/DOCX styling implementation and the measure-pdf.py/vol17-comparison.test.ts additions together.
