@@ -533,14 +533,46 @@ function leftParagraphRuns(runs: Run[], sizePt = BODY_SIZE_PT) {
  * measured width (fontmap x's per line don't share a single left edge).
  * Wrapping decisions themselves are unaffected - only the resulting line's
  * `x` is recomputed after wrapRuns has already decided where to break.
+ *
+ * Task 23 fix 2: `inset` narrows the WRAP width (not just the resulting
+ * centered position) by the same amount on each side - the real title page's
+ * first boilerplate paragraph wraps its first line at "...unless/until a",
+ * pushing "full revision..." onto line 2, while ours (wrapping at the full
+ * `MARGIN..RIGHT_EDGE` interior width, inset=0) fit "full" onto line 1 too.
+ * See `TITLE_BOILERPLATE_INSET`'s doc comment for the measurement. Defaults
+ * to 0 (the prior, unnarrowed behavior) so `layoutDivider`'s callers -
+ * unmeasured for this task - are unaffected.
  */
-function centeredParagraphRuns(runs: Run[], sizePt = BODY_SIZE_PT) {
-  const lines = wrapRuns(runs, MARGIN, MARGIN, RIGHT_EDGE, sizePt);
+function centeredParagraphRuns(runs: Run[], sizePt = BODY_SIZE_PT, inset = 0) {
+  const lines = wrapRuns(runs, MARGIN + inset, MARGIN + inset, RIGHT_EDGE - inset, sizePt);
   return lines.map(line => {
     const width = line.segments.reduce((w, s) => w + measureText(s.text, sizePt, !!s.run.bold), 0);
     return { segments: line.segments, x: CENTER_X - width / 2 };
   });
 }
+
+/**
+ * Task 23 fix 2: the real Vol 17 title page's centered boilerplate text sits
+ * inset from the box's `MARGIN..RIGHT_EDGE` interior, not flush to it -
+ * measured directly against the real PDF's content stream (fontmap.py, page
+ * index 0): the first boilerplate paragraph's first line starts at x=83.7
+ * (`MARGIN` is 72, so inset = 83.7 - 72 = 11.7) and, by the same paragraph's
+ * own centered symmetry (`centeredParagraphRuns` centers each line
+ * independently), ends at x = 2*CENTER_X - 83.7 = 528.3 (`RIGHT_EDGE` is
+ * 540, inset = 540 - 528.3 = 11.7 too) - an exactly symmetric 11.7pt inset on
+ * each side. Verified this is the correct WRAP-width constraint (not just
+ * where that one line happened to land): at inset=11.7 (wrap width 444.6),
+ * `wrapRuns` breaks the first paragraph's first line at "...unless/until a",
+ * matching the real PDF exactly (ours previously fit "full" onto that line
+ * too, at the old unconstrained 468pt width) - while the OTHER two
+ * boilerplate paragraphs and the legend line, all single-line in the real
+ * PDF, stay single-line at this width too (they don't reach the new,
+ * narrower boundary). Applied to every centered paragraph in the title
+ * page's box (legend/boilerplate/CANCELLATION), per the task's "one
+ * consistent measure" - none of the others actually wrap differently at this
+ * width, so this only visibly changes the first paragraph.
+ */
+const TITLE_BOILERPLATE_INSET = 11.7;
 
 // ---------------------------------------------------------------------------
 // Task 20: styled-run builders for the front matter's fixed literal text -
@@ -953,12 +985,24 @@ function layoutTitlePage(doc: VolumeDoc, nextRoman: () => string): Page[] {
   // the SAME ~25.2pt rhythm (one blank line - `INTER_PARAGRAPH_GAP`, on top
   // of the LEADING step `addLines` already takes between any two lines) -
   // measured y's: 683.1 -> 657.9 -> 632.6 -> 607.5 -> 582.2 -> 544.3 -> 519.0
-  // -> 493.6 (task21-findings.md). This used to stack the three heading
-  // lines at bare LEADING (no blank line at all) and then, oddly, OVERSHOOT
-  // to raw `GAP` (25pt on top of the already-taken LEADING, ~37.6pt total)
-  // before the legend and each boilerplate paragraph - neither matches the
-  // source; both are replaced with the same `INTER_PARAGRAPH_GAP` step used
-  // for an ordinary body paragraph break.
+  // -> 493.6 (task21-findings.md).
+  //
+  // Task 23 fix 1: that same one-blank-line rhythm applies ONE MORE TIME
+  // before the very first line too - between the box's TOP edge and "VOLUME
+  // {n}" itself - which round 1 never accounted for: it painted "VOLUME
+  // {n}" straight at the page's generic top-of-text cursor position (no gap
+  // at all past the bare LEADING already folded into `boxTopY` above), so
+  // every line in this block landed ~13pt higher than its real counterpart
+  // (the ladder's internal spacing was already correct - only its start was
+  // wrong). Measured directly against the real PDF's content stream
+  // (fontmap.py + raw `re` rect ops, page index 0): box top y=706.06 (the
+  // `re [73.224, 466.39, 465.7, 239.66]` outer rect, top = 466.39+239.66)
+  // down to "VOLUME 17"'s baseline y=683.1 is a 22.96pt gap - close to
+  // 2*LEADING (25.2pt, within the same ~2-3pt slop every other rhythm
+  // measurement in this file already carries), not the bare 1*LEADING
+  // (12.6pt) `boxTopY`'s formula alone produces.
+  cursor.addGap(INTER_PARAGRAPH_GAP);
+
   cursor.addLines(centeredRuns([{ text: `VOLUME ${v.number}`, bold: true }], HEADING_SIZE_PT), HEADING_SIZE_PT);
   cursor.addGap(INTER_PARAGRAPH_GAP);
   const titleText = v.titleQuoted !== false ? `"${v.title}"` : v.title;
@@ -980,10 +1024,16 @@ function layoutTitlePage(doc: VolumeDoc, nextRoman: () => string): Page[] {
   // sentence) is underlined in the source; the underline rect measured at
   // x=402.8,y=517.3 has no counterpart near the FIRST paragraph's own "full
   // revision" phrase (y~569.6) - underlining both, as before, was wrong.
+  //
+  // Task 23 fix 2: each paragraph now wraps at `TITLE_BOILERPLATE_INSET`
+  // narrower than the box's full interior width - see that constant's doc
+  // comment for the measurement. Only the first paragraph's wrap point
+  // actually changes at this width; the other two stay single-line exactly
+  // as before.
   VOLUME_CHANGE_POLICY_BOILERPLATE.forEach((line, i) => {
     if (i > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
     const underlineFullRevision = i === VOLUME_CHANGE_POLICY_BOILERPLATE.length - 1;
-    cursor.addLines(centeredParagraphRuns(styleBoilerplateRuns(line, { underlineFullRevision })));
+    cursor.addLines(centeredParagraphRuns(styleBoilerplateRuns(line, { underlineFullRevision }), BODY_SIZE_PT, TITLE_BOILERPLATE_INSET));
   });
 
   if (v.cancellation) {
@@ -995,10 +1045,19 @@ function layoutTitlePage(doc: VolumeDoc, nextRoman: () => string): Page[] {
       centeredParagraphRuns([
         { text: 'CANCELLATION', bold: true, underline: true },
         { text: `: ${v.cancellation}` },
-      ]),
+      ], BODY_SIZE_PT, TITLE_BOILERPLATE_INSET),
     );
   }
 
+  // Task 23 fix 1: symmetric to the top-edge gap above - one more blank
+  // line (`INTER_PARAGRAPH_GAP`) between the last line (CANCELLATION, or the
+  // last boilerplate paragraph if there's no cancellation) and the box's
+  // BOTTOM edge. Measured directly against the real PDF: CANCELLATION's
+  // baseline y=493.6 down to the box's bottom edge y=466.39 (same outer rect
+  // as `boxTopY`'s, bottom = 466.39) is a 27.21pt gap - again close to
+  // 2*LEADING (25.2pt), not the bare 1*LEADING `cursor.currentY()` alone
+  // (post the last `addLines` call's trailing decrement) already provides.
+  cursor.addGap(INTER_PARAGRAPH_GAP);
   const boxBottomY = cursor.currentY();
   // Fix round 1 (reviewer finding, CRITICAL): addBox must be called HERE,
   // before addTable - not after it. addTable can paginate onto a new page
@@ -1146,6 +1205,16 @@ function layoutDivider(cursor: PageCursor, doc: VolumeDoc, ctx: DividerContext) 
   // (measured on the real Vol 17 chapter divider page too - task-20-report.md).
   const boxTopY = cursor.currentY() + LEADING;
 
+  // Task 23 fix 1: same top-edge gap as layoutTitlePage's identical fix -
+  // one blank line between the box's TOP edge and the heading line -
+  // re-measured on both the real chapter divider (page index 3) and the
+  // Appendix A divider (page index 7): box top y=704.14 on both (`re
+  // [85.104, 489.79, 441.94, 214.34]` / `re [85.104, 480.31, 441.94,
+  // 223.82]`, top = y+height) down to the heading's baseline (681.2 / 680.3
+  // respectively) is a ~23pt gap on both - consistent with the title page's
+  // ~23pt top gap, so the same `INTER_PARAGRAPH_GAP` fix applies here too.
+  cursor.addGap(INTER_PARAGRAPH_GAP);
+
   // Task 22: the appendix divider's heading prints TWO spaces after the
   // colon ("VOLUME 17:  APPENDIX A") - measured verbatim as a single
   // text-showing operation on the real PDF (fontmap.py, page index 7,
@@ -1192,6 +1261,20 @@ function layoutDivider(cursor: PageCursor, doc: VolumeDoc, ctx: DividerContext) 
     cursor.addLines(centeredParagraphRuns(styleBoilerplateRuns(line, { underlineFullRevision: false })));
   });
 
+  // Task 23 fix 1: bottom-edge gap - measured DIFFERENTLY from the title
+  // page's, per "measure, don't assume": on the chapter divider, the last
+  // boilerplate line's baseline y=529.6 down to the box's bottom edge
+  // y=489.79 (`re [85.104, 489.79, 441.94, 214.34]`) is a ~39.81pt gap; on
+  // the Appendix A divider, last line y=520.4 down to box bottom y=480.31 is
+  // a ~40.09pt gap. Both dividers agree with each other but NOT with the
+  // title page's ~27.21pt bottom gap (fix above) - the divider's boilerplate
+  // has no trailing "CANCELLATION"-style line, and its box is templated
+  // with visibly more trailing whitespace before the change table. `GAP`
+  // (25pt, on top of the LEADING already folded into `cursor.currentY()`,
+  // for a ~37.6pt total) is the closest existing named constant - about 2pt
+  // under both measurements, within this file's usual measurement slop -
+  // rather than inventing a new one-off magic number for this single case.
+  cursor.addGap(GAP);
   const boxBottomY = cursor.currentY();
   // Fix round 1 (reviewer finding, CRITICAL): see layoutTitlePage's
   // identical comment - addBox must run BEFORE addTable, while

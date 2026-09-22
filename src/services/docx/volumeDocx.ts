@@ -215,14 +215,33 @@ function centered(text: string, size = BODY_SIZE, heading?: HeadingValue): Parag
  * `Run`s (e.g. a bold/underlined heading, or the hyperlink legend's
  * regular/bold-italic/bold segments) via the same `runToChildren` that
  * `blocksToChildren` uses for body content.
+ *
+ * Task 23 fix 2: `indentTwips` narrows the paragraph's own left/right
+ * indent, shrinking the box Word centers the text within - the DOCX mirror
+ * of the PDF path's `centeredParagraphRuns(..., inset)` (lib/volume/
+ * layout.ts). See `TITLE_BOILERPLATE_INSET_TWIPS`'s doc comment for the
+ * measurement. Defaults to 0 (unindented, the prior behavior) for every
+ * other caller.
  */
-function centeredRunsPara(runs: Run[], size = BODY_SIZE, heading?: HeadingValue): Paragraph {
+function centeredRunsPara(runs: Run[], size = BODY_SIZE, heading?: HeadingValue, indentTwips = 0): Paragraph {
   return new Paragraph({
     ...(heading ? { heading } : {}),
     alignment: AlignmentType.CENTER,
+    ...(indentTwips ? { indent: { left: indentTwips, right: indentTwips } } : {}),
     children: runsToChildren(runs, size),
   });
 }
+
+/**
+ * Task 23 fix 2: DOCX mirror of the PDF path's `TITLE_BOILERPLATE_INSET`
+ * (lib/volume/layout.ts) - 11.7pt converted to twips (Word's indent unit,
+ * 1/20pt): 11.7 * 20 = 234. Word centers a paragraph's text within its own
+ * left/right-indented box, so indenting each side by this amount narrows the
+ * wrap width the same way the PDF path's `wrapRuns` call does, keeping the
+ * two renderers' word-wrap decisions in sync for the title page's centered
+ * boilerplate/CANCELLATION paragraphs.
+ */
+const TITLE_BOILERPLATE_INSET_TWIPS = 234;
 function leftPara(text: string): Paragraph {
   return new Paragraph({ children: [new TextRun({ text, font: FONT, size: BODY_SIZE })] });
 }
@@ -556,7 +575,9 @@ function buildTitlePageChildren(doc: VolumeDoc): (Paragraph | Table)[] {
   VOLUME_CHANGE_POLICY_BOILERPLATE.forEach((line, i) => {
     if (i > 0) boxChildren.push(blankLine());
     const underlineFullRevision = i === VOLUME_CHANGE_POLICY_BOILERPLATE.length - 1;
-    boxChildren.push(centeredRunsPara(styleBoilerplateRuns(line, { underlineFullRevision })));
+    boxChildren.push(
+      centeredRunsPara(styleBoilerplateRuns(line, { underlineFullRevision }), BODY_SIZE, undefined, TITLE_BOILERPLATE_INSET_TWIPS),
+    );
   });
 
   if (v.cancellation) {
@@ -564,7 +585,12 @@ function buildTitlePageChildren(doc: VolumeDoc): (Paragraph | Table)[] {
     // Task 21 finding 4: measured centered (x=226.4, not the left margin) -
     // part of the same centered block as the boilerplate above it.
     boxChildren.push(
-      centeredRunsPara([{ text: 'CANCELLATION', bold: true, underline: true }, { text: `: ${v.cancellation}` }]),
+      centeredRunsPara(
+        [{ text: 'CANCELLATION', bold: true, underline: true }, { text: `: ${v.cancellation}` }],
+        BODY_SIZE,
+        undefined,
+        TITLE_BOILERPLATE_INSET_TWIPS,
+      ),
     );
   }
   children.push(boxedBlock(boxChildren));

@@ -13,6 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { VolumeSchema } from '@/lib/schemas/volume-schema';
 import { generateVolumePdf } from '@/services/pdf/volumeGenerator';
+import { layoutVolume } from '@/lib/volume/layout';
 
 const REAL_PDF = 'C:\\Users\\barbc\\Downloads\\01_USMC_OFFICIAL\\MCO_Orders\\MCO 5800.16 Vol.17.pdf';
 
@@ -26,6 +27,34 @@ interface MeasuredRow { page: number; x: number; y: number; size: number; text: 
 function measureFile(pdfPath: string): MeasuredRow[] {
   const out = execFileSync('python', [join(__dirname, 'measure-pdf.py'), pdfPath]).toString();
   return JSON.parse(out) as MeasuredRow[];
+}
+
+/**
+ * Task 23: reconstructs one physical line of extracted text by joining every
+ * row on the same PAGE within `tolerance`pt of `y`, left to right - the same
+ * "same y, join by x" pattern `footerLabels` below already uses, needed here
+ * because both renderers split a styled/kerned line (e.g. the first
+ * boilerplate paragraph's underlined/regular runs) into several
+ * text-showing operations that individually extract as separate rows
+ * sharing one y. Filtering by page too matters: the divider/appendix-divider
+ * pages repeat lines at the SAME y as the title page (all built from the
+ * same box template), so an unfiltered y-only match would splice text from
+ * unrelated pages together.
+ */
+function lineTextAtY(rows: MeasuredRow[], page: number, y: number, tolerance = 0.5): string {
+  return rows
+    .filter(r => r.page === page && Math.abs(r.y - y) <= tolerance)
+    .sort((a, b) => a.x - b.x)
+    .map(r => r.text)
+    .join('');
+}
+
+/** Our own title page's laid-out items (box + lines), straight from the
+ * layout function - not the exported PDF's text extraction, since a filled/
+ * stroked box has no extractable text for measure-pdf.py to see. */
+function ourTitlePageItems() {
+  const doc = VolumeSchema.parse(JSON.parse(readFileSync(join(__dirname, 'fixtures', 'vol17.json'), 'utf8')));
+  return layoutVolume(doc).pages[0].items;
 }
 
 /**
@@ -467,6 +496,75 @@ describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF'
       expect(findIncludes(ours, needle), `our render is missing "${needle}"`).toBeTruthy();
       expect(findIncludes(real, needle), `real PDF is missing "${needle}"`).toBeTruthy();
     }
+  });
+
+  /**
+   * Task 23 fix 2: the real PDF wraps the title page's first boilerplate
+   * paragraph's first line at "...unless/until a", pushing "full revision
+   * of the MCO has been conducted." onto line 2 - ours used to fit "full"
+   * onto line 1 too (wrapping at the box's full, un-inset interior width).
+   * Reconstructing the whole physical line (joining every text-showing
+   * operation at that line's y, per `lineTextAtY`) and comparing it verbatim
+   * between the two documents catches ANY wrap-point mismatch, not just
+   * this one - a looser prefix/substring check could pass even if the wrap
+   * point drifted back.
+   */
+  it('Task 23 fix 2: the first boilerplate paragraph wraps at the same word in both documents', async () => {
+    const ours = await ourRows();
+    const real = measureFile(REAL_PDF);
+
+    const ourAnchor = findIncludes(ours, 'The original publication date of');
+    const realAnchor = findIncludes(real, 'The original publication date of');
+    expect(ourAnchor, 'our render is missing the first boilerplate paragraph').toBeTruthy();
+    expect(realAnchor, 'real PDF is missing the first boilerplate paragraph').toBeTruthy();
+
+    // Both strings' whitespace is collapsed before comparing: pypdf's
+    // visitor strips() each individual text-showing operation, and the real
+    // PDF splits this line into several such operations (kerning/style
+    // boundaries) - one of them is a lone space between two word chunks,
+    // which strip() reduces to '' and the extraction drops entirely. Ours
+    // paints the whole line as one operation, so its internal spaces
+    // survive untouched. The word-boundary content (what actually matters -
+    // whether the wrap fell before or after "full") is unaffected either
+    // way.
+    const ourLine1 = lineTextAtY(ours, ourAnchor!.page, ourAnchor!.y).replace(/\s+/g, '');
+    const realLine1 = lineTextAtY(real, realAnchor!.page, realAnchor!.y).replace(/\s+/g, '');
+    expect(ourLine1).toBe(realLine1);
+    // Guards against a vacuous pass (e.g. both empty/truncated): the wrap
+    // must land after "...unless/until a", not after "...a full".
+    expect(ourLine1.endsWith('a')).toBe(true);
+    expect(ourLine1).not.toContain('full');
+  });
+
+  /**
+   * Task 23 fix 1: one blank line of padding between the title page's
+   * bordered box's TOP edge and "VOLUME {n}"'s baseline - measured directly
+   * against the real PDF's content stream (`re [73.224, 466.39, 465.7,
+   * 239.66]` on page index 0; top = 466.39 + 239.66 = 706.06 - see
+   * layout.ts's Task 23 fix 1 doc comment for the full derivation). The box
+   * itself paints no extractable text (measure-pdf.py only sees text-showing
+   * operations), so our own box's yTop comes straight from `layoutVolume`'s
+   * output instead of the exported PDF; the real box top is this measured
+   * constant.
+   */
+  it('Task 23 fix 1: the box-top-to-"VOLUME{n}" gap matches the real PDF within 3pt', async () => {
+    const REAL_BOX_TOP_Y = 706.06;
+    const real = measureFile(REAL_PDF);
+    const realVolumeLine = findIncludes(real, 'VOLUME 17');
+    expect(realVolumeLine, 'real PDF is missing "VOLUME 17"').toBeTruthy();
+    const realGap = REAL_BOX_TOP_Y - realVolumeLine!.y;
+
+    const items = ourTitlePageItems();
+    const ourBox = items.find((i): i is Extract<typeof i, { kind: 'box' }> => i.kind === 'box');
+    const ourVolumeLine = items.find(
+      (i): i is Extract<typeof i, { kind: 'line' | 'heading' }> =>
+        (i.kind === 'line' || i.kind === 'heading') && i.segments.some(s => s.text === 'VOLUME 17'),
+    );
+    expect(ourBox, 'our layout is missing the title-page box').toBeTruthy();
+    expect(ourVolumeLine, 'our layout is missing the "VOLUME 17" line').toBeTruthy();
+    const ourGap = ourBox!.yTop - ourVolumeLine!.y;
+
+    expect(Math.abs(ourGap - realGap)).toBeLessThanOrEqual(3);
   });
 
   /**
