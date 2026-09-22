@@ -69,3 +69,4 @@ _to_delete/
 test-results/
 playwright-report/
 coverage/
+.superpowers/
