@@ -52,7 +52,8 @@
         "cancellation": "MCO 1650.62",
         "reportRequired": true,
         "sectionPeriod": true,
-        "pageBand": "chapter-page"
+        "pageBand": "chapter-page",
+        "referencesSummaryPage": false
       },
       "changeLog": [
         {
@@ -255,6 +256,80 @@
             }
           ],
           "figures": []
+        }
+      ],
+      "appendices": [
+        {
+          "letter": "A",
+          "title": "GLOSSARY OF ACRONYMS AND ABBREVIATIONS",
+          "changeLog": [],
+          "blocks": [],
+          "glossary": [
+            {
+              "term": "ABA",
+              "definition": "American Bar Association"
+            },
+            {
+              "term": "CAELA",
+              "definition": "Commandant's Award for Excellence in Legal Assistance"
+            },
+            {
+              "term": "COPY-A",
+              "definition": "Victims' Legal Counsel Organization Civilian Paralegal of the Year Award"
+            },
+            {
+              "term": "DSO",
+              "definition": "Defense Services Organization"
+            },
+            {
+              "term": "JAA",
+              "definition": "Judge Advocate Association"
+            },
+            {
+              "term": "JLA",
+              "definition": "Legal Assistance Branch"
+            },
+            {
+              "term": "LA",
+              "definition": "Legal Assistance"
+            },
+            {
+              "term": "LSC",
+              "definition": "Legal Services Chief of the Marine Corps"
+            },
+            {
+              "term": "LSSS-OIC",
+              "definition": "Legal Services Support Section-Officer-in-Charge"
+            },
+            {
+              "term": "NFEs",
+              "definition": "Non-Federal Entities"
+            },
+            {
+              "term": "OIC, VLCO",
+              "definition": "Officer-in-Charge, Victims' Legal Counsel Organization"
+            },
+            {
+              "term": "RDC",
+              "definition": "Regional Defense Counsel"
+            },
+            {
+              "term": "RTC",
+              "definition": "Regional Trial Counsel"
+            },
+            {
+              "term": "RVLC",
+              "definition": "Regional Victims' Legal Counsel"
+            },
+            {
+              "term": "SJA to CMC",
+              "definition": "Staff Judge Advocate to the Commandant"
+            },
+            {
+              "term": "TSO",
+              "definition": "Trial Services Organization"
+            }
+          ]
         }
       ]
     }

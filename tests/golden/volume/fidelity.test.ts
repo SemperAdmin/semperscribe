@@ -1,5 +1,6 @@
 // tests/golden/volume/fidelity.test.ts
 import { describe, it, expect } from 'vitest';
+import { hasPypdf } from './python-probe';
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -29,7 +30,7 @@ async function coords(fixture: string): Promise<MeasuredRow[]> {
   return JSON.parse(out) as MeasuredRow[];
 }
 
-describe('volume fidelity', () => {
+describe.skipIf(!hasPypdf())('volume fidelity', () => {
   it('vol6 single-chapter: sequential footer, section at x=72', async () => {
     const rows = await coords('vol6.json');
     expect(rows.find(r => r.text.startsWith('0101'))?.x).toBeCloseTo(72, 0);

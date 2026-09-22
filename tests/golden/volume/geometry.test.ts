@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
+import { hasPypdf } from './python-probe';
 import { writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -25,7 +26,7 @@ async function renderCoords(doc: VolumeDoc = build()) {
   return JSON.parse(out) as { page: number; x: number; y: number; size: number; text: string }[];
 }
 
-describe('volume PDF geometry', () => {
+describe.skipIf(!hasPypdf())('volume PDF geometry', () => {
   it('uses a 612x792 page with 72pt left margin body', async () => {
     const rows = await renderCoords();
     const body = rows.find(r => r.text.includes('Body text'));

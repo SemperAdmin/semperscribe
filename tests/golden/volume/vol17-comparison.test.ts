@@ -7,6 +7,7 @@
 // skips cleanly when it is absent (e.g. in CI) - the render-side
 // assertions always run regardless.
 import { describe, it, expect } from 'vitest';
+import { hasPypdf } from './python-probe';
 import { readFileSync, writeFileSync, mkdtempSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -132,7 +133,7 @@ function footerLabels(rows: MeasuredRow[]): string[] {
     [...chunks].sort((a, b) => a.x - b.x).map(c => c.text).join(''));
 }
 
-describe('volume Vol 17 render (no real PDF required)', () => {
+describe.skipIf(!hasPypdf())('volume Vol 17 render (no real PDF required)', () => {
   it('places section designators at x=72', async () => {
     const rows = await ourRows();
     for (const d of ['0101', '0102', '0103', '0104', '0105', '0106', '0107', '0108', '0109', '0110']) {
@@ -510,7 +511,7 @@ describe('volume Vol 17 render (no real PDF required)', () => {
   });
 });
 
-describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF', () => {
+describe.skipIf(!existsSync(REAL_PDF) || !hasPypdf())('volume Vol 17 vs the real published PDF', () => {
   it('section designators sit at x=72 in both documents', async () => {
     const ours = await ourRows();
     const real = measureFile(REAL_PDF);
