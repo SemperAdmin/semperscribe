@@ -20,6 +20,7 @@ import {
   ShadingType,
   WidthType,
   VerticalAlign,
+  TabStopType,
   type ISectionOptions,
 } from 'docx';
 import type {
@@ -90,6 +91,23 @@ const TITLE_BLUE = '8496B0';
 // Task 20: ~0.85 gray, matching the real title page's 3 blank change-table
 // rows' shaded ORIGINATION DATE cells (task-20-report.md).
 const SHADE_GRAY = 'D9D9D9';
+// Task 21 finding 1: the real Vol 17 PDF underlines the running head's
+// left-label/right-designator row with ONE 1.08pt-thick full-width rule, not
+// two separate per-token underlines (re-measured directly against the PDF
+// content stream: `re [72.024, 730.92, 467.5, 1.08] f*`, identical on every
+// sampled page - see HEADER_RULE_THICKNESS_PT in volumeGenerator.ts for the
+// PDF-side fix). DOCX has no direct equivalent of an overlay rule spanning
+// two differently-aligned paragraphs, so `buildHeader` below combines the
+// left label and the right-top designator into ONE paragraph (a left run,
+// a tab, a right-tab-stopped run) and gives that single paragraph a bottom
+// border instead - closer in spirit to the source's one shared rule than
+// underlining each run separately. `size` is in eighths of a point per
+// OOXML (`1.08pt * 8 ≈ 8.64`, rounded to the nearest achievable integer).
+const HEADER_RULE_BORDER_SIZE = 9;
+// The paragraph's own printable width (PAGE_WIDTH minus both margins) -
+// the position of the header row's right tab stop, so the right-aligned
+// designator lands flush with the right margin like the PDF's RIGHT_EDGE_X.
+const CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
 
 type ParaChild = TextRun | ExternalHyperlink;
 type HeadingValue = (typeof HeadingLevel)[keyof typeof HeadingLevel];
@@ -206,10 +224,6 @@ function centeredRunsPara(runs: Run[], size = BODY_SIZE, heading?: HeadingValue)
 function leftPara(text: string): Paragraph {
   return new Paragraph({ children: [new TextRun({ text, font: FONT, size: BODY_SIZE })] });
 }
-/** Like `leftPara`, but for a line built from several styled `Run`s. */
-function leftParaRuns(runs: Run[]): Paragraph {
-  return new Paragraph({ children: runsToChildren(runs) });
-}
 function blankLine(): Paragraph {
   return new Paragraph({ children: [new TextRun({ text: '', font: FONT, size: BODY_SIZE })] });
 }
@@ -251,13 +265,22 @@ function changeTable(headers: string[], rows: string[][], shading?: boolean[][])
     insideHorizontal: border,
     insideVertical: border,
   };
+  // Task 21 finding 5: real Vol 17 header cells are centered per column, and
+  // data cells are centered too EXCEPT column 0 (the version/label column,
+  // e.g. "ORIGINAL VOLUME"), which hugs the left edge (measured x=79.9 vs.
+  // a centered x elsewhere) - see volumeGenerator.ts's identical PDF fix.
   const headerRow = new TableRow({
     children: headers.map(
       (h) =>
         new TableCell({
           borders,
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, font: FONT, size: BODY_SIZE })] })],
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: h, bold: true, font: FONT, size: BODY_SIZE })],
+            }),
+          ],
         }),
     ),
   });
@@ -272,7 +295,12 @@ function changeTable(headers: string[], rows: string[][], shading?: boolean[][])
               // ORIGINAL row shade their ORIGINATION DATE cell light gray
               // (see titlePageChangeRows, lib/volume/layout.ts).
               shading: shading?.[ri]?.[ci] ? { fill: SHADE_GRAY, type: ShadingType.CLEAR, color: 'auto' } : undefined,
-              children: [new Paragraph({ children: [new TextRun({ text: cell, font: FONT, size: BODY_SIZE })] })],
+              children: [
+                new Paragraph({
+                  alignment: ci === 0 ? undefined : AlignmentType.CENTER,
+                  children: [new TextRun({ text: cell, font: FONT, size: BODY_SIZE })],
+                }),
+              ],
             }),
         ),
       }),
@@ -447,21 +475,26 @@ function docxNumberFormat(format: FooterScheme['format']): (typeof NumberFormat)
 function buildHeader(doc: VolumeDoc, band: LaidOutPage['band'], chapter?: number): Header {
   const parts = runningHeadParts(doc, band, chapter);
   // Task 20: the whole running head is bold at 11pt (RUNNING_HEAD_SIZE -
-  // see its doc comment). The left label and the right-top designator line
-  // are additionally underlined (measured as a single rule under that row
-  // in the PDF - task-20-report.md; DOCX has no shared "row" for two
-  // separately-aligned paragraphs, so each run is underlined on its own
-  // instead of drawing one shared rule). The center policy title and the
-  // date line are bold but NOT underlined.
+  // see its doc comment). The center policy title and the date line are
+  // bold but NOT underlined/ruled.
+  //
+  // Task 21 finding 1: the left label and the right-top designator now
+  // share ONE paragraph (a left-aligned run, a tab, a right-tab-stopped
+  // run) with a single bottom border on that paragraph, replacing the old
+  // per-run underlines on two separately-aligned paragraphs - see
+  // HEADER_RULE_BORDER_SIZE's doc comment for the measured provenance.
   return new Header({
     children: [
       centeredRunsPara([{ text: parts.center, bold: true }], RUNNING_HEAD_SIZE),
       new Paragraph({
-        children: [new TextRun({ text: parts.left, font: FONT, size: RUNNING_HEAD_SIZE, bold: true, underline: {} })],
-      }),
-      new Paragraph({
-        alignment: AlignmentType.RIGHT,
-        children: [new TextRun({ text: parts.rightTop, font: FONT, size: RUNNING_HEAD_SIZE, bold: true, underline: {} })],
+        tabStops: [{ type: TabStopType.RIGHT, position: CONTENT_WIDTH }],
+        border: {
+          bottom: { style: BorderStyle.SINGLE, size: HEADER_RULE_BORDER_SIZE, color: '000000', space: 1 },
+        },
+        children: [
+          new TextRun({ text: parts.left, font: FONT, size: RUNNING_HEAD_SIZE, bold: true }),
+          new TextRun({ text: `\t${parts.rightTop}`, font: FONT, size: RUNNING_HEAD_SIZE, bold: true }),
+        ],
       }),
       new Paragraph({
         alignment: AlignmentType.RIGHT,
@@ -499,22 +532,34 @@ function buildTitlePageChildren(doc: VolumeDoc): (Paragraph | Table)[] {
   // onto `children`.
   const boxChildren: Paragraph[] = [];
   boxChildren.push(centeredRunsPara([{ text: `VOLUME ${v.number}`, bold: true }], TITLE_SIZE));
+  boxChildren.push(blankLine());
   const titleText = v.titleQuoted !== false ? `"${v.title}"` : v.title;
   boxChildren.push(centeredRunsPara([{ text: titleText, bold: true, underline: true }], TITLE_SIZE));
+  boxChildren.push(blankLine());
   boxChildren.push(centeredRunsPara([{ text: `SUMMARY OF VOLUME ${v.number} CHANGES`, bold: true }], TITLE_SIZE));
   boxChildren.push(blankLine());
 
   boxChildren.push(centeredRunsPara(legendRuns()));
   boxChildren.push(blankLine());
 
-  for (const line of VOLUME_CHANGE_POLICY_BOILERPLATE) {
-    boxChildren.push(leftParaRuns(styleBoilerplateRuns(line, { underlineFullRevision: true })));
-  }
+  // Task 21 finding 4: the real PDF centers every boilerplate paragraph
+  // (Word centers each wrapped line on its own automatically via
+  // `AlignmentType.CENTER`, so `centeredRunsPara` - already used for the
+  // headings/legend above - is reused here instead of `leftParaRuns`). Only
+  // the THIRD paragraph's "full revision" is underlined in the source - see
+  // layout.ts's identical fix in layoutTitlePage for the measured evidence.
+  VOLUME_CHANGE_POLICY_BOILERPLATE.forEach((line, i) => {
+    if (i > 0) boxChildren.push(blankLine());
+    const underlineFullRevision = i === VOLUME_CHANGE_POLICY_BOILERPLATE.length - 1;
+    boxChildren.push(centeredRunsPara(styleBoilerplateRuns(line, { underlineFullRevision })));
+  });
 
   if (v.cancellation) {
     boxChildren.push(blankLine());
+    // Task 21 finding 4: measured centered (x=226.4, not the left margin) -
+    // part of the same centered block as the boilerplate above it.
     boxChildren.push(
-      leftParaRuns([{ text: 'CANCELLATION', bold: true, underline: true }, { text: `: ${v.cancellation}` }]),
+      centeredRunsPara([{ text: 'CANCELLATION', bold: true, underline: true }, { text: `: ${v.cancellation}` }]),
     );
   }
   children.push(boxedBlock(boxChildren));
@@ -570,8 +615,11 @@ function buildReferencesChildren(doc: VolumeDoc): (Paragraph | Table)[] {
 function buildTocChildren(doc: VolumeDoc): (Paragraph | Table)[] {
   const v = doc.volume;
   return [
-    centered(`VOLUME ${v.number}: ${v.title.toUpperCase()}`, TITLE_SIZE),
-    centered('TABLE OF CONTENTS', TITLE_SIZE),
+    // Task 21 finding 6: both title lines paint bold in the real PDF, and
+    // "TABLE OF CONTENTS" is additionally underlined (measured at page
+    // index 1, y=694.3/669.0) - previously plain here.
+    centeredRunsPara([{ text: `VOLUME ${v.number}: ${v.title.toUpperCase()}`, bold: true }], TITLE_SIZE),
+    centeredRunsPara([{ text: 'TABLE OF CONTENTS', bold: true, underline: true }], TITLE_SIZE),
     blankLine(),
     // Finding 4: TableOfContents rebuilds from paragraphs styled Heading1/
     // Heading2 (headingStyleRange '1-2') - see the chapter title (Heading1)
@@ -646,17 +694,22 @@ function buildChapterSection(doc: VolumeDoc, chapter: Chapter, useChapterPage: b
   boxChildren.push(
     centeredRunsPara([{ text: `VOLUME ${doc.volume.number}: CHAPTER ${chapter.number}`, bold: true }], TITLE_SIZE),
   );
+  boxChildren.push(blankLine());
   boxChildren.push(centeredRunsPara([{ text: `"${chapter.title.toUpperCase()}"`, bold: true, underline: true }], TITLE_SIZE));
+  boxChildren.push(blankLine());
   boxChildren.push(centeredRunsPara([{ text: 'SUMMARY OF SUBSTANTIVE CHANGES', bold: true }], TITLE_SIZE));
   boxChildren.push(blankLine());
   boxChildren.push(centeredRunsPara(legendRuns()));
   boxChildren.push(blankLine());
-  for (const line of CHAPTER_CHANGE_POLICY_BOILERPLATE) {
-    // Task 20: measured against the real PDF, the divider's copy of the
-    // "...full revision..." sentence is NOT underlined, unlike the title
-    // page's copy of the same sentence (task-20-report.md).
-    boxChildren.push(leftParaRuns(styleBoilerplateRuns(line, { underlineFullRevision: false })));
-  }
+  // Task 21 finding 4: centered, like the title page's boilerplate (see its
+  // identical comment above) - measured on the divider too (x=112.9/104.7).
+  // Underline scope unchanged: measured against the real PDF, the divider's
+  // copy of the "...full revision..." sentence is NOT underlined, unlike
+  // the title page's third paragraph.
+  CHAPTER_CHANGE_POLICY_BOILERPLATE.forEach((line, i) => {
+    if (i > 0) boxChildren.push(blankLine());
+    boxChildren.push(centeredRunsPara(styleBoilerplateRuns(line, { underlineFullRevision: false })));
+  });
   children.push(boxedBlock(boxChildren));
   children.push(
     changeTable(

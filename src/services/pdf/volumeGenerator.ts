@@ -24,6 +24,17 @@ const CENTER_X = 306;
 const RIGHT_EDGE_X = 540;
 const LEFT_X = 72;
 
+// Task 21 finding 1: the real Vol 17 PDF draws the header rule as a filled
+// rect `re [72.024, 730.92, 467.5, 1.08] f*` (checked on 6 sampled pages,
+// title/TOC/references/divider/body - identical every time), i.e. a rule
+// 1.08pt thick, vertically centered at y=730.92+1.08/2=731.46 - noticeably
+// thicker than the old 0.75pt guess, and a single FULL-WIDTH rule (already
+// spanning LEFT_X..RIGHT_EDGE_X here, unlike the two separate token
+// underlines the format spec used to describe/DOCX used to paint - see
+// buildHeader in volumeDocx.ts for that fix).
+const HEADER_RULE_THICKNESS_PT = 1.08;
+const HEADER_RULE_Y = RUNNING_HEAD_LEFT_Y - 1.74;
+
 // ---------------------------------------------------------------------------
 // Finding 10: a single character a font's encoding can't represent (every
 // font embedded here - pdf-lib's StandardFonts.TimesRoman/
@@ -153,14 +164,16 @@ function paintTemplate(page: PDFPage, laidOutPage: LaidOutPage, doc: VolumeDoc, 
   drawRightAligned(page, parts.rightTop, RIGHT_EDGE_X, RUNNING_HEAD_RIGHT_Y, RUNNING_HEAD_SIZE_PT, font);
   drawRightAligned(page, parts.rightDate, RIGHT_EDGE_X, DATE_LINE_Y, RUNNING_HEAD_SIZE_PT, font);
 
-  // Task 20: a single full-width rule sits immediately under the
+  // Task 20/21: a single full-width rule sits immediately under the
   // left-label/right-designator row only - NOT under the center policy
-  // title or the date row below it (measured as one continuous rect
-  // spanning the full text width at that row's y, task-20-report.md).
+  // title or the date row below it (measured as one continuous filled rect
+  // spanning the full text width at that row's y - see
+  // HEADER_RULE_THICKNESS_PT/HEADER_RULE_Y's doc comment for the re-measured
+  // thickness/position).
   page.drawLine({
-    start: { x: LEFT_X, y: RUNNING_HEAD_LEFT_Y - 2 },
-    end: { x: RIGHT_EDGE_X, y: RUNNING_HEAD_LEFT_Y - 2 },
-    thickness: 0.75,
+    start: { x: LEFT_X, y: HEADER_RULE_Y },
+    end: { x: RIGHT_EDGE_X, y: HEADER_RULE_Y },
+    thickness: HEADER_RULE_THICKNESS_PT,
     color: BLACK,
   });
 
@@ -373,12 +386,26 @@ async function paintItem(pdfDoc: PDFDocument, page: PDFPage, item: PaintItem, fo
         for (let c = 0; c < cells.length; c++) {
           const lines = cells[c];
           const cellTopBaseline = rowTop - lineStep + 2;
+          const colWidth = colWidths[c] ?? 0;
+          // Task 21 finding 5: real Vol 17 header cells are centered per
+          // column (measured x's: VOLUME/VERSION roughly centered in col1,
+          // SUMMARY OF CHANGE at 179.8, ORIGINATION/DATE at 356/380,
+          // DATE OF/CHANGES at 464/467), and data cells are centered too -
+          // EXCEPT column 0's data (the version/label column, e.g.
+          // "ORIGINAL VOLUME"), which hugs the left edge (measured x=79.9,
+          // i.e. the same `+4` padding every cell used to use everywhere).
+          const isHeader = r === 0;
+          const hugLeft = !isHeader && c === 0;
           for (let li = 0; li < lines.length; li++) {
-            page.drawText(safeText(rowFont, lines[li]), {
-              x: cx + 4, y: cellTopBaseline - li * lineStep, size, font: rowFont, color: BLACK,
+            const lineText = safeText(rowFont, lines[li]);
+            const cellX = hugLeft
+              ? cx + 4
+              : cx + Math.max(0, colWidth - rowFont.widthOfTextAtSize(lineText, size)) / 2;
+            page.drawText(lineText, {
+              x: cellX, y: cellTopBaseline - li * lineStep, size, font: rowFont, color: BLACK,
             });
           }
-          cx += colWidths[c] ?? 0;
+          cx += colWidth;
         }
         rowTop -= rowH;
       }

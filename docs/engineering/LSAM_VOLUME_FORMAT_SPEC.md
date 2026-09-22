@@ -77,8 +77,9 @@ but not require them.
 |---|---|---|---|
 | Running head — top center | Centered, top margin | `LEGAL SUPPORT AND ADMINISTRATION MANUAL` | Constant on every page of every volume. |
 | Running head — top left | Flush left, below center line | Front matter/body: `Volume N` or `Volume N, Chapter M`; References: `References` | Identifies where you are. |
-| Running head — top right (line 1) | Flush right | `MCO 5800.16 · V{N}` | The **middot separator** renders as `�` in text extraction; it is a bullet/middot (`·`), rendered between the order number and the volume token. Right header = **original publication date's identity**, never changes except on full revision. |
+| Running head — top right (line 1) | Flush right | `MCO 5800.16 – V{N}` | The separator between the order number and the volume token is an **en dash** (`–`, U+2013), not a middot. It renders as `�` in naive text extraction because it's a Type0/Identity-H glyph the extractor's substitute font can't encode — confirmed by decoding the real PDF's content stream directly: the glyph's raw CID resolves via its embedded ToUnicode CMap to `<2013>` (en dash), not `<00B7>` (middot). Right header = **original publication date's identity**, never changes except on full revision. |
 | Running head — top right (line 2) | Flush right, under line 1 | Effective date, e.g. `20 FEB 2018` | This is the **last-updated date** of the volume/chapter (blue font — see §7). |
+| Running head — rule | Full-width, margin to margin (x≈72–540), under the left-label/right-designator row only | — | A single filled bar, **1.08 pt thick**, vertically centered ≈1.7 pt below that row's baseline — measured directly from the real PDF's content stream (`re [72.024, 730.92, 467.5, 1.08] f*`, identical on every sampled page). Not drawn under the center policy title or the date line below it. |
 | Footer — bottom center | Centered, bottom margin | Page number | Numbering scheme per §6. |
 
 **Margins / type:** single serif face throughout (Times New Roman family;
@@ -109,7 +110,7 @@ PostScript points (1 pt = 1/72"). Origin is bottom-left.
 | Inter-paragraph gap | ≈ 25 pt (one blank line) | — |
 | Running head — center text | centered on page center (x≈306) | `LEGAL SUPPORT AND ADMINISTRATION MANUAL` |
 | Running head — left text | flush left, x = 72 | `Volume N` / `Volume N, Chapter M` |
-| Running head — right text | flush right, ends x≈540 | `MCO 5800.16 · V{N}` + date below |
+| Running head — right text | flush right, ends x≈540 | `MCO 5800.16 – V{N}` (en dash, U+2013) + date below |
 | Footer page number | centered on page center (x≈306) | — |
 
 **Date-format variance (flag):** volumes are inconsistent —
@@ -193,6 +194,13 @@ Seed row: `ORIGINAL VOLUME | N/A | {DD Mon YYYY} | N/A`.
 (empty until a change is logged).
 
 Both are **append-only change logs**; each row is one revision event.
+
+**Volume-level table's trailing blank rows:** the real Vol 17 PDF always
+prints exactly 3 blank rows below whatever change rows are already recorded
+(even below its own single "ORIGINAL VOLUME" seed row), each with its
+ORIGINATION DATE cell shaded light gray (~0.85 gray) — a fixed template
+reserved for future entries to be filled in by hand. This is unconditional:
+it does not stop once the log has real entries.
 
 ---
 

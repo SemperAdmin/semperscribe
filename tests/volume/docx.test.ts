@@ -150,4 +150,37 @@ describe('generateVolumeDocx', () => {
     const xml = await zip.file('word/document.xml')!.async('string');
     expect(xml).toContain('<w:color w:val="0000FF"');
   });
+
+  // Task 21 finding 5 (regression hunt, DOCX side): mirrors
+  // tests/volume/layout.test.ts's identical PDF-path test - a changeLog
+  // with real entries must still get the 3 blank/gray-shaded template rows
+  // appended (previously `titlePageChangeRows` dropped them once the log
+  // had any real data, which is exactly what the vol17.json fixture's
+  // one-row changeLog triggers).
+  it('shades the 3 trailing blank template rows even when the changeLog already has real entries (finding 5 regression)', async () => {
+    const d = blankVolume();
+    d.changeLog = [{ version: 'ORIGINAL VOLUME', summary: 'N/A', originationDate: '10 Feb 2021', dateOfChanges: 'N/A' }];
+    const blob = await generateVolumeDocx(d);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file('word/document.xml')!.async('string');
+    // One shaded cell per blank row (their ORIGINATION DATE column).
+    expect((xml.match(/D9D9D9/g) ?? []).length).toBe(3);
+  });
+
+  // Task 21 finding 2: the running-head designator/volume separator is an
+  // en dash (U+2013), not a middot - the shared `runningHeadParts`
+  // (lib/volume/layout.ts) composes it once for both generators.
+  it('uses an en dash (not a middot) between the designator and the volume tag', async () => {
+    const d = blankVolume();
+    const blob = await generateVolumeDocx(d);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const headerFiles = Object.keys(zip.files).filter((n) => n.startsWith('word/header'));
+    let sawDash = false;
+    for (const name of headerFiles) {
+      const content = await zip.file(name)!.async('string');
+      expect(content).not.toContain('·'); // middot
+      if (content.includes('– V')) sawDash = true;
+    }
+    expect(sawDash).toBe(true);
+  });
 });

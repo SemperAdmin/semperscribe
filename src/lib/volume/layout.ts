@@ -131,8 +131,16 @@ const TABLE_CELL_PAD_X = 4;
 function wrapTableCell(text: string, colWidth: number, bold = false): string[] {
   return wrapPlainText(String(text ?? ''), Math.max(colWidth - TABLE_CELL_PAD_X * 2, 1), TABLE_SIZE_PT, bold);
 }
+// Task 21 finding 5: real Vol 17 grid-line y's (page 0's title-page change
+// table) give exact row heights - two-line header 465.91->426.31 = 39.6pt,
+// the also-2-line "ORIGINAL VOLUME" data row 426.31->386.71 = 39.6pt, and
+// each 1-line blank/shaded row 386.71->358.37/358.37->330.05/330.05->302.09
+// ≈ 28.3pt. Solving `rows*LEADING + pad` against both anchors (n=1 -> 28.3,
+// n=2 -> 39.6) lands pad ≈16, not the old 6 - the old rows painted visibly
+// shorter/cramped than the source's roomier grid.
+const TABLE_ROW_PAD = 16;
 function tableRowHeight(cellLines: string[][]): number {
-  return Math.max(1, ...cellLines.map(lines => lines.length)) * LEADING + 6;
+  return Math.max(1, ...cellLines.map(lines => lines.length)) * LEADING + TABLE_ROW_PAD;
 }
 /** The rendered height of `cols`' header row (always bold - see addTable). */
 export function tableHeaderHeight(cols: string[], colWidths: number[]): number {
@@ -408,6 +416,24 @@ function leftParagraphRuns(runs: Run[], sizePt = BODY_SIZE_PT) {
   return wrapRuns(runs, MARGIN, MARGIN, RIGHT_EDGE, sizePt);
 }
 
+/**
+ * Task 21 finding 4: like `leftParagraphRuns`, but each wrapped line is
+ * individually re-centered on the page instead of starting at the left
+ * margin - measured directly against the real Vol 17 PDF (both the title
+ * page and the chapter divider): the change-policy boilerplate paragraphs
+ * are centered, not flush-left, with EACH wrapped line centered on its own
+ * measured width (fontmap x's per line don't share a single left edge).
+ * Wrapping decisions themselves are unaffected - only the resulting line's
+ * `x` is recomputed after wrapRuns has already decided where to break.
+ */
+function centeredParagraphRuns(runs: Run[], sizePt = BODY_SIZE_PT) {
+  const lines = wrapRuns(runs, MARGIN, MARGIN, RIGHT_EDGE, sizePt);
+  return lines.map(line => {
+    const width = line.segments.reduce((w, s) => w + measureText(s.text, sizePt, !!s.run.bold), 0);
+    return { segments: line.segments, x: CENTER_X - width / 2 };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Task 20: styled-run builders for the front matter's fixed literal text -
 // measured directly against the real Vol 17 PDF (task-20-report.md). Kept
@@ -507,25 +533,37 @@ export function formatDate(iso: string): string {
  * recorded changes yet, the table shows the synthesized ORIGINAL row
  * followed by exactly 3 blank rows, each with its ORIGINATION DATE cell
  * shaded light gray (~0.85 gray) - a fixed template for future changes to
- * be filled in by hand. Once a real changeLog exists, this volume-specific
- * template no longer applies (out of measured scope for a populated log),
- * so those rows print exactly as authored, unshaded.
+ * be filled in by hand.
+ *
+ * Task 21 finding 5 (regression fix): Task 20's doc comment here previously
+ * claimed the 3 blank/shaded rows were "out of measured scope for a
+ * populated log" and dropped them once `doc.changeLog` had any real entries.
+ * That was wrong - re-measured directly against the real Vol 17 PDF, whose
+ * OWN changeLog has exactly one recorded entry (the "ORIGINAL VOLUME" row
+ * itself, stored as real data, not synthesized) - it still prints the same
+ * 3 blank/shaded template rows below it. The vol17.json fixture stores that
+ * one row as `changeLog[0]`, so it took the "populated" branch and silently
+ * lost the blank rows in BOTH the PDF and DOCX exports (neither generator
+ * has its own bug here - both call this shared function). The blank/shaded
+ * template rows are appended after whatever rows are already recorded,
+ * always, not only when the log is empty.
  */
 export function titlePageChangeRows(doc: VolumeDoc): { rows: string[][]; shading?: boolean[][] } {
   const v = doc.volume;
+  const blankRow = ['', '', '', ''];
+  const blankShading: boolean[] = [false, false, true, false];
   if (doc.changeLog.length > 0) {
-    return { rows: doc.changeLog.map(r => [r.version, r.summary, r.originationDate, r.dateOfChanges]) };
+    const rows = doc.changeLog.map(r => [r.version, r.summary, r.originationDate, r.dateOfChanges]);
+    const shading = rows.map(() => [false, false, false, false]);
+    return {
+      rows: [...rows, blankRow, blankRow, blankRow],
+      shading: [...shading, blankShading, blankShading, blankShading],
+    };
   }
   const seedRow = ['ORIGINAL VOLUME', 'N/A', formatDate(v.originalPublicationDate), 'N/A'];
-  const blankRow = ['', '', '', ''];
   return {
     rows: [seedRow, blankRow, blankRow, blankRow],
-    shading: [
-      [false, false, false, false],
-      [false, false, true, false],
-      [false, false, true, false],
-      [false, false, true, false],
-    ],
+    shading: [[false, false, false, false], blankShading, blankShading, blankShading],
   };
 }
 
@@ -549,7 +587,7 @@ export interface RunningHeadParts {
   center: string;
   /** Running head left label: band-dependent (References / Volume N / Volume N, Chapter M). */
   left: string;
-  /** Running head right, top line: designator + volume tag, e.g. "MCO 5800.16 · V17". */
+  /** Running head right, top line: designator + volume tag, e.g. "MCO 5800.16 – V17". */
   rightTop: string;
   /** Running head right, second line: the last-updated date, canonically formatted. */
   rightDate: string;
@@ -563,6 +601,15 @@ export interface RunningHeadParts {
  * pages print bare "Volume {n}"; a multi-chapter volume's body pages print
  * "Volume {n}, Chapter {m}"; every other page (front matter) prints bare
  * "Volume {n}".
+ *
+ * Task 21 finding 2: the separator between the designator and the volume
+ * tag is an EN DASH (U+2013), not a middot - re-measured directly against
+ * the real Vol 17 PDF's content stream (a Type0/Identity-H glyph whose
+ * ToUnicode CMap maps its CID to <2013>; naive text extraction renders it
+ * as the replacement character because the substitute font used for
+ * extraction can't encode it, not because the source glyph is actually a
+ * middot). Fixed once, here, in the single shared composer both the PDF and
+ * DOCX generators consume, so neither can drift back to the wrong character.
  */
 export function runningHeadParts(doc: VolumeDoc, band: Page['band'], chapter?: number): RunningHeadParts {
   const multiChapter = doc.chapters.length > 1;
@@ -577,7 +624,7 @@ export function runningHeadParts(doc: VolumeDoc, band: Page['band'], chapter?: n
   return {
     center: doc.order.policyTitle.toUpperCase(),
     left,
-    rightTop: `${doc.order.designator} · V${doc.volume.number}`,
+    rightTop: `${doc.order.designator} – V${doc.volume.number}`,
     rightDate: formatDate(doc.volume.lastUpdatedDate),
   };
 }
@@ -774,26 +821,51 @@ function layoutTitlePage(doc: VolumeDoc, nextRoman: () => string): Page[] {
   // right before `addTable`).
   const boxTopY = cursor.currentY() + LEADING;
 
+  // Task 21 finding 3: the real Vol 17 PDF steps VOLUME {n} -> title ->
+  // SUMMARY -> legend -> each boilerplate paragraph -> CANCELLATION all at
+  // the SAME ~25.2pt rhythm (one blank line - `INTER_PARAGRAPH_GAP`, on top
+  // of the LEADING step `addLines` already takes between any two lines) -
+  // measured y's: 683.1 -> 657.9 -> 632.6 -> 607.5 -> 582.2 -> 544.3 -> 519.0
+  // -> 493.6 (task21-findings.md). This used to stack the three heading
+  // lines at bare LEADING (no blank line at all) and then, oddly, OVERSHOOT
+  // to raw `GAP` (25pt on top of the already-taken LEADING, ~37.6pt total)
+  // before the legend and each boilerplate paragraph - neither matches the
+  // source; both are replaced with the same `INTER_PARAGRAPH_GAP` step used
+  // for an ordinary body paragraph break.
   cursor.addLines(centeredRuns([{ text: `VOLUME ${v.number}`, bold: true }], HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addGap(INTER_PARAGRAPH_GAP);
   const titleText = v.titleQuoted !== false ? `"${v.title}"` : v.title;
   cursor.addLines(centeredRuns([{ text: titleText, bold: true, underline: true }], HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addGap(INTER_PARAGRAPH_GAP);
   cursor.addLines(
     centeredRuns([{ text: `SUMMARY OF VOLUME ${v.number} CHANGES`, bold: true }], HEADING_SIZE_PT),
     HEADING_SIZE_PT,
   );
-  cursor.addGap();
+  cursor.addGap(INTER_PARAGRAPH_GAP);
 
   cursor.addLines(centeredRuns(legendRuns()));
-  cursor.addGap();
+  cursor.addGap(INTER_PARAGRAPH_GAP);
 
-  for (const line of VOLUME_CHANGE_POLICY_BOILERPLATE) {
-    cursor.addLines(leftParagraphRuns(styleBoilerplateRuns(line, { underlineFullRevision: true })));
-  }
+  // Task 21 finding 4: the real PDF centers every wrapped line of each
+  // boilerplate paragraph (fontmap x's per line, not a shared left edge) -
+  // ours rendered them flush-left. Also, only the THIRD paragraph's "full
+  // revision" (the "...will reset to black font upon a full revision..."
+  // sentence) is underlined in the source; the underline rect measured at
+  // x=402.8,y=517.3 has no counterpart near the FIRST paragraph's own "full
+  // revision" phrase (y~569.6) - underlining both, as before, was wrong.
+  VOLUME_CHANGE_POLICY_BOILERPLATE.forEach((line, i) => {
+    if (i > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
+    const underlineFullRevision = i === VOLUME_CHANGE_POLICY_BOILERPLATE.length - 1;
+    cursor.addLines(centeredParagraphRuns(styleBoilerplateRuns(line, { underlineFullRevision })));
+  });
 
   if (v.cancellation) {
-    cursor.addGap();
+    cursor.addGap(INTER_PARAGRAPH_GAP);
+    // Task 21 finding 4: measured centered too (x=226.4, not the left
+    // margin) - part of the same centered "VOLUME {n} .. CANCELLATION"
+    // block as the boilerplate paragraphs above it.
     cursor.addLines(
-      leftParagraphRuns([
+      centeredParagraphRuns([
         { text: 'CANCELLATION', bold: true, underline: true },
         { text: `: ${v.cancellation}` },
       ]),
@@ -892,16 +964,29 @@ function layoutReferences(doc: VolumeDoc): { pages: Page[]; firstLabel: string }
 // ---------------------------------------------------------------------------
 function layoutToc(doc: VolumeDoc, toc: TocEntry[], nextRoman: () => string): Page[] {
   const cursor = new PageCursor('front', nextRoman);
+  // Task 21 finding 6: both title lines paint bold in the real PDF, and
+  // "TABLE OF CONTENTS" is additionally underlined - measured at page index
+  // 1, y=694.3/669.0 (task21-findings.md); ours painted both plain.
   cursor.addLines(
-    centeredLine(`VOLUME ${doc.volume.number}: ${doc.volume.title.toUpperCase()}`, HEADING_SIZE_PT),
+    centeredRuns([{ text: `VOLUME ${doc.volume.number}: ${doc.volume.title.toUpperCase()}`, bold: true }], HEADING_SIZE_PT),
     HEADING_SIZE_PT,
   );
-  cursor.addLines(centeredLine('TABLE OF CONTENTS', HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addLines(
+    centeredRuns([{ text: 'TABLE OF CONTENTS', bold: true, underline: true }], HEADING_SIZE_PT),
+    HEADING_SIZE_PT,
+  );
   cursor.addGap();
 
-  for (const entry of toc) {
+  // Task 21 finding 6: entries are double-spaced (a blank line between
+  // consecutive entries - measured ~29pt entry-to-entry vs. ~14.5pt for a
+  // wrapped continuation line within ONE entry, roughly double); a wrapped
+  // entry's own continuation lines stay single-spaced (addTocEntry's
+  // internal per-line LEADING step, unchanged). Only the gap BETWEEN
+  // entries gets the extra blank-line step.
+  toc.forEach((entry, i) => {
+    if (i > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
     cursor.addTocEntry(entry.label, entry.page);
-  }
+  });
 
   return cursor.finish();
 }
@@ -914,30 +999,38 @@ function layoutChapterDivider(cursor: PageCursor, doc: VolumeDoc, chapter: Chapt
   // (measured on the real Vol 17 chapter divider page too - task-20-report.md).
   const boxTopY = cursor.currentY() + LEADING;
 
+  // Task 21 finding 3: same rhythm fix as layoutTitlePage - one blank line
+  // (`INTER_PARAGRAPH_GAP`) between every heading/legend/boilerplate line on
+  // the divider too, re-measured on page index 3 of the real Vol 17 PDF
+  // (task21-findings.md).
   cursor.addLines(
     centeredRuns([{ text: `VOLUME ${doc.volume.number}: CHAPTER ${chapter.number}`, bold: true }], HEADING_SIZE_PT),
     HEADING_SIZE_PT,
   );
+  cursor.addGap(INTER_PARAGRAPH_GAP);
   cursor.addLines(
     centeredRuns([{ text: `"${chapter.title.toUpperCase()}"`, bold: true, underline: true }], HEADING_SIZE_PT),
     HEADING_SIZE_PT,
   );
+  cursor.addGap(INTER_PARAGRAPH_GAP);
   cursor.addLines(
     centeredRuns([{ text: 'SUMMARY OF SUBSTANTIVE CHANGES', bold: true }], HEADING_SIZE_PT),
     HEADING_SIZE_PT,
   );
-  cursor.addGap();
+  cursor.addGap(INTER_PARAGRAPH_GAP);
 
   cursor.addLines(centeredRuns(legendRuns()));
-  cursor.addGap();
+  cursor.addGap(INTER_PARAGRAPH_GAP);
 
-  for (const line of CHAPTER_CHANGE_POLICY_BOILERPLATE) {
-    // Task 20: measured against the real PDF, the divider's copy of the
-    // "...full revision..." sentence is NOT underlined, unlike the title
-    // page's copy of the same sentence (task-20-report.md) - a genuine
-    // per-page inconsistency in the source document, not a bug.
-    cursor.addLines(leftParagraphRuns(styleBoilerplateRuns(line, { underlineFullRevision: false })));
-  }
+  // Task 21 finding 4: centered per-wrapped-line, like layoutTitlePage's
+  // boilerplate - measured on the divider too (x=112.9/104.7, not the left
+  // margin). Underline scope unchanged: neither divider boilerplate line
+  // underlines "full revision" (re-confirmed: no underline rect near either
+  // phrase on page index 3), unlike the title page's third paragraph.
+  CHAPTER_CHANGE_POLICY_BOILERPLATE.forEach((line, i) => {
+    if (i > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
+    cursor.addLines(centeredParagraphRuns(styleBoilerplateRuns(line, { underlineFullRevision: false })));
+  });
 
   const boxBottomY = cursor.currentY();
   // Fix round 1 (reviewer finding, CRITICAL): see layoutTitlePage's

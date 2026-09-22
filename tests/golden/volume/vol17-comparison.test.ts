@@ -111,6 +111,20 @@ describe('volume Vol 17 render (no real PDF required)', () => {
     expect(dateRow).toBeTruthy();
   });
 
+  // Task 21 finding 2: the designator/volume separator is an EN DASH
+  // (U+2013), re-measured directly against the real PDF's content stream
+  // (the glyph's ToUnicode CMap resolves it to <2013>, not a middot
+  // <00B7>) - naive text extraction shows a replacement character for
+  // either, so the codepoint itself, not the extracted glyph, is what this
+  // asserts.
+  it('finding 2: uses an en dash (U+2013), not a middot, between the designator and volume tag', async () => {
+    const rows = await ourRows();
+    const designatorRow = findIncludes(rows, 'MCO 5800.16');
+    expect(designatorRow).toBeTruthy();
+    expect(designatorRow!.text).toContain('–');
+    expect(designatorRow!.text).not.toContain('·');
+  });
+
   it('prints the center running head (policy title)', async () => {
     const rows = await ourRows();
     expect(findIncludes(rows, 'LEGAL SUPPORT AND ADMINISTRATION MANUAL')).toBeTruthy();
@@ -199,6 +213,33 @@ describe('volume Vol 17 render (no real PDF required)', () => {
     // The leader must start to the right of the whole label, not somewhere
     // inside it (a real overlap would put the leader's x under 100).
     expect(leaderRow!.x).toBeGreaterThan(purpose!.x + 60);
+  });
+
+  // Task 21 finding 6: TOC entries are double-spaced (a blank line between
+  // consecutive entries), while a single entry's own wrapped continuation
+  // line stays single-spaced - re-measured on the real PDF (~29pt
+  // entry-to-entry vs. ~14.5pt within one wrapped entry, roughly double).
+  // 0104 ("DEFENSE COUNSEL OF THE YEAR AWARD") is one line; 0105 wraps.
+  it('finding 6: TOC entries are double-spaced, wrapped continuation lines stay single-spaced', async () => {
+    const rows = await ourRows();
+    const entry0104 = findStartsWith(rows, '0104');
+    const entry0105 = findStartsWith(rows, '0105');
+    expect(entry0104, 'TOC "0104" entry not found').toBeTruthy();
+    expect(entry0105, 'TOC "0105" entry not found').toBeTruthy();
+    const betweenEntriesGap = entry0104!.y - entry0105!.y;
+
+    // 0107's heading wraps onto a line ending "...(CPOY-A)" (finding C,
+    // below) - a unique substring for its own continuation line.
+    const entry0107 = findStartsWith(rows, '0107');
+    const entry0107Wrap = findIncludes(rows, '(CPOY-A)');
+    expect(entry0107, 'TOC "0107" entry not found').toBeTruthy();
+    expect(entry0107Wrap, 'TOC "0107" wrapped continuation not found').toBeTruthy();
+    const withinEntryGap = entry0107!.y - entry0107Wrap!.y;
+
+    // Double-spaced means the between-entries gap is roughly double the
+    // within-entry wrap gap, not equal to it.
+    expect(betweenEntriesGap).toBeGreaterThan(withinEntryGap * 1.5);
+    expect(betweenEntriesGap).toBeGreaterThan(20);
   });
 
   // Task 18 finding C (critical, data loss): section 0107's long heading

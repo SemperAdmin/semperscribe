@@ -273,4 +273,38 @@ describe('layoutVolume', () => {
     expect(dividerPage, 'chapter divider page not found').toBeTruthy();
     expect(boxItems.some(b => dividerPage!.items.includes(b))).toBe(true);
   });
+
+  // Task 21 finding 5 (regression hunt): the real Vol 17 PDF's OWN
+  // changeLog has exactly one recorded row (the "ORIGINAL VOLUME" seed
+  // itself, stored as real data) and STILL prints the 3 blank/gray-shaded
+  // template rows below it - `titlePageChangeRows` used to drop them
+  // entirely once `doc.changeLog` had any real entries (see its doc comment
+  // in lib/volume/layout.ts). The vol17.json fixture stores its seed row
+  // this way, so this reproduces the user's reported regression: the title
+  // page's change table silently lost its blank rows in both the PDF and
+  // DOCX exports (this test covers the PDF path via the shared layout data;
+  // tests/volume/docx.test.ts's identical test covers the DOCX path).
+  it('keeps the 3 blank/shaded template rows even when the changeLog already has real entries (finding 5 regression)', () => {
+    const d = sampleDoc();
+    d.changeLog = [{ version: 'ORIGINAL VOLUME', summary: 'N/A', originationDate: '10 Feb 2021', dateOfChanges: 'N/A' }];
+    const out = layoutVolume(d);
+
+    const titleTable = out.pages
+      .flatMap(p => p.items)
+      .find((i): i is TableItem => i.kind === 'table' && i.headerLines.flat().join(' ').includes('VOLUME'));
+    expect(titleTable, 'title-page change table not found').toBeTruthy();
+    expect(titleTable!.rows.length).toBe(4); // 1 real row + 3 blank template rows
+    expect(titleTable!.rowShading, 'expected shading flags on the trailing blank rows').toBeTruthy();
+    const shading = titleTable!.rowShading!;
+    // Row 0 (the real "ORIGINAL VOLUME" entry) is unshaded; rows 1-3 (the
+    // blank template rows) shade their ORIGINATION DATE column (index 2).
+    expect(shading[0]?.some(Boolean)).toBe(false);
+    for (const row of shading.slice(1)) {
+      expect(row?.[2]).toBe(true);
+    }
+    // The 3 trailing rows are genuinely blank (no authored text).
+    for (const row of titleTable!.rows.slice(1)) {
+      expect(row.every(cell => cell.join('') === '')).toBe(true);
+    }
+  });
 });
