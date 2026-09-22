@@ -13,7 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { VolumeSchema } from '@/lib/schemas/volume-schema';
 import { generateVolumePdf } from '@/services/pdf/volumeGenerator';
-import { layoutVolume } from '@/lib/volume/layout';
+import { layoutVolume, LEADING } from '@/lib/volume/layout';
 
 const REAL_PDF = 'C:\\Users\\barbc\\Downloads\\01_USMC_OFFICIAL\\MCO_Orders\\MCO 5800.16 Vol.17.pdf';
 
@@ -460,6 +460,54 @@ describe('volume Vol 17 render (no real PDF required)', () => {
       expect(table.rowShading, 'expected no shading on the divider table').toBeFalsy();
     }
   });
+
+  // Task 27 fix 2: the chapter title page's own "CHAPTER 1" line and title
+  // line (NOT the chapter divider's combined "VOLUME 17: CHAPTER 1" heading,
+  // which is a different page and was already bold+underlined before this
+  // task) - one blank line between them, and the title itself bold+
+  // underlined. See layoutChapterTitlePage's doc comment for the measured
+  // provenance (a 1.08pt underline rect directly under the title).
+  it('Task 27 fix 2: chapter title page has a blank line before a bold+underlined title', () => {
+    const doc = VolumeSchema.parse(JSON.parse(readFileSync(join(__dirname, 'fixtures', 'vol17.json'), 'utf8')));
+    const out = layoutVolume(doc);
+    type TextItem = Extract<(typeof out.pages)[number]['items'][number], { kind: 'line' | 'heading' }>;
+    const isTextItem = (i: (typeof out.pages)[number]['items'][number]): i is TextItem =>
+      i.kind === 'line' || i.kind === 'heading';
+
+    const titlePage = out.pages.find(p => p.items.some(i => isTextItem(i) && i.segments.some(s => s.text === 'CHAPTER 1')));
+    expect(titlePage, 'chapter title page not found').toBeTruthy();
+
+    const chapterLine = titlePage!.items.find((i): i is TextItem => isTextItem(i) && i.segments.some(s => s.text === 'CHAPTER 1'));
+    const titleLine = titlePage!.items.find(
+      (i): i is TextItem => isTextItem(i) && i.segments.some(s => s.text === 'JUDGE ADVOCATE DIVISION AWARDS PROGRAM'),
+    );
+    expect(chapterLine, '"CHAPTER 1" line not found').toBeTruthy();
+    expect(titleLine, 'chapter title line not found').toBeTruthy();
+
+    // One blank line (2 * LEADING) between "CHAPTER 1" and the title -
+    // matches the real PDF's measured 25.3pt gap (694.4 -> 669.1) within
+    // rounding noise.
+    expect(chapterLine!.y - titleLine!.y).toBeCloseTo(2 * LEADING, 0);
+
+    const seg = titleLine!.segments.find(s => s.text === 'JUDGE ADVOCATE DIVISION AWARDS PROGRAM');
+    expect(seg?.run.bold, 'chapter title must be bold').toBe(true);
+    expect(seg?.run.underline, 'chapter title must be underlined').toBe(true);
+  });
+
+  // Task 27 fix 3: our own render's section-heading-to-body gap (no real PDF
+  // required) - section 0101 ("PURPOSE")'s heading to its first body line.
+  // The heading text "PURPOSE" also appears (as its own extracted chunk, on
+  // the real PDF at least) in the bold TOC entry "0101. PURPOSE" - disambiguated
+  // by requiring the heading candidate to share its PAGE with the unambiguous
+  // body-text anchor, same pattern the vs-real-PDF fix 3 test below uses.
+  it('Task 27 fix 3: section heading has a blank-line gap before its body text', async () => {
+    const rows = await ourRows();
+    const body = findIncludes(rows, 'To establish and provide guidance');
+    expect(body, 'section 0101 body text not found').toBeTruthy();
+    const heading = rows.find(r => r.text === 'PURPOSE' && r.page === body!.page);
+    expect(heading, '"0101. PURPOSE" heading not found on the body page').toBeTruthy();
+    expect(heading!.y - body!.y).toBeCloseTo(2 * LEADING, 0);
+  });
 });
 
 describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF', () => {
@@ -843,5 +891,82 @@ describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF'
     expect(realRefLabels.length, 'real PDF has no REF-band pages').toBeGreaterThan(0);
     expect(ourRefLabels.length).toBe(realRefLabels.length);
     expect(ourRefLabels.length).toBe(1);
+  });
+
+  // Task 27 fix 1: one blank line between the "REFERENCES" heading and the
+  // first "(a)" entry - matches the real PDF's measured 30.0pt gap
+  // (691.4 -> 661.4) within 2pt. See REFERENCES_HEADING_GAP_EXTRA's doc
+  // comment in lib/volume/layout.ts for the full measurement (the
+  // references list's own line-to-line leading is looser than the body
+  // chapter's, so this isn't simply `2 * LEADING`).
+  //
+  // "REFERENCES" also appears (bold, per Task 24) as the TOC's own entry
+  // label, on an earlier page - both documents' row lists put that TOC row
+  // before the actual references-page heading, so a bare `.find` picks the
+  // wrong one. Disambiguated by requiring the heading candidate to share its
+  // PAGE with the unambiguous "(a)" first-entry anchor.
+  it('Task 27 fix 1: the "REFERENCES" heading-to-first-entry gap matches the real PDF within 2pt', async () => {
+    const ours = await ourRows();
+    const real = measureFile(REAL_PDF);
+
+    const ourFirstEntry = findStartsWith(ours, '(a)');
+    const realFirstEntry = findStartsWith(real, '(a)');
+    expect(ourFirstEntry, 'our render is missing the first "(a)" reference entry').toBeTruthy();
+    expect(realFirstEntry, 'real PDF is missing the first "(a)" reference entry').toBeTruthy();
+
+    const ourHeading = ours.find(r => r.text === 'REFERENCES' && r.page === ourFirstEntry!.page);
+    const realHeading = real.find(r => r.text === 'REFERENCES' && r.page === realFirstEntry!.page);
+    expect(ourHeading, 'our render is missing the "REFERENCES" heading on the references page').toBeTruthy();
+    expect(realHeading, 'real PDF is missing the "REFERENCES" heading on the references page').toBeTruthy();
+
+    const ourGap = ourHeading!.y - ourFirstEntry!.y;
+    const realGap = realHeading!.y - realFirstEntry!.y;
+    expect(Math.abs(ourGap - realGap), `our gap ${ourGap} vs real gap ${realGap}`).toBeLessThanOrEqual(2);
+  });
+
+  // Task 27 fix 2: the chapter title page's title paints bold in both
+  // documents (weight parity, mirroring the Task 20 bold-weight tests
+  // above) - the underline itself is a filled rect, not extractable text, so
+  // it's covered separately by the non-real-PDF "blank line + bold +
+  // underlined" test above, which reads the underline flag straight off our
+  // own layout output.
+  it('Task 27 fix 2: the chapter title page\'s title is bold in both documents', async () => {
+    const ours = await ourRows();
+    const real = measureFile(REAL_PDF);
+    const ourTitle = findIncludes(ours, 'JUDGE ADVOCATE DIVISION AWARDS PROGRAM');
+    const realTitle = findIncludes(real, 'JUDGE ADVOCATE DIVISION AWARDS PROGRAM');
+    expect(ourTitle, 'our render is missing the chapter title').toBeTruthy();
+    expect(realTitle, 'real PDF is missing the chapter title').toBeTruthy();
+    expect(isBoldFont(ourTitle!.font)).toBe(true);
+    expect(isBoldFont(realTitle!.font)).toBe(true);
+  });
+
+  // Task 27 fix 3: the section-heading-to-body gap (0101 "PURPOSE" heading
+  // to its first body line) matches the real PDF within 2pt - mirrors the
+  // existing "inter-paragraph gap in section 0102" test's pattern above.
+  //
+  // The real PDF's TOC also splits its "0101. PURPOSE" entry into separate
+  // "0101"/"."/"PURPOSE" text-showing chunks (unlike ours, which paints that
+  // entry as one contiguous string), so a bare `.find(text==='PURPOSE')`
+  // picks the TOC's fragment there instead of the body heading. Disambiguated
+  // the same way as fix 1 above: require the heading candidate to share its
+  // PAGE with the unambiguous body-text anchor.
+  it('Task 27 fix 3: the "0101. PURPOSE" heading-to-body gap matches the real PDF within 2pt', async () => {
+    const ours = await ourRows();
+    const real = measureFile(REAL_PDF);
+
+    const ourBody = findIncludes(ours, 'To establish and provide guidance');
+    const realBody = findIncludes(real, 'To establish and provide guidance');
+    expect(ourBody, 'our render is missing the 0101 body text').toBeTruthy();
+    expect(realBody, 'real PDF is missing the 0101 body text').toBeTruthy();
+
+    const ourHeading = ours.find(r => r.text === 'PURPOSE' && r.page === ourBody!.page);
+    const realHeading = real.find(r => r.text === 'PURPOSE' && r.page === realBody!.page);
+    expect(ourHeading, 'our render is missing the "PURPOSE" heading on the body page').toBeTruthy();
+    expect(realHeading, 'real PDF is missing the "PURPOSE" heading on the body page').toBeTruthy();
+
+    const ourGap = ourHeading!.y - ourBody!.y;
+    const realGap = realHeading!.y - realBody!.y;
+    expect(Math.abs(ourGap - realGap), `our gap ${ourGap} vs real gap ${realGap}`).toBeLessThanOrEqual(2);
   });
 });

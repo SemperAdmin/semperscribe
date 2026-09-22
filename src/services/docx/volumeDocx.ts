@@ -451,10 +451,15 @@ function subParaParagraphs(sub: SubPara, level: Level): Paragraph[] {
   const mergeFirst = firstBlock !== undefined && !isCorrespondence(firstBlock);
   const firstBody = mergeFirst ? [firstBlock] : [];
   const restBlocks = mergeFirst ? sub.body.slice(1) : sub.body;
-  const out: Paragraph[] = [
-    designatedParagraph(designator, level, sub.title, firstBody),
-    ...bodyBlockParagraphs(restBlocks, level),
-  ];
+  const out: Paragraph[] = [designatedParagraph(designator, level, sub.title, firstBody)];
+  // Task 27 fix 3: mirrors layout.ts's identical fix (layoutSubPara) - one
+  // blank line between the designator/title line and whatever follows it,
+  // but only when that line stands ALONE (nothing merged onto it). See
+  // layout.ts's doc comment for the measured provenance and reasoning.
+  if (!mergeFirst && sub.title && (restBlocks.length > 0 || sub.children.length > 0)) {
+    out.push(blankLine());
+  }
+  out.push(...bodyBlockParagraphs(restBlocks, level));
   for (const child of sub.children) {
     const childLevel = Math.min(level + 1, 4) as Level;
     out.push(...subParaParagraphs(child, childLevel));
@@ -469,10 +474,12 @@ function paragraphParagraphs(chapterNumber: number, sectionSeq: number, para: Vo
   const mergeFirst = firstBlock !== undefined && !isCorrespondence(firstBlock);
   const firstBody = mergeFirst ? [firstBlock] : [];
   const restBlocks = mergeFirst ? para.body.slice(1) : para.body;
-  const out: Paragraph[] = [
-    designatedParagraph(designator, 2, para.title, firstBody),
-    ...bodyBlockParagraphs(restBlocks, 2),
-  ];
+  const out: Paragraph[] = [designatedParagraph(designator, 2, para.title, firstBody)];
+  // Task 27 fix 3: see subParaParagraphs's identical comment.
+  if (!mergeFirst && para.title && (restBlocks.length > 0 || para.children.length > 0)) {
+    out.push(blankLine());
+  }
+  out.push(...bodyBlockParagraphs(restBlocks, 2));
   for (const sub of para.children) out.push(...subParaParagraphs(sub, 3));
   return out;
 }
@@ -489,6 +496,14 @@ function sectionParagraphs(chapterNumber: number, section: Section, sectionPerio
   const out: (Paragraph | Table)[] = [
     designatedParagraph(designator, 1, undefined, textBlock(section.title.toUpperCase()), HeadingLevel.HEADING_2),
   ];
+  // Task 27 fix 3: mirrors layout.ts's identical fix (layoutSection) - one
+  // blank line between a section heading and whatever follows it, measured
+  // directly against the real Vol 17 PDF (see layout.ts's doc comment on
+  // this same fix for the full measurement). Only inserted when there's
+  // content to gap away from.
+  if ((section.body && section.body.length > 0) || section.paragraphs.length > 0) {
+    out.push(blankLine());
+  }
   // Finding 1: mirrors layout.ts - body and paragraphs are not mutually
   // exclusive in the schema, so both render (body first, flush left, then
   // numbered paragraphs) instead of an if/else that dropped one of them.
@@ -671,6 +686,11 @@ function buildReferencesChildren(doc: VolumeDoc): (Paragraph | Table)[] {
   // `/TimesNewRomanPS-BoldMT` BaseFont - see layout.ts's identical PDF fix
   // in layoutReferences for the full measurement.
   children.push(centeredRunsPara([{ text: 'REFERENCES', bold: true }], TITLE_SIZE));
+  // Task 27 fix 1: one blank line between the "REFERENCES" heading and the
+  // first entry - mirrors layout.ts's identical fix (layoutReferences) for
+  // the PDF path; see its doc comment (REFERENCES_HEADING_GAP_EXTRA) for the
+  // measured provenance.
+  if (doc.references.length > 0) children.push(blankLine());
   doc.references.forEach((ref, i) => {
     children.push(designatedParagraph(referenceDesignator(i), 1, undefined, textBlock(ref.text)));
   });
@@ -901,12 +921,31 @@ function buildChapterSection(doc: VolumeDoc, chapter: Chapter, useChapterPage: b
   // generateVolumeDocx, for the TOC field's sake) the same way direct
   // formatting always wins over paragraph style in OOXML.
   children.push(pageBreak());
+  // Task 27 fix 2: one blank line between "CHAPTER {m}" and the title, and
+  // the title itself is BOLD + UNDERLINED - mirrors layout.ts's identical
+  // fix (layoutChapterTitlePage) for the PDF path; see its doc comment for
+  // the measured provenance (a 1.08pt-thick underline rect directly under
+  // the title's own x-range). Kept as ONE Heading1 paragraph (not two
+  // separate paragraphs) so Word's TableOfContents field still finds a
+  // single chapter entry (Finding 4) - the blank line is approximated with
+  // two in-paragraph line breaks (`break: 2`) between the "CHAPTER {m}" run
+  // and the title run, and only the title run gets `underline`.
   children.push(
-    centeredRunsPara(
-      [{ text: `CHAPTER ${chapter.number}: ${chapter.title.toUpperCase()}`, bold: true }],
-      TITLE_SIZE,
-      HeadingLevel.HEADING_1,
-    ),
+    new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({ text: `CHAPTER ${chapter.number}`, font: FONT, size: TITLE_SIZE, bold: true }),
+        new TextRun({
+          text: chapter.title.toUpperCase(),
+          font: FONT,
+          size: TITLE_SIZE,
+          bold: true,
+          underline: {},
+          break: 2,
+        }),
+      ],
+    }),
   );
   children.push(blankLine());
 
@@ -961,6 +1000,12 @@ function buildAppendixSection(doc: VolumeDoc, appendix: Appendix): ISectionOptio
   // combined "CHAPTER N: TITLE" line.
   children.push(pageBreak());
   children.push(centeredRunsPara([{ text: `APPENDIX ${appendix.letter}`, bold: true }], TITLE_SIZE));
+  // Task 27 fix 2 (also check): one blank line between "APPENDIX {L}" and
+  // the title - mirrors layout.ts's identical fix (layoutAppendixContent)
+  // for the PDF path; see its doc comment for the measured provenance. The
+  // title's own weight is unchanged (stays regular, per the measurement
+  // above).
+  children.push(blankLine());
   children.push(
     centeredRunsPara(
       [{ text: appendix.title.toUpperCase(), underline: true }],

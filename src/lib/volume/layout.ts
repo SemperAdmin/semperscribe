@@ -37,6 +37,29 @@ export const CENTER_X = PAGE_W / 2;
  */
 export const INTER_PARAGRAPH_GAP = LEADING;
 
+/**
+ * Task 27 fix 1: the ADDITIONAL vertical space (on top of the ordinary
+ * LEADING step `addLines` already takes after painting the "REFERENCES"
+ * heading) needed to open one blank line before the first `(a)` reference
+ * entry - measured directly against the real Vol 17 PDF (fontmap.py, page
+ * index 2): "REFERENCES" at y=691.4, the first "(a)" entry at y=661.4, a
+ * 30.0pt total gap.
+ *
+ * This is NOT `INTER_PARAGRAPH_GAP` (which would only total 25.2pt): the
+ * references list's own line-to-line leading is looser than the body
+ * chapter's - measured consecutively down the same page, (a)->(b) is
+ * 661.4->646.9 (14.5pt), (b)->(c) 646.9->632.4 (14.5pt), (c)->(d)
+ * 632.4->617.9 (14.5pt), (d)->(e) 617.9->603.2 (14.7pt), averaging ~14.6pt -
+ * noticeably more than the chapter body's LEADING (12.6pt) despite the same
+ * 11pt type size. "One blank line" here is one more step of THAT looser
+ * leading (~29.2pt), which 30.0pt is within measurement/rounding noise of.
+ * The references list's own per-entry leading is otherwise unchanged by this
+ * task (still painted via the shared LEADING-stepping `addDesignatedLines`) -
+ * only this one heading-to-first-entry gap is fixed here, per the task's
+ * measured scope.
+ */
+const REFERENCES_HEADING_GAP_EXTRA = 30.0 - LEADING;
+
 const BODY_SIZE_PT = 11;
 const HEADING_SIZE_PT = 12;
 
@@ -961,6 +984,17 @@ function layoutSubPara(cursor: PageCursor, sub: SubPara, level: 1 | 2 | 3 | 4) {
     ? [{ text: `${sub.title}. ` }, ...firstRuns]
     : firstRuns;
   cursor.addDesignatedLines(designator, level, bodyRuns);
+  // Task 27 fix 3: mirrors layoutSection's identical fix - when the
+  // designator/title line stands ALONE (nothing merged onto it, either
+  // because there's no body block at all or because the first one is a
+  // correspondence-ladder item that needs its own a./b./c. line), one blank
+  // line separates it from whatever follows, same as a section heading. Not
+  // applied when a body block IS merged onto the same line (the ordinary
+  // "designator. Title. First sentence..." single-line convention) - there's
+  // no separate heading line to gap away from in that case.
+  if (!mergeFirst && sub.title && (restBlocks.length > 0 || sub.children.length > 0)) {
+    cursor.addGap(INTER_PARAGRAPH_GAP);
+  }
   layoutBodyBlocks(cursor, restBlocks, RUNOVER_X, level);
   for (const child of sub.children) {
     // Each child's own `style` (upper under a paragraph, arabic under an
@@ -984,6 +1018,12 @@ function layoutParagraph(cursor: PageCursor, chapter: number, sectionSeq: number
     ? [{ text: `${para.title}. ` }, ...firstRuns]
     : firstRuns;
   cursor.addDesignatedLines(designator, level, bodyRuns);
+  // Task 27 fix 3: see layoutSubPara's identical comment - one blank line
+  // when the designator/title line stands alone, none when a body block is
+  // merged onto it.
+  if (!mergeFirst && para.title && (restBlocks.length > 0 || para.children.length > 0)) {
+    cursor.addGap(INTER_PARAGRAPH_GAP);
+  }
   layoutBodyBlocks(cursor, restBlocks, RUNOVER_X, level);
   for (const sub of para.children) {
     layoutSubPara(cursor, sub, 3);
@@ -1007,6 +1047,20 @@ function layoutSection(
   const headingPage = cursor.currentLabel();
   cursor.addDesignatedLines(designator, 1, [{ text: headingText }], BODY_SIZE_PT, 'heading');
   toc.push({ label: `${designator} ${headingText}`.trim(), page: headingPage, level: 1 });
+
+  // Task 27 fix 3: one blank line between a section heading and whatever
+  // follows it - measured directly against the real Vol 17 PDF (fontmap.py,
+  // page index 4): "0101. PURPOSE" at y=644.0, its body's first line ("To
+  // establish...") at y=618.7, a 25.3pt gap - within rounding noise of
+  // `2 * LEADING` (25.2pt), i.e. exactly one blank line on top of the
+  // ordinary line step `addDesignatedLines` already took for the heading
+  // itself (see INTER_PARAGRAPH_GAP's doc comment for the identical
+  // reasoning applied to paragraph-to-paragraph breaks). Previously the body
+  // painted immediately under the heading with no gap at all. Only inserted
+  // when there's actually something to gap away from - an empty section
+  // (no body, no paragraphs) shouldn't eat a blank line it doesn't need.
+  const hasFollowingContent = (section.body && section.body.length > 0) || section.paragraphs.length > 0;
+  if (hasFollowingContent) cursor.addGap(INTER_PARAGRAPH_GAP);
 
   // Finding 1: `body` and `paragraphs` are not mutually exclusive in the
   // schema (SectionSchema permits both, and the editor offers both "Add
@@ -1222,6 +1276,11 @@ function layoutReferences(doc: VolumeDoc): { pages: Page[]; firstLabel: string }
     HEADING_SIZE_PT,
     'heading',
   );
+  // Task 27 fix 1: one blank line between the heading and the first entry -
+  // see REFERENCES_HEADING_GAP_EXTRA's doc comment for the measured
+  // provenance. Only applied when there's at least one reference to gap
+  // away from.
+  if (doc.references.length > 0) cursor.addGap(REFERENCES_HEADING_GAP_EXTRA);
   for (const [i, ref] of doc.references.entries()) {
     cursor.addDesignatedLines(referenceDesignator(i), 1, [{ text: ref.text }]);
   }
@@ -1434,7 +1493,22 @@ function layoutChapterTitlePage(cursor: PageCursor, chapter: Chapter) {
   // Task 20: measured bold on the real Vol 17 chapter title page (page
   // index 4 - task-20-report.md), matching the divider/title-page headings.
   cursor.addLines(centeredRuns([{ text: `CHAPTER ${chapter.number}`, bold: true }], HEADING_SIZE_PT), HEADING_SIZE_PT);
-  cursor.addLines(centeredRuns([{ text: chapter.title.toUpperCase(), bold: true }], HEADING_SIZE_PT), HEADING_SIZE_PT);
+  // Task 27 fix 2: one blank line between "CHAPTER {m}" and the title, and
+  // the title itself is BOLD + UNDERLINED - measured directly against the
+  // real Vol 17 PDF (fontmap.py + extract_rects.py, page index 4): "CHAPTER
+  // 1" at y=694.4, the title ("JUDGE ADVOCATE DIVISION AWARDS PROGRAM") at
+  // y=669.1 - a 25.3pt gap, matching `2 * LEADING` (one blank line), same as
+  // the section-heading-to-body fix above. A filled rect `re [171.29,
+  // 666.82, 269.57, 1.08]` sits directly under the title's own x-range
+  // (171.3..440.9 vs the title's x=171.3) at 1.08pt thick - the same
+  // bold-underline rule thickness measured elsewhere in this file - so the
+  // title is both bold AND underlined, not merely bold like it painted
+  // before this fix.
+  cursor.addGap(INTER_PARAGRAPH_GAP);
+  cursor.addLines(
+    centeredRuns([{ text: chapter.title.toUpperCase(), bold: true, underline: true }], HEADING_SIZE_PT),
+    HEADING_SIZE_PT,
+  );
   cursor.addGap();
 }
 
@@ -1505,6 +1579,16 @@ function layoutAppendixContent(cursor: PageCursor, appendix: Appendix) {
   // reads like an ordinary (unbolded) section heading, not a repeat of the
   // divider's bold title.
   cursor.addLines(centeredRuns([{ text: `APPENDIX ${appendix.letter}`, bold: true }], HEADING_SIZE_PT), HEADING_SIZE_PT);
+  // Task 27 fix 2 (also check): one blank line between "APPENDIX {L}" and
+  // the title, same gap treatment as the chapter title page - measured
+  // directly against the real Vol 17 Appendix A content page (fontmap.py,
+  // page index 8): "APPENDIX A" at y=694.4, the title ("GLOSSARY OF ACRONYMS
+  // AND ABBREVIATIONS") at y=669.3, a 25.1pt gap, matching `2 * LEADING`
+  // (one blank line). The title's own weight is unchanged by this fix - it
+  // stays REGULAR (not bold), per the existing measurement in the doc
+  // comment above (unlike the chapter title page's title, which this task's
+  // fix 2 also makes bold+underlined).
+  cursor.addGap(INTER_PARAGRAPH_GAP);
   cursor.addLines(centeredRuns([{ text: appendix.title.toUpperCase(), underline: true }]), BODY_SIZE_PT);
   cursor.addGap();
 
