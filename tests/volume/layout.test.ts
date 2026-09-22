@@ -1,6 +1,6 @@
 // tests/volume/layout.test.ts
 import { describe, it, expect } from 'vitest';
-import { layoutVolume, BOTTOM_Y, type BoxItem, type TableItem } from '@/lib/volume/layout';
+import { layoutVolume, runningHeadParts, BOTTOM_Y, type BoxItem, type LineItem, type TableItem } from '@/lib/volume/layout';
 import { blankVolume } from '@/store/volumeStore';
 import { generateVolumePdf } from '@/services/pdf/volumeGenerator';
 
@@ -306,5 +306,85 @@ describe('layoutVolume', () => {
     for (const row of titleTable!.rows.slice(1)) {
       expect(row.every(cell => cell.join('') === '')).toBe(true);
     }
+  });
+
+  // Task 22: appendix support - divider page (band "A-1"), content page(s)
+  // ("A-2", ...), a TOC "APPENDICES" header + per-appendix entry pointing at
+  // the CONTENT page, and the running head's "Volume {n}, Appendix {L}"
+  // left label.
+  describe('appendices', () => {
+    function withAppendix() {
+      const d = sampleDoc();
+      d.appendices = [
+        {
+          letter: 'A',
+          title: 'GLOSSARY OF ACRONYMS AND ABBREVIATIONS',
+          changeLog: [],
+          blocks: [],
+          glossary: [
+            { term: 'ABA', definition: 'American Bar Association' },
+            { term: 'TSO', definition: 'Trial Services Organization' },
+          ],
+        },
+      ];
+      return d;
+    }
+
+    it('lays out a divider page banded "A-1" and content page(s) banded "A-2", ...', () => {
+      const out = layoutVolume(withAppendix());
+      const appendixPages = out.pages.filter(p => p.band === 'appendix');
+      expect(appendixPages.map(p => p.label)).toEqual(['A-1', 'A-2']);
+      expect(appendixPages.every(p => p.appendix === 'A')).toBe(true);
+    });
+
+    it('restarts the page-band counter at 1 for each appendix letter', () => {
+      const d = withAppendix();
+      d.appendices.push({ letter: 'B', title: 'SAMPLE FORM', changeLog: [], blocks: [{ runs: [{ text: 'Body.' }] }] });
+      const out = layoutVolume(d);
+      const labels = out.pages.filter(p => p.band === 'appendix').map(p => p.label);
+      expect(labels).toEqual(['A-1', 'A-2', 'B-1', 'B-2']);
+    });
+
+    it('emits an "APPENDICES" TOC header entry and a per-appendix entry pointing at the CONTENT page', () => {
+      const out = layoutVolume(withAppendix());
+      const header = out.toc.find(e => e.header);
+      expect(header?.label).toBe('APPENDICES');
+      const entry = out.toc.find(e => e.appendix);
+      expect(entry).toBeTruthy();
+      expect(entry!.label).toContain('A');
+      expect(entry!.label).toContain('GLOSSARY OF ACRONYMS AND ABBREVIATIONS');
+      // Content page ("A-2"), not the divider ("A-1").
+      expect(entry!.page).toBe('A-2');
+    });
+
+    it('prints the divider heading "VOLUME {n}:  APPENDIX {L}" and the content page\'s "APPENDIX {L}" title', () => {
+      const out = layoutVolume(withAppendix());
+      const items = out.pages.flatMap(p => p.items);
+      const allText = items.flatMap(i => ('segments' in i ? i.segments.map(s => s.text) : [])).join('');
+      expect(allText).toContain('VOLUME 6:  APPENDIX A');
+      expect(allText).toContain('APPENDIX A');
+      expect(allText).toContain('GLOSSARY OF ACRONYMS AND ABBREVIATIONS');
+    });
+
+    it('renders the glossary as two columns (term at x=77.4, definition at x=185.3)', () => {
+      const out = layoutVolume(withAppendix());
+      const lineItems = out.pages
+        .flatMap(p => p.items)
+        .filter((i): i is LineItem => i.kind === 'line');
+      const lineText = (i: LineItem) => i.segments.map(s => s.text).join('');
+      const termItem = lineItems.find(i => i.segments.some(s => s.text === 'ABA'));
+      const defItem = lineItems.find(i => lineText(i).includes('American Bar Association'));
+      expect(termItem, 'glossary term "ABA" not found').toBeTruthy();
+      expect(defItem, 'glossary definition not found').toBeTruthy();
+      expect(termItem!.x).toBeCloseTo(77.4, 1);
+      expect(defItem!.x).toBeCloseTo(185.3, 1);
+    });
+
+    it("uses the appendix running-head left label \"Volume {n}, Appendix {L}\"", () => {
+      const out = layoutVolume(withAppendix());
+      const appendixPage = out.pages.find(p => p.band === 'appendix');
+      expect(appendixPage).toBeTruthy();
+      expect(runningHeadParts(withAppendix(), 'appendix', undefined, 'A').left).toBe('Volume 6, Appendix A');
+    });
   });
 });

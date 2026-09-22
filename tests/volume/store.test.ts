@@ -71,4 +71,93 @@ describe('volumeStore', () => {
       expect(children[0].seq).toBe(1);
     });
   });
+
+  // Task 22: appendix authoring - letter is derived from array position,
+  // same "designators are computed, not authored" convention as a
+  // chapter's `number` (normalizeNumbering's identical rationale).
+  describe('appendices', () => {
+    it('starts with no appendices', () => {
+      expect(useVolumeStore.getState().doc.appendices).toEqual([]);
+    });
+
+    it('addAppendix appends a new appendix lettered by position', () => {
+      const { addAppendix } = useVolumeStore.getState();
+      addAppendix();
+      addAppendix();
+      const { appendices } = useVolumeStore.getState().doc;
+      expect(appendices).toHaveLength(2);
+      expect(appendices[0].letter).toBe('A');
+      expect(appendices[1].letter).toBe('B');
+    });
+
+    it('removeAppendix re-letters the survivor to A', () => {
+      const { addAppendix, updateAppendix, removeAppendix } = useVolumeStore.getState();
+      addAppendix();
+      addAppendix();
+      updateAppendix(1, { title: 'Survivor' });
+      removeAppendix(0);
+      const { appendices } = useVolumeStore.getState().doc;
+      expect(appendices).toHaveLength(1);
+      expect(appendices[0].letter).toBe('A');
+      expect(appendices[0].title).toBe('Survivor');
+    });
+
+    it('updateAppendix patches the title', () => {
+      const { addAppendix, updateAppendix } = useVolumeStore.getState();
+      addAppendix();
+      updateAppendix(0, { title: 'GLOSSARY OF ACRONYMS AND ABBREVIATIONS' });
+      expect(useVolumeStore.getState().doc.appendices[0].title).toBe('GLOSSARY OF ACRONYMS AND ABBREVIATIONS');
+    });
+
+    it('updateAppendixBlock sets then appends body blocks', () => {
+      const { addAppendix, updateAppendixBlock } = useVolumeStore.getState();
+      addAppendix();
+      updateAppendixBlock(0, 0, { runs: [{ text: 'First.' }] });
+      updateAppendixBlock(0, 1, { runs: [{ text: 'Second.' }] });
+      const { blocks } = useVolumeStore.getState().doc.appendices[0];
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].runs[0].text).toBe('First.');
+      expect(blocks[1].runs[0].text).toBe('Second.');
+    });
+
+    it('addAppendixChangeRow/updateAppendixChangeRow/removeAppendixChangeRow manage the divider table rows', () => {
+      const { addAppendix, addAppendixChangeRow, updateAppendixChangeRow, removeAppendixChangeRow } =
+        useVolumeStore.getState();
+      addAppendix();
+      addAppendixChangeRow(0);
+      updateAppendixChangeRow(0, 0, { version: '1', summary: 'Initial' });
+      let row = useVolumeStore.getState().doc.appendices[0].changeLog[0];
+      expect(row).toMatchObject({ version: '1', summary: 'Initial' });
+      removeAppendixChangeRow(0, 0);
+      expect(useVolumeStore.getState().doc.appendices[0].changeLog).toHaveLength(0);
+    });
+
+    it('addGlossaryRow/updateGlossaryRow/removeGlossaryRow manage glossary entries', () => {
+      const { addAppendix, addGlossaryRow, updateGlossaryRow, removeGlossaryRow } = useVolumeStore.getState();
+      addAppendix();
+      addGlossaryRow(0);
+      updateGlossaryRow(0, 0, { term: 'ABA', definition: 'American Bar Association' });
+      let glossary = useVolumeStore.getState().doc.appendices[0].glossary;
+      expect(glossary).toEqual([{ term: 'ABA', definition: 'American Bar Association' }]);
+      addGlossaryRow(0);
+      glossary = useVolumeStore.getState().doc.appendices[0].glossary;
+      expect(glossary).toHaveLength(2);
+      removeGlossaryRow(0, 0);
+      glossary = useVolumeStore.getState().doc.appendices[0].glossary;
+      expect(glossary).toEqual([{ term: '', definition: '' }]);
+    });
+
+    it('setDoc re-letters appendices whose stored letter drifted from position', () => {
+      const { setDoc } = useVolumeStore.getState();
+      const doc = blankVolume();
+      doc.appendices = [
+        { letter: 'Z', title: 'First', changeLog: [], blocks: [] },
+        { letter: 'Y', title: 'Second', changeLog: [], blocks: [] },
+      ];
+      setDoc(doc);
+      const { appendices } = useVolumeStore.getState().doc;
+      expect(appendices[0].letter).toBe('A');
+      expect(appendices[1].letter).toBe('B');
+    });
+  });
 });

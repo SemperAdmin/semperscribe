@@ -11,6 +11,11 @@ export function toRoman(n: number): string {
 
 export function refPageLabel(n: number): string { return `REF-${n}`; }
 
+/** Task 22: an appendix's own "{LETTER}-{n}" band, restarting at 1 per
+ * appendix - the divider is always page 1 (e.g. "A-1"), content follows
+ * ("A-2", "A-3", ...), matching Vol 17's own Appendix A footers. */
+export function appendixPageLabel(letter: string, n: number): string { return `${letter}-${n}`; }
+
 export function bodyPageLabel(opts: {
   chapter: number; page: number; multiChapter: boolean;
   band: 'auto' | 'chapter-page' | 'sequential';

@@ -312,6 +312,46 @@ describe('volume Vol 17 render (no real PDF required)', () => {
     expect(bodyText, 'section 0101 body text not found').toBeTruthy();
     expect(isBoldFont(bodyText!.font)).toBe(false);
   });
+
+  // Task 22: Appendix A ("GLOSSARY OF ACRONYMS AND ABBREVIATIONS") - divider
+  // (footer "A-1"), content page (footer "A-2"), the TOC's "APPENDICES"
+  // header + per-appendix entry, and the glossary's two-column layout -
+  // measured directly against the real Vol 17 PDF (fontmap.py, page indices
+  // 1/7/8; see task22-report.md for the full evidence).
+  it('Task 22: lays out Appendix A with "A-1"/"A-2" footers and the two-column glossary', async () => {
+    const rows = await ourRows();
+
+    const labels = footerLabels(rows);
+    expect(labels).toContain('A-1');
+    expect(labels).toContain('A-2');
+
+    expect(findIncludes(rows, 'VOLUME 17:  APPENDIX A')).toBeTruthy();
+    expect(findIncludes(rows, 'GLOSSARY OF ACRONYMS AND ABBREVIATIONS')).toBeTruthy();
+
+    // Finding: "American Bar Association" also appears in section 0110's
+    // body prose (flush-left at x=72), so a bare `findIncludes` can pick up
+    // that occurrence instead of the glossary's definition column - filter
+    // to the definition column's x range to disambiguate.
+    const term = findStartsWith(rows, 'ABA');
+    const def = rows.find(r => r.text.includes('American Bar Association') && r.x > 150);
+    expect(term, 'glossary term "ABA" not found').toBeTruthy();
+    expect(def, 'glossary definition not found').toBeTruthy();
+    expect(term!.x).toBeCloseTo(77.4, 0);
+    expect(def!.x).toBeCloseTo(185.3, 0);
+  });
+
+  it('Task 22: TOC includes an "APPENDICES" header and an "A" entry pointing at the content page', async () => {
+    const rows = await ourRows();
+    const appendicesHeader = rows.find(r => r.text === 'APPENDICES');
+    expect(appendicesHeader, 'TOC "APPENDICES" header not found').toBeTruthy();
+    expect(isBoldFont(appendicesHeader!.font)).toBe(true);
+
+    const entry = findIncludes(rows, 'GLOSSARY OF ACRONYMS AND ABBREVIATIONS');
+    expect(entry, 'TOC appendix entry not found').toBeTruthy();
+    // The entry's page-label row ("A-2") sits on the same TOC line.
+    const sameLine = rows.filter(r => r.y === entry!.y);
+    expect(sameLine.some(r => r.text.includes('A-2'))).toBe(true);
+  });
 });
 
 describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF', () => {
@@ -469,5 +509,48 @@ describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF'
     expect(realBody, 'real PDF is missing the 0101 body text').toBeTruthy();
     expect(isBoldFont(ourBody!.font)).toBe(false);
     expect(isBoldFont(realBody!.font)).toBe(false);
+  });
+
+  /**
+   * Task 22: Appendix A fidelity against the real PDF - "A-1"/"A-2" footers
+   * present in both, and the glossary's term/definition columns within 3pt
+   * of the real measured x's (GLOSSARY_TERM_X=77.4, GLOSSARY_DEF_X=185.3 in
+   * lib/volume/layout.ts - measured directly off this same real PDF, page
+   * index 8, via fontmap.py).
+   */
+  it('Task 22: our render\'s Appendix A footers and glossary columns match the real PDF', async () => {
+    const ours = await ourRows();
+    const real = measureFile(REAL_PDF);
+
+    const ourLabels = footerLabels(ours);
+    const realLabels = footerLabels(real);
+    expect(ourLabels).toContain('A-1');
+    expect(realLabels).toContain('A-1');
+    expect(ourLabels).toContain('A-2');
+    expect(realLabels).toContain('A-2');
+
+    const ourTerm = findStartsWith(ours, 'ABA');
+    const realTerm = findStartsWith(real, 'ABA');
+    expect(ourTerm, 'our render is missing the "ABA" glossary term').toBeTruthy();
+    expect(realTerm, 'real PDF is missing the "ABA" glossary term').toBeTruthy();
+    expect(Math.abs(ourTerm!.x - realTerm!.x)).toBeLessThanOrEqual(3);
+
+    // See the identical disambiguation note above - "American Bar
+    // Association" also appears in section 0110's body prose at x=72.
+    const ourDef = ours.find(r => r.text.includes('American Bar Association') && r.x > 150);
+    const realDef = real.find(r => r.text.includes('American Bar Association') && r.x > 150);
+    expect(ourDef, 'our render is missing the "ABA" glossary definition').toBeTruthy();
+    expect(realDef, 'real PDF is missing the "ABA" glossary definition').toBeTruthy();
+    expect(Math.abs(ourDef!.x - realDef!.x)).toBeLessThanOrEqual(3);
+  });
+
+  it('Task 22: TOC "APPENDICES" header and appendix entry are present in both documents', async () => {
+    const ours = await ourRows();
+    const real = measureFile(REAL_PDF);
+
+    expect(ours.some(r => r.text === 'APPENDICES')).toBe(true);
+    expect(real.some(r => r.text === 'APPENDICES')).toBe(true);
+    expect(findIncludes(ours, 'GLOSSARY OF ACRONYMS AND ABBREVIATIONS')).toBeTruthy();
+    expect(findIncludes(real, 'GLOSSARY OF ACRONYMS AND ABBREVIATIONS')).toBeTruthy();
   });
 });

@@ -16,6 +16,7 @@ const minimal: VolumeDoc = {
     sections: [{ seq: 1, title: 'GENERAL ROLES', paragraphs: [] }],
     figures: [],
   }],
+  appendices: [],
 };
 
 describe('VolumeSchema', () => {
@@ -33,5 +34,47 @@ describe('VolumeSchema', () => {
     const parsed = VolumeSchema.parse(noDefaults);
     expect(parsed.volume.pageBand).toBe('auto');
     expect(parsed.volume.sectionPeriod).toBe(false);
+  });
+
+  // Task 22: `appendices` defaults to [] when omitted (like `chapters`), and
+  // accepts an appendix with a glossary and/or plain body blocks.
+  it('defaults appendices to an empty array', () => {
+    const parsed = VolumeSchema.parse(minimal);
+    expect(parsed.appendices).toEqual([]);
+  });
+
+  it('accepts an appendix with a glossary and defaults its changeLog/blocks', () => {
+    const withAppendix: VolumeDoc = {
+      ...minimal,
+      appendices: [
+        {
+          letter: 'A',
+          title: 'GLOSSARY OF ACRONYMS AND ABBREVIATIONS',
+          glossary: [{ term: 'ABA', definition: 'American Bar Association' }],
+        } as VolumeDoc['appendices'][number],
+      ],
+    };
+    const parsed = VolumeSchema.parse(withAppendix);
+    expect(parsed.appendices).toHaveLength(1);
+    expect(parsed.appendices[0].changeLog).toEqual([]);
+    expect(parsed.appendices[0].blocks).toEqual([]);
+    expect(parsed.appendices[0].glossary).toEqual([{ term: 'ABA', definition: 'American Bar Association' }]);
+  });
+
+  it('accepts an appendix with plain body blocks and no glossary', () => {
+    const withAppendix: VolumeDoc = {
+      ...minimal,
+      appendices: [
+        {
+          letter: 'A',
+          title: 'SAMPLE FORM',
+          changeLog: [],
+          blocks: [{ runs: [{ text: 'Plain appendix text.' }] }],
+        },
+      ],
+    };
+    const parsed = VolumeSchema.parse(withAppendix);
+    expect(parsed.appendices[0].glossary).toBeUndefined();
+    expect(parsed.appendices[0].blocks[0].runs[0].text).toBe('Plain appendix text.');
   });
 });

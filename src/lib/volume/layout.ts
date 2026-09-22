@@ -1,7 +1,7 @@
-import type { Block, Chapter, Figure, Paragraph, Run, Section, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
+import type { Appendix, Block, Chapter, Figure, Paragraph, Run, Section, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
 import { correspondenceDesignator, paragraphDesignator, referenceDesignator, sectionDesignator, subParaDesignator } from '@/lib/volume/designators';
 import { designatorX, RUNOVER_X, textStartX } from '@/lib/volume/volume-indent';
-import { bodyPageLabel, refPageLabel, toRoman } from '@/lib/volume/page-bands';
+import { appendixPageLabel, bodyPageLabel, refPageLabel, toRoman } from '@/lib/volume/page-bands';
 import { measureText, wrapPlainText, wrapRuns, type WrappedSegment } from '@/lib/volume/measure';
 
 // ---------------------------------------------------------------------------
@@ -39,6 +39,18 @@ export const INTER_PARAGRAPH_GAP = LEADING;
 
 const BODY_SIZE_PT = 11;
 const HEADING_SIZE_PT = 12;
+
+// ---------------------------------------------------------------------------
+// Task 22: appendix-specific geometry, measured directly against the real
+// Vol 17 PDF (fontmap.py; see task22-report.md for the full evidence).
+// ---------------------------------------------------------------------------
+/** TOC page (page index 1): appendix letter designator, x=77.5 - slightly
+ * right of the ordinary section-designator column (x=72). */
+const APPENDIX_TOC_LETTER_X = 77.5;
+/** Appendix A content page (page index 8): glossary term column, x=77.4. */
+const GLOSSARY_TERM_X = 77.4;
+/** Appendix A content page (page index 8): glossary definition column, x=185.3. */
+const GLOSSARY_DEF_X = 185.3;
 
 // ---------------------------------------------------------------------------
 // Output types
@@ -105,14 +117,33 @@ export type PaintItem = LineItem | HeadingItem | FigureItem | TableItem | BoxIte
 
 export interface Page {
   label: string;
-  band: 'front' | 'ref' | 'body';
+  band: 'front' | 'ref' | 'body' | 'appendix';
   chapter?: number;
+  /** Task 22: the appendix letter, set only for `band: 'appendix'` pages. */
+  appendix?: string;
   items: PaintItem[];
 }
 export interface TocEntry {
   label: string;
   page: string;
   level: number;
+  /**
+   * Task 22: renders as a bold heading line with no leader/page (the
+   * "APPENDICES" line printed once before the per-appendix entries) instead
+   * of the ordinary label+leader+page line - see layoutToc.
+   */
+  header?: boolean;
+  /**
+   * Task 22: renders as an appendix entry - a slightly-indented letter
+   * designator, then the title starting one ladder stop over (measured
+   * against the real Vol 17 TOC page - see PageCursor.addAppendixTocEntry) -
+   * instead of the ordinary flush-margin label. `label` still carries the
+   * full "LETTER  TITLE" text for simple consumers/tests; `page` is the
+   * appendix's CONTENT page label (e.g. "A-2"), not its divider ("A-1").
+   */
+  appendix?: boolean;
+  appendixLetter?: string;
+  appendixTitle?: string;
 }
 export interface LaidOutDoc {
   pages: Page[];
@@ -157,12 +188,14 @@ class PageCursor {
   private labelFn: () => string;
   private band: Page['band'];
   private chapter?: number;
+  private appendix?: string;
 
-  constructor(band: Page['band'], labelFn: () => string, chapter?: number) {
+  constructor(band: Page['band'], labelFn: () => string, chapter?: number, appendix?: string) {
     this.band = band;
     this.chapter = chapter;
+    this.appendix = appendix;
     this.labelFn = labelFn;
-    this.current = { label: labelFn(), band, chapter, items: [] };
+    this.current = { label: labelFn(), band, chapter, appendix, items: [] };
   }
 
   private newPage() {
@@ -178,7 +211,7 @@ class PageCursor {
       return;
     }
     this.pages.push(this.current);
-    this.current = { label: this.labelFn(), band: this.band, chapter: this.chapter, items: [] };
+    this.current = { label: this.labelFn(), band: this.band, chapter: this.chapter, appendix: this.appendix, items: [] };
     this.y = TOP_TEXT_Y;
   }
 
@@ -260,6 +293,31 @@ class PageCursor {
   }
 
   /**
+   * The dotted leader + right-aligned page label that finishes a TOC entry's
+   * last line - shared by `addTocEntry` and (Task 22) `addAppendixTocEntry`,
+   * which differ only in how the label ITSELF is positioned/wrapped, not in
+   * how the leader/page tail is painted.
+   */
+  private addTocLeaderAndPage(y: number, lineEndX: number, pageLabel: string, sizePt: number) {
+    const pageW = measureText(pageLabel, sizePt);
+    const targetX = RIGHT_EDGE - pageW;
+    const dotWidth = measureText('.', sizePt);
+    const gap = Math.max(0, targetX - lineEndX - dotWidth);
+    const dotCount = dotWidth > 0 ? Math.floor(gap / dotWidth) : 0;
+    if (dotCount > 0) {
+      const leader = ' ' + '.'.repeat(dotCount);
+      this.current.items.push({
+        kind: 'line', x: lineEndX, y, sizePt,
+        segments: [{ text: leader, run: { text: leader } }],
+      });
+    }
+    this.current.items.push({
+      kind: 'line', x: targetX, y, sizePt,
+      segments: [{ text: pageLabel, run: { text: pageLabel } }],
+    });
+  }
+
+  /**
    * A TOC line: label left at the margin (wrapped continuation indented
    * slightly under the title text, not back to the margin), a dotted leader,
    * and the page label right-aligned to RIGHT_EDGE.
@@ -276,23 +334,73 @@ class PageCursor {
       this.current.items.push({ kind: 'line', x: lines[i].x, y, segments: lines[i].segments, sizePt });
       if (isLast) {
         const endX = lines[i].x + measureText(lineText, sizePt);
-        const pageW = measureText(pageLabel, sizePt);
-        const targetX = RIGHT_EDGE - pageW;
-        const dotWidth = measureText('.', sizePt);
-        const gap = Math.max(0, targetX - endX - dotWidth);
-        const dotCount = dotWidth > 0 ? Math.floor(gap / dotWidth) : 0;
-        if (dotCount > 0) {
-          const leader = ' ' + '.'.repeat(dotCount);
-          this.current.items.push({
-            kind: 'line', x: endX, y, sizePt,
-            segments: [{ text: leader, run: { text: leader } }],
-          });
-        }
+        this.addTocLeaderAndPage(y, endX, pageLabel, sizePt);
+      }
+      this.y -= LEADING;
+    }
+  }
+
+  /**
+   * Task 22: an appendix's TOC entry - measured directly against the real
+   * Vol 17 TOC page (fontmap.py, page index 1): the letter designator sits
+   * slightly right of the ordinary section-designator column (x=77.5, not
+   * the x=72 `addTocEntry`'s label uses), and the title starts at the next
+   * ladder stop (x=108.0 - exactly `textStartX(1, letter)`, the same stop a
+   * one-character designator already resolves to), not immediately after
+   * the letter. Continuation lines (an unmeasured case for Vol 17's own
+   * single-line entry) fall back to the same MARGIN+18 indent
+   * `addTocEntry`'s wrapped continuations use.
+   */
+  addAppendixTocEntry(letter: string, title: string, pageLabel: string, sizePt = BODY_SIZE_PT) {
+    const reserveW = 70;
+    const titleX = textStartX(1, letter, sizePt);
+    const lines = wrapRuns([{ text: title }], titleX, MARGIN + 18, RIGHT_EDGE - reserveW, sizePt);
+    if (lines.length === 0) lines.push({ segments: [], x: titleX });
+    for (let i = 0; i < lines.length; i++) {
+      this.ensureRoom();
+      const y = this.y;
+      const isLast = i === lines.length - 1;
+      if (i === 0) {
         this.current.items.push({
-          kind: 'line', x: targetX, y, sizePt,
-          segments: [{ text: pageLabel, run: { text: pageLabel } }],
+          kind: 'line', x: APPENDIX_TOC_LETTER_X, y,
+          segments: [{ text: letter, run: { text: letter } }], sizePt,
         });
       }
+      const lineText = lines[i].segments.map(s => s.text).join('');
+      this.current.items.push({ kind: 'line', x: lines[i].x, y, segments: lines[i].segments, sizePt });
+      if (isLast) {
+        const endX = lines[i].x + measureText(lineText, sizePt);
+        this.addTocLeaderAndPage(y, endX, pageLabel, sizePt);
+      }
+      this.y -= LEADING;
+    }
+  }
+
+  /**
+   * Task 22: a two-column glossary row - term flush at `GLOSSARY_TERM_X`,
+   * definition starting at `GLOSSARY_DEF_X` and wrapping with continuation
+   * lines aligned under that same definition column (not back to the
+   * margin) - measured directly against the real Vol 17 Appendix A content
+   * page (fontmap.py, page index 8; see GLOSSARY_TERM_X/GLOSSARY_DEF_X's
+   * doc comment for the exact measurement).
+   */
+  addGlossaryEntry(term: string, definition: string, sizePt = BODY_SIZE_PT) {
+    this.ensureRoom();
+    const y = this.y;
+    this.current.items.push({
+      kind: 'line', x: GLOSSARY_TERM_X, y,
+      segments: [{ text: term, run: { text: term } }], sizePt,
+    });
+    const lines = wrapRuns([{ text: definition }], GLOSSARY_DEF_X, GLOSSARY_DEF_X, RIGHT_EDGE, sizePt);
+    if (lines.length === 0) {
+      this.y -= LEADING;
+      return;
+    }
+    this.current.items.push({ kind: 'line', x: lines[0].x, y, segments: lines[0].segments, sizePt });
+    this.y -= LEADING;
+    for (let i = 1; i < lines.length; i++) {
+      this.ensureRoom();
+      this.current.items.push({ kind: 'line', x: lines[i].x, y: this.y, segments: lines[i].segments, sizePt });
       this.y -= LEADING;
     }
   }
@@ -610,12 +718,22 @@ export interface RunningHeadParts {
  * extraction can't encode it, not because the source glyph is actually a
  * middot). Fixed once, here, in the single shared composer both the PDF and
  * DOCX generators consume, so neither can drift back to the wrong character.
+ *
+ * Task 22: extended with an `appendix` letter for `band: 'appendix'` pages -
+ * both the divider and content page(s) print "Volume {n}, Appendix {L}"
+ * (measured verbatim against the real Vol 17 Appendix A pages, fontmap.py
+ * page indices 7/8), UNCONDITIONALLY (unlike the chapter suffix, which only
+ * appears for a multi-chapter volume's body pages - Vol 17 has a single
+ * appendix and still prints the suffix, so this isn't gated on having more
+ * than one).
  */
-export function runningHeadParts(doc: VolumeDoc, band: Page['band'], chapter?: number): RunningHeadParts {
+export function runningHeadParts(doc: VolumeDoc, band: Page['band'], chapter?: number, appendix?: string): RunningHeadParts {
   const multiChapter = doc.chapters.length > 1;
   let left: string;
   if (band === 'ref') {
     left = 'References';
+  } else if (band === 'appendix' && appendix !== undefined) {
+    left = `Volume ${doc.volume.number}, Appendix ${appendix}`;
   } else if (band === 'body' && chapter !== undefined && multiChapter) {
     left = `Volume ${doc.volume.number}, Chapter ${chapter}`;
   } else {
@@ -646,9 +764,18 @@ export interface FooterScheme {
  * build its `PageNumber` field runs, instead of a separate, partially-wrong
  * copy of the rule (Finding 3: DOCX's front matter — title/verso/references/
  * TOC — had no footer, and thus no numbering scheme, at all).
+ *
+ * Task 22: `band: 'appendix'` uses the appendix's own letter-prefixed band
+ * ("A-1", "A-2", ...), passed via `opts.appendix`.
  */
-export function footerScheme(band: Page['band'], opts: { chapter?: number; useChapterPage?: boolean } = {}): FooterScheme {
+export function footerScheme(
+  band: Page['band'],
+  opts: { chapter?: number; useChapterPage?: boolean; appendix?: string } = {},
+): FooterScheme {
   if (band === 'ref') return { prefix: 'REF-', format: 'decimal' };
+  if (band === 'appendix' && opts.appendix !== undefined) {
+    return { prefix: `${opts.appendix}-`, format: 'decimal' };
+  }
   if (band === 'body' && opts.useChapterPage && opts.chapter !== undefined) {
     return { prefix: `${opts.chapter}-`, format: 'decimal' };
   }
@@ -985,31 +1112,63 @@ function layoutToc(doc: VolumeDoc, toc: TocEntry[], nextRoman: () => string): Pa
   // entries gets the extra blank-line step.
   toc.forEach((entry, i) => {
     if (i > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
-    cursor.addTocEntry(entry.label, entry.page);
+    // Task 22: the "APPENDICES" header line (bold, no leader/page) and each
+    // per-appendix entry (indented letter + title one ladder stop over) get
+    // their own rendering, distinct from the ordinary flush-margin
+    // label+leader+page line every other entry uses.
+    if (entry.header) {
+      cursor.addLines(leftParagraphRuns([{ text: entry.label, bold: true }]));
+    } else if (entry.appendix) {
+      cursor.addAppendixTocEntry(entry.appendixLetter ?? '', entry.appendixTitle ?? entry.label, entry.page);
+    } else {
+      cursor.addTocEntry(entry.label, entry.page);
+    }
   });
 
   return cursor.finish();
 }
 
 // ---------------------------------------------------------------------------
-// Chapter divider ("Summary of Substantive Changes") + "CHAPTER {M}" title.
+// Divider ("Summary of Substantive Changes") - shared by a chapter divider
+// ("VOLUME {n}: CHAPTER {m}") and (Task 22) an appendix divider ("VOLUME
+// {n}:  APPENDIX {L}"). The two differ only in the heading/title text, the
+// title's quoting, and which changeLog feeds the table below - everything
+// else (legend, boilerplate, box, table shape) is measured identical on
+// both the real Vol 17 chapter divider (page index 3) and its Appendix A
+// divider (page index 7, footer "A-1").
 // ---------------------------------------------------------------------------
-function layoutChapterDivider(cursor: PageCursor, doc: VolumeDoc, chapter: Chapter) {
+type DividerContext =
+  | { kind: 'chapter'; chapter: Chapter }
+  | { kind: 'appendix'; appendix: Appendix };
+
+function layoutDivider(cursor: PageCursor, doc: VolumeDoc, ctx: DividerContext) {
   // Task 20: same bordered-box-then-table treatment as layoutTitlePage
   // (measured on the real Vol 17 chapter divider page too - task-20-report.md).
   const boxTopY = cursor.currentY() + LEADING;
+
+  // Task 22: the appendix divider's heading prints TWO spaces after the
+  // colon ("VOLUME 17:  APPENDIX A") - measured verbatim as a single
+  // text-showing operation on the real PDF (fontmap.py, page index 7,
+  // y=680.3) - unlike the chapter divider's single space. The appendix
+  // title is NOT quoted (unlike the chapter's `"${title}"`), but IS
+  // bold+underlined, same as the chapter's quoted title (confirmed via a
+  // measured underline rect at x=172.13,y=651.94,w=267.77 on the same page).
+  const headingText = ctx.kind === 'chapter'
+    ? `VOLUME ${doc.volume.number}: CHAPTER ${ctx.chapter.number}`
+    : `VOLUME ${doc.volume.number}:  APPENDIX ${ctx.appendix.letter}`;
+  const titleText = ctx.kind === 'chapter'
+    ? `"${ctx.chapter.title.toUpperCase()}"`
+    : ctx.appendix.title.toUpperCase();
+  const changeLog = ctx.kind === 'chapter' ? ctx.chapter.changeLog : ctx.appendix.changeLog;
 
   // Task 21 finding 3: same rhythm fix as layoutTitlePage - one blank line
   // (`INTER_PARAGRAPH_GAP`) between every heading/legend/boilerplate line on
   // the divider too, re-measured on page index 3 of the real Vol 17 PDF
   // (task21-findings.md).
-  cursor.addLines(
-    centeredRuns([{ text: `VOLUME ${doc.volume.number}: CHAPTER ${chapter.number}`, bold: true }], HEADING_SIZE_PT),
-    HEADING_SIZE_PT,
-  );
+  cursor.addLines(centeredRuns([{ text: headingText, bold: true }], HEADING_SIZE_PT), HEADING_SIZE_PT);
   cursor.addGap(INTER_PARAGRAPH_GAP);
   cursor.addLines(
-    centeredRuns([{ text: `"${chapter.title.toUpperCase()}"`, bold: true, underline: true }], HEADING_SIZE_PT),
+    centeredRuns([{ text: titleText, bold: true, underline: true }], HEADING_SIZE_PT),
     HEADING_SIZE_PT,
   );
   cursor.addGap(INTER_PARAGRAPH_GAP);
@@ -1026,7 +1185,8 @@ function layoutChapterDivider(cursor: PageCursor, doc: VolumeDoc, chapter: Chapt
   // boilerplate - measured on the divider too (x=112.9/104.7, not the left
   // margin). Underline scope unchanged: neither divider boilerplate line
   // underlines "full revision" (re-confirmed: no underline rect near either
-  // phrase on page index 3), unlike the title page's third paragraph.
+  // phrase on page index 3, nor on the appendix divider's page index 7),
+  // unlike the title page's third paragraph.
   CHAPTER_CHANGE_POLICY_BOILERPLATE.forEach((line, i) => {
     if (i > 0) cursor.addGap(INTER_PARAGRAPH_GAP);
     cursor.addLines(centeredParagraphRuns(styleBoilerplateRuns(line, { underlineFullRevision: false })));
@@ -1036,8 +1196,8 @@ function layoutChapterDivider(cursor: PageCursor, doc: VolumeDoc, chapter: Chapt
   // Fix round 1 (reviewer finding, CRITICAL): see layoutTitlePage's
   // identical comment - addBox must run BEFORE addTable, while
   // `cursor.current` is still guaranteed to be the page holding this
-  // divider's text block, since addTable can paginate a long chapter
-  // changeLog onto later pages.
+  // divider's text block, since addTable can paginate a long changeLog
+  // onto later pages.
   cursor.addBox(boxTopY, boxBottomY);
   // Finding 15 (T10): format spec §4.6 verbatim header, with spaces around
   // the slash.
@@ -1047,7 +1207,7 @@ function layoutChapterDivider(cursor: PageCursor, doc: VolumeDoc, chapter: Chapt
   // so the table's own top border lands exactly at `boxBottomY` instead of
   // overlapping backward into the boilerplate text above it.
   cursor.addGap(tableHeaderHeight(tableCols, tableColWidths) - 3);
-  cursor.addTable(tableCols, tableColWidths, chapter.changeLog.map(r => [r.version, r.pageParagraph, r.summary, r.dateOfChange]));
+  cursor.addTable(tableCols, tableColWidths, changeLog.map(r => [r.version, r.pageParagraph, r.summary, r.dateOfChange]));
 }
 
 function layoutChapterTitlePage(cursor: PageCursor, chapter: Chapter) {
@@ -1087,7 +1247,7 @@ function layoutBody(doc: VolumeDoc, toc: TocEntry[]): Page[] {
     const chapterFirstLabel = cursor.currentLabel();
 
     // Divider is page 1 of the chapter — its page counter continues below.
-    layoutChapterDivider(cursor, doc, chapter);
+    layoutDivider(cursor, doc, { kind: 'chapter', chapter });
     toc.push({
       label: `CHAPTER ${chapter.number}: ${chapter.title.toUpperCase()}`,
       page: chapterFirstLabel,
@@ -1113,6 +1273,70 @@ function layoutBody(doc: VolumeDoc, toc: TocEntry[]): Page[] {
 }
 
 // ---------------------------------------------------------------------------
+// Task 22: appendices - divider (band label "A-1") + content page(s)
+// ("A-2", ...), laid out after every chapter. Content renders plain `blocks`
+// (flush-left, no CCSSPP designators) and/or a two-column `glossary`.
+// ---------------------------------------------------------------------------
+function layoutAppendixContent(cursor: PageCursor, appendix: Appendix) {
+  // Task 22: measured against the real Vol 17 Appendix A content page
+  // (fontmap.py, page index 8) - "APPENDIX {L}" prints bold with no
+  // underline (like a chapter title page's "CHAPTER {m}"), but the title
+  // below it prints REGULAR weight (not bold, unlike the divider's title)
+  // with an underline (measured rect at x=177.05,y=667.66,w=257.93) - it
+  // reads like an ordinary (unbolded) section heading, not a repeat of the
+  // divider's bold title.
+  cursor.addLines(centeredRuns([{ text: `APPENDIX ${appendix.letter}`, bold: true }], HEADING_SIZE_PT), HEADING_SIZE_PT);
+  cursor.addLines(centeredRuns([{ text: appendix.title.toUpperCase(), underline: true }]), BODY_SIZE_PT);
+  cursor.addGap();
+
+  if (appendix.blocks.length > 0) {
+    layoutBodyBlocks(cursor, appendix.blocks, MARGIN, 1);
+    if ((appendix.glossary?.length ?? 0) > 0) cursor.addGap();
+  }
+  for (const entry of appendix.glossary ?? []) {
+    cursor.addGlossaryEntry(entry.term, entry.definition);
+  }
+}
+
+function layoutAppendices(doc: VolumeDoc, toc: TocEntry[]): Page[] {
+  const appendixPages: Page[] = [];
+  if (doc.appendices.length === 0) return appendixPages;
+
+  // Task 22: a single bold "APPENDICES" TOC line precedes the per-appendix
+  // entries, with no leader/page of its own (measured at x=72, bold, on the
+  // real Vol 17 TOC page - fontmap.py page index 1, y=307.2).
+  toc.push({ label: 'APPENDICES', page: '', level: 0, header: true });
+
+  for (const appendix of doc.appendices) {
+    let page = 0;
+    const labelFn = () => appendixPageLabel(appendix.letter, ++page);
+    const cursor = new PageCursor('appendix', labelFn, undefined, appendix.letter);
+
+    // Divider is page 1 of the appendix ("{L}-1") — content starts on the
+    // page right after it, whose label the appendix's own TOC entry points
+    // at (the CONTENT page, e.g. "A-2" - NOT the divider "A-1"; see the
+    // ground truth in the TOC's own real "A ... A-2" entry).
+    layoutDivider(cursor, doc, { kind: 'appendix', appendix });
+    cursor.breakPage();
+    const contentFirstLabel = cursor.currentLabel();
+
+    layoutAppendixContent(cursor, appendix);
+    toc.push({
+      label: `${appendix.letter}   ${appendix.title.toUpperCase()}`,
+      page: contentFirstLabel,
+      level: 0,
+      appendix: true,
+      appendixLetter: appendix.letter,
+      appendixTitle: appendix.title.toUpperCase(),
+    });
+
+    appendixPages.push(...cursor.finish());
+  }
+
+  return appendixPages;
+}
+
+// ---------------------------------------------------------------------------
 // layoutVolume
 // ---------------------------------------------------------------------------
 export function layoutVolume(doc: VolumeDoc): LaidOutDoc {
@@ -1126,6 +1350,11 @@ export function layoutVolume(doc: VolumeDoc): LaidOutDoc {
   // Body walk resolves every section/chapter TOC entry's final page label.
   const bodyPages = layoutBody(doc, toc);
 
+  // Task 22: appendices lay out after every chapter, each in its own
+  // letter-prefixed band ("A-1", "A-2", ...), independent of body/front-matter
+  // pagination - same independence as layoutReferences' REF-{n} band above.
+  const appendixPages = layoutAppendices(doc, toc);
+
   // Front matter: title page + verso consume roman i/ii; the TOC (built last,
   // now that every entry above is resolved) continues the same roman count.
   let romanIdx = 1;
@@ -1135,7 +1364,7 @@ export function layoutVolume(doc: VolumeDoc): LaidOutDoc {
   const tocPages = layoutToc(doc, toc, nextRoman);
 
   return {
-    pages: [...titlePages, versoPage, ...refPages, ...tocPages, ...bodyPages],
+    pages: [...titlePages, versoPage, ...refPages, ...tocPages, ...bodyPages, ...appendixPages],
     toc,
   };
 }

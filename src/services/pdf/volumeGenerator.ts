@@ -155,7 +155,7 @@ function paintTemplate(page: PDFPage, laidOutPage: LaidOutPage, doc: VolumeDoc, 
   //
   // Task 20: the whole running head paints bold at 11pt on every page (see
   // RUNNING_HEAD_SIZE_PT's doc comment) - previously regular at 12pt.
-  const parts = runningHeadParts(doc, laidOutPage.band, laidOutPage.chapter);
+  const parts = runningHeadParts(doc, laidOutPage.band, laidOutPage.chapter, laidOutPage.appendix);
   const font = fonts.bold;
   drawCentered(page, parts.center, CENTER_X, RUNNING_HEAD_CENTER_Y, RUNNING_HEAD_SIZE_PT, font);
   page.drawText(safeText(font, parts.left), {

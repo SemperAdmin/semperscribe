@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import type { Block, Chapter, Figure, Paragraph, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
+import type { Appendix, Block, Chapter, Figure, GlossaryEntry, Paragraph, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
 
 type ChapterChangeRow = Chapter['changeLog'][number];
+type AppendixChangeRow = Appendix['changeLog'][number];
 
 /**
  * Identifies a node in the chapter tree by index path:
@@ -82,6 +83,19 @@ function normalizeNumbering(chapters: Chapter[]): void {
   });
 }
 
+/**
+ * Task 22: an appendix's `letter` is derived from array position (A, B, C,
+ * ...), the same "designators are computed, not authored" convention
+ * `normalizeNumbering` already enforces for chapter/section/paragraph
+ * numbering - so add/remove keeps every appendix's letter matching its
+ * position, exactly like a chapter's `number`.
+ */
+function normalizeAppendices(appendices: Appendix[]): void {
+  appendices.forEach((appendix, i) => {
+    appendix.letter = String.fromCharCode(65 + i);
+  });
+}
+
 export function blankVolume(): VolumeDoc {
   return {
     documentType: 'volume',
@@ -93,6 +107,7 @@ export function blankVolume(): VolumeDoc {
     },
     changeLog: [], references: [],
     chapters: [{ number: 1, title: '', changeLog: [], sections: [{ seq: 1, title: '', paragraphs: [] }], figures: [] }],
+    appendices: [],
   };
 }
 
@@ -123,6 +138,20 @@ interface VolumeState {
   addFigure: (chapterIdx: number, figure: Omit<Figure, 'number'>) => void;
   updateFigure: (chapterIdx: number, figureIdx: number, patch: Partial<Figure>) => void;
   removeFigure: (chapterIdx: number, figureIdx: number) => void;
+  // Task 22: appendix authoring - letter is derived from array position
+  // (normalizeAppendices), same convention as a chapter's `number`.
+  addAppendix: () => void;
+  removeAppendix: (appendixIdx: number) => void;
+  updateAppendix: (appendixIdx: number, patch: Partial<Pick<Appendix, 'title'>>) => void;
+  /** Sets (or appends, when `blockIdx === blocks.length`) an appendix body block. */
+  updateAppendixBlock: (appendixIdx: number, blockIdx: number, block: Block) => void;
+  removeAppendixBlock: (appendixIdx: number, blockIdx: number) => void;
+  addAppendixChangeRow: (appendixIdx: number) => void;
+  updateAppendixChangeRow: (appendixIdx: number, rowIdx: number, patch: Partial<AppendixChangeRow>) => void;
+  removeAppendixChangeRow: (appendixIdx: number, rowIdx: number) => void;
+  addGlossaryRow: (appendixIdx: number) => void;
+  updateGlossaryRow: (appendixIdx: number, rowIdx: number, patch: Partial<GlossaryEntry>) => void;
+  removeGlossaryRow: (appendixIdx: number, rowIdx: number) => void;
 }
 
 export const useVolumeStore = create<VolumeState>((set) => ({
@@ -138,6 +167,7 @@ export const useVolumeStore = create<VolumeState>((set) => ({
   setDoc: (doc) => set(() => {
     const cloned = structuredClone(doc);
     normalizeNumbering(cloned.chapters);
+    normalizeAppendices(cloned.appendices);
     return { doc: cloned };
   }),
   updateMeta: (patch) => set((s) => ({ doc: { ...s.doc, volume: { ...s.doc.volume, ...patch } } })),
@@ -245,5 +275,70 @@ export const useVolumeStore = create<VolumeState>((set) => ({
       .filter((_, i) => i !== figureIdx)
       .map((f, i) => ({ ...f, number: i + 1 }));
     return { doc: { ...s.doc, chapters } };
+  }),
+  addAppendix: () => set((s) => {
+    const appendices = structuredClone(s.doc.appendices);
+    appendices.push({ letter: '', title: '', changeLog: [], blocks: [] });
+    normalizeAppendices(appendices);
+    return { doc: { ...s.doc, appendices } };
+  }),
+  removeAppendix: (appendixIdx) => set((s) => {
+    const appendices = structuredClone(s.doc.appendices);
+    appendices.splice(appendixIdx, 1);
+    normalizeAppendices(appendices);
+    return { doc: { ...s.doc, appendices } };
+  }),
+  updateAppendix: (appendixIdx, patch) => set((s) => {
+    const appendices = structuredClone(s.doc.appendices);
+    const appendix = appendices[appendixIdx];
+    if (appendix) appendices[appendixIdx] = { ...appendix, ...patch };
+    return { doc: { ...s.doc, appendices } };
+  }),
+  updateAppendixBlock: (appendixIdx, blockIdx, block) => set((s) => {
+    const appendices = structuredClone(s.doc.appendices);
+    const blocks = appendices[appendixIdx].blocks;
+    if (blockIdx < blocks.length) blocks[blockIdx] = block;
+    else blocks.push(block);
+    return { doc: { ...s.doc, appendices } };
+  }),
+  removeAppendixBlock: (appendixIdx, blockIdx) => set((s) => {
+    const appendices = structuredClone(s.doc.appendices);
+    appendices[appendixIdx].blocks = appendices[appendixIdx].blocks.filter((_, i) => i !== blockIdx);
+    return { doc: { ...s.doc, appendices } };
+  }),
+  addAppendixChangeRow: (appendixIdx) => set((s) => {
+    const appendices = structuredClone(s.doc.appendices);
+    appendices[appendixIdx].changeLog.push({ version: '', pageParagraph: '', summary: '', dateOfChange: '' });
+    return { doc: { ...s.doc, appendices } };
+  }),
+  updateAppendixChangeRow: (appendixIdx, rowIdx, patch) => set((s) => {
+    const appendices = structuredClone(s.doc.appendices);
+    const row = appendices[appendixIdx].changeLog[rowIdx];
+    if (row) appendices[appendixIdx].changeLog[rowIdx] = { ...row, ...patch };
+    return { doc: { ...s.doc, appendices } };
+  }),
+  removeAppendixChangeRow: (appendixIdx, rowIdx) => set((s) => {
+    const appendices = structuredClone(s.doc.appendices);
+    appendices[appendixIdx].changeLog = appendices[appendixIdx].changeLog.filter((_, i) => i !== rowIdx);
+    return { doc: { ...s.doc, appendices } };
+  }),
+  addGlossaryRow: (appendixIdx) => set((s) => {
+    const appendices = structuredClone(s.doc.appendices);
+    const appendix = appendices[appendixIdx];
+    appendix.glossary = [...(appendix.glossary ?? []), { term: '', definition: '' }];
+    return { doc: { ...s.doc, appendices } };
+  }),
+  updateGlossaryRow: (appendixIdx, rowIdx, patch) => set((s) => {
+    const appendices = structuredClone(s.doc.appendices);
+    const glossary = appendices[appendixIdx].glossary ?? [];
+    const row = glossary[rowIdx];
+    if (row) glossary[rowIdx] = { ...row, ...patch };
+    appendices[appendixIdx].glossary = glossary;
+    return { doc: { ...s.doc, appendices } };
+  }),
+  removeGlossaryRow: (appendixIdx, rowIdx) => set((s) => {
+    const appendices = structuredClone(s.doc.appendices);
+    appendices[appendixIdx].glossary = (appendices[appendixIdx].glossary ?? []).filter((_, i) => i !== rowIdx);
+    return { doc: { ...s.doc, appendices } };
   }),
 }));

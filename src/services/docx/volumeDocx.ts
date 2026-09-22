@@ -24,9 +24,11 @@ import {
   type ISectionOptions,
 } from 'docx';
 import type {
+  Appendix,
   Block,
   Chapter,
   Figure,
+  GlossaryEntry,
   Paragraph as VolParagraph,
   Run,
   Section,
@@ -472,8 +474,8 @@ function docxNumberFormat(format: FooterScheme['format']): (typeof NumberFormat)
   return format === 'lowerRoman' ? NumberFormat.LOWER_ROMAN : NumberFormat.DECIMAL;
 }
 
-function buildHeader(doc: VolumeDoc, band: LaidOutPage['band'], chapter?: number): Header {
-  const parts = runningHeadParts(doc, band, chapter);
+function buildHeader(doc: VolumeDoc, band: LaidOutPage['band'], chapter?: number, appendix?: string): Header {
+  const parts = runningHeadParts(doc, band, chapter, appendix);
   // Task 20: the whole running head is bold at 11pt (RUNNING_HEAD_SIZE -
   // see its doc comment). The center policy title and the date line are
   // bold but NOT underlined/ruled.
@@ -504,7 +506,10 @@ function buildHeader(doc: VolumeDoc, band: LaidOutPage['band'], chapter?: number
   });
 }
 
-function buildFooter(band: LaidOutPage['band'], opts: { chapter?: number; useChapterPage?: boolean } = {}): Footer {
+function buildFooter(
+  band: LaidOutPage['band'],
+  opts: { chapter?: number; useChapterPage?: boolean; appendix?: string } = {},
+): Footer {
   const scheme = footerScheme(band, opts);
   const children: TextRun[] = [];
   if (scheme.prefix) children.push(new TextRun({ text: scheme.prefix, font: FONT, size: FOOTER_SIZE }));
@@ -681,21 +686,38 @@ function buildFrontMatterSections(doc: VolumeDoc): ISectionOptions[] {
 }
 
 // ---------------------------------------------------------------------------
-// Chapter section: divider, chapter title, body, own headers/footers.
+// Divider ("Summary of Substantive Changes") - shared by a chapter section
+// and (Task 22) an appendix section. Mirrors lib/volume/layout.ts's
+// layoutDivider refactor: the two differ only in the heading/title text,
+// the title's quoting, and which changeLog feeds the table below.
 // ---------------------------------------------------------------------------
-function buildChapterSection(doc: VolumeDoc, chapter: Chapter, useChapterPage: boolean): ISectionOptions {
+type DocxDividerContext =
+  | { kind: 'chapter'; chapter: Chapter }
+  | { kind: 'appendix'; appendix: Appendix };
+
+function buildDividerChildren(doc: VolumeDoc, ctx: DocxDividerContext): (Paragraph | Table)[] {
   const children: (Paragraph | Table)[] = [];
 
-  // Divider: "Summary of Substantive Changes" + chapter change table.
-  // Task 20: same bordered-box-then-table treatment as the title page
-  // (measured on the real Vol 17 chapter divider page too -
-  // task-20-report.md) - see boxedBlock's doc comment.
+  // Task 22: the appendix divider's heading prints TWO spaces after the
+  // colon ("VOLUME 17:  APPENDIX A" - measured verbatim against the real
+  // PDF, see layoutDivider's identical comment); its title is unquoted but
+  // still bold+underlined, unlike the chapter's quoted `"${title}"`.
+  const headingText = ctx.kind === 'chapter'
+    ? `VOLUME ${doc.volume.number}: CHAPTER ${ctx.chapter.number}`
+    : `VOLUME ${doc.volume.number}:  APPENDIX ${ctx.appendix.letter}`;
+  const titleText = ctx.kind === 'chapter'
+    ? `"${ctx.chapter.title.toUpperCase()}"`
+    : ctx.appendix.title.toUpperCase();
+  const changeLog = ctx.kind === 'chapter' ? ctx.chapter.changeLog : ctx.appendix.changeLog;
+
+  // "Summary of Substantive Changes" box + change table. Task 20: same
+  // bordered-box-then-table treatment as the title page (measured on the
+  // real Vol 17 chapter divider page too - task-20-report.md) - see
+  // boxedBlock's doc comment.
   const boxChildren: Paragraph[] = [];
-  boxChildren.push(
-    centeredRunsPara([{ text: `VOLUME ${doc.volume.number}: CHAPTER ${chapter.number}`, bold: true }], TITLE_SIZE),
-  );
+  boxChildren.push(centeredRunsPara([{ text: headingText, bold: true }], TITLE_SIZE));
   boxChildren.push(blankLine());
-  boxChildren.push(centeredRunsPara([{ text: `"${chapter.title.toUpperCase()}"`, bold: true, underline: true }], TITLE_SIZE));
+  boxChildren.push(centeredRunsPara([{ text: titleText, bold: true, underline: true }], TITLE_SIZE));
   boxChildren.push(blankLine());
   boxChildren.push(centeredRunsPara([{ text: 'SUMMARY OF SUBSTANTIVE CHANGES', bold: true }], TITLE_SIZE));
   boxChildren.push(blankLine());
@@ -705,7 +727,8 @@ function buildChapterSection(doc: VolumeDoc, chapter: Chapter, useChapterPage: b
   // identical comment above) - measured on the divider too (x=112.9/104.7).
   // Underline scope unchanged: measured against the real PDF, the divider's
   // copy of the "...full revision..." sentence is NOT underlined, unlike
-  // the title page's third paragraph.
+  // the title page's third paragraph (re-confirmed on the appendix divider
+  // too - no underline rect near either boilerplate line).
   CHAPTER_CHANGE_POLICY_BOILERPLATE.forEach((line, i) => {
     if (i > 0) boxChildren.push(blankLine());
     boxChildren.push(centeredRunsPara(styleBoilerplateRuns(line, { underlineFullRevision: false })));
@@ -716,9 +739,53 @@ function buildChapterSection(doc: VolumeDoc, chapter: Chapter, useChapterPage: b
       // Finding 15 (T10): format spec §4.6 verbatim header, with spaces
       // around the slash.
       ['CHAPTER VERSION', 'PAGE / PARAGRAPH', 'SUMMARY OF SUBSTANTIVE CHANGES', 'DATE OF CHANGE'],
-      chapter.changeLog.map((r) => [r.version, r.pageParagraph, r.summary, r.dateOfChange]),
+      changeLog.map((r) => [r.version, r.pageParagraph, r.summary, r.dateOfChange]),
     ),
   );
+
+  return children;
+}
+
+/**
+ * Task 22: a borderless two-column table for an appendix's glossary
+ * (term/definition rows) - the DOCX structural equivalent of layout.ts's
+ * `addGlossaryEntry` two-column line items. Word wraps each cell's own
+ * text; no fixed x-coordinates are needed here the way the PDF path needs
+ * GLOSSARY_TERM_X/GLOSSARY_DEF_X.
+ */
+function glossaryTable(entries: GlossaryEntry[]): Table {
+  const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+  const borders = {
+    top: noBorder, bottom: noBorder, left: noBorder, right: noBorder,
+    insideHorizontal: noBorder, insideVertical: noBorder,
+  };
+  const rows = entries.map(
+    (entry) =>
+      new TableRow({
+        children: [
+          new TableCell({
+            borders,
+            width: { size: 20, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ children: [new TextRun({ text: entry.term, font: FONT, size: BODY_SIZE })] })],
+          }),
+          new TableCell({
+            borders,
+            width: { size: 80, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ children: [new TextRun({ text: entry.definition, font: FONT, size: BODY_SIZE })] })],
+          }),
+        ],
+      }),
+  );
+  return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders, rows });
+}
+
+// ---------------------------------------------------------------------------
+// Chapter section: divider, chapter title, body, own headers/footers.
+// ---------------------------------------------------------------------------
+function buildChapterSection(doc: VolumeDoc, chapter: Chapter, useChapterPage: boolean): ISectionOptions {
+  const children: (Paragraph | Table)[] = [];
+
+  children.push(...buildDividerChildren(doc, { kind: 'chapter', chapter }));
 
   // Chapter title page. Combined into ONE heading paragraph carrying
   // HeadingLevel.HEADING_1 (Finding 4) so Word's TOC field (buildTocChildren
@@ -771,6 +838,59 @@ function buildChapterSection(doc: VolumeDoc, chapter: Chapter, useChapterPage: b
 }
 
 // ---------------------------------------------------------------------------
+// Appendix section: divider (shared buildDividerChildren), "APPENDIX {L}" +
+// title, body blocks and/or glossary, own headers/footers on its own
+// letter-prefixed page-number band ("A-1", "A-2", ...).
+// ---------------------------------------------------------------------------
+function buildAppendixSection(doc: VolumeDoc, appendix: Appendix): ISectionOptions {
+  const children: (Paragraph | Table)[] = [];
+
+  children.push(...buildDividerChildren(doc, { kind: 'appendix', appendix }));
+
+  // Content: "APPENDIX {L}" (bold, no underline - matches a chapter title
+  // page's "CHAPTER {m}") then the title. Task 22: measured against the
+  // real Vol 17 Appendix A content page, the title prints REGULAR weight
+  // (not bold, unlike the divider's title) with an underline - it carries
+  // Heading1 so Word's TableOfContents field (headingStyleRange '1-2',
+  // buildTocChildren) picks it up as a top-level entry, same as a chapter's
+  // combined "CHAPTER N: TITLE" line.
+  children.push(pageBreak());
+  children.push(centeredRunsPara([{ text: `APPENDIX ${appendix.letter}`, bold: true }], TITLE_SIZE));
+  children.push(
+    centeredRunsPara(
+      [{ text: appendix.title.toUpperCase(), underline: true }],
+      BODY_SIZE,
+      HeadingLevel.HEADING_1,
+    ),
+  );
+  children.push(blankLine());
+
+  if (appendix.blocks.length > 0) {
+    children.push(...bodyBlockParagraphs(appendix.blocks, 1));
+    children.push(blankLine());
+  }
+  if (appendix.glossary && appendix.glossary.length > 0) {
+    children.push(glossaryTable(appendix.glossary));
+  }
+
+  return {
+    properties: {
+      page: {
+        size: { width: PAGE_WIDTH, height: PAGE_HEIGHT },
+        margin: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
+        // "{L}-1", "{L}-2", ... restarts at 1 for each appendix section,
+        // mirroring the PDF's per-appendix page counter (lib/volume/
+        // page-bands.ts appendixPageLabel).
+        pageNumbers: { start: 1 },
+      },
+    },
+    headers: { default: buildHeader(doc, 'appendix', undefined, appendix.letter) },
+    footers: { default: buildFooter('appendix', { appendix: appendix.letter }) },
+    children,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // generateVolumeDocx
 // ---------------------------------------------------------------------------
 export async function generateVolumeDocx(doc: VolumeDoc): Promise<Blob> {
@@ -780,6 +900,7 @@ export async function generateVolumeDocx(doc: VolumeDoc): Promise<Blob> {
 
   const frontSections = buildFrontMatterSections(doc);
   const chapterSections = doc.chapters.map((chapter) => buildChapterSection(doc, chapter, useChapterPage));
+  const appendixSections = doc.appendices.map((appendix) => buildAppendixSection(doc, appendix));
 
   const document = new Document({
     styles: {
@@ -799,7 +920,7 @@ export async function generateVolumeDocx(doc: VolumeDoc): Promise<Blob> {
         },
       },
     },
-    sections: [...frontSections, ...chapterSections],
+    sections: [...frontSections, ...chapterSections, ...appendixSections],
   });
 
   return Packer.toBlob(document);

@@ -131,6 +131,7 @@ export function multiChapterVolumeTemplate(): DocumentTemplate {
         ],
       },
     ],
+    appendices: [],
   };
 
   return {

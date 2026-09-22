@@ -183,4 +183,88 @@ describe('generateVolumeDocx', () => {
     }
     expect(sawDash).toBe(true);
   });
+
+  // Task 22: appendix support - its own Word section (extra w:sectPr), a
+  // divider (reusing the same box+table shape as a chapter's), the
+  // "APPENDIX {L}" + title content, a borderless two-column glossary table,
+  // and an "{L}-" footer prefix.
+  describe('appendices', () => {
+    function withAppendix() {
+      const d = blankVolume();
+      d.appendices = [
+        {
+          letter: 'A',
+          title: 'GLOSSARY OF ACRONYMS AND ABBREVIATIONS',
+          changeLog: [],
+          blocks: [],
+          glossary: [
+            { term: 'ABA', definition: 'American Bar Association' },
+            { term: 'TSO', definition: 'Trial Services Organization' },
+          ],
+        },
+      ];
+      return d;
+    }
+
+    it('adds an extra Word section for the appendix', async () => {
+      const withoutAppendix = blankVolume();
+      const withoutBlob = await generateVolumeDocx(withoutAppendix);
+      const withoutZip = await JSZip.loadAsync(await withoutBlob.arrayBuffer());
+      const withoutXml = await withoutZip.file('word/document.xml')!.async('string');
+      const withoutSections = (withoutXml.match(/w:sectPr/g) ?? []).length;
+
+      const blob = await generateVolumeDocx(withAppendix());
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const xml = await zip.file('word/document.xml')!.async('string');
+      const withSections = (xml.match(/w:sectPr/g) ?? []).length;
+
+      expect(withSections).toBeGreaterThan(withoutSections);
+      expect(xml).toContain('APPENDIX A');
+      expect(xml).toContain('GLOSSARY OF ACRONYMS AND ABBREVIATIONS');
+      expect(xml).toContain('SUMMARY OF SUBSTANTIVE CHANGES');
+    });
+
+    it('renders the glossary as a table with term/definition cells', async () => {
+      const blob = await generateVolumeDocx(withAppendix());
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const xml = await zip.file('word/document.xml')!.async('string');
+      expect(xml).toContain('<w:tbl>');
+      expect(xml).toContain('ABA');
+      expect(xml).toContain('American Bar Association');
+      expect(xml).toContain('TSO');
+      expect(xml).toContain('Trial Services Organization');
+    });
+
+    it('styles the appendix title Heading1 so the TOC field picks it up', async () => {
+      const blob = await generateVolumeDocx(withAppendix());
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const xml = await zip.file('word/document.xml')!.async('string');
+      // At least 2 Heading1 paragraphs: the chapter title AND the appendix title.
+      expect((xml.match(/w:pStyle w:val="Heading1"/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('uses an "A-" footer prefix on the appendix band', async () => {
+      const blob = await generateVolumeDocx(withAppendix());
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const footerFiles = Object.keys(zip.files).filter((n) => n.startsWith('word/footer'));
+      let sawAppendixPrefix = false;
+      for (const name of footerFiles) {
+        const content = await zip.file(name)!.async('string');
+        if (content.includes('>A-<')) sawAppendixPrefix = true;
+      }
+      expect(sawAppendixPrefix).toBe(true);
+    });
+
+    it('uses the "Volume {n}, Appendix {L}" running-head left label', async () => {
+      const blob = await generateVolumeDocx(withAppendix());
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const headerFiles = Object.keys(zip.files).filter((n) => n.startsWith('word/header'));
+      let sawAppendixLabel = false;
+      for (const name of headerFiles) {
+        const content = await zip.file(name)!.async('string');
+        if (content.includes('Volume 1, Appendix A')) sawAppendixLabel = true;
+      }
+      expect(sawAppendixLabel).toBe(true);
+    });
+  });
 });

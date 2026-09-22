@@ -59,6 +59,26 @@ const ChapterSchema = z.object({
   sections: z.array(SectionSchema).default([]),
   figures: z.array(FigureSchema).default([]),
 });
+const GlossaryEntrySchema = z.object({ term: z.string(), definition: z.string() });
+/**
+ * Task 22: an appendix (e.g. Vol 17's Appendix A, "GLOSSARY OF ACRONYMS AND
+ * ABBREVIATIONS") - its own divider ("Summary of Substantive Changes", same
+ * shape as a chapter's) plus content page(s). Content is either/both plain
+ * body `blocks` (flush-left, no CCSSPP designators - an appendix isn't part
+ * of the volume's structural numbering) and/or a two-column `glossary`
+ * (term/definition rows) - Vol 17's own Appendix A is glossary-only, but the
+ * schema doesn't force that shape on every future appendix.
+ */
+const AppendixSchema = z.object({
+  letter: z.string(),
+  title: z.string(),
+  changeLog: z.array(z.object({
+    version: z.string(), pageParagraph: z.string(),
+    summary: z.string(), dateOfChange: z.string(),
+  })).default([]),
+  blocks: z.array(BlockSchema).default([]),
+  glossary: z.array(GlossaryEntrySchema).optional(),
+});
 
 export const VolumeSchema = z.object({
   documentType: z.literal('volume'),
@@ -89,6 +109,7 @@ export const VolumeSchema = z.object({
   })).default([]),
   references: z.array(z.object({ text: z.string(), order: z.number().optional() })).default([]),
   chapters: z.array(ChapterSchema).default([]),
+  appendices: z.array(AppendixSchema).default([]),
 });
 
 export type Run = z.infer<typeof RunSchema>;
@@ -101,6 +122,8 @@ export type Paragraph = z.infer<typeof ParagraphSchema>;
 export type Section = z.infer<typeof SectionSchema>;
 export type Figure = z.infer<typeof FigureSchema>;
 export type Chapter = z.infer<typeof ChapterSchema>;
+export type GlossaryEntry = z.infer<typeof GlossaryEntrySchema>;
+export type Appendix = z.infer<typeof AppendixSchema>;
 export type VolumeDoc = z.infer<typeof VolumeSchema>;
 export type OrderMeta = VolumeDoc['order'];
 export type VolumeMeta = VolumeDoc['volume'];
