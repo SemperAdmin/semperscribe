@@ -8,7 +8,7 @@ const minimal: VolumeDoc = {
     number: 1, title: 'LEGAL SUPPORT', titleQuoted: true,
     originalPublicationDate: '2018-02-20', lastUpdatedDate: '2018-02-20',
     distribution: { kind: 'statementA' }, submitChangesTo: 'CMC (JA)',
-    sectionPeriod: false, pageBand: 'auto',
+    sectionPeriod: false, pageBand: 'auto', referencesSummaryPage: true,
   },
   changeLog: [], references: [],
   chapters: [{
