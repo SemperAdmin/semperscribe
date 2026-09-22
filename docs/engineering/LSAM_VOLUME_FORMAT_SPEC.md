@@ -508,6 +508,13 @@ count, section-period, page-number band).
   No new grammar — just the outer edges of the existing one. Good stress-test
   fixture for the renderer.
 
+**Accepted canonical deltas vs. Vol 17 (user-ratified 2026-09-21):** the
+renderer prints `REF-1` (hyphen; Vol 17's `REF 1` is the outlier), lists the
+`CHAPTER {M}:` line in the TOC even for single-chapter volumes (Vol 1 does;
+Vol 17's omission is a source quirk), and prints the section designator in the
+TOC with the same trailing period as the body (`0101.`; Vol 17's own TOC and
+body disagree with each other on this).
+
 **Variance dimensions confirmed across the set (all must be parameters, not
 hard-codes):**
 
