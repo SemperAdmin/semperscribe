@@ -102,6 +102,13 @@ export const VolumeSchema = z.object({
     reportRequired: z.boolean().optional(),
     sectionPeriod: z.boolean().default(false),
     pageBand: z.enum(['auto', 'chapter-page', 'sequential']).default('auto'),
+    // Task 26: the second "REFERENCES" page (quoted heading + boilerplate
+    // about annotating changes) after the reference list is opt-in per
+    // volume - the real Vol 1 PDF has it, the real Vol 17 PDF does not (only
+    // the list). Default true = Vol 1's canonical shape, so existing docs
+    // (and any doc built without this field) render exactly as before.
+    // User ruling 2026-09-21: flag-controlled, opt-in.
+    referencesSummaryPage: z.boolean().default(true),
   }),
   changeLog: z.array(z.object({
     version: z.string(), summary: z.string(),

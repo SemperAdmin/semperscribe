@@ -103,7 +103,7 @@ export function blankVolume(): VolumeDoc {
     volume: {
       number: 1, title: '', originalPublicationDate: '', lastUpdatedDate: '',
       distribution: { kind: 'statementA' }, submitChangesTo: 'CMC (JA)\n3000 Marine Corps Pentagon\nWashington, DC 20350-3000',
-      sectionPeriod: false, pageBand: 'auto',
+      sectionPeriod: false, pageBand: 'auto', referencesSummaryPage: true,
     },
     changeLog: [], references: [],
     chapters: [{ number: 1, title: '', changeLog: [], sections: [{ seq: 1, title: '', paragraphs: [] }], figures: [] }],

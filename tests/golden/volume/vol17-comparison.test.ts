@@ -412,6 +412,18 @@ describe('volume Vol 17 render (no real PDF required)', () => {
     expect(isBoldFont(heading!.font)).toBe(true);
   });
 
+  // Task 26: the real Vol 17 PDF has ONE references page (the list only, no
+  // second quoted-heading "REFERENCES" summary page) - the fixture now sets
+  // `referencesSummaryPage: false`, so the REF band collapses from 2 pages
+  // to 1 and there is no "REF-2" footer.
+  it('Task 26: the REF band has exactly one page (referencesSummaryPage: false)', async () => {
+    const rows = await ourRows();
+    const refLabels = footerLabels(rows).filter(l => /^REF-\d+$/.test(l));
+    expect(refLabels).toEqual(['REF-1']);
+    const quotedHeading = rows.find(r => r.text === '"REFERENCES"');
+    expect(quotedHeading, 'the opt-out summary page must not render').toBeUndefined();
+  });
+
   // Task 25 fix 3: the divider's title-quoting follows `doc.volume.
   // titleQuoted` instead of being hardcoded on. The Vol 17 fixture sets
   // `titleQuoted: false`, and the real chapter divider (fontmap.py, page
@@ -811,5 +823,25 @@ describe.skipIf(!existsSync(REAL_PDF))('volume Vol 17 vs the real published PDF'
     // header)", not spill "will" onto the same line.
     expect(ourLine1.endsWith('header)')).toBe(true);
     expect(ourLine1).not.toContain('will');
+  });
+
+  /**
+   * Task 26: the real Vol 17 PDF has exactly ONE references page (the list
+   * only - no second quoted-heading "REFERENCES" summary page, unlike Vol 1
+   * which has both). The fixture now sets `referencesSummaryPage: false` to
+   * match, so the REF band's page count must be equal in both documents
+   * (both should be 1, but this compares directly rather than hardcoding it
+   * so a real-PDF re-measurement can't silently drift from the assertion).
+   */
+  it('Task 26: the REF band has the same page count in both documents', async () => {
+    const ours = await ourRows();
+    const real = measureFile(REAL_PDF);
+
+    const ourRefLabels = footerLabels(ours).filter(l => /^REF-\d+$/.test(l));
+    const realRefLabels = footerLabels(real).filter(l => /^REF-\d+$/.test(l));
+    expect(ourRefLabels.length, 'our render has no REF-band pages').toBeGreaterThan(0);
+    expect(realRefLabels.length, 'real PDF has no REF-band pages').toBeGreaterThan(0);
+    expect(ourRefLabels.length).toBe(realRefLabels.length);
+    expect(ourRefLabels.length).toBe(1);
   });
 });

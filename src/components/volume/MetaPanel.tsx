@@ -186,6 +186,14 @@ export function MetaPanel() {
               />
               <Label htmlFor="vol-section-period" className="cursor-pointer">Section designator ends with a period</Label>
             </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="vol-references-summary-page"
+                checked={doc.volume.referencesSummaryPage !== false}
+                onCheckedChange={(c) => updateMeta({ referencesSummaryPage: c === true })}
+              />
+              <Label htmlFor="vol-references-summary-page" className="cursor-pointer">References summary page</Label>
+            </div>
             <div className="space-y-1">
               <Label htmlFor="vol-page-band">Page band</Label>
               <Select value={doc.volume.pageBand} onValueChange={(val) => updateMeta({ pageBand: val as VolumeDoc['volume']['pageBand'] })}>

@@ -69,6 +69,26 @@ describe('generateVolumeDocx', () => {
     expect(sawRefPrefix).toBe(true);
   });
 
+  // Task 26: mirrors layout.test.ts's referencesSummaryPage coverage for the
+  // DOCX path - the second "REFERENCES" summary page (quoted heading +
+  // boilerplate) is opt-in, default on.
+  it('Task 26: omits the "REFERENCES" summary page boilerplate when referencesSummaryPage is false', async () => {
+    const d = blankVolume();
+    d.references = [{ text: 'MCO 1650.62' }];
+
+    const withSummary = await generateVolumeDocx(d);
+    const zipWith = await JSZip.loadAsync(await withSummary.arrayBuffer());
+    const xmlWith = await zipWith.file('word/document.xml')!.async('string');
+    expect(xmlWith).toContain('As changes are made within this MCO Volume');
+
+    d.volume = { ...d.volume, referencesSummaryPage: false };
+    const withoutSummary = await generateVolumeDocx(d);
+    const zipWithout = await JSZip.loadAsync(await withoutSummary.arrayBuffer());
+    const xmlWithout = await zipWithout.file('word/document.xml')!.async('string');
+    expect(xmlWithout).not.toContain('As changes are made within this MCO Volume');
+    expect(xmlWithout).toContain('MCO 1650.62');
+  });
+
   // Finding 3: DOCX's running head never suppressed the ", Chapter N"
   // suffix for a single-chapter volume, and never formatted the
   // last-updated date - both now come from the shared runningHeadParts.

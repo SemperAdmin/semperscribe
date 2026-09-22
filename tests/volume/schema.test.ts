@@ -36,6 +36,21 @@ describe('VolumeSchema', () => {
     expect(parsed.volume.sectionPeriod).toBe(false);
   });
 
+  // Task 26: `referencesSummaryPage` defaults to true when omitted - the
+  // real Vol 1 PDF has the second "REFERENCES" summary page, so existing
+  // docs (built before this field existed) must keep rendering it.
+  it('defaults referencesSummaryPage to true', () => {
+    const parsed = VolumeSchema.parse(minimal);
+    expect(parsed.volume.referencesSummaryPage).toBe(true);
+  });
+  it('accepts referencesSummaryPage: false (Vol 17 shape)', () => {
+    const parsed = VolumeSchema.parse({
+      ...minimal,
+      volume: { ...minimal.volume, referencesSummaryPage: false },
+    });
+    expect(parsed.volume.referencesSummaryPage).toBe(false);
+  });
+
   // Task 22: `appendices` defaults to [] when omitted (like `chapters`), and
   // accepts an appendix with a glossary and/or plain body blocks.
   it('defaults appendices to an empty array', () => {

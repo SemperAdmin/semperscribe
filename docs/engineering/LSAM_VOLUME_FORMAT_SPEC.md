@@ -168,9 +168,12 @@ before each chapter/first body page as needed for pagination parity.
 - Heading `REFERENCES` (centered).
 - List with **lower-alpha parenthetical designators** in a hanging indent:
   `(a) SECNAVINST 5430.7R`, `(b) …`, continuing `(aa)`, `(bb)` past `(z)`.
-- After the list, a **"REFERENCES" summary page**: heading `"REFERENCES"`
-  (quoted, centered) + boilerplate stating the list updates as the volume changes
-  and each change must be annotated.
+- After the list, an optional **"REFERENCES" summary page**: heading
+  `"REFERENCES"` (quoted, centered) + boilerplate stating the list updates as
+  the volume changes and each change must be annotated. **Parameterized**
+  (`volume.referencesSummaryPage`, default **on**): the real Vol 1 PDF has this
+  page; the real Vol 17 PDF does not (only the reference list itself). User
+  ruling 2026-09-21: flag-controlled, opt-in per volume.
 - Page numbers use the **REF band** (§6).
 - This maps cleanly onto the existing `NLDPReference` model (`text`, `order`,
   `cited`). The `(a)` designator is generated, not stored.
@@ -508,7 +511,7 @@ Extracted and structurally scanned: Volumes **1, 2, 3, 5, 6, 7, 8, 9, 10, 11,
 skeleton — title page, "Summary of … Changes", hyperlink legend, TOC, References,
 chapter divider(s), and the `CCSS` / `CCSSPP.` numbering grammar — with only the
 parameterized variances already modeled (distribution kind, date format, chapter
-count, section-period, page-number band).
+count, section-period, page-number band, references summary page presence).
 
 **Two exceptions to note:**
 
@@ -541,6 +544,9 @@ hard-codes):**
 5. Volume title quoted vs unquoted.
 6. `CANCELLATION:` / `Report Required:` lines present or absent (Vol 17).
 7. Page-number band: `{M}-{page}` (multi-chapter) vs bare sequential (single-chapter / Vol 16).
+8. References summary page (§4.4): present, quoted `"REFERENCES"` heading +
+   boilerplate (Vol 1) vs. absent, list only (Vol 17). Default **on**.
+   `volume.referencesSummaryPage`, user-ruled 2026-09-21.
 
 ---
 

@@ -308,6 +308,37 @@ describe('layoutVolume', () => {
     }
   });
 
+  // Task 26: the second "REFERENCES" summary page (quoted heading +
+  // boilerplate) after the reference list is opt-in per volume - measured
+  // against the real Vol 1 PDF (has it) vs. the real Vol 17 PDF (does not).
+  describe('referencesSummaryPage (Task 26)', () => {
+    function docWithRefs(referencesSummaryPage?: boolean) {
+      const d = sampleDoc();
+      d.references = [{ text: 'MCO 1650.62' }];
+      if (referencesSummaryPage !== undefined) {
+        d.volume = { ...d.volume, referencesSummaryPage };
+      }
+      return d;
+    }
+
+    it('defaults to including the summary page (REF band has 2 pages)', () => {
+      const out = layoutVolume(docWithRefs());
+      const refPages = out.pages.filter(p => p.band === 'ref');
+      expect(refPages.length).toBe(2);
+      const text = refPages.flatMap(p => p.items).map(i => JSON.stringify(i)).join(' ');
+      expect(text).toContain('As changes are made within this MCO Volume');
+    });
+
+    it('omits the summary page when referencesSummaryPage is false (REF band has 1 page)', () => {
+      const out = layoutVolume(docWithRefs(false));
+      const refPages = out.pages.filter(p => p.band === 'ref');
+      expect(refPages.length).toBe(1);
+      const text = refPages.flatMap(p => p.items).map(i => JSON.stringify(i)).join(' ');
+      expect(text).not.toContain('As changes are made within this MCO Volume');
+      expect(text).toContain('MCO 1650.62');
+    });
+  });
+
   // Task 22: appendix support - divider page (band "A-1"), content page(s)
   // ("A-2", ...), a TOC "APPENDICES" header + per-appendix entry pointing at
   // the CONTENT page, and the running head's "Volume {n}, Appendix {L}"

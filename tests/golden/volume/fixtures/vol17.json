@@ -16,7 +16,8 @@
     "cancellation": "MCO 1650.62",
     "reportRequired": true,
     "sectionPeriod": true,
-    "pageBand": "chapter-page"
+    "pageBand": "chapter-page",
+    "referencesSummaryPage": false
   },
   "changeLog": [
     { "version": "ORIGINAL VOLUME", "summary": "N/A", "originationDate": "10 Feb 2021", "dateOfChanges": "N/A" }

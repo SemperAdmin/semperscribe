@@ -675,10 +675,16 @@ function buildReferencesChildren(doc: VolumeDoc): (Paragraph | Table)[] {
     children.push(designatedParagraph(referenceDesignator(i), 1, undefined, textBlock(ref.text)));
   });
 
-  children.push(pageBreak());
-  children.push(centered('"REFERENCES"', TITLE_SIZE));
-  children.push(blankLine());
-  for (const line of REFERENCES_SUMMARY_BOILERPLATE) children.push(leftPara(line));
+  // Task 26: mirror layout.ts's opt-in gate on the second "REFERENCES"
+  // summary page - see layoutReferences in lib/volume/layout.ts for the
+  // measured provenance (Vol 1 has it, Vol 17 does not) and the same
+  // `!== false` undefined-means-true handling.
+  if (doc.volume.referencesSummaryPage !== false) {
+    children.push(pageBreak());
+    children.push(centered('"REFERENCES"', TITLE_SIZE));
+    children.push(blankLine());
+    for (const line of REFERENCES_SUMMARY_BOILERPLATE) children.push(leftPara(line));
+  }
 
   return children;
 }

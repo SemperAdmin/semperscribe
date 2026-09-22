@@ -1226,11 +1226,19 @@ function layoutReferences(doc: VolumeDoc): { pages: Page[]; firstLabel: string }
     cursor.addDesignatedLines(referenceDesignator(i), 1, [{ text: ref.text }]);
   }
 
-  cursor.breakPage();
-  cursor.addLines(centeredLine('"REFERENCES"', HEADING_SIZE_PT), HEADING_SIZE_PT, 'heading');
-  cursor.addGap();
-  for (const line of REFERENCES_SUMMARY_BOILERPLATE) {
-    cursor.addLines(leftParagraph(line));
+  // Task 26: the second "REFERENCES" summary page (quoted heading +
+  // boilerplate) is opt-in per volume - measured against the real Vol 1 PDF
+  // (has it) vs. the real Vol 17 PDF (does not - only the list). Defaults to
+  // true (Vol 1's canonical shape) via the schema; `!== false` treats a doc
+  // built without the field (e.g. blankVolume()) the same as `true` so
+  // existing docs are unaffected.
+  if (doc.volume.referencesSummaryPage !== false) {
+    cursor.breakPage();
+    cursor.addLines(centeredLine('"REFERENCES"', HEADING_SIZE_PT), HEADING_SIZE_PT, 'heading');
+    cursor.addGap();
+    for (const line of REFERENCES_SUMMARY_BOILERPLATE) {
+      cursor.addLines(leftParagraph(line));
+    }
   }
 
   return { pages: cursor.finish(), firstLabel };

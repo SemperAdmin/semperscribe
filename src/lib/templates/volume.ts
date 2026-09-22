@@ -57,6 +57,7 @@ export function multiChapterVolumeTemplate(): DocumentTemplate {
       submitChangesTo: 'CMC (JA)\n3000 Marine Corps Pentagon\nWashington, DC 20350-3000',
       sectionPeriod: false,
       pageBand: 'auto',
+      referencesSummaryPage: true,
     },
     changeLog: [],
     references: [
