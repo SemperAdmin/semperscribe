@@ -96,6 +96,15 @@ export async function generateDocxBlob(
   paragraphs: ParagraphData[],
   distList: string[] = []
 ): Promise<Blob> {
+  // Volume documents don't live in the letter formData - the Volume editor
+  // keeps its own VolumeDoc in useVolumeStore. Read it there rather than
+  // from formData, mirroring the PDF pipeline's volume entry
+  // (src/services/export/pdfPipelineService.ts PIPELINE_MAP.volume).
+  if (formData.documentType === 'volume') {
+    const { generateVolumeDocx } = await import('@/services/docx/volumeDocx');
+    const { useVolumeStore } = await import('@/store/volumeStore');
+    return generateVolumeDocx(useVolumeStore.getState().doc);
+  }
   const parts = await buildDocxParts(formData, vias, references, enclosures, copyTos, paragraphs, distList);
   const doc = new Document({ sections: [parts.section, ...parts.structuralSections] });
   return Packer.toBlob(doc);

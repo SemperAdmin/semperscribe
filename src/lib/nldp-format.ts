@@ -10,6 +10,13 @@
  * Version 1.1 (docs/POLICY_AS_DATA_HANDOFF.md): every 1.1 addition is
  * optional at the type level, so a 1.0 reader still parses a 1.1 file
  * and a 1.1 reader still parses a 1.0 file.
+ *
+ * Version 1.2 (docs/engineering/LSAM_VOLUME_FORMAT_SPEC.md): adds the
+ * optional `data.volume` payload carrying a Volume document
+ * (src/lib/schemas/volume-schema.ts). Optional at the type level for
+ * the same reason as 1.1: a 1.0/1.1 reader still parses a 1.2 file
+ * (it just ignores `volume`), and a 1.2 reader still parses older
+ * files (volume is simply absent).
  */
 
 /**
@@ -156,13 +163,18 @@ export interface NLDPData {
     lastModified?: string;
     status?: NLDPLifecycle;
   };
+  /** 1.2 - the Volume document type is authored through its own store
+   *  (useVolumeStore) rather than the shared letter fields above, so it
+   *  travels as its own payload. Optional so 1.0/1.1 files (and every
+   *  non-Volume document type) simply omit it. */
+  volume?: import('@/lib/schemas/volume-schema').VolumeDoc;
 }
 
 export interface NLDPFile {
   /** File format identifier */
   format: 'NLDP';
   /** Format version */
-  version: '1.0' | '1.1';
+  version: '1.0' | '1.1' | '1.2';
   /** Package metadata */
   metadata: NLDPMetadata;
   /** Data integrity verification */
@@ -193,6 +205,10 @@ export interface NLDPExportConfig {
   /** Stamped into directiveMetadata.lastModified when provided. Left
    *  absent otherwise so re-export stays deterministic (round-trip). */
   lastModified?: string;
+  /** 1.2 - the live Volume document (useVolumeStore.getState().doc),
+   *  supplied by the caller when documentType === 'volume'. Copied
+   *  through to data.volume verbatim. */
+  volumeDoc?: import('@/lib/schemas/volume-schema').VolumeDoc;
 }
 
 // Import result interface
@@ -214,10 +230,10 @@ export interface NLDPValidationResult {
 // Constants
 export const NLDP_CONSTANTS = {
   FORMAT_NAME: 'NLDP',
-  CURRENT_VERSION: '1.1',
+  CURRENT_VERSION: '1.2',
   FILE_EXTENSION: '.nldp',
   MIME_TYPE: 'application/json',
   MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
-  SUPPORTED_VERSIONS: ['1.0', '1.1'],
+  SUPPORTED_VERSIONS: ['1.0', '1.1', '1.2'],
   CREATOR_APP: 'Marine Corps Directives Formatter'
 } as const;

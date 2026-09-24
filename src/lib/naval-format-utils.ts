@@ -5,6 +5,7 @@
 
 import { FormData, ParagraphData } from '@/types';
 import { parseIsoLocalDate } from './date-utils';
+import { useVolumeStore } from '@/store/volumeStore';
 
 /**
  * Gets the font name based on user selection
@@ -328,6 +329,25 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
   const sanitize = (str: string) => (str || '').replace(/[^a-zA-Z0-9\-_ ]/g, '').trim();
   const ssic = sanitize(formData.ssic) || 'Draft';
   const subject = sanitize(formData.subj) || 'Letter';
+
+  // Volume documents don't live in the letter formData - the Volume editor
+  // keeps its own VolumeDoc in useVolumeStore (same pattern the PDF/DOCX
+  // pipelines already use: pdfPipelineService.ts's `volume` pipeline and
+  // docx-generator.ts's `documentType === 'volume'` branch both read the
+  // doc from useVolumeStore rather than formData). Task 18 finding F:
+  // without this branch, a volume export fell through to the "Default
+  // Basic Letter" branch below with `formData.ssic`/`formData.subj` both
+  // empty, producing "Letter Draft - Letter.pdf" regardless of which
+  // volume was open. The period in the designator (e.g. "5800.16") is
+  // kept - unlike the generic `sanitize` above, filesystems on every
+  // platform this app targets allow periods in filenames.
+  if (formData.documentType === 'volume') {
+    const sanitizeKeepDots = (str: string) => (str || '').replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim();
+    const { order, volume } = useVolumeStore.getState().doc;
+    const designator = sanitizeKeepDots(order.designator) || 'MCO';
+    const title = sanitizeKeepDots(volume.title) || 'Volume';
+    return `${designator} V${volume.number} - ${title}.${extension}`;
+  }
 
   // Order / Directive
   if (formData.documentType === 'mco') {

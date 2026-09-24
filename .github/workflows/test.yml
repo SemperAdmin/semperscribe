@@ -43,6 +43,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libreoffice-writer fonts-liberation
 
+      # The volume golden tests measure rendered PDFs with a pypdf script
+      # (tests/golden/volume/measure-pdf.py). Without it those describes
+      # skip via tests/golden/volume/python-probe.ts; installing it here
+      # keeps the coordinate assertions running in CI.
+      - name: Install pypdf for the volume golden tests
+        run: python3 -m pip install --user pypdf || python3 -m pip install --user --break-system-packages pypdf
+
       - name: Install dependencies
         run: npm ci
 
@@ -97,6 +104,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libreoffice-writer fonts-liberation
+      - name: Install pypdf for the volume golden tests
+        run: python3 -m pip install --user pypdf || python3 -m pip install --user --break-system-packages pypdf
       - run: npm ci
       - name: Coverage threshold
         run: npm run test:coverage

@@ -222,6 +222,14 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
   },
   amhs: async () => new Blob([], { type: 'text/plain' }), // AMHS doesn't use PDF
   'coordination-page': generateCoordinationPagePdf,
+  // Volume documents don't live in the letter formData - the Volume editor
+  // keeps its own VolumeDoc in useVolumeStore. Read it there rather than
+  // from ctx.formData.
+  volume: async () => {
+    const { generateVolumePdf } = await import('@/services/pdf/volumeGenerator');
+    const { useVolumeStore } = await import('@/store/volumeStore');
+    return generateVolumePdf(useVolumeStore.getState().doc);
+  },
 };
 
 /**

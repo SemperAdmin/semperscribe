@@ -19,6 +19,7 @@ import {
   getInformationPaperParagraphs,
 } from '@/lib/naval-format-utils';
 import { FormData, ParagraphData, AdminSubsections } from '@/types';
+import { useVolumeStore, blankVolume } from '@/store/volumeStore';
 
 describe('getBodyFont', () => {
   it('returns "Times New Roman" for times', () => {
@@ -332,6 +333,39 @@ describe('getExportFilename', () => {
   it('falls back to "Draft" when SSIC is empty', () => {
     const form = { ...baseForm, ssic: '' };
     expect(getExportFilename(form, 'pdf')).toBe('Letter Draft - TEST SUBJECT.pdf');
+  });
+
+  // Task 18 finding F: volume documents don't live in the letter formData -
+  // the Volume editor keeps its own VolumeDoc in useVolumeStore (same
+  // pattern pdfPipelineService.ts's `volume` pipeline and
+  // docx-generator.ts's `documentType === 'volume'` branch already use).
+  // Without a `documentType === 'volume'` branch, getExportFilename fell
+  // through to the default "Letter {ssic} - {subj}" branch with both
+  // fields empty, producing "Letter Draft - Letter.pdf/docx" no matter
+  // which volume was open.
+  describe('volume documents (Task 18 finding F)', () => {
+    const volumeForm = { ...baseForm, documentType: 'volume' as const };
+
+    it('names the file "{designator} V{number} - {title}", keeping the designator\'s period', () => {
+      const doc = blankVolume();
+      doc.order.designator = 'MCO 5800.16';
+      doc.volume.number = 17;
+      doc.volume.title = 'JUDGE ADVOCATE DIVISION AWARDS PROGRAM';
+      useVolumeStore.setState({ doc });
+
+      expect(getExportFilename(volumeForm, 'pdf')).toBe('MCO 5800.16 V17 - JUDGE ADVOCATE DIVISION AWARDS PROGRAM.pdf');
+      expect(getExportFilename(volumeForm, 'docx')).toBe('MCO 5800.16 V17 - JUDGE ADVOCATE DIVISION AWARDS PROGRAM.docx');
+    });
+
+    it('strips filesystem-unsafe characters from the designator/title but keeps periods', () => {
+      const doc = blankVolume();
+      doc.order.designator = 'MCO 5800.16';
+      doc.volume.number = 6;
+      doc.volume.title = 'CIVIL LAW: CLAIMS/TORTS "SPECIAL" (2021)';
+      useVolumeStore.setState({ doc });
+
+      expect(getExportFilename(volumeForm, 'pdf')).toBe('MCO 5800.16 V6 - CIVIL LAW CLAIMSTORTS SPECIAL 2021.pdf');
+    });
   });
 });
 

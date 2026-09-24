@@ -13,6 +13,8 @@ import { debugUserAction } from '@/lib/console-utils';
 import { createNLDPFile, generateNLDPFilename } from '@/lib/nldp-utils';
 import type { NLDPLifecycle } from '@/lib/nldp-format';
 import { clearedForExport } from '@/lib/export-gate';
+import { useVolumeStore } from '@/store/volumeStore';
+import { VolumeSchema } from '@/lib/schemas/volume-schema';
 
 interface ImportExportDeps {
   formData: FormData;
@@ -145,6 +147,19 @@ export function useImportExport(deps: ImportExportDeps) {
       // ENC: bindings override the plain title reconcile above.
       if (data.enclosureBindings && onEnclosureBindings) onEnclosureBindings(data.enclosureBindings);
 
+      // 1.2: Volume travels as its own payload (see nldp-format.ts) since
+      // it is authored through useVolumeStore, not the fields merged
+      // above. Validate before writing so a malformed payload never
+      // clobbers the live document.
+      if (data.volume) {
+        try {
+          const parsedVolume = VolumeSchema.parse(data.volume);
+          useVolumeStore.getState().setDoc(parsedVolume);
+        } catch (error) {
+          console.error('Volume import failed validation', error);
+        }
+      }
+
       if (formDataToMerge.ssic) setValidation(prev => ({ ...prev, ssic: validateSSIC(formDataToMerge.ssic) }));
       if (formDataToMerge.subj) setValidation(prev => ({ ...prev, subj: validateSubject(formDataToMerge.subj) }));
       if (formDataToMerge.from) setValidation(prev => ({ ...prev, from: validateFromTo(formDataToMerge.from) }));
@@ -213,6 +228,11 @@ export function useImportExport(deps: ImportExportDeps) {
           description: 'Exported from Naval Letter Formatter',
         },
         status,
+        // 1.2: Volume is authored through its own store, not the letter
+        // fields above - carry it through as data.volume.
+        ...(formData.documentType === 'volume'
+          ? { volumeDoc: useVolumeStore.getState().doc }
+          : {}),
       }
     );
 

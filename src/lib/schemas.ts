@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { COUNSELING_OCCASIONS } from '@/lib/counseling';
+import { VolumeSchema } from '@/lib/schemas/volume-schema';
 import { ITypeDefinition } from '@/lib/i-type/definition';
 import {
   NAVMC_10922_RELATIONSHIPS,
@@ -61,7 +62,7 @@ export interface SectionDefinition {
   className?: string; // Optional override for the grid layout (e.g. "grid-cols-1")
 }
 
-export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'dd368' | 'counseling' | 'amhs' | 'coordination-page';
+export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'dd368' | 'counseling' | 'amhs' | 'coordination-page' | 'volume';
 export type ExportFormat = 'pdf' | 'docx' | 'amhs-text';
 export type DocumentCategory =
   | 'standard-letter'
@@ -866,6 +867,25 @@ const SECNAV_DISTRIBUTION_FIELD = {
   defaultValue: 'A',
   className: 'md:col-span-1',
   description: 'Per DoD 5230.24. Shown at bottom of letterhead page.'
+};
+
+export const VolumeDefinition: DocumentTypeDefinition = {
+  id: 'volume',
+  name: 'Volume',
+  description: 'A paginated, multi-chapter policy volume (formatted directive).',
+  icon: '📚',
+  schema: VolumeSchema,
+  sections: [], // authored by the dedicated VolumeEditor, not DynamicForm
+  features: {
+    showHeaderSettings: false, showFontSelector: false, showUnitInfo: false,
+    showEndorsementDetails: false, showDirectiveTitle: false, showVia: false,
+    showReferences: true, showEnclosures: false, showDistribution: true,
+    showReports: false, showParagraphs: false, showClosingBlock: false,
+    showMOAForm: false, showSignature: false, showDecisionGrid: false,
+    showCoordinationTable: false, showClassification: true,
+    isAMHS: false, isDirective: true, showMultipleTo: false, showToDistribution: false,
+    category: 'directives', exportFormats: ['pdf', 'docx'], pdfPipeline: 'volume',
+  },
 };
 
 export const SecnavInstructionDefinition: DocumentTypeDefinition = {
@@ -3521,6 +3541,7 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   'aa-form': AAFormDefinition,
   mco: MCODefinition,
   bulletin: BulletinDefinition,
+  volume: VolumeDefinition,
   'secnav-instruction': SecnavInstructionDefinition,
   'secnav-notice': SecnavNoticeDefinition,
   'change-transmittal': ChangeTransmittalDefinition,

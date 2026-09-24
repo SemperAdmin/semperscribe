@@ -530,5 +530,12 @@
     "description": "A corporal's follow-on session: last session's targets reviewed and marked, one carried forward, three targets set, next session six months out (NAVMC 2795 para 2001.2). Sample data - replace before use.",
     "documentType": "counseling",
     "url": "/templates/global/counseling-follow-on.nldp"
+  },
+  {
+    "id": "mco-5800-16-volume-17-verification",
+    "title": "MCO 5800.16 Volume 17 (Verification)",
+    "description": "Judge Advocate Division Awards Program — a faithful transcription of the published Volume, for placement verification against the source PDF.",
+    "documentType": "volume",
+    "url": "/templates/global/mco-5800-16-volume-17-verification.nldp"
   }
 ]

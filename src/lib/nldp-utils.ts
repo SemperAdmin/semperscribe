@@ -215,7 +215,11 @@ export async function createNLDPFile(
       // break idempotent ingest (round-trip requirement).
       ...(config.lastModified ? { lastModified: config.lastModified } : {}),
       status: config.status ?? 'draft'
-    }
+    },
+    // 1.2: the Volume document type is authored through its own store
+    // rather than the shared letter fields above; copy it through
+    // verbatim when the caller supplies one.
+    ...(config.volumeDoc ? { volume: config.volumeDoc } : {})
   };
 
   // Sanitize the data
@@ -227,20 +231,28 @@ export async function createNLDPFile(
   const crc32 = calculateCRC32(dataString);
 
   // Calculate record count
-  const recordCount = 
+  const recordCount =
     sanitizedData.paragraphs.length +
     sanitizedData.references.length +
     sanitizedData.enclosures.length +
     sanitizedData.vias.length +
     sanitizedData.copyTos.length;
 
+  // Only an export that actually carries a volume payload needs the 1.2
+  // reader: deployed 1.1 builds validate `version` against
+  // SUPPORTED_VERSIONS but otherwise ignore fields they don't know, so a
+  // letter export (no `data.volume`) stamping '1.2' would still be
+  // rejected by a 1.1-only whitelist check downstream. Stamping '1.1' for
+  // every non-volume export keeps the letter path's behavior unchanged.
+  const exportVersion = config.volumeDoc ? NLDP_CONSTANTS.CURRENT_VERSION : '1.1';
+
   // Create the NLDP file structure
   const nldpFile: NLDPFile = {
     format: NLDP_CONSTANTS.FORMAT_NAME,
-    version: NLDP_CONSTANTS.CURRENT_VERSION,
+    version: exportVersion,
     metadata: {
       createdAt: new Date().toISOString(),
-      formatVersion: NLDP_CONSTANTS.CURRENT_VERSION,
+      formatVersion: exportVersion,
       createdBy: NLDP_CONSTANTS.CREATOR_APP,
       generator: { appVersion: APP_VERSION },
       author: config.includePersonalInfo ? config.author : undefined,

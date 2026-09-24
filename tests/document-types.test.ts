@@ -18,6 +18,12 @@ const EXTERNAL_CONTROL_TYPES: ControlType[] = [
 
 const ALL_VALID_TYPES = [...SUPPORTED_CONTROL_TYPES, ...EXTERNAL_CONTROL_TYPES];
 
+// Types authored by a dedicated editor component instead of the generic
+// DynamicForm. Their DocumentTypeDefinition.sections is intentionally []
+// (see e.g. VolumeDefinition in src/lib/schemas.ts), so the section/field
+// shape checks below don't apply to them.
+const CUSTOM_EDITOR_TYPES = ['volume'];
+
 // All expected document type IDs
 const EXPECTED_DOC_TYPES = [
   'basic', 'multiple-address', 'endorsement', 'aa-form',
@@ -55,10 +61,13 @@ describe('Document type definitions', () => {
         expect(Array.isArray(definition.sections)).toBe(true);
       });
 
-      it('has at least one section', () => {
-        expect(definition.sections.length).toBeGreaterThan(0);
-      });
+      if (!CUSTOM_EDITOR_TYPES.includes(docTypeId)) {
+        it('has at least one section', () => {
+          expect(definition.sections.length).toBeGreaterThan(0);
+        });
+      }
 
+      if (definition.sections.length > 0) {
       describe('sections', () => {
         definition.sections.forEach((section, sIdx) => {
           describe(`section "${section.title}" (${section.id})`, () => {
@@ -120,6 +129,7 @@ describe('Document type definitions', () => {
           });
         });
       });
+      }
 
       describe('schema validation', () => {
         it('accepts its own documentType literal', () => {
