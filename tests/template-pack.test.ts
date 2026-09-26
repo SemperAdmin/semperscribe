@@ -124,7 +124,7 @@ describe('Page 11 redesignation (R13/B2)', () => {
   });
 });
 
-describe('Page 11 shaving-accommodation 6105 entries (MARADMIN 348/26)', () => {
+describe('Page 11 shaving-accommodation 6105 entries (MARADMIN 348/26 para 3.b.3.a, wording per 192/26)', () => {
   const IDS = [
     'page11-6105-shaving-six-month-enlisted',
     'page11-6105-shaving-six-month-officer',
