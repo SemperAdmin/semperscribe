@@ -142,8 +142,12 @@ describe('Page 11 shaving-accommodation 6105 entries (MARADMIN 348/26 para 3.b.3
     expect(formData.remarksLeft).toContain('NAVMC 11830');
     expect(formData.remarksLeft).toContain('one quarter of an inch (0.25)');
     expect(formData.remarksLeft).toContain('I choose to ____ / not to ____ make such a statement.');
-    expect(formData.remarksLeft).toContain('Signature of Commanding Officer');
-    expect(formData.remarksLeft).toContain(id.endsWith('officer') ? 'Signature of Marine Officer' : 'Signature of Marine ');
+    // Stacked signature lines, the baseline since 0.13.3: each rule on
+    // its own line with its label under it, the CO's pair last.
+    const lines = formData.remarksLeft.split('\n');
+    expect(lines).toContain(id.endsWith('officer') ? 'Signature of Marine Officer' : 'Signature of Marine');
+    expect(formData.remarksLeft.endsWith('______________________________\nSignature of Commanding Officer')).toBe(true);
+    expect(formData.remarksLeft).not.toMatch(/Signature of Marine(?: Officer)? +Signature of/);
     expect(formData.remarksRight).toBe('');
   });
 

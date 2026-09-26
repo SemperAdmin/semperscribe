@@ -93,13 +93,10 @@ export function Page11Section({ formData, setFormData, SectionCard }: SectionPro
    * discarded.
    */
   const openAsPage11 = () => {
-    // THE LINES COME ACROSS, LAID OUT FOR THIS RENDERER. Stephen,
-    // 2026-08-27: "we still need the line and the signature of member and
-    // signature of CO." navmc11811Generator draws these columns in Courier
-    // at 9pt and wraps them by CHARACTER COUNT at 48, so the 52-character
-    // side-by-side block breaks into fragments with a dangling signer. The
-    // app target stacks the two pairs instead. See
-    // APP_PAGE11_SIGNATURE_BLOCK, which carries the measurement.
+    // THE LINES COME ACROSS. Stephen, 2026-08-27: "we still need the line
+    // and the signature of member and signature of CO." The stacked block
+    // is the baseline on every target since 0.13.3; naming it here keeps
+    // this hand-off explicit. See SIGNATURE_BLOCK.
     const built = njpPage11(formData, input, { signatureBlock: 'app-page11' });
     setFormData((prev) => ({
       ...prev,

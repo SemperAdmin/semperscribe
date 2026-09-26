@@ -678,7 +678,7 @@ export const DISCHARGE_CONSEQUENCES_SENTENCE =
  * survive this renderer: an empty paragraph becomes one empty flow line and
  * the draw loop still spends a line height on it.
  */
-export const APP_PAGE11_SIGNATURE_BLOCK =
+export const SIGNATURE_BLOCK =
   '______________________________\n' +
   'Signature of Marine\n' +
   '\n' +
@@ -686,10 +686,26 @@ export const APP_PAGE11_SIGNATURE_BLOCK =
   '______________________________\n' +
   'Signature of CO';
 
-/** Which renderer the entry is being laid out for. */
+/**
+ * The stacked block under its earlier name. It was the app-only layout
+ * until 0.13.3; it is now the baseline for both targets, and callers
+ * that named it keep working.
+ */
+export const APP_PAGE11_SIGNATURE_BLOCK = SIGNATURE_BLOCK;
+
+/**
+ * Which layout the entry closes with. 'app-page11' (the default since
+ * 0.13.3, owner's call 2026-09-26: "stack the signatures as a baseline")
+ * is the stacked block; 'official-form' swaps in the side-by-side block
+ * Stephen tuned by hand for the XFA field on 2026-08-27.
+ */
 export type SignatureBlockTarget = 'official-form' | 'app-page11';
 
-export const SIGNATURE_BLOCK =
+/**
+ * The side-by-side block, kept for the official-form target on request.
+ * The alignment arithmetic above is this block's.
+ */
+export const SIDE_BY_SIDE_SIGNATURE_BLOCK =
   '_____________________          _____________________\n' +
   'Signature of Marine                    Signature of CO';
 
@@ -862,12 +878,11 @@ export interface NjpPage11Options {
    * are part of the entry a Marine signs, and a placed field sits ON one
    * rather than replacing it.
    *
-   * WHAT DIFFERS IS THE LAYOUT, because the two renderers are not alike.
-   * The official form draws 9pt Times into a 266.5pt column and takes the
-   * side-by-side block at 211.5pt. The app draws 11pt Helvetica into a 261pt
-   * column, where the same block measures 287.5pt and wraps, and its
-   * wrapText splits on ' ' so the padding is destroyed before it is
-   * measured. See APP_PAGE11_SIGNATURE_BLOCK.
+   * THE STACKED BLOCK IS THE BASELINE on both targets since 0.13.3. Both
+   * renderers now draw 9pt Times on measured width, where either block
+   * fits, so the choice is layout rather than survival. 'official-form'
+   * swaps in the side-by-side block for a clerk who wants the hand-tuned
+   * XFA arrangement. See SIGNATURE_BLOCK and SIDE_BY_SIDE_SIGNATURE_BLOCK.
    */
   signatureBlock?: SignatureBlockTarget;
 }
@@ -884,12 +899,11 @@ export interface NjpPage11Options {
  * election the Marine answers.
  */
 function retargetSignatureBlock(text: string, target: SignatureBlockTarget): string {
-  if (target === 'official-form') return text;
+  if (target === 'app-page11') return text;
   const suffix = `${PARAGRAPH_BREAK}\n${SIGNATURE_BLOCK}`;
   if (!text.endsWith(suffix)) return text;
-  // TWO blank lines before the first rule, matching the gap the official
-  // form already opens above its own block.
-  return `${text.slice(0, -suffix.length)}${PARAGRAPH_BREAK}\n${APP_PAGE11_SIGNATURE_BLOCK}`;
+  // The same two blank lines stand before the side-by-side rule.
+  return `${text.slice(0, -suffix.length)}${PARAGRAPH_BREAK}\n${SIDE_BY_SIDE_SIGNATURE_BLOCK}`;
 }
 
 export function njpPage11(
@@ -897,7 +911,7 @@ export function njpPage11(
   input: CounselingInput,
   options: NjpPage11Options = {},
 ): NjpPage11 {
-  const target = options.signatureBlock ?? 'official-form';
+  const target = options.signatureBlock ?? 'app-page11';
   const counseling = separationCounselingEntry(formData, input);
   const restriction = promotionRestrictionEntry(formData);
 

@@ -45,6 +45,12 @@ export interface FieldDefinition {
   className?: string; // Layout hints (e.g., 'col-span-1', 'md:col-span-2')
   rows?: number; // For textareas
   required?: boolean;
+  // Text inputs only. maxLength caps the control; digitsOnly strips
+  // everything but 0-9 as it is typed (EDIPI is ten digits, nothing
+  // else); inputMode picks the phone keyboard.
+  maxLength?: number;
+  digitsOnly?: boolean;
+  inputMode?: 'text' | 'numeric' | 'tel' | 'decimal';
   // Autosuggest only. Keeps dictionary suggestions in the source ALL
   // CAPS. Required on any field the schema validates as all-caps, or
   // selecting a suggestion writes a value that fails validation.
@@ -978,7 +984,10 @@ export const SecnavNoticeDefinition: DocumentTypeDefinition = {
 export const Page11Schema = z.object({
   documentType: z.literal('page11'),
   name: z.string().min(1, "Name is required"),
-  edipi: z.string().min(1, "DOD ID / EDIPI is required"),
+  edipi: z
+    .string()
+    .min(1, "DOD ID / EDIPI is required")
+    .regex(/^\d{10}$/, 'EDIPI is the 10-digit DOD ID number'),
   date: z.string().optional(),
   remarksLeft: z.string().optional(),
   remarksRight: z.string().optional(),
@@ -1022,6 +1031,9 @@ export const Page11Definition: DocumentTypeDefinition = {
           name: 'edipi',
           label: 'DOD ID / EDIPI',
           type: 'text',
+          maxLength: 10,
+          digitsOnly: true,
+          inputMode: 'numeric',
           placeholder: '1234567890',
           required: true,
           className: 'md:col-span-1'
@@ -1191,7 +1203,7 @@ export const Navmc10922Definition: DocumentTypeDefinition = {
           placeholder: 'MARINE, ALONZO DEAN',
           className: 'md:col-span-1',
         },
-        { name: 'edipi', label: 'EDIPI', type: 'text', required: true, placeholder: '1234567890', className: 'md:col-span-1' },
+        { name: 'edipi', label: 'EDIPI', type: 'text', maxLength: 10, digitsOnly: true, inputMode: 'numeric', required: true, placeholder: '1234567890', className: 'md:col-span-1' },
         { name: 'grade', label: 'Grade', type: 'text', required: true, placeholder: 'SGT', className: 'md:col-span-1' },
         {
           name: 'typeOfService',
@@ -1333,7 +1345,7 @@ export const Navmc10922Definition: DocumentTypeDefinition = {
           options: YES_NO_OPTIONS,
           className: 'md:col-span-1',
         },
-        { name: 'spouseEdipi', label: 'Spouse EDIPI', type: 'text', condition: (d) => d.spouseArmedForces === 'yes', className: 'md:col-span-1' },
+        { name: 'spouseEdipi', label: 'Spouse EDIPI', type: 'text', maxLength: 10, digitsOnly: true, inputMode: 'numeric', condition: (d) => d.spouseArmedForces === 'yes', className: 'md:col-span-1' },
         { name: 'spouseGrade', label: 'Spouse Grade', type: 'text', condition: (d) => d.spouseArmedForces === 'yes', className: 'md:col-span-1' },
         {
           name: 'spouseTypeOfService',
@@ -1725,7 +1737,7 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
           required: true,
           className: 'md:col-span-2',
         },
-                { name: 'accusedEdipi', label: 'EDIPI', type: 'text', placeholder: '1234567890' },
+                { name: 'accusedEdipi', label: 'EDIPI', type: 'text', maxLength: 10, digitsOnly: true, inputMode: 'numeric', placeholder: '1234567890' },
               ],
     },
     {
@@ -3363,7 +3375,7 @@ export const Dd368Definition: DocumentTypeDefinition = {
       fields: [
         { name: 'dd368MemberName', label: 'Name (1.a)', type: 'text', required: true, placeholder: 'SMITH, JOHN, A.', className: 'md:col-span-2' },
         { name: 'dd368PayGrade', label: 'Pay grade (1.b)', type: 'text', required: true, placeholder: 'E-5, W-2 or O-3', description: 'Decides whether 3.b (officer) or 3.c (enlisted) applies.' },
-        { name: 'dd368Edipi', label: 'EDIPI (1.c)', type: 'text', required: true, placeholder: '10 digits' },
+        { name: 'dd368Edipi', label: 'EDIPI (1.c)', type: 'text', maxLength: 10, digitsOnly: true, inputMode: 'numeric', required: true, placeholder: '10 digits' },
         { name: 'dd368ServiceComponent', label: 'Service component (1.d)', type: 'select', required: true, options: DD368_COMPONENT_OPTIONS },
         { name: 'dd368CurrentUnit', label: 'Current unit or command (1.e)', type: 'textarea', rows: 2, required: true, className: 'md:col-span-2', description: 'Full address. The recruiter sends the form here.' },
         ...dd368Address('dd368Member', '1.f'),

@@ -340,7 +340,7 @@ export function HeaderActions({
             Templates
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col bg-card text-card-foreground">
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] supports-[height:100dvh]:max-h-[88dvh] flex flex-col overflow-y-auto overscroll-contain bg-card text-card-foreground" data-testid="templates-dialog">
           <DialogHeader>
             <DialogTitle>Browse Templates</DialogTitle>
             <DialogDescription>
@@ -397,8 +397,14 @@ export function HeaderActions({
             
             {/* Native overflow scrolling - the Radix ScrollArea here
                 stopped scrolling once the list outgrew the dialog
-                (26+ templates). A plain overflow-y div cannot fail. */}
-            <div className="flex-1 min-h-0 mt-4 max-h-[55vh] overflow-y-auto pr-2">
+                (26+ templates). From md up this div is the scroll
+                region and the search stays put. On phones the DIALOG
+                is the one scroll region: a nested scroll box inside
+                the dialog's scroll lock did not respond to touch on
+                iPhone Safari (owner's report, 2026-09-26), and vh
+                units there include the browser bars, so the dialog
+                also sizes by dvh where supported. */}
+            <div className="mt-4 pr-2 md:flex-1 md:min-h-0 md:overflow-y-auto" data-testid="template-list-region">
               <TabsContent value="global" className="mt-0">
                 <TemplateList
                   templates={globalTemplates}
@@ -448,6 +454,12 @@ export function HeaderActions({
           <DropdownMenuItem onClick={onSave} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
             <Save className="w-4 h-4 mr-2" />
             Save Draft
+          </DropdownMenuItem>
+          {/* The header's Templates button is hidden under md, so this is
+              the phone's only way into the browser. */}
+          <DropdownMenuItem onClick={() => setIsTemplateOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+            <LayoutTemplate className="w-4 h-4 mr-2" />
+            Browse Templates...
           </DropdownMenuItem>
           
           {onOpenLibrary && (
