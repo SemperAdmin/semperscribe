@@ -78,7 +78,7 @@ type InteractionMode = "none" | "drawing" | "moving" | "resizing";
 type ResizeHandle = "nw" | "ne" | "sw" | "se";
 
 export function SignaturePlacementModal(props: SignaturePlacementModalProps) {
-  const { open, pdfBlob, totalPages, placeablePages } = props;
+  const { open, totalPages, placeablePages } = props;
   const lastLetterPage = placeablePages ?? totalPages;
 
   // Fresh state on every open. The body below is remounted (via key) each

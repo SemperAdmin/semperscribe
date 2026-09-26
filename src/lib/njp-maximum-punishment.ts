@@ -65,7 +65,7 @@ import {
   type Navmc10132Service,
 } from '@/lib/navmc10132-ranks';
 import { wrapHanging } from '@/lib/jagman-a1-wrap';
-import { operativeRung, type ForfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
+import type { ForfeitureLadder } from '@/lib/navmc10132-forfeiture-ladder';
 
 export interface MaximumPunishmentInput {
   /** Item 8A pay grade of the NJP authority, e.g. 'O5'. */

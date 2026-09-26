@@ -30,6 +30,7 @@ import {
   workingCopyDocIdFor, LEGACY_WORKING_COPY_SESSION_ID,
 } from '@/lib/document-library';
 import { FormData, ParagraphData } from '@/types';
+import { randomId } from '@/lib/random-id';
 
 /** The pre-session key. Migrated to `workingCopy:legacy` on first read. */
 export const LEGACY_WORKING_COPY_KEY = 'workingCopy';
@@ -84,12 +85,6 @@ export interface WorkingCopyWriteMessage {
 // ---------------------------------------------------------------------------
 // Session id
 // ---------------------------------------------------------------------------
-
-function randomId(): string {
-  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-}
 
 /** Identifies this document instance, not the session: a duplicated tab
  * copies sessionStorage and therefore the session id, but not this. */

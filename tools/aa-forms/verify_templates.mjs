@@ -167,12 +167,10 @@ for (const entry of navmc10132Entries) {
   }
 
   // --- renderPunishment does not throw; print item 6 text --------------
-  let item6 = null;
   try {
     const rendered = renderPunishment(formData.punishments ?? [], {
       concurrent: !!formData.punishmentsConcurrent,
     });
-    item6 = rendered.text;
     ok(`${entry.id}: renderPunishment did not throw`);
     console.log(`   ITEM 6: ${rendered.text}`);
     console.log(`   ITEM 6 length: ${rendered.length}`);

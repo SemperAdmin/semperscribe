@@ -12,6 +12,7 @@
  */
 
 import { SavedLetter } from '@/types';
+import { randomId } from '@/lib/random-id';
 
 const DB_NAME = 'semperscribe';
 const DB_VERSION = 3;
@@ -411,10 +412,7 @@ export async function fileCopyForSave(
  * suffix, so the copy resolves through every path the original did.
  */
 function saveCopyId(sourceId: string): string {
-  const uuid =
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const uuid = randomId();
   const colon = sourceId.indexOf(':');
   const prefix = colon > 0 ? sourceId.slice(0, colon + 1) : '';
   return `${prefix}${uuid}`;

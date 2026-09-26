@@ -19,7 +19,7 @@ import {
   renderPunishment,
   Navmc10132PunishmentRenderError,
 } from '@/lib/navmc10132-punishment-render';
-import { parseIsoDate, formatNavalDate } from '@/lib/navmc10132-date';
+import { formatNavalDate } from '@/lib/navmc10132-date';
 import type {
   Navmc10132PunishmentEntry,
   Navmc10132Suspension,

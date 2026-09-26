@@ -41,6 +41,7 @@ import {
   WORKING_COPY_DOC_ID,
 } from '@/lib/document-library';
 import type { FormData } from '@/types';
+import { randomId } from '@/lib/random-id';
 
 const ID_PREFIX = 'navmc10132-base:';
 
@@ -61,11 +62,7 @@ export class Navmc10132BaseReadError extends Error {
  * base must never be reachable from a document that did not load it.
  */
 function newBaseFileId(): string {
-  const uuid =
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-  return `${ID_PREFIX}${uuid}`;
+  return `${ID_PREFIX}${randomId()}`;
 }
 
 /** The base id recorded on document state, or null when there is none. */
