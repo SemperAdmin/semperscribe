@@ -141,7 +141,21 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
         // the box CAN be checked (build plan Phase 5 routing).
         const startNeedsFlattened =
           formData.documentType === 'navmc10922' && formData.reason === 'start';
-        if (signatureFields.length === 0 && !hasBoundFiles && !startNeedsFlattened) {
+        // Page 11: the official NAVMC 118(11) is one page of two
+        // columns. An entry which flows past them exports as the redraw,
+        // which adds continuation pages (src/lib/page11-flow.ts).
+        let page11Pages = 1;
+        if (formData.documentType === 'page11') {
+          const { flowPage11FormData } = await import('@/lib/page11-flow');
+          page11Pages = flowPage11FormData(formData).pages.length;
+        }
+        if (page11Pages > 1) {
+          toast?.({
+            title: `Page 11 runs to ${page11Pages} pages`,
+            description: 'The official fillable NAVMC 118(11) is a single page, so this export is the app\'s redraw with continuation pages carrying the same name and DoD ID. Shorten the entry to export the official form.',
+          });
+        }
+        if (signatureFields.length === 0 && !hasBoundFiles && !startNeedsFlattened && page11Pages === 1) {
           const { exportOfficialForm } = await import('@/lib/xfa-form-fill');
           const formBlob = await exportOfficialForm({ formData, vias, references, enclosures, copyTos, paragraphs });
           deliver(formBlob, format);

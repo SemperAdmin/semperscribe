@@ -16,6 +16,7 @@ import { runNavmc10922Validators } from '@/lib/navmc10922-validators';
 import { runNavmc10132Validators } from '@/lib/navmc10132-validators';
 import { runDd368Validators } from '@/lib/dd368-validators';
 import { runCounselingValidators } from '@/lib/counseling';
+import { validatePage11Flow } from '@/lib/page11-flow';
 import { validateSamePageComposite } from '@/lib/same-page-composite';
 import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
 import {
@@ -1118,6 +1119,9 @@ export function runLetterValidators(
     // no-op for every other documentType (docs/COUNSELING_FORM_PLAN.md
     // section 5).
     ...runCounselingValidators(formData),
+    // Page 11: an entry which flows past the form's two columns gets a
+    // continuation page in the redraw and a note here (page11-flow.ts).
+    ...validatePage11Flow(formData),
     // Salutation presence, then the generic schema pass. Order matters
     // only for reading: the cited rule precedes the schema echo, and
     // the schema pass suppresses the salutation path to avoid a

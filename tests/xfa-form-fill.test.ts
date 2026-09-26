@@ -91,6 +91,19 @@ describe('XML builders', () => {
     expect(xml).toContain('Entry text line one.&#xD;Line two.');
     expect(xml).toContain('<Remarks2/>');
   });
+
+  it('flows a page11 entry longer than one column into Remarks2 (2026-09-26)', () => {
+    const paragraph = 'Counseled this date concerning the following deficiencies and the corrective action required of the Marine.';
+    const long = Array.from({ length: 30 }, () => paragraph).join('\n');
+    const xml = buildNavmc11811Xml({ documentType: 'page11', name: 'MARINE, TEST A.', edipi: '1234567890', remarksLeft: long, remarksRight: '' } as FormData);
+    const r1 = xml.match(/<Remarks1>([\s\S]*?)<\/Remarks1>/)![1];
+    const r2 = xml.match(/<Remarks2>([\s\S]*?)<\/Remarks2>/)![1];
+    expect(r1.split('&#xD;').length).toBeLessThanOrEqual(40);
+    expect(r2.length).toBeGreaterThan(0);
+    // Nothing lost between the two columns.
+    const words = (t: string) => t.replace(/&#xD;/g, ' ').split(/\s+/).filter(Boolean).length;
+    expect(words(r1) + words(r2)).toBe(words(long.replace(/\n/g, ' ')));
+  });
 });
 
 describe('fillXfaDatasets round-trip on the real blanks', () => {

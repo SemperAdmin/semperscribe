@@ -5,6 +5,28 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.2] - 2026-09-26
+
+### Fixed
+
+- Page 11 entries longer than one column no longer lose their tail.
+  Measured on the official NAVMC 118(11) blank: each Remarks column
+  is Times New Roman 9 pt on a 10 pt line, about 41 lines, with
+  scrolling off and no growth, and the app's redraw clipped at the
+  same place. The four MARADMIN 192/26 shaving-accommodation entries
+  run 45 to 50 lines each, so every one was cut off (owner's
+  screenshot, 2026-09-26). The entry now flows left column, right
+  column, then a continuation page carrying the same name and DoD
+  ID (`src/lib/page11-flow.ts`). The official-form export splits the
+  entry across Remarks1 and Remarks2 by the same flow, and an entry
+  which runs past two columns exports as the redraw with continuation
+  pages, with a toast saying so, since the official fillable form is
+  a single page and the XFA renderer ignores appended pages. The
+  redraw now uses Times-Roman 9 pt like the official fields instead of
+  Courier, so the preview breaks where the filled form breaks. A
+  typed right-column entry follows the left one as a second entry.
+  The compliance panel warns when an entry needs a continuation page.
+
 ## [0.13.1] - 2026-09-26
 
 ### Added

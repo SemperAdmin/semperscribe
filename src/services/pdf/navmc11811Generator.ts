@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import { Navmc11811Data, BoxBoundary } from '@/types/navmc';
 import { loadAssetBytes } from '@/lib/assets';
+import { PAGE11_FLOW, columnLines, flowPage11, type Page11Column } from '@/lib/page11-flow';
 
 // --- Configuration & Constants ---
 
@@ -156,110 +157,47 @@ export async function generateNavmc11811(data: Navmc11811Data): Promise<Uint8Arr
   const templates = await loadTemplates();
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.TimesRoman);
-  const monoFont = await doc.embedFont(StandardFonts.Courier);
-  
   const [coverPage] = await doc.embedPdf(templates.page1Bytes);
-  const page = doc.addPage([coverPage.width, coverPage.height]);
-  page.drawPage(coverPage);
-  
-  // Draw fields
-  drawTextInBox(page, data.name.toUpperCase(), PAGE11_BOXES.name, font, 'left');
-  drawTextInBox(page, data.edipi, PAGE11_BOXES.edipi, font, 'center');
-  
+
+  const newPage = () => {
+    const page = doc.addPage([coverPage.width, coverPage.height]);
+    page.drawPage(coverPage);
+    // Every page of a Page 11, continuation pages included, carries the
+    // Marine's name and DoD ID.
+    drawTextInBox(page, data.name.toUpperCase(), PAGE11_BOXES.name, font, 'left');
+    drawTextInBox(page, data.edipi, PAGE11_BOXES.edipi, font, 'center');
+    return page;
+  };
+
   if (data.remarksLeft || data.remarksRight) {
-    // Explicit left/right column content
-    if (data.remarksLeft) {
-      drawSimpleColumn(page, data.remarksLeft, PAGE11_BOXES.remarksLeft, monoFont, 9, 10, 48);
+    // The entry flows left column, right column, next page (src/lib/
+    // page11-flow.ts). Times-Roman 9 pt on a 10 pt line matches the
+    // official form's Remarks fields, so the preview breaks where the
+    // filled form breaks.
+    const flow = flowPage11(data.remarksLeft ?? '', data.remarksRight ?? '');
+    for (const flowPage of flow.pages) {
+      const page = newPage();
+      drawFlowColumn(page, flowPage.left, PAGE11_BOXES.remarksLeft, font);
+      drawFlowColumn(page, flowPage.right, PAGE11_BOXES.remarksRight, font);
     }
-    if (data.remarksRight) {
-      drawSimpleColumn(page, data.remarksRight, PAGE11_BOXES.remarksRight, monoFont, 9, 10, 48);
+  } else {
+    const page = newPage();
+    if (data.remarks) {
+      // Fallback to auto-flow if old data structure used
+      drawRemarks(page, data.remarks, PAGE11_BOXES.remarksLeft, PAGE11_BOXES.remarksRight, font);
     }
-  } else if (data.remarks) {
-    // Fallback to auto-flow if old data structure used
-    drawRemarks(page, data.remarks, PAGE11_BOXES.remarksLeft, PAGE11_BOXES.remarksRight, font);
   }
-  
+
   return doc.save();
 }
 
-function wrapTextByCharCount(text: string, maxChars: number): string[] {
-  if (!text) return [''];
-
-  const words = text.split(' ');
-  const lines: string[] = [];
-  let currentLine = words[0];
-
-  for (let i = 1; i < words.length; i++) {
-    const word = words[i];
-    // Check length of (currentLine + space + word)
-    if ((currentLine.length + 1 + word.length) <= maxChars) {
-      currentLine += ` ${word}`;
-    } else {
-      // Push current line
-      lines.push(currentLine);
-      
-      // Start new line with word
-      // But if the word itself is longer than maxChars, we must split it
-      if (word.length > maxChars) {
-         let remainingWord = word;
-         while (remainingWord.length > maxChars) {
-           lines.push(remainingWord.slice(0, maxChars));
-           remainingWord = remainingWord.slice(maxChars);
-         }
-         currentLine = remainingWord;
-      } else {
-         currentLine = word;
-      }
-    }
-  }
-
-  // Handle the last line (or first line if only one word)
-  if (currentLine.length > maxChars) {
-      let remainingLine = currentLine;
-      while (remainingLine.length > maxChars) {
-        lines.push(remainingLine.slice(0, maxChars));
-        remainingLine = remainingLine.slice(maxChars);
-      }
-      lines.push(remainingLine);
-  } else {
-      lines.push(currentLine);
-  }
-  
-  return lines;
-}
-
-function drawSimpleColumn(
-  page: PDFPage,
-  text: string,
-  box: BoxBoundary,
-  font: PDFFont,
-  fontSize: number = FONT_SIZE,
-  lineHeight: number = LINE_HEIGHT,
-  maxChars?: number // Optional param for fixed char wrap
-) {
-  const paragraphs = text.split('\n');
-  let currentY = box.top - fontSize;
-  
-  for (const paragraph of paragraphs) {
-    let lines: string[];
-    if (maxChars) {
-      lines = wrapTextByCharCount(paragraph, maxChars);
-    } else {
-      lines = wrapText(paragraph, font, fontSize, box.width);
-    }
-
-    for (const line of lines) {
-      if (currentY < (box.top - box.height)) break;
-      
-      page.drawText(line, {
-        x: box.left,
-        y: currentY,
-        size: fontSize,
-        font,
-        color: rgb(0, 0, 0),
-      });
-      currentY -= lineHeight;
-    }
-    // currentY -= lineHeight; // Paragraph spacing removed as per user request
+/** One flowed column: pre-wrapped lines, top-aligned, 10 pt apart. */
+function drawFlowColumn(page: PDFPage, column: Page11Column, box: BoxBoundary, font: PDFFont) {
+  let y = box.top - PAGE11_FLOW.fontSize;
+  for (const line of columnLines(column)) {
+    if (line) page.drawText(line, { x: box.left, y, size: PAGE11_FLOW.fontSize, font, color: rgb(0, 0, 0) });
+    y -= PAGE11_FLOW.lineHeight;
   }
 }
+
+
