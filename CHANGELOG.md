@@ -5,6 +5,21 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.1] - 2026-09-26
+
+### Added
+
+- Four Page 11 templates for the 6105 counseling entries MARADMIN
+  348/26 (Uniform and Grooming Standards for Medical Conditions Update,
+  30 Jul 2026) calls for on a clean-shaven medical accommodation under
+  MCO 1020.34H: the six-month entry and the final twelve-month entry,
+  each for an enlisted Marine and for an officer. Text as supplied by
+  the owner on 2026-09-26. The final entries carry the MEB referral,
+  the NAVMC 10274 extension request, and the separation authority for
+  the grade (MCO 1900.16 para 6203.2 or SECNAVINST 1920.6D encl (3)
+  para 3005) with RE-3P. Listed under the Page 11 type and in the
+  remarks "Insert template" picker.
+
 ## [0.13.0] - 2026-09-07
 
 Remediation of the 2026-09-07 findings report (docs/AUDIT_2026-09-07.md).
