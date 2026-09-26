@@ -22,18 +22,28 @@ import { serializeTemplatePackage, indexEntry } from '../src/lib/templates/publi
 const OUTPUT_DIR = path.join(process.cwd(), 'public/templates/global');
 const INDEX_FILE = path.join(OUTPUT_DIR, 'index.json');
 
+/** The file's text, or null when it does not exist. One read, no
+ *  exists-then-read window (CodeQL js/file-system-race). */
+function readIfPresent(filePath: string): string | null {
+  try {
+    return fs.readFileSync(filePath, 'utf-8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw err;
+  }
+}
+
 function generate() {
   console.log(`Generating templates in ${OUTPUT_DIR}...`);
 
   const existingIndex = JSON.parse(fs.readFileSync(INDEX_FILE, 'utf-8')) as { id: string }[];
-  const generatedIds = new Set(Object.keys(PUBLISHED_TEMPLATES));
   const generatedRows: ReturnType<typeof indexEntry>[] = [];
   let written = 0;
 
   for (const [id, template] of Object.entries(PUBLISHED_TEMPLATES)) {
     const filePath = path.join(OUTPUT_DIR, `${id}.nldp`);
     const body = serializeTemplatePackage(id, template);
-    const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : null;
+    const current = readIfPresent(filePath);
     if (current !== body) {
       fs.writeFileSync(filePath, body);
       console.log(`Wrote: ${id}.nldp`);
