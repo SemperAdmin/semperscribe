@@ -54,6 +54,8 @@ interface DocumentLayoutProps {
    * action harder to find than a formatting one.
    */
   onClearForm: () => void;
+  /** NAVMC 10132: opens the Figure 14-1 notice for a suspension (page.tsx). */
+  onOpenVacationLetter?: (suspensionIndex: number) => void;
   // Unit info
   setCurrentUnitCode: (code: string | undefined) => void;
   setCurrentUnitName: (name: string | undefined) => void;
@@ -120,6 +122,7 @@ export function DocumentLayout({
   setFormData,
   formKey,
   onClearForm,
+  onOpenVacationLetter,
   setCurrentUnitCode,
   setCurrentUnitName,
   vias,
@@ -283,6 +286,7 @@ export function DocumentLayout({
               onDynamicSync={handleDynamicFormSubmit}
               formKey={formKey}
               onClearForm={onClearForm}
+              onOpenVacationLetter={onOpenVacationLetter}
             />
           ) : formData.documentType === 'counseling' ? (
             /* Counseling Worksheet: the seven-step guided session, every

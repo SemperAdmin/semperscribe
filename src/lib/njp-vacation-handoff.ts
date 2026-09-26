@@ -8,13 +8,18 @@
  * would produce a Courier document where a letter belongs. So this module
  * produces a payload for the CORRESPONDENCE engine instead.
  *
- * THE HANDOFF PROBLEM, and the reason this module saves before it seeds.
- * `handleLoadTemplateUrl` in useImportExport.ts fetches a template and calls
- * `handleImport`, which REPLACES the whole document. A clerk sitting on a
- * NAVMC 10132 who loads this template would lose the NJP outright. So the
- * flow is: persist the 10132 to the document library first, then seed the
- * letter from it. `vacationHandoff` returns both halves and the caller does
- * them in that order. Do not reorder them.
+ * THE HANDOFF PROBLEM, and the reason the caller saves before it seeds.
+ * `handleImport` in useImportExport.ts REPLACES the whole document. A clerk
+ * sitting on a NAVMC 10132 who imported this letter would lose the NJP
+ * outright. So the flow is: persist the 10132 to the document library
+ * first, through the app's own Save so its bound files (the uploaded
+ * signed UPB above all) are copied the way every save copies them, then
+ * import the letter package. `vacationHandoff` returns the library name
+ * for the first half and `vacationLetterPackage` builds the second; the
+ * caller (page.tsx, `handleOpenVacationLetter`) does them in that order
+ * and only seeds once the save has landed. Do not reorder them. WIRED
+ * 2026-09-26 on the owner's call ("Let's wire the vacation letter");
+ * until then this module had no production caller.
  *
  * WHAT THIS FILLS AND WHAT IT CANNOT. Everything Figure 14-1 asks for that
  * the NAVMC 10132 already knows is filled: the unit, the accused, the NJP
@@ -40,7 +45,7 @@
  * carried through exactly as entered.
  */
 
-import type { FormData, SavedLetter } from '@/types';
+import type { FormData, ParagraphData } from '@/types';
 import type { Navmc10132PunishmentEntry } from '@/types/navmc';
 import { renderPunishment, resolvePunishment } from '@/lib/navmc10132-utils';
 import { formatNavalDate } from '@/lib/navmc10132-date';
@@ -178,10 +183,12 @@ export function vacationParagraphs(
 }
 
 export interface VacationHandoff {
-  /** Save this FIRST. The seed replaces the open document. */
-  save: SavedLetter;
-  /** Then apply this as the new document. */
+  /** The library name to save the NAVMC 10132 under FIRST. */
+  name: string;
+  /** Then apply this as the new document's fields. */
   seed: Record<string, unknown>;
+  /** The three numbered paragraphs, in print order. */
+  paragraphs: VacationParagraphs;
   /** The suspension this notice acts on. */
   period: SuspensionPeriod;
   /** Shown to the clerk before anything happens. */
@@ -191,14 +198,13 @@ export interface VacationHandoff {
 /**
  * Both halves of the handoff, in the order they must be performed.
  *
- * `save` is the NAVMC 10132 as it stands, so the case survives the swap.
- * `seed` is the letter payload. The caller persists the first and imports
- * the second; doing it the other way round loses the NJP.
+ * `name` labels the NAVMC 10132 as it stands, so the case survives the
+ * swap in the library. `seed` and `paragraphs` are the letter. The caller
+ * saves first and imports second; the other way round loses the NJP.
  */
 export function vacationHandoff(
   formData: FormData,
   suspensionIndex: number,
-  options: { now: string; documentId: string },
 ): VacationHandoff {
   const periods = suspensionPeriods(formData);
   const period = periods[suspensionIndex];
@@ -210,21 +216,9 @@ export function vacationHandoff(
 
   const paragraphs = vacationParagraphs(formData, period);
   const unit = str(formData, 'unit');
-
-  const save: SavedLetter = {
-    ...(formData as FormData),
-    id: options.documentId,
-    savedAt: options.now,
-    updatedAt: options.now,
-    name:
-      `NAVMC 10132 - ${rankOnly(str(formData, 'accusedRankGrade'))} ` +
-      `${str(formData, 'accusedName')}`.trim(),
-    vias: [],
-    references: [],
-    enclosures: [],
-    copyTos: [],
-    paragraphs: [],
-  } as SavedLetter;
+  const name =
+    `NAVMC 10132 - ${rankOnly(str(formData, 'accusedRankGrade'))} ` +
+    `${str(formData, 'accusedName')}`.trim();
 
   const seed: Record<string, unknown> = {
     documentType: 'basic',
@@ -257,8 +251,9 @@ export function vacationHandoff(
   );
 
   return {
-    save,
+    name,
     seed,
+    paragraphs,
     period,
     deadline:
       deadline === undefined
@@ -270,6 +265,37 @@ export function vacationHandoff(
 /** Paragraph bodies in print order, for the caller to attach to the letter. */
 export function vacationParagraphList(paragraphs: VacationParagraphs): string[] {
   return [paragraphs.basis, paragraphs.election, paragraphs.pointOfContact];
+}
+
+/** The import payload `handleImport` takes, an .nldp `data` block in shape. */
+export interface VacationLetterPackage {
+  formData: Record<string, unknown>;
+  paragraphs: ParagraphData[];
+  vias: string[];
+  references: string[];
+  enclosures: string[];
+  copyTos: string[];
+}
+
+/**
+ * The second half of the handoff as one import: Figure 14-1's From, To,
+ * Subj and SSIC in the fields, reference (a) as the figure cites it, the
+ * three numbered paragraphs, and the figure's Copy to. Nothing else, so the
+ * letter opens as the figure prints and not as a copy of the UPB.
+ */
+export function vacationLetterPackage(handoff: VacationHandoff): VacationLetterPackage {
+  return {
+    formData: handoff.seed,
+    paragraphs: vacationParagraphList(handoff.paragraphs).map((content, i) => ({
+      id: i + 1,
+      level: 1,
+      content,
+    })),
+    vias: [],
+    references: [VACATION_REFERENCE],
+    enclosures: [],
+    copyTos: [...VACATION_COPY_TO],
+  };
 }
 
 export { VACATION_COPY_TO as vacationCopyTo };

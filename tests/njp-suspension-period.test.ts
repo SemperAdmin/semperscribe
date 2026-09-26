@@ -700,7 +700,7 @@ describe('vacationHandoff deadline agrees with vacationDeadlines', () => {
     });
 
     const [deadline] = vacationDeadlines(form);
-    const handoff = vacationHandoff(form, 0, { now: '2026-01-15', documentId: 'doc-1' });
+    const handoff = vacationHandoff(form, 0);
 
     // Not two independent assertions of the same literal: the handoff
     // message must actually CONTAIN the deadline module's own caveat text,
@@ -720,7 +720,7 @@ describe('vacationHandoff deadline agrees with vacationDeadlines', () => {
     });
 
     expect(vacationDeadlines(form)).toEqual([]);
-    const handoff = vacationHandoff(form, 0, { now: '2026-01-15', documentId: 'doc-1' });
+    const handoff = vacationHandoff(form, 0);
     expect(handoff.deadline).toContain('not readable');
   });
 
@@ -756,11 +756,11 @@ describe('vacationHandoff deadline agrees with vacationDeadlines', () => {
     // Sanity: the two deadlines actually differ, or this test proves nothing.
     expect(first.endsOnIfUninterrupted).not.toBe(second.endsOnIfUninterrupted);
 
-    const handoffForFirst = vacationHandoff(form, 0, { now: njpDate, documentId: 'doc-1' });
+    const handoffForFirst = vacationHandoff(form, 0);
     expect(handoffForFirst.deadline).toContain(first.endsOnIfUninterrupted);
     expect(handoffForFirst.deadline).not.toContain(second.endsOnIfUninterrupted);
 
-    const handoffForSecond = vacationHandoff(form, 1, { now: njpDate, documentId: 'doc-2' });
+    const handoffForSecond = vacationHandoff(form, 1);
     expect(handoffForSecond.deadline).toContain(second.endsOnIfUninterrupted);
     expect(handoffForSecond.deadline).not.toContain(first.endsOnIfUninterrupted);
   });

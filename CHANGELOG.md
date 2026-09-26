@@ -5,6 +5,16 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.4] - 2026-09-26
+
+### Added
+
+- NAVMC 10132: the Figure 14-1 notice of intent to vacate a suspended punishment opens from the vacation record. "Draft the Figure 14-1 notice letter" on a record saves the UPB to the document library under its Marine's name, then opens the notice as a standard naval letter seeded from it: From, To, Subj, reference (a) MCO 5800.16, the three numbered paragraphs, and Copy to Files and IPAC. The blanks the form cannot fill stay as the figure prints them. The hand-off module had existed since 2026-08-25 with no button.
+
+### Fixed
+
+- Save resolves only once the library write lands, so a flow that replaces the document afterwards cannot outrun it.
+
 ## [0.13.3] - 2026-09-26
 
 ### Changed

@@ -265,3 +265,53 @@ describe('what the panel writes', () => {
     expect(next.njpAuthorityGrade).toBe(prev.njpAuthorityGrade);
   });
 });
+
+describe('the Figure 14-1 notice button', () => {
+  const recorded = () =>
+    withSuspension({ vacations: [{ suspensionIndex: 0, noticeServedDate: '', status: 'pending' }] } as Partial<FormData>);
+
+  it('is absent when no handler is wired, so existing harnesses see the panel unchanged', () => {
+    renderPanel(recorded());
+    expect(screen.queryByRole('button', { name: /Figure 14-1 notice letter/ })).toBeNull();
+  });
+
+  it('asks before it acts, then hands the record\'s suspension index to the page', () => {
+    const onOpen = vi.fn();
+    render(
+      <VacationSection
+        formData={recorded()}
+        setFormData={vi.fn()}
+        SectionCard={StubSectionCard}
+        onOpenVacationLetter={onOpen}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Draft the Figure 14-1 notice letter/ }));
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(screen.getByText(/saves the NAVMC 10132 to your document library/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(screen.queryByText(/saves the NAVMC 10132 to your document library/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Draft the Figure 14-1 notice letter/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save the UPB and open the letter' }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith(0);
+  });
+
+  it('reaches the section through the NAVMC 10132 wrapper at the closed-out stage', () => {
+    const onOpen = vi.fn();
+    render(
+      <Navmc10132FormSections
+        formData={withSuspension({ vacations: [{ suspensionIndex: 0, noticeServedDate: '', status: 'pending' }], stage: 'complete' } as Partial<FormData>)}
+        setFormData={vi.fn()}
+        onDynamicSync={vi.fn()}
+        formKey={1}
+        onOpenVacationLetter={onOpen}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Draft the Figure 14-1 notice letter/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save the UPB and open the letter' }));
+    expect(onOpen).toHaveBeenCalledWith(0);
+  });
+});
