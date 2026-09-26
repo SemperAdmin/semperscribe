@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { Page11Section } from '@/components/letter/navmc10132/Page11Section';
 import { createEmptyNavmc10132Data, NAVMC_10132_EMPTY_OFFENSE } from '@/types/navmc';
 import { APP_PAGE11_SIGNATURE_BLOCK, SIGNATURE_BLOCK } from '@/lib/navmc10132-page11';
+import { PAGE11_FLOW, measureTimes } from '@/lib/page11-flow';
 import { FormData } from '@/types';
 
 /**
@@ -203,11 +204,14 @@ describe('handing the entries to the app Page 11', () => {
       // The failure that shipped: two labels sharing one line, which this
       // renderer's wrap turns into a stacked mess.
       expect(column).not.toMatch(/Signature of Marine +Signature of CO/);
-      // Every line of the block that arrived clears the generator's
-      // 48-character wrap. Scoped to the block: the body is wrapped by the
-      // same rule but is prose, and reflowing prose is not a defect.
+      // Every line of the block that arrived fits the generator's measured
+      // column (Times 9pt on PAGE11_FLOW.lineWidth since 0.13.2). Scoped to
+      // the block: the body is wrapped by the same rule but is prose, and
+      // reflowing prose is not a defect.
       const block = column.slice(-APP_PAGE11_SIGNATURE_BLOCK.length);
-      for (const line of block.split('\n')) expect(line.length).toBeLessThanOrEqual(48);
+      for (const line of block.split('\n')) {
+        expect(measureTimes(line), line).toBeLessThanOrEqual(PAGE11_FLOW.lineWidth);
+      }
       // The gaps Stephen asked for on 2026-08-28, two blank lines each.
       expect(column.endsWith(`\n\n\n${APP_PAGE11_SIGNATURE_BLOCK}`)).toBe(true);
     }
