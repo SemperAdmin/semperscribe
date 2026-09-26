@@ -45,3 +45,11 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    groups:
+      # One PR for the week's action bumps. The CodeQL init and analyze
+      # steps must run the same action version, and the split PRs #90
+      # and #91 (2026-09-21) each failed CodeQL against the other's
+      # pin ("Loaded a configuration file for version '4.37.9', but
+      # running version '4.38.1'").
+      actions:
+        patterns: ["*"]
