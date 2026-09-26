@@ -27,6 +27,7 @@ import {
   decodePDFRawStream,
 } from 'pdf-lib';
 import { FormData, ParagraphData } from '@/types';
+import { columnText, flowPage11FormData } from '@/lib/page11-flow';
 import { generateCitation } from '@/lib/citation';
 import { refLetterAt } from '@/lib/reference-letters';
 import { resolvePublicPath } from '@/lib/path-utils';
@@ -117,14 +118,21 @@ export function buildNavmc10274Xml(slices: FormSlices): string {
 /** NAVMC 118(11) datasets XML. Header date/signature boxes stay empty -
  * they are signed by hand. */
 export function buildNavmc11811Xml(formData: FormData): string {
+  // The entry flows left column then right (src/lib/page11-flow.ts), so
+  // an entry longer than one column continues in Remarks2 instead of
+  // vanishing below the field's edge. Text past two columns does not
+  // fit this single-page form; the export hook routes such an entry to
+  // the redraw, which adds continuation pages.
+  const flow = flowPage11FormData(formData);
+  const first = flow.pages[0];
   return XFA_WRAP([
     tag('Date1', ''),
     tag('Date2', ''),
     tag('Date3', ''),
     tag('NameLFM', (formData.name as string) || ''),
     tag('EDIPI', (formData.edipi as string) || ''),
-    tag('Remarks1', (formData.remarksLeft as string) || ''),
-    tag('Remarks2', (formData.remarksRight as string) || ''),
+    tag('Remarks1', columnText(first.left)),
+    tag('Remarks2', columnText(first.right)),
     tag('_11', ''),
   ].join(''));
 }

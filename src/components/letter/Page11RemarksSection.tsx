@@ -140,12 +140,12 @@ export function Page11RemarksSection({ formData, setFormData }: Page11RemarksSec
             id="remarks-right"
             value={right}
             onChange={(e) => setFormData((prev) => ({ ...prev, remarksRight: e.target.value }))}
-            placeholder="Overflow from the left column, or a second entry..."
+            placeholder="A second entry, if any. The first entry flows here on its own when it runs past one column..."
             className="font-mono"
             rows={20}
           />
           <p className="text-xs text-muted-foreground">
-            The right column takes overflow from the left, or a second entry for the same Marine.
+            The left entry flows into this column on its own when it runs past one column, and onto a continuation page after that. Type here for a second entry; it follows the first.
           </p>
         </div>
       </CardContent>
