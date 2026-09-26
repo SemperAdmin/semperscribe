@@ -54,6 +54,17 @@ describe('flowPage11', () => {
     expect(flow.pages[0].right.lines).toEqual([]);
   });
 
+  it('always returns one page, both columns empty, for an empty entry', () => {
+    for (const [l, r] of [['', ''], ['   ', ''], ['', '\n\n']]) {
+      const flow = flowPage11(l, r);
+      expect(flow.pages).toHaveLength(1);
+      expect(flow.pages[0].left.lines).toEqual([]);
+      expect(flow.pages[0].right.lines).toEqual([]);
+      expect(columnText(flow.pages[0].left)).toBe('');
+    }
+    expect(flowPage11FormData({}).pages).toHaveLength(1);
+  });
+
   it('puts a typed right-column entry after the left one', () => {
     const flow = flowPage11('First entry.', 'Second entry.');
     expect(columnText(flow.pages[0].left)).toBe('First entry.\n\nSecond entry.');

@@ -92,6 +92,12 @@ describe('XML builders', () => {
     expect(xml).toContain('<Remarks2/>');
   });
 
+  it('builds page11 XML with empty remarks fields when both columns are empty', () => {
+    const xml = buildNavmc11811Xml({ documentType: 'page11', name: 'MARINE, TEST A.', edipi: '1234567890' } as FormData);
+    expect(xml).toContain('<Remarks1/>');
+    expect(xml).toContain('<Remarks2/>');
+  });
+
   it('flows a page11 entry longer than one column into Remarks2 (2026-09-26)', () => {
     const paragraph = 'Counseled this date concerning the following deficiencies and the corrective action required of the Marine.';
     const long = Array.from({ length: 30 }, () => paragraph).join('\n');
