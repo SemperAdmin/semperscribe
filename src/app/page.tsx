@@ -31,6 +31,7 @@ import { SignatureCeremonyPanel } from '@/components/signature/SignatureCeremony
 import { useParagraphs } from '@/hooks/useParagraphs';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useImportExport } from '@/hooks/useImportExport';
+import { vacationHandoff, vacationLetterPackage } from '@/lib/njp-vacation-handoff';
 import { useDocumentImport } from '@/hooks/useDocumentImport';
 import { DocumentImportModal } from '@/components/import/DocumentImportModal';
 import { ImportPayload } from '@/services/import/extractionTypes';
@@ -705,7 +706,13 @@ function NavalLetterGeneratorInner() {
   const [savedMark, setSavedMark] = useState<{ at: Date; changeCount: number } | null>(null);
   const isDirty = savedMark ? changeCount !== savedMark.changeCount : changeCount > 0;
 
-  const saveLetter = () => {
+  /**
+   * Save the open document to the library under `name` (default: its
+   * subject). Resolves true once the write has landed and false on any
+   * failure, each already reported to the clerk; callers that replace the
+   * document afterwards (the Figure 14-1 hand-off) wait on it.
+   */
+  const saveLetterAs = (name?: string): Promise<boolean> => {
     debugUserAction('Save Letter', {
       subject: formData.subj.substring(0, 30) + (formData.subj.length > 30 ? '...' : ''),
       paragraphCount: paragraphs.length
@@ -728,14 +735,14 @@ function NavalLetterGeneratorInner() {
     if (host?.kind === 'file') boundIds.push(host.fileId);
     if (navmcBaseId) boundIds.push(navmcBaseId);
 
-    fileCopyForSave(boundIds, saveId)
+    return fileCopyForSave(boundIds, saveId)
       .then(({ ids, missing }) => {
         const mapped = (id: string | undefined) => (id ? ids.get(id) : undefined);
         const newLetter: SavedLetter = {
           ...formData,
           id: saveId,
           savedAt: now.toLocaleString(),
-          name: formData.subj || 'Untitled',
+          name: name ?? (formData.subj || 'Untitled'),
           updatedAt: now.toISOString(),
           vias,
           references,
@@ -778,6 +785,7 @@ function NavalLetterGeneratorInner() {
               console.error('Auto backup failed', error);
               toast({ title: 'Backup Skipped', description: 'The library save worked, but the folder backup failed. Check Settings, Data.', variant: 'destructive' });
             });
+            return true;
           })
           .catch((error) => {
             console.error('Library save failed', error);
@@ -788,14 +796,17 @@ function NavalLetterGeneratorInner() {
             // copy is left in place: it is the only copy of this work.
             setSavedMark(null);
             toast({ title: 'Save Failed', description: 'Storage is full or unavailable. Export an .nldp backup instead.', variant: 'destructive' });
+            return false;
           });
       })
       .catch((error) => {
         console.error('Enclosure file copy failed', error);
         setSavedMark(null);
         toast({ title: 'Save Failed', description: 'The attached files could not be copied into the saved document. Storage may be full. Export an .nldp backup instead.', variant: 'destructive' });
+        return false;
       });
   };
+  const saveLetter = () => { void saveLetterAs(); };
 
   // P1.2: per-document library operations. P6-17: each is optimistic
   // and, on a failed write, reverts the list and says so - the way Save
@@ -1100,6 +1111,35 @@ function NavalLetterGeneratorInner() {
         : { ...prev, navmc10132BaseFileId: undefined, navmc10132LoadReport: undefined }
     ));
   }, []);
+
+  /**
+   * Figure 14-1, the notice of intent to vacate a suspended punishment, from
+   * the NAVMC 10132's vacation record. THE ORDER IS THE CONTRACT
+   * (njp-vacation-handoff.ts): the UPB is saved to the library first, under
+   * a name that says whose it is, and the letter is imported only once that
+   * write has landed. A failed save leaves the UPB open and says so; nothing
+   * is replaced. The import goes through `handleImport` directly rather than
+   * the unsaved-work guard, because the work was saved one step earlier.
+   */
+  const handleOpenVacationLetter = (suspensionIndex: number) => {
+    let handoff: ReturnType<typeof vacationHandoff>;
+    try {
+      handoff = vacationHandoff(formData, suspensionIndex);
+    } catch (error) {
+      toast({ title: 'Notice not built', description: error instanceof Error ? error.message : 'The suspension could not be read.', variant: 'destructive' });
+      return;
+    }
+    const letter = vacationLetterPackage(handoff);
+    void saveLetterAs(handoff.name).then((saved) => {
+      if (!saved) return;
+      dropNavmc10132Base();
+      handleImport(letter);
+      toast({
+        title: 'Notice of intent to vacate opened',
+        description: `The NAVMC 10132 is in your library as "${handoff.name}". ${handoff.deadline}`,
+      });
+    });
+  };
 
   const handleImportFresh = useCallback((payload: Parameters<typeof handleImport>[0]) => {
     guardUnsavedWork(
@@ -1477,6 +1517,7 @@ function NavalLetterGeneratorInner() {
         setFormData={setFormData}
         formKey={formKey}
         onClearForm={handleClearForm}
+        onOpenVacationLetter={handleOpenVacationLetter}
         setCurrentUnitCode={setCurrentUnitCode}
         setCurrentUnitName={setCurrentUnitName}
         vias={vias}

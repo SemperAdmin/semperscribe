@@ -58,7 +58,7 @@ import {
 } from '@/components/ui/select';
 import { IsoDatePicker } from '@/components/letter/navmc10132/IsoDatePicker';
 import { FormData } from '@/types';
-import { CalendarClock, Plus, Trash2, ShieldAlert } from 'lucide-react';
+import { CalendarClock, FileText, Plus, Trash2, ShieldAlert } from 'lucide-react';
 import type { Navmc10132Vacation, Navmc10132VacationStatus } from '@/types/navmc';
 import { suspensionPeriods, vacationDeadlines } from '@/lib/njp-suspension-period';
 
@@ -68,6 +68,13 @@ interface SectionProps {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   SectionCard: React.ComponentType<SectionCardProps>;
+  /**
+   * Opens the Figure 14-1 notice for one item 7 suspension: the page saves
+   * this UPB to the library, then imports the letter seeded from it
+   * (njp-vacation-handoff.ts). OPTIONAL so the existing test harnesses
+   * keep working; the button renders only when a handler is supplied.
+   */
+  onOpenVacationLetter?: (suspensionIndex: number) => void;
 }
 
 /**
@@ -96,8 +103,10 @@ function currentVacations(formData: FormData): Navmc10132Vacation[] {
   return Array.isArray(value) ? (value as Navmc10132Vacation[]) : [];
 }
 
-export function VacationSection({ formData, setFormData, SectionCard }: SectionProps) {
+export function VacationSection({ formData, setFormData, SectionCard, onOpenVacationLetter }: SectionProps) {
   const vacations = currentVacations(formData);
+  // Which record's "draft the notice" confirmation is open, if any.
+  const [confirmingIndex, setConfirmingIndex] = React.useState<number | null>(null);
   const periods = suspensionPeriods(formData);
   const deadlines = vacationDeadlines(formData);
 
@@ -201,6 +210,47 @@ export function VacationSection({ formData, setFormData, SectionCard }: SectionP
                   This record points at a suspension item 7 no longer carries. Repoint it
                   or remove it, or the vacation describes nothing.
                 </p>
+              )}
+
+              {/* THE NOTICE ITSELF. Figure 14-1 is a standard naval letter, so it
+                  opens in the correspondence editor seeded from this UPB. The
+                  swap replaces the open document, which is why the UPB is saved
+                  to the library first and why this asks before it acts. */}
+              {onOpenVacationLetter && target && (
+                <div className="space-y-2" data-testid={`vacation-${index}-letter`}>
+                  {confirmingIndex === index ? (
+                    <div className="rounded-md border p-2 space-y-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        This saves the NAVMC 10132 to your document library, then opens the
+                        Figure 14-1 notice as a standard naval letter seeded from it: From,
+                        To, Subj, reference (a), the three paragraphs and Copy to. The
+                        blanks the form cannot fill stay as the figure prints them: the
+                        offense committed during the suspension, FULL or PART, and the
+                        point of contact. Reopen the UPB from the library afterwards.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            setConfirmingIndex(null);
+                            onOpenVacationLetter(vacation.suspensionIndex);
+                          }}
+                        >
+                          Save the UPB and open the letter
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmingIndex(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button type="button" variant="outline" size="sm" onClick={() => setConfirmingIndex(index)}>
+                      <FileText className="mr-1 h-4 w-4" />
+                      Draft the Figure 14-1 notice letter
+                    </Button>
+                  )}
+                </div>
               )}
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

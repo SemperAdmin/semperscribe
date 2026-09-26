@@ -99,6 +99,8 @@ interface Navmc10132SectionsProps {
    * one is supplied.
    */
   onClearForm?: () => void;
+  /** Opens the Figure 14-1 notice for a suspension; see VacationSection. */
+  onOpenVacationLetter?: (suspensionIndex: number) => void;
 }
 
 // Narrow sub-definitions sharing the registered schema. Module scope keeps them
@@ -337,6 +339,7 @@ export function Navmc10132FormSections({
   onDynamicSync,
   formKey,
   onClearForm,
+  onOpenVacationLetter,
 }: Navmc10132SectionsProps) {
   const showAbsence = hasAbsenceOffense(formData);
   const stage = navmc10132Stage(formData);
@@ -580,6 +583,7 @@ export function Navmc10132FormSections({
           formData={formData}
           setFormData={setFormData}
           SectionCard={SectionCard}
+          onOpenVacationLetter={onOpenVacationLetter}
         />
       )}
     </>
