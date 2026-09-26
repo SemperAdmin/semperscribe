@@ -123,3 +123,53 @@ describe('Page 11 redesignation (R13/B2)', () => {
     }
   });
 });
+
+describe('Page 11 shaving-accommodation 6105 entries (MARADMIN 348/26 para 3.b.3.a, wording per 192/26)', () => {
+  const IDS = [
+    'page11-6105-shaving-six-month-enlisted',
+    'page11-6105-shaving-six-month-officer',
+    'page11-6105-shaving-final-enlisted',
+    'page11-6105-shaving-final-officer',
+  ];
+
+  it.each(IDS)('%s ships the supplied entry text with its signature lines', (id) => {
+    const entry = index.find((e) => e.id === id);
+    expect(entry).toBeTruthy();
+    const { formData } = loadNldp(entry!.url).data;
+    expect(formData.documentType).toBe('page11');
+    expect(formData.remarksLeft).toContain('[YYYYMMDD]: Counseled this date concerning the following deficiencies');
+    expect(formData.remarksLeft).toContain('MCO 1020.34H');
+    expect(formData.remarksLeft).toContain('NAVMC 11830');
+    expect(formData.remarksLeft).toContain('one quarter of an inch (0.25)');
+    expect(formData.remarksLeft).toContain('I choose to ____ / not to ____ make such a statement.');
+    expect(formData.remarksLeft).toContain('Signature of Commanding Officer');
+    expect(formData.remarksLeft).toContain(id.endsWith('officer') ? 'Signature of Marine Officer' : 'Signature of Marine ');
+    expect(formData.remarksRight).toBe('');
+  });
+
+  it('the six-month entries carry the CBRN clean-shaven condition and the twelve-month expiry', () => {
+    for (const id of IDS.filter((x) => x.includes('six-month'))) {
+      const { formData } = loadNldp(index.find((e) => e.id === id)!.url).data;
+      expect(formData.remarksLeft, id).toContain('six total months of continuous treatment');
+      expect(formData.remarksLeft, id).toContain('(CBRN) attack');
+      expect(formData.remarksLeft, id).toContain('twelve months from the date of approval');
+    }
+  });
+
+  it('the final entries carry the MEB referral, the AA Form extension and the separation authority for the grade', () => {
+    const enl = loadNldp(index.find((e) => e.id === 'page11-6105-shaving-final-enlisted')!.url).data.formData.remarksLeft;
+    const off = loadNldp(index.find((e) => e.id === 'page11-6105-shaving-final-officer')!.url).data.formData.remarksLeft;
+    for (const text of [enl, off]) {
+      expect(text).toContain('12 consecutive months');
+      expect(text).toContain('Medical Evaluation Board (MEB)');
+      expect(text).toContain('NAVMC 10274');
+      expect(text).toContain('RE-3P');
+    }
+    expect(enl).toContain('MCO 1900.16, paragraph 6203.2');
+    expect(enl).toContain('enlistment contract');
+    expect(off).toContain('SECNAVINST 1920.6D');
+    expect(off).toContain('paragraph 3005');
+    expect(off).toContain('service obligation');
+  });
+});
+

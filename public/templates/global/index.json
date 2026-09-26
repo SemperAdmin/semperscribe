@@ -140,6 +140,34 @@
     "url": "/templates/global/page11-6105-processing.nldp"
   },
   {
+    "id": "page11-6105-shaving-six-month-enlisted",
+    "title": "Page 11 - 6105 Six-Month Shaving Accommodation (Enlisted)",
+    "description": "Six-month 6105 counseling for an enlisted Marine on a clean-shaven medical accommodation under MCO 1020.34H (the counseling MARADMIN 348/26 para 3.b.3.a requires; wording per MARADMIN 192/26): approval and expiry dates, corrective actions, grooming and CBRN standards.",
+    "documentType": "page11",
+    "url": "/templates/global/page11-6105-shaving-six-month-enlisted.nldp"
+  },
+  {
+    "id": "page11-6105-shaving-six-month-officer",
+    "title": "Page 11 - 6105 Six-Month Shaving Accommodation (Officer)",
+    "description": "Six-month 6105 counseling for a Marine officer on a clean-shaven medical accommodation under MCO 1020.34H (the counseling MARADMIN 348/26 para 3.b.3.a requires; wording per MARADMIN 192/26).",
+    "documentType": "page11",
+    "url": "/templates/global/page11-6105-shaving-six-month-officer.nldp"
+  },
+  {
+    "id": "page11-6105-shaving-final-enlisted",
+    "title": "Page 11 - 6105 Final Shaving Accommodation (Enlisted)",
+    "description": "Final 6105 counseling at twelve months of clean-shaven medical accommodation for an enlisted Marine: MEB referral, AA Form extension request, separation under MCO 1900.16 para 6203.2 with RE-3P (the counseling MARADMIN 348/26 para 3.b.3.a requires; wording per MARADMIN 192/26).",
+    "documentType": "page11",
+    "url": "/templates/global/page11-6105-shaving-final-enlisted.nldp"
+  },
+  {
+    "id": "page11-6105-shaving-final-officer",
+    "title": "Page 11 - 6105 Final Shaving Accommodation (Officer)",
+    "description": "Final 6105 counseling at twelve months of clean-shaven medical accommodation for a Marine officer: MEB referral, AA Form extension request, separation under SECNAVINST 1920.6D encl (3) para 3005 with RE-3P (the counseling MARADMIN 348/26 para 3.b.3.a requires; wording per MARADMIN 192/26).",
+    "documentType": "page11",
+    "url": "/templates/global/page11-6105-shaving-final-officer.nldp"
+  },
+  {
     "id": "page11-drug-involvement",
     "title": "Page 11 - Illegal Drug Involvement",
     "description": "Mandatory entry for illegal drug use per MCO 5300.17A / MCO 1900.16 CH 2.",
@@ -534,7 +562,7 @@
   {
     "id": "mco-5800-16-volume-17-verification",
     "title": "MCO 5800.16 Volume 17 (Verification)",
-    "description": "Judge Advocate Division Awards Program — a faithful transcription of the published Volume, for placement verification against the source PDF.",
+    "description": "Judge Advocate Division Awards Program \u2014 a faithful transcription of the published Volume, for placement verification against the source PDF.",
     "documentType": "volume",
     "url": "/templates/global/mco-5800-16-volume-17-verification.nldp"
   }
