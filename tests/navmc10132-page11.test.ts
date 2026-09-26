@@ -22,6 +22,7 @@ import {
   PAGE11_DATE_GAP,
   SIGNATURE_BLOCK,
   APP_PAGE11_SIGNATURE_BLOCK,
+  SIDE_BY_SIDE_SIGNATURE_BLOCK,
   DISCHARGE_CONSEQUENCES_SENTENCE,
   DRUG_RESTRICTION_OFFENSE_LABELS,
   DRUG_RESTRICTION_MONTHS,
@@ -686,17 +687,29 @@ describe('the 6105 prints as paragraphs', () => {
       remarksLeft: page.remarksLeft,
       remarksRight: page.remarksRight,
     } as unknown as FormData);
-    // The breaks reach the XML rather than being stripped. Counting exact
-    // occurrences would just restate the paragraph count asserted above, so
-    // this asserts the thing the escaping is FOR: no raw newline survives,
-    // and the doubled carriage return that makes a blank line is present in
-    // both columns.
+    // The breaks reach the XML rather than being stripped. Since 0.13.2 the
+    // two entries flow through lib/page11-flow first (left column, then
+    // right), and a paragraph break that lands on the column boundary is
+    // carried by the split rather than by a carriage return, so the count
+    // is read off the flow's own column text. This asserts the thing the
+    // escaping is FOR: no raw newline survives, every break the columns
+    // carry is a carriage return, and the doubled carriage return that
+    // makes a blank line is present.
+    const { flowPage11FormData, columnText } = await import('@/lib/page11-flow');
+    const flow = flowPage11FormData({ remarksLeft: page.remarksLeft, remarksRight: page.remarksRight });
+    expect(flow.pages).toHaveLength(1);
+    // A column whose 40-line slice ends inside a blank gap carries the
+    // trailing blanks as newlines; the field writer trims them (they draw
+    // nothing) and the next column opens on the first printed line.
+    const breaks = [flow.pages[0].left, flow.pages[0].right]
+      .map((column) => (columnText(column).trim().match(/\n/g) ?? []).length)
+      .reduce((a, b) => a + b, 0);
     expect(xml).not.toContain('\n');
     expect(xml).toContain('&#xD;&#xD;');
-    expect((xml.match(/&#xD;/g) ?? []).length).toBeGreaterThanOrEqual(
-      (page.remarksLeft.match(/\n/g) ?? []).length +
-        (page.remarksRight.match(/\n/g) ?? []).length,
-    );
+    expect((xml.match(/&#xD;/g) ?? []).length).toBe(breaks);
+    // Both entries' stacked blocks arrive whole.
+    expect((xml.match(/Signature of CO/g) ?? []).length).toBe(2);
+    expect((xml.match(/Signature of Marine/g) ?? []).length).toBe(2);
   });
 
   /**
@@ -806,7 +819,7 @@ describe('both Page 11 entries open with item 10, and nothing else moved', () =>
 // screenshot "Signature of Marine" measures 0.766 of the width of 21
 // underscores; the table below predicts 0.767.
 // ---------------------------------------------------------------------------
-describe('the signature block lines up in the form\'s own font', () => {
+describe('the side-by-side block lines up in the form\'s own font', () => {
   /** Times New Roman advance widths, units per 1000 em. */
   const ADVANCE: Record<string, number> = {
     ' ': 250, '_': 500,
@@ -826,10 +839,10 @@ describe('the signature block lines up in the form\'s own font', () => {
     return total;
   }
 
-  const [ruleLine, labelLine] = SIGNATURE_BLOCK.split('\n');
+  const [ruleLine, labelLine] = SIDE_BY_SIDE_SIGNATURE_BLOCK.split('\n');
 
   it('is exactly two lines, a rule line and a label line', () => {
-    expect(SIGNATURE_BLOCK.split('\n')).toHaveLength(2);
+    expect(SIDE_BY_SIDE_SIGNATURE_BLOCK.split('\n')).toHaveLength(2);
     expect(ruleLine.replace(/[_ ]/g, '')).toBe('');
     expect(labelLine).toContain('Signature of Marine');
     expect(labelLine).toContain('Signature of CO');
@@ -1159,11 +1172,13 @@ describe('the article phrase names the article', () => {
 // on MEASURED WIDTH at PAGE11_FLOW.lineWidth (260pt), forty lines a column,
 // then the right column, then a continuation page. Whitespace runs inside a
 // line survive the wrap. Under that renderer the side-by-side block fits
-// the app column as well as the form's, so the stacked block is no longer
-// forced by the renderer. It stays because the section builds it and the
-// owner approved the arrangement; these tests hold both blocks to the
-// renderer that draws them, read off the real flow rather than a mirror of
-// it.
+// the app column as well as the form's, so nothing forces a layout.
+//
+// SINCE 0.13.3 THE STACKED BLOCK IS THE BASELINE on both targets (Stephen,
+// 2026-09-26: "We can stack the signatures as a baseline concept"). The
+// side-by-side block remains the 'official-form' option. These tests hold
+// both blocks to the renderer that draws them, read off the real flow
+// rather than a mirror of it.
 //
 // THE OFFICIAL FORM is a different renderer with the same face: Adobe draws
 // 9pt Times into a 266.5pt XFA field, where the side-by-side block measures
@@ -1227,45 +1242,50 @@ describe('both targets carry the lines, laid out for their own renderer', () => 
     );
   }
 
-  it('defaults to the official form, side by side', () => {
+  it('defaults to the stacked block on both targets', () => {
     const page = njpPage11(guiltyCorporal(), COUNSELING);
     expect(page.remarksLeft.endsWith(SIGNATURE_BLOCK)).toBe(true);
     expect(page.remarksRight.endsWith(SIGNATURE_BLOCK)).toBe(true);
+    expect(SIGNATURE_BLOCK.split('\n')).toHaveLength(6);
+    expect(APP_PAGE11_SIGNATURE_BLOCK).toBe(SIGNATURE_BLOCK);
+    expect(njpPage11(guiltyCorporal(), COUNSELING, { signatureBlock: 'app-page11' })).toEqual(page);
   });
 
-  it('gives the app Page 11 the stacked block instead', () => {
-    const page = njpPage11(guiltyCorporal(), COUNSELING, { signatureBlock: 'app-page11' });
-    expect(page.remarksLeft.endsWith(APP_PAGE11_SIGNATURE_BLOCK)).toBe(true);
-    expect(page.remarksRight.endsWith(APP_PAGE11_SIGNATURE_BLOCK)).toBe(true);
+  it('swaps in the side-by-side block only when the official form asks for it', () => {
+    const page = njpPage11(guiltyCorporal(), COUNSELING, { signatureBlock: 'official-form' });
+    expect(page.remarksLeft.endsWith(SIDE_BY_SIDE_SIGNATURE_BLOCK)).toBe(true);
+    expect(page.remarksRight.endsWith(SIDE_BY_SIDE_SIGNATURE_BLOCK)).toBe(true);
     expect(page.remarksLeft).not.toContain(SIGNATURE_BLOCK);
+    // The same two blank lines stand above the first rule either way.
+    expect(page.remarksLeft).toContain('make a rebuttal.\n\n\n_____');
   });
 
   // BOTH BLOCKS SAY THE SAME THING. Only the arrangement differs, and a
   // block that lost a signer would be worse than one that wrapped.
   it.each([
-    ['official', SIGNATURE_BLOCK],
-    ['app', APP_PAGE11_SIGNATURE_BLOCK],
+    ['side-by-side', SIDE_BY_SIDE_SIGNATURE_BLOCK],
+    ['stacked', SIGNATURE_BLOCK],
   ])('the %s block names both signers over two rules', (_label, block) => {
     expect(block).toContain('Signature of Marine');
     expect(block).toContain('Signature of CO');
     expect((block.match(/_{10,}/g) ?? []).length).toBe(2);
   });
 
-  it("the official block fits 9pt Times in the form's 266.5pt column", () => {
-    expect(widest(SIGNATURE_BLOCK, TIMES, 9)).toBeLessThan(266.5);
+  it("the side-by-side block fits 9pt Times in the form's 266.5pt column", () => {
+    expect(widest(SIDE_BY_SIDE_SIGNATURE_BLOCK, TIMES, 9)).toBeLessThan(266.5);
   });
 
   // The hand table above and the generated metrics the flow uses have to
   // agree, or one of the two fit claims is measuring a different face.
   it('the hand-kept Times table matches the metrics the flow measures with', () => {
-    for (const line of SIGNATURE_BLOCK.split('\n')) {
+    for (const line of SIDE_BY_SIDE_SIGNATURE_BLOCK.split('\n')) {
       expect(measureTimes(line)).toBeCloseTo(widest(line, TIMES, 9), 3);
     }
   });
 
   it.each([
-    ['official', SIGNATURE_BLOCK],
-    ['app', APP_PAGE11_SIGNATURE_BLOCK],
+    ['side-by-side', SIDE_BY_SIDE_SIGNATURE_BLOCK],
+    ['stacked', SIGNATURE_BLOCK],
   ])("the %s block fits the app column's measured width", (_label, block) => {
     for (const line of block.split('\n')) {
       expect(measureTimes(line), JSON.stringify(line)).toBeLessThanOrEqual(PAGE11_FLOW.lineWidth);
@@ -1280,14 +1300,12 @@ describe('both targets carry the lines, laid out for their own renderer', () => 
    * padding included, so a future renderer that reintroduces a character
    * count or collapses whitespace fails here first.
    */
-  it('the official block survives the app column whole, padding included', () => {
-    expect(appRenderedLines(SIGNATURE_BLOCK)).toEqual(SIGNATURE_BLOCK.split('\n'));
+  it('the side-by-side block survives the app column whole, padding included', () => {
+    expect(appRenderedLines(SIDE_BY_SIDE_SIGNATURE_BLOCK)).toEqual(SIDE_BY_SIDE_SIGNATURE_BLOCK.split('\n'));
   });
 
-  it('the app block goes through the flow unchanged', () => {
-    expect(appRenderedLines(APP_PAGE11_SIGNATURE_BLOCK)).toEqual(
-      APP_PAGE11_SIGNATURE_BLOCK.split('\n'),
-    );
+  it('the stacked block goes through the flow unchanged', () => {
+    expect(appRenderedLines(SIGNATURE_BLOCK)).toEqual(SIGNATURE_BLOCK.split('\n'));
   });
 
   /**
@@ -1304,7 +1322,7 @@ describe('both targets carry the lines, laid out for their own renderer', () => 
    * renderer that swallowed them.
    */
   it('opens two blank lines above each rule on the app Page 11', () => {
-    const page = njpPage11(guiltyCorporal(), COUNSELING, { signatureBlock: 'app-page11' });
+    const page = njpPage11(guiltyCorporal(), COUNSELING);
 
     for (const column of [page.remarksLeft, page.remarksRight]) {
       const drawn = appRenderedLines(column);
@@ -1340,7 +1358,7 @@ describe('both targets carry the lines, laid out for their own renderer', () => 
     expect(capacity).toBe(40);
     expect(PAGE11_FLOW.linesPerColumn).toBeLessThanOrEqual(capacity);
 
-    const page = njpPage11(guiltyCorporal(), COUNSELING, { signatureBlock: 'app-page11' });
+    const page = njpPage11(guiltyCorporal(), COUNSELING);
     for (const column of [page.remarksLeft, page.remarksRight]) {
       expect(appRenderedLines(column).length).toBeLessThanOrEqual(PAGE11_FLOW.linesPerColumn);
     }
@@ -1364,10 +1382,10 @@ describe('both targets carry the lines, laid out for their own renderer', () => 
       ...COUNSELING,
       correctiveAction: 'obtain the Signature of Marine Corps counsel before the hearing',
     };
-    const page = njpPage11(guiltyCorporal(), counseling, { signatureBlock: 'app-page11' });
+    const page = njpPage11(guiltyCorporal(), counseling, { signatureBlock: 'official-form' });
 
     expect(page.remarksLeft).toContain('Signature of Marine Corps counsel');
-    expect(page.remarksLeft.endsWith(APP_PAGE11_SIGNATURE_BLOCK)).toBe(true);
+    expect(page.remarksLeft.endsWith(SIDE_BY_SIDE_SIGNATURE_BLOCK)).toBe(true);
     expect((page.remarksLeft.match(/Signature of CO/g) ?? []).length).toBe(1);
   });
 

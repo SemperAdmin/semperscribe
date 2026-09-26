@@ -208,6 +208,18 @@ interface DynamicFormProps {
   lockedBadge?: React.ReactNode;
 }
 
+
+/**
+ * Applies a text field's maxLength and digitsOnly as the value is typed,
+ * so a pasted "1234567890123" or "EDIPI 1234567890" lands as the ten
+ * digits the form takes rather than failing validation after the fact.
+ */
+function constrainText(value: string, field: { maxLength?: number; digitsOnly?: boolean }): string {
+  let next = field.digitsOnly ? value.replace(/\D/g, '') : value;
+  if (field.maxLength !== undefined) next = next.slice(0, field.maxLength);
+  return next;
+}
+
 export function DynamicForm({
   documentType,
   onSubmit,
@@ -390,7 +402,14 @@ export function DynamicForm({
               {field.type === 'combobox' ? (
                 <SSICCombobox value={formField.value ?? ''} onChange={formField.onChange} placeholder={field.placeholder} label={field.label} />
               ) : field.type === 'text' ? (
-                <Input placeholder={field.placeholder} {...formField} value={formField.value ?? ''} />
+                <Input
+                  placeholder={field.placeholder}
+                  inputMode={field.inputMode}
+                  maxLength={field.maxLength}
+                  {...formField}
+                  value={formField.value ?? ''}
+                  onChange={(e) => formField.onChange(constrainText(e.target.value, field))}
+                />
               ) : field.type === 'date' ? (
                 <Input type="text" placeholder={field.placeholder || 'DD MMM YY'} {...formField} value={formField.value ?? ''} />
               ) : field.type === 'date-picker' ? (

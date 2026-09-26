@@ -5,6 +5,17 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.3] - 2026-09-26
+
+### Changed
+
+- Page 11 signature lines are stacked by default: each rule on its own line with its label under it, the Marine's pair first and the commanding officer's last. The NJP Page 11 hand-off and the nine shipped Page 11 templates with two signers use it. The side-by-side arrangement remains available to the NJP builder as the official-form option.
+
+### Fixed
+
+- EDIPI inputs take ten digits and nothing else: the Page 11 details, NAVMC 10922 member and spouse, NAVMC 10132 accused, DD 368 item 1.c, and both Counseling Worksheet fields strip non-digits as typed and stop at ten. The Page 11 schema now requires the ten-digit form.
+- Browse Templates on a phone: the dialog is reachable from File (the header button is hidden under md), sizes to the dynamic viewport so browser bars do not cover its foot, and is itself the scroll region so the list scrolls under a touch.
+
 ## [0.13.2] - 2026-09-26
 
 ### Fixed

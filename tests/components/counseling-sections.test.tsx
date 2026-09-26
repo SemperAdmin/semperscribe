@@ -177,3 +177,17 @@ describe('JEPES benchmark block (docs/COUNSELING_JEPES_BENCHMARK_PLAN.md)', () =
     expect(screen.getAllByText(/MOS Proficiency and\/or Mission Accomplishment: a mark in the Exceptional band requires a justification/).length).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe('EDIPI inputs', () => {
+  it('take ten digits and drop everything else as typed', () => {
+    render(<Harness />);
+    const marine = document.getElementById('counselingMarineEdipi') as HTMLInputElement;
+    expect(marine.maxLength).toBe(10);
+    expect(marine.getAttribute('inputmode')).toBe('numeric');
+    fireEvent.change(marine, { target: { value: 'EDIPI 1234567890123' } });
+    expect(data().counselingMarineEdipi).toBe('1234567890');
+    const senior = document.getElementById('counselingSeniorEdipi') as HTMLInputElement;
+    fireEvent.change(senior, { target: { value: '12-34' } });
+    expect(data().counselingSeniorEdipi).toBe('1234');
+  });
+});

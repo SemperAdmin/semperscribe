@@ -195,7 +195,7 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
               </SelectContent>
             </Select>
           </Field>
-          <TextField name="counselingMarineEdipi" label="EDIPI" value={get('counselingMarineEdipi')} onChange={(v) => set('counselingMarineEdipi', v)} placeholder="10 digits" />
+          <TextField name="counselingMarineEdipi" label="EDIPI" value={get('counselingMarineEdipi')} onChange={(v) => set('counselingMarineEdipi', v)} placeholder="10 digits" maxLength={10} digitsOnly />
           <TextField name="counselingMarineDor" label="Date of rank" value={get('counselingMarineDor')} onChange={(v) => set('counselingMarineDor', v)} placeholder="D MMM YY" />
           <TextField name="counselingMarinePmos" label="PMOS" value={get('counselingMarinePmos')} onChange={(v) => set('counselingMarinePmos', v)} />
           <TextField name="counselingMarineBilletMos" label="Billet MOS" value={get('counselingMarineBilletMos')} onChange={(v) => set('counselingMarineBilletMos', v)} />
@@ -213,7 +213,7 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
               <SelectContent>{COUNSELING_GRADES.map((g) => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
-          <TextField name="counselingSeniorEdipi" label="EDIPI" value={get('counselingSeniorEdipi')} onChange={(v) => set('counselingSeniorEdipi', v)} placeholder="10 digits" />
+          <TextField name="counselingSeniorEdipi" label="EDIPI" value={get('counselingSeniorEdipi')} onChange={(v) => set('counselingSeniorEdipi', v)} placeholder="10 digits" maxLength={10} digitsOnly />
           <TextField name="counselingSeniorBillet" label="Billet" value={get('counselingSeniorBillet')} onChange={(v) => set('counselingSeniorBillet', v)} />
         </div>
       </StepCard>
@@ -598,10 +598,14 @@ function Field({ name, label, className, children }: { name: string; label: stri
   );
 }
 
-function TextField({ name, label, value, onChange, placeholder, className }: { name: string; label: string; value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) {
+function TextField({ name, label, value, onChange, placeholder, className, maxLength, digitsOnly }: { name: string; label: string; value: string; onChange: (v: string) => void; placeholder?: string; className?: string; maxLength?: number; digitsOnly?: boolean }) {
+  const constrain = (raw: string) => {
+    const next = digitsOnly ? raw.replace(/\D/g, '') : raw;
+    return maxLength === undefined ? next : next.slice(0, maxLength);
+  };
   return (
     <Field name={name} label={label} className={className}>
-      <Input id={name} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+      <Input id={name} value={value} onChange={(e) => onChange(constrain(e.target.value))} placeholder={placeholder} maxLength={maxLength} inputMode={digitsOnly ? 'numeric' : undefined} />
     </Field>
   );
 }

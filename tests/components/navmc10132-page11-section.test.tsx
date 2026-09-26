@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Page11Section } from '@/components/letter/navmc10132/Page11Section';
 import { createEmptyNavmc10132Data, NAVMC_10132_EMPTY_OFFENSE } from '@/types/navmc';
-import { APP_PAGE11_SIGNATURE_BLOCK, SIGNATURE_BLOCK } from '@/lib/navmc10132-page11';
+import { APP_PAGE11_SIGNATURE_BLOCK, SIDE_BY_SIDE_SIGNATURE_BLOCK } from '@/lib/navmc10132-page11';
 import { PAGE11_FLOW, measureTimes } from '@/lib/page11-flow';
 import { FormData } from '@/types';
 
@@ -200,7 +200,7 @@ describe('handing the entries to the app Page 11', () => {
     for (const column of [String(next.remarksLeft), String(next.remarksRight)]) {
       expect(column).toContain(APP_PAGE11_SIGNATURE_BLOCK);
       expect(column.endsWith(APP_PAGE11_SIGNATURE_BLOCK)).toBe(true);
-      expect(column).not.toContain(SIGNATURE_BLOCK);
+      expect(column).not.toContain(SIDE_BY_SIDE_SIGNATURE_BLOCK);
       // The failure that shipped: two labels sharing one line, which this
       // renderer's wrap turns into a stacked mess.
       expect(column).not.toMatch(/Signature of Marine +Signature of CO/);
