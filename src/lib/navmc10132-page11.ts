@@ -640,47 +640,43 @@ export const DISCHARGE_CONSEQUENCES_SENTENCE =
 /**
  * The same acknowledgment, laid out for the app's own NAVMC 118(11).
  *
- * STACKED, NOT SIDE BY SIDE, and the reason is measurement rather than
- * taste. drawSimpleColumn in services/pdf/navmc11811Generator draws these
- * columns in Courier at 9pt and wraps them by CHARACTER COUNT at 48, not by
- * measured width:
+ * STACKED, NOT SIDE BY SIDE, and the reason was measurement rather than
+ * taste. Until 0.13.2 services/pdf/navmc11811Generator drew these columns
+ * in Courier at 9pt and wrapped them by CHARACTER COUNT at 48, not by
+ * measured width. The side-by-side block broke on that count alone: its
+ * rule line is 52 characters and split into a 30-character fragment and a
+ * 21-character one; its label line is 54 and split with "of CO" orphaned
+ * onto a fourth line. Two rules rendered as three fragments with a dangling
+ * signer, which is the page Stephen reported on 2026-08-27.
  *
- *   drawSimpleColumn(page, data.remarksLeft, PAGE11_BOXES.remarksLeft,
- *                    monoFont, 9, 10, 48)
+ * SINCE 0.13.2 (2026-09-26) the generator draws through lib/page11-flow:
+ * Times-Roman 9pt on a 10pt line, wrapped on measured width at 260pt,
+ * whitespace runs kept, forty lines a column, then the right column, then
+ * a continuation page. Under that renderer the side-by-side block fits the
+ * app column too (211.5pt), so the stacked block is no longer forced by the
+ * renderer. It stays because the section builds it and the owner approved
+ * the arrangement. tests/navmc10132-page11 holds both blocks to the real
+ * flow rather than a mirror of it.
  *
- * The side-by-side block breaks on that count alone. Its rule line is 52
- * characters and splits into a 30-character fragment and a 21-character one;
- * its label line is 54 and splits with "of CO" orphaned onto a fourth line.
- * Two rules render as three fragments with a dangling signer, which is the
- * page Stephen reported on 2026-08-27.
- *
- * The padding is NOT the problem, contrary to two earlier revisions of this
- * comment. n consecutive spaces split into n - 1 empty strings and rejoin as
- * n spaces, so alignment survives the wrapper intact. Only the count breaks
- * it. The test writes out all four rendered lines rather than describing
- * them, because both wrong explanations passed a green suite.
- *
- * The stacked block has no line over 30 characters, so every line clears the
- * 48-character measure and the wrapper returns it unchanged.
- *
- * VERTICAL BUDGET. The column box is 400pt tall at a 10pt line height, so 40
- * lines, and drawSimpleColumn breaks out of the loop when it runs past the
- * bottom rather than reporting it. The counseling entry renders 32 of those
- * 40 lines on a short corrective action, this block included. A long enough
- * item 3 or item 4 will clip silently, the same defect item 21 had.
+ * VERTICAL BUDGET. The column box is 400pt tall at a 10pt line height, so
+ * 40 lines. The flow no longer drops text past the box, it carries it into
+ * the right column and onto a continuation page, which for an NJP entry is
+ * still the wrong outcome: the right column is the second entry's place and
+ * the official form has no second page. The counseling entry renders 32 of
+ * those 40 lines on a short corrective action, this block included, and the
+ * tests fail the moment either column overflows.
  *
  * TWO BLOCKS RATHER THAN ONE COMPROMISE. The official form renders 9pt
  * Times into a 266.5pt column, where the side-by-side block measures 211.5pt
- * and fits, and Stephen tuned its alignment by hand on 2026-08-27. Forcing
- * one layout on both would either break on the app or undo work he approved
- * on the form. Each block is measured against the renderer that draws it,
- * and the tests assert both.
+ * and fits, and Stephen tuned its alignment by hand on 2026-08-27. Each
+ * block is measured against the renderer that draws it, and the tests
+ * assert both.
  *
  * TWO BLANK LINES IN EACH GAP, Stephen 2026-08-28: "lets add two hard spaces
  * between the I choose (to) (not to) make a rebuttal. and the MArine
  * signature and the Marine signature and the co signature line." Blank lines
- * survive this renderer: split('\n') yields '', wrapTextByCharCount returns
- * [''] for it, and the draw loop still spends a line height on it.
+ * survive this renderer: an empty paragraph becomes one empty flow line and
+ * the draw loop still spends a line height on it.
  */
 export const APP_PAGE11_SIGNATURE_BLOCK =
   '______________________________\n' +
