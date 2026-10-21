@@ -79,8 +79,10 @@ export function pageOfMarker(items: PdfTextItem[], marker: string): number {
 /** Decodes one named packet (e.g. "datasets") out of a dynamic XFA file's /XFA array. */
 export async function readXfaPacket(bytes: Uint8Array, want: string): Promise<string> {
   const doc = await PDFDocument.load(bytes);
-  const acroForm = doc.catalog.lookup(PDFName.of('AcroForm'), PDFDict);
-  const xfa = acroForm.lookup(PDFName.of('XFA')) as PDFArray;
+  const acroForm = doc.catalog.lookupMaybe(PDFName.of('AcroForm'), PDFDict);
+  if (!acroForm) throw new Error('not an interactive form: no AcroForm dictionary');
+  const xfa = acroForm.lookupMaybe(PDFName.of('XFA'), PDFArray);
+  if (!xfa) throw new Error('not a dynamic XFA form: AcroForm has no XFA packet array');
   for (let i = 0; i < xfa.size() - 1; i += 2) {
     const name = xfa.get(i);
     const text = name instanceof PDFString || name instanceof PDFHexString ? name.decodeText() : '';

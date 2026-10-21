@@ -40,7 +40,9 @@ test('the official NAVMC 10274 carries the date picture and the typed name', asy
   await page.getByRole('button', { name: 'Export' }).click();
   await page.getByRole('menuitem', { name: 'PDF Document (.pdf)' }).click();
   const file = await download;
-  const bytes = readFileSync((await file.path()) as string);
+  const path = await file.path();
+  expect(path, 'download must land on disk').toBeTruthy();
+  const bytes = readFileSync(path as string);
   await expect(page.getByText('Official Form Exported', { exact: true })).toBeVisible();
 
   const datasets = await readXfaPacket(new Uint8Array(bytes), 'datasets');
