@@ -531,12 +531,17 @@ function StepRail({ done }: { done: Record<CounselingStep, boolean> }) {
       <ol className="flex flex-wrap gap-2">
         {STEPS.map((s) => (
           <li key={s.n}>
-            <a href={`#${stepId(s.n)}`} className={cn('inline-flex items-center gap-1.5 text-xs rounded-full px-2.5 py-1 border', done[s.n] ? 'bg-primary/10 border-primary/40 text-foreground' : 'border-border text-muted-foreground')}
-              aria-label={`Step ${s.n}, ${s.title}${done[s.n] ? ', done' : ''}`}>
+            {/* The accessible name is the visible text plus a hidden
+                "done" suffix. An aria-label that rephrased it ("Step 1,
+                Occasion and timing") fails WCAG 2.5.3 as axe-core 4.11
+                checks it: the visible text must appear in the name. The
+                list is already named "Counseling steps" and ordered. */}
+            <a href={`#${stepId(s.n)}`} className={cn('inline-flex items-center gap-1.5 text-xs rounded-full px-2.5 py-1 border', done[s.n] ? 'bg-primary/10 border-primary/40 text-foreground' : 'border-border text-muted-foreground')}>
               <span className={cn('inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px]', done[s.n] ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
-                {done[s.n] ? <Check className="w-3 h-3" /> : s.n}
+                {done[s.n] ? <Check className="w-3 h-3" aria-hidden="true" /> : s.n}
               </span>
               {s.title}
+              {done[s.n] && <span className="sr-only">, done</span>}
             </a>
           </li>
         ))}

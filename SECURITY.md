@@ -36,7 +36,7 @@ The following are explicit non-concerns for this PoC.
 - Findings against the live GitHub Pages deployment URL (the site is a static export with no backend).
 - Findings that require an attacker to first compromise the user's workstation, browser, or local file system.
 - Findings against samples in `public/examples/`, `public/templates/`, and `sample-directive.nldp` which contain only fictional data per the audit pass.
-- Advisories the CI audit gate already blocks. Every test run executes `npm audit --omit=dev --audit-level=high` against the production tree, and Dependabot files weekly updates for the rest. The two moderate postcss findings recorded in `docs/COMPLIANCE_REMEDIATION_PLAN.md` Phase 3 P3-3 were cleared by the 0.2.0 lockfile refresh; as of 2026-09-05 `npm audit` reports zero advisories in both trees.
+- Advisories the CI audit gate already blocks. Every test run executes `npm audit --omit=dev --audit-level=high` against the production tree, and Dependabot files weekly updates for the rest. As of 2026-10-21 `npm audit --omit=dev` reports nothing at or above high severity; the three moderate findings left are one `sprintf-js` chain reached only through `mammoth`'s command-line parser, which the app never loads, and the only fix is a breaking downgrade of `mammoth`. The development tree carries advisories in tooling (the Tailwind 3 toolchain, `gh-pages`, `eslint-config-next`) that do not ship.
 
 ## In Scope
 

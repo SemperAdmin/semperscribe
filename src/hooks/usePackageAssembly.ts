@@ -221,6 +221,11 @@ export function usePackageAssembly({ savedLetters, toast }: UsePackageAssemblyAr
       }
 
       const bytes = await merged.save();
+      // The package carries every member letter: scan them all and ask
+      // once, as a single export does (owner's ruling of 2026-10-21).
+      const { clearedForExport } = await import('@/lib/export-gate');
+      const packaged = memberIds.map((id) => savedLetters.find((l) => l.id === id)).filter(Boolean);
+      if (!(await clearedForExport(packaged))) return;
       const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;

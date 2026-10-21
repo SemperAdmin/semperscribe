@@ -191,9 +191,22 @@ async function currentBackupDir(): Promise<FileSystemDirectoryHandle | null> {
  * name of a good one. P3-3: older snapshots past BACKUP_KEEP go after
  * the new one is safely closed.
  */
+/**
+ * Letters the user has already cleared for the folder this session. The
+ * folder copy is an export like any other (owner's ruling of 2026-10-21:
+ * every path warns, none blocks), but a save happens often, so the prompt
+ * for one letter shows once per session, not on every save.
+ */
+const clearedForFolder = new Set<string>();
+
 export async function backupDocument(letter: SavedLetter): Promise<boolean> {
   const handle = await currentBackupDir();
   if (!handle) return false;
+  if (!clearedForFolder.has(letter.id)) {
+    const { clearedForExport } = await import('@/lib/export-gate');
+    if (!(await clearedForExport(letter))) return false;
+    clearedForFolder.add(letter.id);
+  }
   const fileName = snapshotName(letter);
   const fileHandle = await handle.getFileHandle(fileName, { create: true });
   const writable = await fileHandle.createWritable();
