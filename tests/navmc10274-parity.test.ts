@@ -12,7 +12,7 @@ import { registerNodeAssets } from './node-assets';
 import { extractPdfTextLayout, readXfaPacket } from './golden/helpers';
 import { exportOfficialForm } from '@/lib/xfa-form-fill';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
-import { NAVMC10274_FIELDS, aaTextBox, flowAaBody, wrapAaText } from '@/lib/navmc10274-layout';
+import { NAVMC10274_FIELDS, aaFirstBaselineOffset, aaTextBox, flowAaBody, wrapAaText } from '@/lib/navmc10274-layout';
 import { TLE_EXTENSION_FIXTURE } from './fixtures/navmc10274-tle-extension';
 import type { FormData, ParagraphData } from '@/types';
 
@@ -81,7 +81,8 @@ describe('NAVMC 10274 preview and official export parity', () => {
     expect(drawnIn('ProcAct')).toEqual([fx.formData.sig]);
     const box = aaTextBox(NAVMC10274_FIELDS.ProcAct);
     const name = drawn.find(i => i.page === 3 && squash(i.text) === fx.formData.sig);
-    expect(Math.abs(name!.y - (box.top - 0.891 * 10 - 3 * NAVMC10274_FIELDS.ProcAct.lineHeight))).toBeLessThan(1.5);
+    const proc = NAVMC10274_FIELDS.ProcAct;
+    expect(Math.abs(name!.y - (box.top - aaFirstBaselineOffset(proc) - 3 * proc.lineHeight))).toBeLessThan(1.5);
   });
 
   it('every small box carries the same words on both paths', () => {
