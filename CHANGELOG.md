@@ -12,6 +12,10 @@ matching GitHub release with this file's section as the notes.
 - NAVMC 10274 (AA Form) official export: the date is written in the form's own picture, YYYY-MM-DD, as the preview already showed it; the typed name of the originator now goes three blank lines under the text, starting at the box's centre line, where the export used to drop it; a blank paragraph no longer renumbers the paragraphs after it, and a title-only paragraph prints under its number as the preview always did; the starting reference letter and enclosure number follow the shared helpers (past (z) reads "aa" in the preview too, and a stray enclosure start no longer prints "(NaN)").
 - NAVMC 10274: text that overruns block 12 continues in block 13 (Processing Action) on the official export, by the owner's ruling of 2026-10-21; the processing chain endorses on a separate page. The new src/lib/navmc10274-layout.ts holds the measured geometry of every field on the official blank, and both renderers are being moved onto it (the preview follows in the next release).
 
+### Security
+
+- Production dependencies cleared of the four advisories at or above high severity reported by `npm audit` on 2026-10-21: Next.js 16.3.6 to 16.4.2 (six advisories, GHSA-3w37-wq28-93x7 and five others), sharp 0.35.4 to 0.35.5 (GHSA-wq5f-xc86-pv6w), proxy-addr 2.0.7 to 2.0.8 (GHSA-jqcg-44mw-7w3h) and source-map-js 1.2.1 to 1.2.2 (GHSA-68fv-2mgg-jv7q). hono, ip-address, fast-uri and the MCP SDK move with them. The three moderate findings left are sprintf-js, reached only through mammoth's command-line parser, which the app does not load.
+
 ## [0.13.4] - 2026-09-26
 
 ### Added
