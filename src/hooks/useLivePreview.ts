@@ -7,6 +7,14 @@ import { getClassification, bannerText } from '@/lib/classification';
 import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-rows';
 import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
 import type { SamePageStatus } from '@/lib/same-page-host';
+import { aaFormUsesOfficialForm } from '@/lib/official-form-route';
+
+/**
+ * What the pane shows: a PDF the browser's viewer renders in the blob
+ * iframe, or the official dynamic-XFA form, which the browser cannot
+ * render and pdf.js lays out instead (XfaFormPreview).
+ */
+export type PreviewKind = 'pdf' | 'official-xfa';
 
 /** E.3: the bytes of the letter a same-page endorsement is added to, or null. */
 export type SamePageHostResolver = () => Promise<Uint8Array | null>;
@@ -68,6 +76,7 @@ export function useLivePreview(
   // previewBlob feeds pdfjs consumers directly (no blob: fetch under CSP);
   // previewUrl stays for the iframe and downloads.
   const [previewBlob, setPreviewBlob] = useState<Blob | undefined>(undefined);
+  const [previewKind, setPreviewKind] = useState<PreviewKind>('pdf');
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   // E.3: where the same-page endorsement landed on the last render.
   // Null for every other document.
@@ -108,6 +117,7 @@ export function useLivePreview(
       // P6-5: the placeholder notice is a preview courtesy only. Exports throw.
       const ctx = { formData, vias, references, enclosures, copyTos, paragraphs, distList, mode: 'preview' as const };
       let blob: Blob;
+      let kind: PreviewKind = 'pdf';
       let status: SamePageStatus | null = null;
       // E.3 (M-5216.5 9-1, Figure 9-1): a same-page endorsement with the
       // letter attached previews as that letter with the endorsement on
@@ -121,6 +131,15 @@ export function useLivePreview(
         const endorsed = await renderSamePageWithHost(blockCtx, generatePdfForDocType, hostBytes);
         blob = new Blob([new Uint8Array(endorsed.bytes)], { type: 'application/pdf' });
         status = endorsed.placement;
+      } else if (aaFormUsesOfficialForm(formData, enclosureRows, enclosureFiles)) {
+        // The AA Form previews as the official fillable form being filled,
+        // the way the NAVMC 10132 does (owner, 2026-10-21): the export's own
+        // bytes, laid out by pdf.js's XFA engine in the pane. A signature
+        // field or a bound file sends it to the redraw below, as the export
+        // routes (useDocumentExport.ts), so the preview stays the export.
+        const { exportOfficialForm } = await import('@/lib/xfa-form-fill');
+        blob = await exportOfficialForm({ formData, vias, references, enclosures, copyTos, paragraphs });
+        kind = 'official-xfa';
       } else {
         blob = await applySignatureFields(await generatePdfForDocType(ctx));
         if (isSamePageEndorsement(formData)) status = { status: 'no-host' };
@@ -151,6 +170,7 @@ export function useLivePreview(
         return url;
       });
       setPreviewBlob(blob);
+      setPreviewKind(kind);
       setSamePageStatus(status);
       setPreviewError(null);
     } catch (e) {
@@ -176,5 +196,5 @@ export function useLivePreview(
     return () => clearTimeout(timer);
   }, [updatePreview]);
 
-  return { previewUrl, previewBlob, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus, previewError };
+  return { previewUrl, previewBlob, previewKind, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus, previewError };
 }

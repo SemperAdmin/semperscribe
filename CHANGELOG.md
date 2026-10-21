@@ -5,10 +5,11 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
-## [0.13.8] - 2026-10-21
+## [0.13.9] - 2026-10-21
 
 ### Changed
 
+- NAVMC 10274 (AA Form) live preview shows the official form itself being filled, as the NAVMC 10132 preview does: the pane lays out the export's own bytes, the government's fillable form with the app's datasets, through pdf.js's XFA engine, three pages, read-only, scaled to the pane. Placing a signature field, or binding an enclosure file, switches the preview to the flattened redraw, the same two facts that route the export, so the preview stays the export. Print is off for the official form in the pane; Download is the export as before.
 - NAVMC 10274: when the typed name alone spills past block 12, it keeps its three blank lines at the top of block 13, so it sits three lines under the text there too, on the official export and in the preview alike (owner's ruling of 2026-10-21, second round). The owner's Acrobat check of the v3 request passed at the 30-line safe capacity, which stands.
 
 ## [0.13.7] - 2026-10-21

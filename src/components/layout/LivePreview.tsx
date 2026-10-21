@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import type { RequiredFieldStatus } from '@/lib/required-fields';
 
 import { PageCountIndicator } from './PageCountIndicator';
+import { XfaFormPreview } from './XfaFormPreview';
+import type { PreviewKind } from '@/hooks/useLivePreview';
 
 // D.2: the compliance banner moved to the shell so it renders at every
 // width. The issue shape it reads keeps its old import path.
@@ -14,6 +16,12 @@ interface LivePreviewProps {
   className?: string;
   previewUrl?: string; // If we have a blob URL
   previewBlob?: Blob | null;
+  /**
+   * 'official-xfa': the blob is the official dynamic-XFA form, which the
+   * browser's viewer shows as a placeholder page; pdf.js lays it out in
+   * the pane instead. Default 'pdf': the blob iframe.
+   */
+  previewKind?: PreviewKind;
   isLoading?: boolean;
   onUpdatePreview?: () => void;
   documentType?: string;
@@ -73,7 +81,7 @@ export function PreviewEmptyState({ fields }: { fields: RequiredFieldStatus[] })
   );
 }
 
-export function LivePreview({ className, previewUrl, previewBlob, isLoading, onUpdatePreview, documentType = 'standard', downloadFileName, onDownloadExport, emptyStateFields, previewError }: LivePreviewProps) {
+export function LivePreview({ className, previewUrl, previewBlob, previewKind = 'pdf', isLoading, onUpdatePreview, documentType = 'standard', downloadFileName, onDownloadExport, emptyStateFields, previewError }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // R12 (USER_DRIVEN_ROADMAP): the Print and Download buttons were inert.
@@ -130,7 +138,7 @@ export function LivePreview({ className, previewUrl, previewBlob, isLoading, onU
              title="Print"
              className="h-7 w-7 text-muted-foreground hover:text-foreground"
              onClick={handlePrint}
-             disabled={!previewUrl || isLoading}
+             disabled={!previewUrl || isLoading || previewKind === 'official-xfa'}
            >
              <Printer className="w-3.5 h-3.5" />
            </Button>
@@ -170,6 +178,8 @@ export function LivePreview({ className, previewUrl, previewBlob, isLoading, onU
               <p className="text-xs text-foreground/70">Generating preview...</p>
             </div>
           </div>
+        ) : previewKind === 'official-xfa' && previewBlob ? (
+          <XfaFormPreview blob={previewBlob} className="w-full h-full" />
         ) : previewUrl ? (
           <iframe ref={iframeRef} src={previewUrl} className="w-full h-full border-none" title="PDF Preview" />
         ) : (

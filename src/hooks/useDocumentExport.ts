@@ -134,8 +134,11 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
         format === 'pdf' &&
         (formData.documentType === 'aa-form' || formData.documentType === 'page11' || formData.documentType === 'navmc10922')
       ) {
-        const signatureFields = (formData.signatureFields as unknown[] | undefined) ?? [];
-        const hasBoundFiles = Boolean(enclosureRows?.some(r => r.fileId && enclosureFiles?.has(r.fileId)));
+        // The same two facts route the live preview (useLivePreview.ts), so
+        // what the pane shows is what this delivers.
+        const { signatureFieldCount, hasBoundEnclosureFiles } = await import('@/lib/official-form-route');
+        const signatureFields = { length: signatureFieldCount(formData) };
+        const hasBoundFiles = hasBoundEnclosureFiles(enclosureRows, enclosureFiles);
         // START (10922): the checkbox is unbindable in the XFA datasets,
         // so a START application routes to the flattened redraw where
         // the box CAN be checked (build plan Phase 5 routing).
