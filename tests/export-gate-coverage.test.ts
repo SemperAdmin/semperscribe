@@ -9,11 +9,21 @@
  * explained.
  */
 import { describe, it, expect } from 'vitest';
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 const ROOT = join(__dirname, '..');
+
+/** Every .ts/.tsx file under src/, repo-relative with forward slashes; no git needed. */
+function sourceFiles(dir = join(ROOT, 'src')): string[] {
+  const out: string[] = [];
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) out.push(...sourceFiles(full));
+    else if (/\.tsx?$/.test(name)) out.push(relative(ROOT, full).split('\\').join('/'));
+  }
+  return out;
+}
 
 /** Files that mint a URL without calling the gate, and why that is right. */
 const COVERED_ELSEWHERE: Record<string, string> = {
@@ -28,8 +38,7 @@ const COVERED_ELSEWHERE: Record<string, string> = {
 
 describe('export gate coverage', () => {
   it('every file that mints a download URL calls clearedForExport or is accounted for', () => {
-    const out = execFileSync('git', ['grep', '-l', 'createObjectURL', '--', 'src'], { cwd: ROOT, encoding: 'utf8' });
-    const files = out.split('\n').filter(Boolean);
+    const files = sourceFiles().filter((f) => readFileSync(join(ROOT, f), 'utf8').includes('createObjectURL'));
     expect(files.length).toBeGreaterThan(5);
     const ungated = files.filter((f) => {
       if (COVERED_ELSEWHERE[f]) return false;
@@ -41,6 +50,7 @@ describe('export gate coverage', () => {
 
   it('the folder backup is gated too, though it writes through the File System Access API', () => {
     const text = readFileSync(join(ROOT, 'src/lib/auto-backup.ts'), 'utf8');
-    expect(text).toContain('clearedForExport(letter)');
+    expect(text).toContain('exportFindings(letter)');
+    expect(text).toContain('requestExportAck(findings)');
   });
 });

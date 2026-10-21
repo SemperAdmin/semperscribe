@@ -192,20 +192,24 @@ async function currentBackupDir(): Promise<FileSystemDirectoryHandle | null> {
  * the new one is safely closed.
  */
 /**
- * Letters the user has already cleared for the folder this session. The
- * folder copy is an export like any other (owner's ruling of 2026-10-21:
- * every path warns, none blocks), but a save happens often, so the prompt
- * for one letter shows once per session, not on every save.
+ * What the user has already cleared for the folder this session, by
+ * letter: the findings they said yes to. The folder copy is an export
+ * like any other (owner's ruling of 2026-10-21: every path warns, none
+ * blocks), but a save happens often, so one letter prompts again only
+ * when its findings change, as when an SSN is added after the first
+ * clearance, not on every save.
  */
-const clearedForFolder = new Set<string>();
+const clearedForFolder = new Map<string, string>();
 
 export async function backupDocument(letter: SavedLetter): Promise<boolean> {
   const handle = await currentBackupDir();
   if (!handle) return false;
-  if (!clearedForFolder.has(letter.id)) {
-    const { clearedForExport } = await import('@/lib/export-gate');
-    if (!(await clearedForExport(letter))) return false;
-    clearedForFolder.add(letter.id);
+  const { exportFindings, requestExportAck } = await import('@/lib/export-gate');
+  const findings = exportFindings(letter);
+  const signature = findings.join('\n');
+  if (findings.length > 0 && clearedForFolder.get(letter.id) !== signature) {
+    if (!(await requestExportAck(findings))) return false;
+    clearedForFolder.set(letter.id, signature);
   }
   const fileName = snapshotName(letter);
   const fileHandle = await handle.getFileHandle(fileName, { create: true });
