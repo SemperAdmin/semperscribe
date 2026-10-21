@@ -5,6 +5,12 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.7] - 2026-10-21
+
+### Added
+
+- NAVMC 10274 parity proof: a test exports the owner's request through the official form, re-wraps the fields it carries with the layout module's own metrics, and requires the same lines the preview drew, box by box, block 12 and block 13 included. A browser test opens the file the app downloads and reads the date picture and the typed name out of its datasets. Every shipped AA Form template runs through the fit check: no small box overflows anywhere in the pack; the Reserve O6-level SgtMaj slate request fills block 12 and runs twelve lines into block 13.
+
 ## [0.13.6] - 2026-10-21
 
 ### Fixed
