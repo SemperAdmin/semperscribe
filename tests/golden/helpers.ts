@@ -3,6 +3,7 @@
  * Test-only code. No src/ imports are modified by this harness.
  */
 import JSZip from 'jszip';
+import { PDFDocument, PDFName, PDFDict, PDFArray, PDFString, PDFHexString, PDFRawStream, decodePDFRawStream } from 'pdf-lib';
 
 /**
  * Extract word/document.xml from a generated DOCX blob and pretty-print
@@ -73,4 +74,20 @@ export function pageOfMarker(items: PdfTextItem[], marker: string): number {
     if (text.includes(marker)) return page;
   }
   return -1;
+}
+
+/** Decodes one named packet (e.g. "datasets") out of a dynamic XFA file's /XFA array. */
+export async function readXfaPacket(bytes: Uint8Array, want: string): Promise<string> {
+  const doc = await PDFDocument.load(bytes);
+  const acroForm = doc.catalog.lookup(PDFName.of('AcroForm'), PDFDict);
+  const xfa = acroForm.lookup(PDFName.of('XFA')) as PDFArray;
+  for (let i = 0; i < xfa.size() - 1; i += 2) {
+    const name = xfa.get(i);
+    const text = name instanceof PDFString || name instanceof PDFHexString ? name.decodeText() : '';
+    if (text === want) {
+      const stream = xfa.lookup(i + 1) as PDFRawStream;
+      return new TextDecoder().decode(decodePDFRawStream(stream).decode());
+    }
+  }
+  throw new Error(`${want} not found`);
 }

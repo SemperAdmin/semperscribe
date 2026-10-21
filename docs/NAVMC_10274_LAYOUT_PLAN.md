@@ -1,6 +1,6 @@
 # NAVMC 10274 (AA Form): one layout for the preview and the official export
 
-Status: PR 2 of 3 (0.13.6); PR 1 shipped in 0.13.5. Owner's handoff of 2026-10-21, verified against
+Status: PR 3 of 3 (0.13.7); PR 1 shipped in 0.13.5, PR 2 in 0.13.6. Open: the owner's Acrobat check (item 7) and the cloud.gov dispatch. Owner's handoff of 2026-10-21, verified against
 `main` at `da11784` by four independent reads of the code, the XFA blank,
 and the test suite. Decisions marked "ruled" are the owner's and binding.
 
@@ -93,8 +93,16 @@ lines below text".
    boxes are built once (`aaFieldValues`) for all three consumers. Tests:
    `tests/navmc10274-fit.test.ts`, `tests/navmc10274-preview.test.ts`
    (text positions read back from the rendered PDF).
-3. Then: a parity test rendering the fixture through both paths and asserting
-   identical block 12 and block 13 line breaks, a browser test reading the
-   exported datasets for the date and the name, a sweep of the 27 AA
-   templates for fit, a manual cloud.gov dispatch, and the owner's Acrobat
-   check on the v3 file, which alone closes the item.
+3. 0.13.7 (this PR): `tests/navmc10274-parity.test.ts` exports the fixture
+   through the official form, re-wraps every field value with the module's
+   metrics and requires the lines the preview drew, box by box;
+   `tests/e2e/aa-form-export.spec.ts` opens the downloaded file in a real
+   browser run and reads the date picture and the typed name out of its
+   datasets; `tests/navmc10274-template-sweep.test.ts` runs the 27 shipped
+   AA templates through the fit check and pins the result. Findings of the
+   sweep, 2026-10-21: no small box overflows anywhere in the pack; one
+   template, `aa-sgtmaj-slate`, fills block 12 (30 lines) and runs 12 lines
+   into block 13 with the name. Whether to shorten it is the owner's call.
+   Still open after this PR: the manual cloud.gov dispatch (run after the
+   merge) and the owner's Acrobat check on the v3 file (item 7, and the
+   30 versus 32 line measurement), which alone closes the handoff.
