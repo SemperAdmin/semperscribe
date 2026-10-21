@@ -3,6 +3,7 @@ import { Navmc10274Data, BoxBoundary } from '@/types/navmc';
 import { ParagraphData } from '@/types';
 import { generateCitation } from '@/lib/citation';
 import { loadAssetBytes } from '@/lib/assets';
+import { normalizeAaDate } from '@/lib/navmc10274-layout';
 
 // --- Configuration & Constants ---
 
@@ -95,35 +96,6 @@ function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: numbe
   return lines;
 }
 
-/**
- * Formats a date string to YYYY-MM-DD for AA Forms
- */
-function formatDateForAA(dateStr: string): string {
-  if (!dateStr) return '';
-  
-  // Handle "today"
-  if (dateStr.toLowerCase() === 'today') {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  // If already YYYY-MM-DD, return as is
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-
-  // Handle standard formats
-  const date = new Date(dateStr);
-  if (!isNaN(date.getTime())) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-  
-  return dateStr;
-}
 
 /**
  * Handles complex text drawing:
@@ -355,6 +327,10 @@ async function drawSupplementalInfo(
 /**
  * Handles formatting for the "Via" block, supporting multi-column layout for >2 items.
  */
+// The via lines arrive numbered (aaViaLines in src/lib/navmc10274-layout.ts,
+// shared with the official-form export); this lays them out and adds
+// nothing. One line sits alone, two stack, three or more fill two columns
+// in column-major order.
 function drawVia(
   page: PDFPage,
   viaText: string,
@@ -368,58 +344,34 @@ function drawVia(
 
   const startY = box.top - PADDING - FONT_SIZE + 2;
 
-  // Case 1: Single Item (No Numbering)
-  if (items.length === 1) {
-    drawLineWithHighlights(page, items[0], box.left + PADDING, startY, font);
-    return;
-  }
-
-  // Case 2: Two Items (Vertical Stack, Numbered)
-  if (items.length === 2) {
-    items.forEach((item, index) => {
-      const text = `(${index + 1}) ${item}`;
-      const y = startY - (index * LINE_HEIGHT);
-      drawLineWithHighlights(page, text, box.left + PADDING, y, font);
+  if (items.length <= 2) {
+    items.forEach((text, index) => {
+      drawLineWithHighlights(page, text, box.left + PADDING, startY - (index * LINE_HEIGHT), font);
     });
     return;
   }
 
-  // Case 3: More than 2 Items (2-Column Layout, Numbered)
-  // Split into columns (Column-Major Order)
   const midPoint = Math.ceil(items.length / 2);
   const col1Items = items.slice(0, midPoint);
   const col2Items = items.slice(midPoint);
 
-  // Calculate Column 2 X-Offset dynamically
   let maxCol1Width = 0;
-  col1Items.forEach((item, index) => {
-    const text = `(${index + 1}) ${item}`;
-    const width = font.widthOfTextAtSize(text, FONT_SIZE);
-    if (width > maxCol1Width) {
-      maxCol1Width = width;
-    }
+  col1Items.forEach(text => {
+    maxCol1Width = Math.max(maxCol1Width, font.widthOfTextAtSize(text, FONT_SIZE));
   });
 
   const twoSpacesWidth = font.widthOfTextAtSize('  ', FONT_SIZE);
   const col2X = box.left + PADDING + maxCol1Width + twoSpacesWidth;
 
-  // Column 1
-  col1Items.forEach((item, index) => {
-    const text = `(${index + 1}) ${item}`;
-    const y = startY - (index * LINE_HEIGHT);
-    // Clip if exceeds box height
-    if (y < box.top - box.height) return;
-    drawLineWithHighlights(page, text, box.left + PADDING, y, font);
-  });
-
-  // Column 2
-  col2Items.forEach((item, index) => {
-    const text = `(${index + 1 + midPoint}) ${item}`;
-    const y = startY - (index * LINE_HEIGHT);
-    // Clip if exceeds box height
-    if (y < box.top - box.height) return;
-    drawLineWithHighlights(page, text, col2X, y, font);
-  });
+  const drawColumn = (column: string[], x: number) => {
+    column.forEach((text, index) => {
+      const y = startY - (index * LINE_HEIGHT);
+      if (y < box.top - box.height) return; // past the box: the fit gate's business
+      drawLineWithHighlights(page, text, x, y, font);
+    });
+  };
+  drawColumn(col1Items, box.left + PADDING);
+  drawColumn(col2Items, col2X);
 }
 
 async function appendPage3(doc: PDFDocument, page3Bytes: Uint8Array) {
@@ -463,7 +415,7 @@ export async function generateNavmc10274(data: Navmc10274Data): Promise<Uint8Arr
     
     // Apply specific formatting
     if (fieldKey === 'date' && typeof value === 'string') {
-      value = formatDateForAA(value);
+      value = normalizeAaDate(value);
     }
 
     if (value && box) {

@@ -6,6 +6,8 @@
  * the stream, and assert the values landed. Adobe rendering was gated
  * by hand (2026-07-17); this guards the mechanics from regressing.
  */
+import { aaBlockText, aaSignatureLead, flowAaBody } from '@/lib/navmc10274-layout';
+import { TLE_EXTENSION_FIXTURE } from './fixtures/navmc10274-tle-extension';
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -109,6 +111,52 @@ describe('XML builders', () => {
     // Nothing lost between the two columns.
     const words = (t: string) => t.replace(/&#xD;/g, ' ').split(/\s+/).filter(Boolean).length;
     expect(words(r1) + words(r2)).toBe(words(long.replace(/\n/g, ' ')));
+  });
+});
+
+describe('NAVMC 10274 body and date (handoff of 2026-10-21)', () => {
+  const lead = ' '.repeat(aaSignatureLead());
+  const field = (xml: string, name: string) => xml.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1];
+
+  it('writes the date in the form\'s own picture, YYYY-MM-DD', () => {
+    expect(field(buildNavmc10274Xml(slices()), 'Date')).toBe('2026-07-17');
+    expect(field(buildNavmc10274Xml(slices({ date: '2026-10-19' } as Partial<FormData>)), 'Date')).toBe('2026-10-19');
+  });
+
+  it('types the originator\'s name three blank lines under the text, at the centre line', () => {
+    const xml = buildNavmc10274Xml(slices({ sig: 'S. N. SHORTER' } as Partial<FormData>));
+    const supp = field(xml, 'SuppInfo')!;
+    expect(supp.endsWith(`a.  Sub item.&#xD;&#xD;&#xD;&#xD;${lead}S. N. SHORTER`)).toBe(true);
+    expect(field(xml, 'ProcAct')).toBeUndefined();
+    expect(xml).toContain('<ProcAct/>');
+  });
+
+  it('numbers around a blank paragraph without shifting', () => {
+    const s = slices();
+    s.paragraphs = [
+      { id: 1, level: 1, content: 'First' },
+      { id: 2, level: 1, content: '' },
+      { id: 3, level: 1, content: 'Third' },
+    ];
+    expect(field(buildNavmc10274Xml(s), 'SuppInfo')).toBe('1.  First&#xD;&#xD;2.  Third');
+  });
+
+  it('continues into block 13 and keeps the name\'s centring spaces when it opens the block', () => {
+    const s = slices({ sig: 'S. N. SHORTER' } as Partial<FormData>);
+    s.paragraphs = Array.from({ length: 15 }, (_, i) => ({ id: i + 1, level: 1, content: `Para ${i + 1}` }));
+    const xml = buildNavmc10274Xml(s);
+    expect(field(xml, 'SuppInfo')!.endsWith('15.  Para 15')).toBe(true);
+    expect(field(xml, 'ProcAct')).toBe(`${lead}S. N. SHORTER`);
+  });
+
+  it('lays the owner\'s request out the way the layout module says', () => {
+    const f = TLE_EXTENSION_FIXTURE;
+    const xml = buildNavmc10274Xml({ ...f, formData: f.formData as FormData });
+    const flow = flowAaBody(f.paragraphs, f.formData.sig as string);
+    expect(field(xml, 'SuppInfo')).toBe(aaBlockText(flow.block12).replace(/\n/g, '&#xD;'));
+    expect(field(xml, 'ProcAct')).toBe(`${lead}F. M. LASTNAME`);
+    expect(field(xml, 'Date')).toBe('2026-10-19');
+    expect(field(xml, 'Via1')).toBe('(1) Commanding Officer, Marine Aviation Training Support Group 23&#xD;(2) Deputy Commandant for Manpower and Reserve Affairs (MPO)');
   });
 });
 
