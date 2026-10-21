@@ -14,6 +14,7 @@ import {
   aaLinesFor,
   aaSignatureLead,
   aaUsableWidth,
+  aaViaLines,
   flowAaBody,
   normalizeAaDate,
 } from '@/lib/navmc10274-layout';
@@ -58,6 +59,29 @@ describe('normalizeAaDate', () => {
     expect(normalizeAaDate('')).toBe('');
     expect(normalizeAaDate('today')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(normalizeAaDate('not a date')).toBe('not a date');
+  });
+
+  it('reads the app\'s own "D Mon YY" by hand, with no engine parser and no time zone', () => {
+    expect(normalizeAaDate('1 Jan 26')).toBe('2026-01-01');
+    expect(normalizeAaDate('17 Jul 2026')).toBe('2026-07-17');
+    expect(normalizeAaDate('3 Sept 26')).toBe('2026-09-03');
+    expect(normalizeAaDate(' 19 October 26 ')).toBe('2026-10-19');
+    expect(normalizeAaDate('31 Feb 26')).toBe('2026-02-31'); // the picture, not a calendar check
+  });
+
+  it('reads a string carrying its own zone in that zone, so the day named is the day written', () => {
+    expect(normalizeAaDate('2026-10-19T00:00:00.000Z')).toBe('2026-10-19');
+    expect(normalizeAaDate('2026-10-19T23:30:00Z')).toBe('2026-10-19');
+    expect(normalizeAaDate('2026-10-19T00:00:00+10:00')).toBe('2026-10-18');
+  });
+});
+
+describe('aaViaLines', () => {
+  it('drops empty entries, leaves one via bare and numbers two or more', () => {
+    expect(aaViaLines([])).toEqual([]);
+    expect(aaViaLines(['', '  '])).toEqual([]);
+    expect(aaViaLines([' CO, MATSG-23 '])).toEqual(['CO, MATSG-23']);
+    expect(aaViaLines(['CO, MATSG-23', '', 'DC M&RA (MPO)'])).toEqual(['(1) CO, MATSG-23', '(2) DC M&RA (MPO)']);
   });
 });
 

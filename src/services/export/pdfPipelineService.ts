@@ -6,6 +6,7 @@ import { mergeAdminSubsections } from '@/lib/naval-format-utils';
 import type { Navmc10132ExportReport } from '@/lib/navmc10132-export';
 
 import { refLetterAt, startingEnclosureNumberFor, startingRefLetterFor } from '@/lib/reference-letters';
+import { aaViaLines } from '@/lib/navmc10274-layout';
 // Generators are imported dynamically inside each pipeline so the PDF
 // engines (@react-pdf/renderer, pdf-lib, the seal data) stay out of the
 // first-load bundle and load on the first preview/export instead.
@@ -42,7 +43,9 @@ function buildNavmc10274Data(ctx: PdfBuildContext) {
     from: ctx.formData.from || '',
     orgStation: ctx.formData.orgStation || '',
     to: ctx.formData.to || '',
-    via: ctx.vias.filter(v => v.trim()).join('\n'),
+    // Numbered here, by the same function as the official-form export;
+    // the drawer lays the lines out and adds nothing.
+    via: aaViaLines(ctx.vias).join('\n'),
     subject: ctx.formData.subj || '',
     // Same letter walk and number start as the official-form export
     // (src/lib/reference-letters.ts): past (z) reads "aa", never "{".

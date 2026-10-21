@@ -29,7 +29,7 @@ import {
 import { FormData, ParagraphData } from '@/types';
 import { columnText, flowPage11FormData } from '@/lib/page11-flow';
 import { refLetterAt, startingEnclosureNumberFor, startingRefLetterFor } from '@/lib/reference-letters';
-import { aaBlockText, flowAaBody, normalizeAaDate } from '@/lib/navmc10274-layout';
+import { aaBlockText, aaViaLines, flowAaBody, normalizeAaDate } from '@/lib/navmc10274-layout';
 import { resolvePublicPath } from '@/lib/path-utils';
 import { loadAssetBytes } from '@/lib/assets';
 // NAVMC 10922 needs a POSITIONAL emitter - 77 of its 102 datasets
@@ -84,10 +84,7 @@ export interface FormSlices {
 export function buildNavmc10274Xml(slices: FormSlices): string {
   const { formData, vias, references, enclosures, copyTos, paragraphs } = slices;
 
-  const viaList = vias.filter(v => v.trim());
-  const viaText = viaList.length <= 1
-    ? (viaList[0] ?? '')
-    : viaList.map((v, i) => `(${i + 1}) ${v}`).join('\n');
+  const viaText = aaViaLines(vias).join('\n');
 
   // Same letter walk as the preview, the Word export and the validator
   // (src/lib/reference-letters.ts), so a starting letter past (z) reads

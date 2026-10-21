@@ -105,14 +105,55 @@ export function aaLinesFor(value: string, field: AaField): number {
  * ISO date passes through; anything the engine can parse is converted;
  * anything else is returned as typed so the drafter sees what was wrong.
  */
+const AA_MONTHS: Record<string, number> = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+  jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12,
+};
+
+const isoPicture = (y: number, m: number, d: number) =>
+  `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+/**
+ * The Date field's picture is YYYY-MM-DD. The app's own date text is
+ * "D Mon YY" or "D Mon YYYY" (a two-digit year is 20YY); that form and the
+ * picture itself are read by hand, so no engine's Date parser and no time
+ * zone touches them. Only an unrecognised string falls through to the
+ * engine, and then a string carrying its own zone (a trailing Z or offset)
+ * is read in UTC so the calendar day it names is the day written. A string
+ * nothing can read is written as typed. "today" is the local calendar day.
+ */
 export function normalizeAaDate(dateStr: string): string {
   if (!dateStr) return '';
-  const iso = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  if (dateStr.trim().toLowerCase() === 'today') return iso(new Date());
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) return dateStr.trim();
-  const parsed = new Date(dateStr);
-  return Number.isNaN(parsed.getTime()) ? dateStr : iso(parsed);
+  const text = dateStr.trim();
+  if (text.toLowerCase() === 'today') {
+    const d = new Date();
+    return isoPicture(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  const dmy = /^(\d{1,2})\s+([A-Za-z]{3,9})\.?,?\s+(\d{2}|\d{4})$/.exec(text);
+  if (dmy) {
+    const month = AA_MONTHS[dmy[2].slice(0, 3).toLowerCase()];
+    const day = Number(dmy[1]);
+    if (month && day >= 1 && day <= 31) {
+      const year = dmy[3].length === 2 ? 2000 + Number(dmy[3]) : Number(dmy[3]);
+      return isoPicture(year, month, day);
+    }
+  }
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return dateStr;
+  return /(?:Z|[+-]\d{2}:?\d{2})$/i.test(text) && /\d{4}-\d{2}-\d{2}T/.test(text)
+    ? isoPicture(parsed.getUTCFullYear(), parsed.getUTCMonth() + 1, parsed.getUTCDate())
+    : isoPicture(parsed.getFullYear(), parsed.getMonth() + 1, parsed.getDate());
+}
+
+/**
+ * Via lines as both renderers print them: the empty entries dropped, a
+ * single via bare, two or more numbered "(1) ", "(2) ". One function so
+ * the official export and the preview cannot number differently.
+ */
+export function aaViaLines(vias: readonly string[]): string[] {
+  const list = vias.map(v => v.trim()).filter(Boolean);
+  return list.length <= 1 ? list : list.map((v, i) => `(${i + 1}) ${v}`);
 }
 
 /**
