@@ -29,7 +29,7 @@ import {
 import { FormData, ParagraphData } from '@/types';
 import { columnText, flowPage11FormData } from '@/lib/page11-flow';
 import { refLetterAt, startingEnclosureNumberFor, startingRefLetterFor } from '@/lib/reference-letters';
-import { aaBlockText, aaViaLines, flowAaBody, normalizeAaDate } from '@/lib/navmc10274-layout';
+import { aaBlockText, aaFieldValues, flowAaBody } from '@/lib/navmc10274-layout';
 import { resolvePublicPath } from '@/lib/path-utils';
 import { loadAssetBytes } from '@/lib/assets';
 // NAVMC 10922 needs a POSITIONAL emitter - 77 of its 102 datasets
@@ -82,40 +82,30 @@ export interface FormSlices {
  * block 13 (owner's rulings, 2026-10-21).
  */
 export function buildNavmc10274Xml(slices: FormSlices): string {
-  const { formData, vias, references, enclosures, copyTos, paragraphs } = slices;
+  const { formData, paragraphs } = slices;
 
-  const viaText = aaViaLines(vias).join('\n');
-
-  // Same letter walk as the preview, the Word export and the validator
-  // (src/lib/reference-letters.ts), so a starting letter past (z) reads
-  // as "aa" here too rather than as its first character.
-  const refStart = startingRefLetterFor(formData.documentType, formData.startingReferenceLevel);
-  const refText = references.filter(r => r.trim())
-    .map((r, i) => `(${refLetterAt(refStart, i)}) ${r}`).join('\n');
-
-  const enclStart = startingEnclosureNumberFor(formData.documentType, formData.startingEnclosureNumber);
-  const enclText = enclosures.filter(e => e.trim())
-    .map((e, i) => `(${enclStart + i}) ${e}`).join('\n');
-
-  const copyText = copyTos.filter(c => c.trim()).join('\n');
+  // Every small box reads the one value table the preview and the fit
+  // validator read (src/lib/navmc10274-layout.ts): the via numbering, the
+  // reference letter walk past (z), the enclosure start, the date picture.
+  const boxes = Object.fromEntries(aaFieldValues(slices).map(v => [v.field.name, v.value]));
 
   // Block 12 then block 13, the typed name three lines under the text.
   // Text past both blocks is the export gate's business (a block-severity
-  // validator), never silently clipped here.
+  // validator in src/lib/navmc10274-fit.ts), never silently clipped here.
   const body = flowAaBody(paragraphs, (formData.sig as string) || '');
 
   return XFA_WRAP([
-    tag('Date', normalizeAaDate(formData.date || '')),
-    tag('ActNum', formData.actionNo || ''),
-    tag('FileNum', formData.ssic || ''),
-    tag('NameFrom', formData.from || ''),
-    tag('Via1', viaText),
-    tag('OrgStat', formData.orgStation || ''),
-    tag('AddrTo', formData.to || ''),
-    tag('NatOfAct', formData.subj || ''),
-    tag('CopyTo', copyText),
-    tag('RefAuth', refText),
-    tag('Encl1', enclText),
+    tag('Date', boxes.Date),
+    tag('ActNum', boxes.ActNum),
+    tag('FileNum', boxes.FileNum),
+    tag('NameFrom', boxes.NameFrom),
+    tag('Via1', boxes.Via1),
+    tag('OrgStat', boxes.OrgStat),
+    tag('AddrTo', boxes.AddrTo),
+    tag('NatOfAct', boxes.NatOfAct),
+    tag('CopyTo', boxes.CopyTo),
+    tag('RefAuth', boxes.RefAuth),
+    tag('Encl1', boxes.Encl1),
     tagKeepingLead('SuppInfo', aaBlockText(body.block12)),
     tagKeepingLead('ProcAct', aaBlockText(body.block13)),
   ].join(''));

@@ -35,8 +35,9 @@
  *     orginiator and sign 3 lines below text", the form's own spelling).
  *   - The date is the form's own picture, YYYY-MM-DD, on both paths.
  */
-import type { ParagraphData } from '@/types';
+import type { FormData, ParagraphData } from '@/types';
 import { generateCitation } from '@/lib/citation';
+import { refLetterAt, startingEnclosureNumberFor, startingRefLetterFor } from '@/lib/reference-letters';
 import { timesRomanWidth } from '@/lib/times-roman-widths';
 import { wrapParagraph, type FlowLine } from '@/lib/page11-flow';
 
@@ -47,6 +48,11 @@ export interface AaField {
   /** XFA field name, also the datasets tag. */
   name: string;
   block: number;
+  /** Form page the field sits on (the official form's page 1 is instructions). */
+  page: 2 | 3;
+  /** Position inside the page's content subform, in millimetres from its top-left corner. */
+  xMm: number;
+  yMm: number;
   widthMm: number;
   heightMm: number;
   fontSize: number;
@@ -55,6 +61,8 @@ export interface AaField {
   insetsMm: { left: number; right: number; top: number; bottom: number };
   captionReserveMm: number;
   multiLine: boolean;
+  /** Horizontal alignment the field's para sets; left when absent. */
+  hAlign?: 'center';
 }
 
 const STD = { left: 0.762, right: 0.762, top: 0.762, bottom: 0.508 };
@@ -63,20 +71,67 @@ const STD = { left: 0.762, right: 0.762, top: 0.762, bottom: 0.508 };
 export const AA_DEFAULT_LINE_HEIGHT = 11.5;
 
 export const NAVMC10274_FIELDS: Record<string, AaField> = {
-  Date: { name: 'Date', block: 3, widthMm: 63.5, heightMm: 9.102, fontSize: 9, lineHeight: 9, insetsMm: { left: 1, right: 1, top: 1, bottom: 1 }, captionReserveMm: 2.8268, multiLine: false },
-  ActNum: { name: 'ActNum', block: 1, widthMm: 28.575, heightMm: 9.525, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 2.8268, multiLine: false },
-  FileNum: { name: 'FileNum', block: 2, widthMm: 34.925, heightMm: 9.525, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 3.0891, multiLine: false },
-  NameFrom: { name: 'NameFrom', block: 4, widthMm: 98.549, heightMm: 12.7, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 2.8268, multiLine: true },
-  OrgStat: { name: 'OrgStat', block: 5, widthMm: 98.113, heightMm: 25.4, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 3.1404, multiLine: true },
-  Via1: { name: 'Via1', block: 6, widthMm: 98.737, heightMm: 12.7, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 2.8268, multiLine: true },
-  AddrTo: { name: 'AddrTo', block: 7, widthMm: 95.25, heightMm: 28.575, fontSize: 10, lineHeight: 10, insetsMm: { left: 1.27, right: 1.27, top: 1.27, bottom: 0.508 }, captionReserveMm: 0, multiLine: true },
-  NatOfAct: { name: 'NatOfAct', block: 8, widthMm: 82.55, heightMm: 19.05, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 2.8268, multiLine: true },
-  CopyTo: { name: 'CopyTo', block: 9, widthMm: 82.55, heightMm: 15.875, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 2.8268, multiLine: true },
-  RefAuth: { name: 'RefAuth', block: 10, widthMm: 98.425, heightMm: 31.75, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 3.0891, multiLine: true },
-  Encl1: { name: 'Encl1', block: 11, widthMm: 98.425, heightMm: 31.75, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 2.8268, multiLine: true },
-  SuppInfo: { name: 'SuppInfo', block: 12, widthMm: 196.96, heightMm: 129.965, fontSize: 10, lineHeight: AA_DEFAULT_LINE_HEIGHT, insetsMm: STD, captionReserveMm: 3.1404, multiLine: true },
-  ProcAct: { name: 'ProcAct', block: 13, widthMm: 196.85, heightMm: 244.475, fontSize: 10, lineHeight: AA_DEFAULT_LINE_HEIGHT, insetsMm: STD, captionReserveMm: 0, multiLine: true },
+  Date: { name: 'Date', block: 3, page: 2, xMm: 133.35, yMm: 19.473, widthMm: 63.5, heightMm: 9.102, fontSize: 9, lineHeight: 9, insetsMm: { left: 1, right: 1, top: 1, bottom: 1 }, captionReserveMm: 2.8268, multiLine: false, hAlign: 'center' },
+  ActNum: { name: 'ActNum', block: 1, page: 2, xMm: 133.35, yMm: 9.948, widthMm: 28.575, heightMm: 9.525, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 2.8268, multiLine: false },
+  FileNum: { name: 'FileNum', block: 2, page: 2, xMm: 161.925, yMm: 9.948, widthMm: 34.925, heightMm: 9.525, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 3.0891, multiLine: false },
+  NameFrom: { name: 'NameFrom', block: 4, page: 2, xMm: 0.298, yMm: 28.759, widthMm: 98.549, heightMm: 12.7, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 2.8268, multiLine: true },
+  OrgStat: { name: 'OrgStat', block: 5, page: 2, xMm: 98.847, yMm: 28.575, widthMm: 98.113, heightMm: 25.4, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 3.1404, multiLine: true },
+  Via1: { name: 'Via1', block: 6, page: 2, xMm: 0.11, yMm: 41.275, widthMm: 98.737, heightMm: 12.7, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 2.8268, multiLine: true },
+  AddrTo: { name: 'AddrTo', block: 7, page: 2, xMm: 12.81, yMm: 57.15, widthMm: 95.25, heightMm: 28.575, fontSize: 10, lineHeight: 10, insetsMm: { left: 1.27, right: 1.27, top: 1.27, bottom: 0.508 }, captionReserveMm: 0, multiLine: true },
+  NatOfAct: { name: 'NatOfAct', block: 8, page: 2, xMm: 114.41, yMm: 53.975, widthMm: 82.55, heightMm: 19.05, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 2.8268, multiLine: true },
+  CopyTo: { name: 'CopyTo', block: 9, page: 2, xMm: 114.41, yMm: 73.025, widthMm: 82.55, heightMm: 15.875, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 2.8268, multiLine: true },
+  RefAuth: { name: 'RefAuth', block: 10, page: 2, xMm: 0.11, yMm: 88.9, widthMm: 98.425, heightMm: 31.75, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 3.0891, multiLine: true },
+  Encl1: { name: 'Encl1', block: 11, page: 2, xMm: 98.535, yMm: 88.9, widthMm: 98.425, heightMm: 31.75, fontSize: 9, lineHeight: 10, insetsMm: STD, captionReserveMm: 2.8268, multiLine: true },
+  SuppInfo: { name: 'SuppInfo', block: 12, page: 2, xMm: 0, yMm: 120.86, widthMm: 196.96, heightMm: 129.965, fontSize: 10, lineHeight: AA_DEFAULT_LINE_HEIGHT, insetsMm: STD, captionReserveMm: 3.1404, multiLine: true },
+  ProcAct: { name: 'ProcAct', block: 13, page: 3, xMm: 0, yMm: 12.7, widthMm: 196.85, heightMm: 244.475, fontSize: 10, lineHeight: AA_DEFAULT_LINE_HEIGHT, insetsMm: STD, captionReserveMm: 0, multiLine: true },
 };
+
+/** Block numbers to the form's own captions, for messages. */
+export const AA_BLOCK_LABELS: Record<number, string> = {
+  1: 'Action No.', 2: 'SSIC/File No.', 3: 'Date', 4: 'From', 5: 'Organization and Station',
+  6: 'Via', 7: 'To', 8: 'Nature of Action/Subject', 9: 'Copy To', 10: 'Reference or Authority',
+  11: 'Enclosures', 12: 'Supplemental Information', 13: 'Processing Action',
+};
+
+/**
+ * Page geometry. The XFA page is US Letter; its one content area starts
+ * 9.525 mm in from the top-left corner, and the page 2 and page 3
+ * subforms fill it, so a field's position inside its subform plus that
+ * origin is its position on the page.
+ */
+export const AA_PAGE = { widthPt: 612, heightPt: 792, contentOriginMm: 9.525 } as const;
+
+/** A rectangle in PDF points, bottom-left origin, `top` the y of the top edge. */
+export interface AaRect { left: number; top: number; width: number; height: number }
+
+/** The whole field, caption included, on its page. */
+export function aaFieldFrame(field: AaField): AaRect {
+  const left = (AA_PAGE.contentOriginMm + field.xMm) * MM;
+  const top = AA_PAGE.heightPt - (AA_PAGE.contentOriginMm + field.yMm) * MM;
+  return { left, top, width: field.widthMm * MM, height: field.heightMm * MM };
+}
+
+/** The area the text occupies: the frame less the caption reserve and the insets. */
+export function aaTextBox(field: AaField): AaRect {
+  const frame = aaFieldFrame(field);
+  const { left, right, top, bottom } = field.insetsMm;
+  return {
+    left: frame.left + left * MM,
+    top: frame.top - (field.captionReserveMm + top) * MM,
+    width: frame.width - (left + right) * MM,
+    height: frame.height - (field.captionReserveMm + top + bottom) * MM,
+  };
+}
+
+/**
+ * Baseline of the first line below the text box's top edge. Times New
+ * Roman's ascent is 0.891 em; Acrobat sets the first line's ascender on
+ * the top inset, so the baseline sits that far down.
+ */
+export const AA_ASCENT_EM = 0.891;
+export function aaFirstBaselineOffset(field: AaField): number {
+  return field.fontSize * AA_ASCENT_EM;
+}
 
 /** Usable line width of a field in points, inside its insets. */
 export function aaUsableWidth(field: AaField): number {
@@ -94,10 +149,42 @@ export function wrapAaText(text: string, field: AaField): string[] {
   return wrapParagraph(text, (t) => timesRomanWidth(t, field.fontSize), aaUsableWidth(field));
 }
 
-/** Lines a multi-paragraph value takes in a field (each newline a paragraph). */
-export function aaLinesFor(value: string, field: AaField): number {
+/** A multi-paragraph value as the field's lines (each newline a paragraph, a blank one a blank line). */
+export function wrapAaValue(value: string, field: AaField): string[] {
   const paragraphs = value.replace(/\r\n?/g, '\n').split('\n');
-  return paragraphs.reduce((sum, p) => sum + (p.trim() ? wrapAaText(p, field).length : 1), 0);
+  return paragraphs.flatMap((p) => (p.trim() ? wrapAaText(p, field) : ['']));
+}
+
+/** Lines a multi-paragraph value takes in a field. */
+export function aaLinesFor(value: string, field: AaField): number {
+  return wrapAaValue(value, field).length;
+}
+
+/** The code points above 0x7E that WinAnsi carries besides Latin-1. */
+const WINANSI_EXTRAS = '\u20AC\u201A\u0192\u201E\u2026\u2020\u2021\u02C6\u2030\u0160\u2039\u0152\u017D\u2018\u2019\u201C\u201D\u2022\u2013\u2014\u02DC\u2122\u0161\u203A\u0153\u017E\u0178';
+
+/**
+ * The preview draws with pdf-lib's standard Times-Roman, which encodes
+ * WinAnsi and throws on anything else, taking the whole preview down for
+ * one character. The official export carries the full string (Acrobat's
+ * Times New Roman has the glyphs). A character outside WinAnsi is drawn
+ * as "?" and reported, so a silent alteration is impossible; a no-break
+ * space becomes a space.
+ */
+export function sanitizeForTimesRoman(text: string): { text: string; replaced: string[] } {
+  const replaced: string[] = [];
+  let out = '';
+  for (const ch of text) {
+    const code = ch.codePointAt(0) ?? 0;
+    if (code === 0xa0) { out += ' '; continue; }
+    if ((code >= 0x20 && code <= 0x7e) || (code >= 0xa1 && code <= 0xff) || WINANSI_EXTRAS.includes(ch)) {
+      out += ch;
+      continue;
+    }
+    replaced.push(ch);
+    out += '?';
+  }
+  return { text: out, replaced };
 }
 
 /**
@@ -163,13 +250,17 @@ export function aaViaLines(vias: readonly string[]): string[] {
  * UNFILTERED index, so a blank paragraph never renumbers its neighbours;
  * a paragraph with neither text nor title is left out; a title-only
  * paragraph prints its title under its number, as the preview always did.
+ * Whitespace runs inside a paragraph, a pasted newline among them,
+ * collapse to one space: the box takes a paragraph as one run of words,
+ * and a hard break inside one used to throw in the preview and break a
+ * line in Acrobat that the flow had not counted.
  */
 export function aaBodyParagraphs(paragraphs: readonly ParagraphData[]): string[] {
   const all = paragraphs as ParagraphData[];
   const out: string[] = [];
   paragraphs.forEach((p, index) => {
-    const content = (p.content ?? '').trim();
-    const title = (p.title ?? '').trim();
+    const content = (p.content ?? '').replace(/\s+/g, ' ').trim();
+    const title = (p.title ?? '').replace(/\s+/g, ' ').trim();
     const text = content || title;
     if (!text) return;
     const { citation } = generateCitation(p, index, all);
@@ -261,4 +352,50 @@ export function aaBlockText(lines: readonly FlowLine[]): string {
     else out += (line.paraStart ? '\n' : ' ') + line.text;
   });
   return out;
+}
+
+/**
+ * The text each small box carries, built once for every consumer: the
+ * official export, the preview's data builder and the fit validator read
+ * this table, so a box cannot hold different words on different paths.
+ * `formField` is the form input an overflow message points at; the lists
+ * (via, reference, enclosure, copy to) have no single input and carry none.
+ */
+export interface AaFieldValue {
+  field: AaField;
+  value: string;
+  formField?: string;
+}
+
+export interface AaFieldInputs {
+  formData: FormData;
+  vias: readonly string[];
+  references: readonly string[];
+  enclosures: readonly string[];
+  copyTos: readonly string[];
+}
+
+export function aaFieldValues({ formData, vias, references, enclosures, copyTos }: AaFieldInputs): AaFieldValue[] {
+  const refStart = startingRefLetterFor(formData.documentType, formData.startingReferenceLevel);
+  const enclStart = startingEnclosureNumberFor(formData.documentType, formData.startingEnclosureNumber);
+  const f = NAVMC10274_FIELDS;
+  return [
+    { field: f.ActNum, value: formData.actionNo || '', formField: 'actionNo' },
+    { field: f.FileNum, value: formData.ssic || '', formField: 'ssic' },
+    { field: f.Date, value: normalizeAaDate(formData.date || ''), formField: 'date' },
+    { field: f.NameFrom, value: formData.from || '', formField: 'from' },
+    { field: f.OrgStat, value: formData.orgStation || '', formField: 'orgStation' },
+    { field: f.Via1, value: aaViaLines(vias).join('\n') },
+    { field: f.AddrTo, value: formData.to || '', formField: 'to' },
+    { field: f.NatOfAct, value: formData.subj || '', formField: 'subj' },
+    { field: f.CopyTo, value: copyTos.map(c => c.trim()).filter(Boolean).join('\n') },
+    {
+      field: f.RefAuth,
+      value: references.filter(r => r.trim()).map((r, i) => `(${refLetterAt(refStart, i)}) ${r}`).join('\n'),
+    },
+    {
+      field: f.Encl1,
+      value: enclosures.filter(e => e.trim()).map((e, i) => `(${enclStart + i}) ${e}`).join('\n'),
+    },
+  ];
 }
