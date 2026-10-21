@@ -1,6 +1,6 @@
 # NAVMC 10274 (AA Form): one layout for the preview and the official export
 
-Status: PR 1 of 3 (0.13.5). Owner's handoff of 2026-10-21, verified against
+Status: PR 2 of 3 (0.13.6); PR 1 shipped in 0.13.5. Owner's handoff of 2026-10-21, verified against
 `main` at `da11784` by four independent reads of the code, the XFA blank,
 and the test suite. Decisions marked "ruled" are the owner's and binding.
 
@@ -82,13 +82,17 @@ lines below text".
    `tests/xfa-form-fill.test.ts` (10274 body and date),
    `tests/fixtures/navmc10274-tle-extension.ts` (the v3 request with every
    personal detail replaced by a same-length placeholder).
-2. Next: the preview draws each box at the form's own size and pitch from the
-   module, wraps the Via, prints block 13 with block 13's geometry instead of
-   the generic sheet, draws the name per ruling 4, surfaces overflow instead
-   of dropping lines, and survives non-WinAnsi text. A block-severity
-   validator refuses export past block 13 and a warning names the small boxes
-   that overflow, through the existing export gate, with the Page 11 toast
-   pattern in the hook.
+2. 0.13.6 (this PR): the preview draws each box at the form's own position,
+   size and pitch from the module (`aaFieldFrame`, `aaTextBox`), wraps the
+   Via, prints block 13 on page 3 with block 13's geometry, draws the name
+   per ruling 4 through the shared flow, marks every clipped line in red,
+   and survives non-WinAnsi text (`sanitizeForTimesRoman`) and a pasted
+   newline. `src/lib/navmc10274-fit.ts` blocks export past block 13, warns
+   on block 13 in use and on each small box that overflows, through the
+   existing export gate, and the hook says the same in a toast. The small
+   boxes are built once (`aaFieldValues`) for all three consumers. Tests:
+   `tests/navmc10274-fit.test.ts`, `tests/navmc10274-preview.test.ts`
+   (text positions read back from the rendered PDF).
 3. Then: a parity test rendering the fixture through both paths and asserting
    identical block 12 and block 13 line breaks, a browser test reading the
    exported datasets for the date and the name, a sweep of the 27 AA

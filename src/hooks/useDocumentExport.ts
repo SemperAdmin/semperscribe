@@ -155,6 +155,19 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
             description: 'The official fillable NAVMC 118(11) is a single page, so this export is the app\'s redraw with continuation pages carrying the same name and DoD ID. Shorten the entry to export the official form.',
           });
         }
+        // NAVMC 10274: the same fit the compliance dialog reports, said
+        // at export time like the Page 11 note above. Text past block 13
+        // never reaches here (getExportBlockers refuses it).
+        if (formData.documentType === 'aa-form') {
+          const { navmc10274FitReport, describeAaFit } = await import('@/lib/navmc10274-fit');
+          const notes = describeAaFit(navmc10274FitReport({ formData, vias, references, enclosures, copyTos, paragraphs }));
+          if (notes.length > 0) {
+            toast?.({
+              title: 'NAVMC 10274 layout',
+              description: notes.join(' ') + ' The preview marks every clipped line.',
+            });
+          }
+        }
         if (signatureFields.length === 0 && !hasBoundFiles && !startNeedsFlattened && page11Pages === 1) {
           const { exportOfficialForm } = await import('@/lib/xfa-form-fill');
           const formBlob = await exportOfficialForm({ formData, vias, references, enclosures, copyTos, paragraphs });

@@ -14,9 +14,15 @@ import {
   aaLinesFor,
   aaSignatureLead,
   aaUsableWidth,
+  aaFieldFrame,
+  aaFieldValues,
+  aaFirstBaselineOffset,
+  aaTextBox,
   aaViaLines,
   flowAaBody,
   normalizeAaDate,
+  sanitizeForTimesRoman,
+  wrapAaValue,
 } from '@/lib/navmc10274-layout';
 import { timesRomanWidth } from '@/lib/times-roman-widths';
 import { TLE_EXTENSION_FIXTURE } from './fixtures/navmc10274-tle-extension';
@@ -66,7 +72,8 @@ describe('normalizeAaDate', () => {
     expect(normalizeAaDate('17 Jul 2026')).toBe('2026-07-17');
     expect(normalizeAaDate('3 Sept 26')).toBe('2026-09-03');
     expect(normalizeAaDate(' 19 October 26 ')).toBe('2026-10-19');
-    expect(normalizeAaDate('31 Feb 26')).toBe('2026-02-31'); // the picture, not a calendar check
+    expect(normalizeAaDate('31 Feb 26')).toBe('31 Feb 26'); // no such day: back as typed
+    expect(normalizeAaDate('29 Feb 28')).toBe('2028-02-29');
   });
 
   it('reads a string carrying its own zone in that zone, so the day named is the day written', () => {
@@ -172,5 +179,74 @@ describe('aaBlockText', () => {
     const long = flowAaBody([p(Array.from({ length: 60 }, (_, i) => `word${i}`).join(' '))], '');
     expect(long.block12.length).toBeGreaterThan(1);
     expect(aaBlockText(long.block12)).not.toContain('\n');
+  });
+});
+
+describe('page geometry', () => {
+  // The hand-measured preview boxes of 2026-05 (public/templates/navmc10274/boxes.json)
+  // were taken off the rendered page; the XFA positions reproduce them to a point.
+  it('places block 3 (Date) where the rendered form shows it', () => {
+    const frame = aaFieldFrame(NAVMC10274_FIELDS.Date);
+    expect(frame.left).toBeCloseTo(405.0, 0);
+    expect(frame.width).toBeCloseTo(180, 0);
+    const box = aaTextBox(NAVMC10274_FIELDS.Date);
+    expect(box.top).toBeCloseTo(699, 0); // caption and 1 mm inset under the frame's top at 709.8
+    expect(aaFirstBaselineOffset(NAVMC10274_FIELDS.Date)).toBeCloseTo(8.02, 2);
+  });
+
+  it('places block 12 and its 30 lines where the rendered form shows them', () => {
+    const box = aaTextBox(NAVMC10274_FIELDS.SuppInfo);
+    expect(box.left).toBeCloseTo(29.2, 0);
+    expect(box.top).toBeCloseTo(411.4, 0);
+    expect(box.height).toBeCloseTo(355.9, 0);
+    expect(box.width).toBeCloseTo(554.0, 0);
+  });
+
+  it('puts block 13 on page 3 filling the content area', () => {
+    const f = NAVMC10274_FIELDS.ProcAct;
+    expect(f.page).toBe(3);
+    const frame = aaFieldFrame(f);
+    expect(frame.left).toBeCloseTo(27, 0);
+    expect(frame.top).toBeCloseTo(729, 0);
+    expect(frame.height).toBeCloseTo(693, 0);
+  });
+});
+
+describe('sanitizeForTimesRoman', () => {
+  it('keeps WinAnsi, swaps the no-break space, reports everything else', () => {
+    expect(sanitizeForTimesRoman('Caf\u00e9 \u2018quoted\u2019 \u2013 \u2014 \u2026 \u20ac')).toEqual({ text: 'Caf\u00e9 \u2018quoted\u2019 \u2013 \u2014 \u2026 \u20ac', replaced: [] });
+    expect(sanitizeForTimesRoman('a\u00a0b')).toEqual({ text: 'a b', replaced: [] });
+    expect(sanitizeForTimesRoman('x \u2192 y \uFB01')).toEqual({ text: 'x ? y ?', replaced: ['\u2192', '\uFB01'] });
+  });
+});
+
+describe('wrapAaValue and whitespace', () => {
+  it('keeps a blank line in a multi-line box and wraps each paragraph', () => {
+    expect(wrapAaValue('A\n\nB', NAVMC10274_FIELDS.AddrTo)).toEqual(['A', '', 'B']);
+  });
+
+  it('collapses a newline inside a paragraph to one space before numbering', () => {
+    expect(aaBodyParagraphs([p('First half\nsecond   half')])).toEqual(['1.  First half second half']);
+  });
+});
+
+describe('aaFieldValues', () => {
+  it('builds every small box once for the export, the preview and the validator', () => {
+    const values = aaFieldValues({
+      formData: { documentType: 'aa-form', actionNo: '', ssic: '4650', date: '19 Oct 26', from: 'F', orgStation: 'O', to: 'T', subj: 'S', startingReferenceLevel: 'c', startingEnclosureNumber: '2' },
+      vias: ['V1', '', 'V2'],
+      references: ['R1', 'R2'],
+      enclosures: ['E1'],
+      copyTos: ['C1', ' '],
+    });
+    const byName = Object.fromEntries(values.map(v => [v.field.name, v.value]));
+    expect(byName).toEqual({
+      ActNum: '', FileNum: '4650', Date: '2026-10-19', NameFrom: 'F', OrgStat: 'O',
+      Via1: '(1) V1\n(2) V2', AddrTo: 'T', NatOfAct: 'S', CopyTo: 'C1',
+      RefAuth: '(a) R1\n(b) R2', // a non-endorsement always starts at (a)
+      Encl1: '(1) E1', // and at (1): only an endorsement continues a sequence
+    });
+    expect(values.find(v => v.field.name === 'AddrTo')?.formField).toBe('to');
+    expect(values.find(v => v.field.name === 'Via1')?.formField).toBeUndefined();
   });
 });

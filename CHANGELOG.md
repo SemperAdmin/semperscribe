@@ -5,6 +5,16 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.6] - 2026-10-21
+
+### Fixed
+
+- NAVMC 10274 (AA Form) preview drawn from the shared layout module: every box at the official form's own position, width, face size (9 pt or 10 pt) and line pitch, the Via wrapped inside block 6, the body laid out by the same block 12 then block 13 flow the official export fills, and the typed name three blank lines under the text at the box's centre line. The preview is the form's three pages, always, and no longer appends a continuation sheet the official form does not have.
+- NAVMC 10274 preview clips nothing in silence: a box whose text does not fit shows the lines that fit and a red count of the lines past the box, and text past block 13 shows the same mark. A character outside WinAnsi (an arrow, a ligature) draws as "?" instead of taking the whole preview down, and a newline pasted inside a paragraph collapses to a space on both paths instead of throwing.
+- NAVMC 10274 export gate: text past block 13 blocks the export with the line count (the official form has no further page); block 13 in use and a small box that overflows are warnings in the Compliance Issues dialog, each naming the block, and the PDF export says the same in a toast as the Page 11 note does.
+- NAVMC 10274: a date naming a day its month does not have ("31 Feb 26") stays as typed instead of becoming a picture no calendar holds.
+- NAVMC 10274: the small boxes (date picture, via numbering, reference letters, enclosure numbers, copy to) are built once for the official export, the preview and the validator, so no box holds different words on different paths.
+
 ## [0.13.5] - 2026-10-21
 
 ### Fixed
