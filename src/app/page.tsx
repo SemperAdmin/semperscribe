@@ -1428,8 +1428,8 @@ function NavalLetterGeneratorInner() {
   const hasBodyText = paragraphs.some(p => p.content.trim() !== '');
   const { dictionary } = useMilitaryDictionary(hasBodyText);
   const validationIssues = useMemo(
-    () => runLetterValidators(formData, vias, references, paragraphs, { dictionary, enclosures }),
-    [formData, vias, references, paragraphs, enclosures, dictionary],
+    () => runLetterValidators(formData, vias, references, paragraphs, { dictionary, enclosures, copyTos }),
+    [formData, vias, references, paragraphs, enclosures, copyTos, dictionary],
   );
 
   return (

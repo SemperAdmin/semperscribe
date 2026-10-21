@@ -78,6 +78,13 @@ describe('validateNavmc10274Fit', () => {
     expect(runLetterValidators(over, fx.vias, fx.references, paragraphs, { enclosures: fx.enclosures }).map(i => i.id))
       .toContain('aa-form-block13');
   });
+
+  it('checks block 9 only from the copy-to lines the caller passes (they live beside the form data)', () => {
+    const four = ['A', 'B', 'C', 'D'];
+    expect(validateNavmc10274Fit(formData, [], [], [], ones(3), four).map(i => i.id)).toEqual(['aa-form-box-9']);
+    expect(validateNavmc10274Fit(formData, [], [], [], ones(3))).toEqual([]);
+    expect(runLetterValidators(formData, [], [], ones(3), { copyTos: four }).map(i => i.id)).toContain('aa-form-box-9');
+  });
 });
 
 describe('describeAaFit', () => {

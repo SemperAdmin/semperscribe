@@ -78,12 +78,12 @@ export function validateNavmc10274Fit(
   references: readonly string[],
   enclosures: readonly string[],
   paragraphs: readonly ParagraphData[],
+  copyTos: readonly string[] = [],
 ): ValidationIssue[] {
   if (formData.documentType !== 'aa-form') return [];
-  const report = navmc10274FitReport({
-    formData, vias, references, enclosures, paragraphs,
-    copyTos: formData.copyTos ?? [],
-  });
+  // The copy-to lines are app state beside the form data, never a
+  // property of it; the caller passes them or block 9 goes unchecked.
+  const report = navmc10274FitReport({ formData, vias, references, enclosures, copyTos, paragraphs });
   const issues: ValidationIssue[] = [];
   const { flow, capacity } = report;
   if (!flow.fits) {

@@ -1070,6 +1070,12 @@ export interface LetterValidatorOptions {
    * no enclosures in scope leaves the rule inert rather than wrong.
    */
   enclosures?: readonly string[];
+  /**
+   * The copy-to lines, when the caller holds them. Only the NAVMC 10274
+   * fit check (block 9) reads them; a caller without them in scope
+   * leaves that one box unchecked rather than checked against nothing.
+   */
+  copyTos?: readonly string[];
 }
 
 export function runLetterValidators(
@@ -1126,7 +1132,7 @@ export function runLetterValidators(
     // NAVMC 10274: text past block 13 has nowhere to go on the official
     // form (block), block 13 in use and a clipped small box are notes
     // (navmc10274-fit.ts). A no-op for every other documentType.
-    ...validateNavmc10274Fit(formData, vias, references, options.enclosures ?? [], paragraphs),
+    ...validateNavmc10274Fit(formData, vias, references, options.enclosures ?? [], paragraphs, options.copyTos ?? []),
     // Salutation presence, then the generic schema pass. Order matters
     // only for reading: the cited rule precedes the schema echo, and
     // the schema pass suppresses the salutation path to avoid a

@@ -72,7 +72,8 @@ describe('normalizeAaDate', () => {
     expect(normalizeAaDate('17 Jul 2026')).toBe('2026-07-17');
     expect(normalizeAaDate('3 Sept 26')).toBe('2026-09-03');
     expect(normalizeAaDate(' 19 October 26 ')).toBe('2026-10-19');
-    expect(normalizeAaDate('31 Feb 26')).toBe('2026-02-31'); // the picture, not a calendar check
+    expect(normalizeAaDate('31 Feb 26')).toBe('31 Feb 26'); // no such day: back as typed
+    expect(normalizeAaDate('29 Feb 28')).toBe('2028-02-29');
   });
 
   it('reads a string carrying its own zone in that zone, so the day named is the day written', () => {

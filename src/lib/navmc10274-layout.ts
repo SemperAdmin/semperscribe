@@ -221,10 +221,13 @@ export function normalizeAaDate(dateStr: string): string {
   if (dmy) {
     const month = AA_MONTHS[dmy[2].slice(0, 3).toLowerCase()];
     const day = Number(dmy[1]);
-    if (month && day >= 1 && day <= 31) {
-      const year = dmy[3].length === 2 ? 2000 + Number(dmy[3]) : Number(dmy[3]);
+    const year = dmy[3].length === 2 ? 2000 + Number(dmy[3]) : Number(dmy[3]);
+    // A day the month does not have ("31 Feb 26") is returned as typed,
+    // so the drafter sees the slip instead of a picture no calendar holds.
+    if (month && new Date(Date.UTC(year, month - 1, day)).getUTCDate() === day) {
       return isoPicture(year, month, day);
     }
+    return dateStr;
   }
   const parsed = new Date(text);
   if (Number.isNaN(parsed.getTime())) return dateStr;
