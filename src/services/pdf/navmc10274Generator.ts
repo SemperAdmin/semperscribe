@@ -3,6 +3,7 @@ import { Navmc10274Data, BoxBoundary } from '@/types/navmc';
 import { ParagraphData } from '@/types';
 import { generateCitation } from '@/lib/citation';
 import { loadAssetBytes } from '@/lib/assets';
+import { normalizeAaDate } from '@/lib/navmc10274-layout';
 
 // --- Configuration & Constants ---
 
@@ -95,35 +96,6 @@ function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: numbe
   return lines;
 }
 
-/**
- * Formats a date string to YYYY-MM-DD for AA Forms
- */
-function formatDateForAA(dateStr: string): string {
-  if (!dateStr) return '';
-  
-  // Handle "today"
-  if (dateStr.toLowerCase() === 'today') {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  // If already YYYY-MM-DD, return as is
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-
-  // Handle standard formats
-  const date = new Date(dateStr);
-  if (!isNaN(date.getTime())) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-  
-  return dateStr;
-}
 
 /**
  * Handles complex text drawing:
@@ -463,7 +435,7 @@ export async function generateNavmc10274(data: Navmc10274Data): Promise<Uint8Arr
     
     // Apply specific formatting
     if (fieldKey === 'date' && typeof value === 'string') {
-      value = formatDateForAA(value);
+      value = normalizeAaDate(value);
     }
 
     if (value && box) {

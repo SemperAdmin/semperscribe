@@ -5,6 +5,13 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.5] - 2026-10-21
+
+### Fixed
+
+- NAVMC 10274 (AA Form) official export: the date is written in the form's own picture, YYYY-MM-DD, as the preview already showed it; the typed name of the originator now goes three blank lines under the text, starting at the box's centre line, where the export used to drop it; a blank paragraph no longer renumbers the paragraphs after it, and a title-only paragraph prints under its number as the preview always did; the starting reference letter and enclosure number follow the shared helpers (past (z) reads "aa" in the preview too, and a stray enclosure start no longer prints "(NaN)").
+- NAVMC 10274: text that overruns block 12 continues in block 13 (Processing Action) on the official export, by the owner's ruling of 2026-10-21; the processing chain endorses on a separate page. The new src/lib/navmc10274-layout.ts holds the measured geometry of every field on the official blank, and both renderers are being moved onto it (the preview follows in the next release).
+
 ## [0.13.4] - 2026-09-26
 
 ### Added

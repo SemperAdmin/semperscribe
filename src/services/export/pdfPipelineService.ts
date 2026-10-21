@@ -5,6 +5,7 @@ import { Navmc11811Data } from '@/types/navmc';
 import { mergeAdminSubsections } from '@/lib/naval-format-utils';
 import type { Navmc10132ExportReport } from '@/lib/navmc10132-export';
 
+import { refLetterAt, startingEnclosureNumberFor, startingRefLetterFor } from '@/lib/reference-letters';
 // Generators are imported dynamically inside each pipeline so the PDF
 // engines (@react-pdf/renderer, pdf-lib, the seal data) stay out of the
 // first-load bundle and load on the first preview/export instead.
@@ -43,15 +44,17 @@ function buildNavmc10274Data(ctx: PdfBuildContext) {
     to: ctx.formData.to || '',
     via: ctx.vias.filter(v => v.trim()).join('\n'),
     subject: ctx.formData.subj || '',
+    // Same letter walk and number start as the official-form export
+    // (src/lib/reference-letters.ts): past (z) reads "aa", never "{".
     reference: (() => {
-      const startCode = (ctx.formData.startingReferenceLevel || 'a').charCodeAt(0);
+      const refStart = startingRefLetterFor(ctx.formData.documentType, ctx.formData.startingReferenceLevel);
       return ctx.references
         .filter(r => r.trim())
-        .map((r, i) => `(${String.fromCharCode(startCode + i)}) ${r}`)
+        .map((r, i) => `(${refLetterAt(refStart, i)}) ${r}`)
         .join('\n');
     })(),
     enclosure: (() => {
-      const startNum = parseInt(ctx.formData.startingEnclosureNumber || '1', 10);
+      const startNum = startingEnclosureNumberFor(ctx.formData.documentType, ctx.formData.startingEnclosureNumber);
       return ctx.enclosures
         .filter(e => e.trim())
         .map((e, i) => `(${startNum + i}) ${e}`)

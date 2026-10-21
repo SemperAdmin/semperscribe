@@ -28,8 +28,8 @@ import {
 } from 'pdf-lib';
 import { FormData, ParagraphData } from '@/types';
 import { columnText, flowPage11FormData } from '@/lib/page11-flow';
-import { generateCitation } from '@/lib/citation';
-import { refLetterAt } from '@/lib/reference-letters';
+import { refLetterAt, startingEnclosureNumberFor, startingRefLetterFor } from '@/lib/reference-letters';
+import { aaBlockText, flowAaBody, normalizeAaDate } from '@/lib/navmc10274-layout';
 import { resolvePublicPath } from '@/lib/path-utils';
 import { loadAssetBytes } from '@/lib/assets';
 // NAVMC 10922 needs a POSITIONAL emitter - 77 of its 102 datasets
@@ -50,6 +50,16 @@ function tag(name: string, value: string): string {
   return v ? `<${name}>${xfaEscape(v)}</${name}>` : `<${name}/>`;
 }
 
+/**
+ * Like tag() but keeps leading spaces: the typed name on the NAVMC 10274
+ * is centred with a run of spaces, and when it opens block 13 those
+ * spaces are the first characters of the value.
+ */
+function tagKeepingLead(name: string, value: string): string {
+  const v = value.replace(/\s+$/, '');
+  return v.trim() ? `<${name}>${xfaEscape(v)}</${name}>` : `<${name}/>`;
+}
+
 const XFA_WRAP = (inner: string) =>
   `<xfa:datasets xmlns:xfa="http://www.xfa.org/schema/xfa-data/1.0/"><xfa:data><form1>${inner}</form1></xfa:data></xfa:datasets>`;
 
@@ -65,8 +75,11 @@ export interface FormSlices {
 /**
  * NAVMC 10274 datasets XML - the inverse of the template converter:
  * list prefixes are re-added (the paper form's boxes hold full text)
- * and paragraph citations are reconstructed with the SAME citation
- * engine the flattened renderer uses, so both exports number alike.
+ * and the body is laid out by src/lib/navmc10274-layout.ts, the one
+ * module both renderers read, so the preview and the official form
+ * carry the same date picture, the same numbering, the same typed name
+ * three lines under the text, and the same split between block 12 and
+ * block 13 (owner's rulings, 2026-10-21).
  */
 export function buildNavmc10274Xml(slices: FormSlices): string {
   const { formData, vias, references, enclosures, copyTos, paragraphs } = slices;
@@ -79,27 +92,23 @@ export function buildNavmc10274Xml(slices: FormSlices): string {
   // Same letter walk as the preview, the Word export and the validator
   // (src/lib/reference-letters.ts), so a starting letter past (z) reads
   // as "aa" here too rather than as its first character.
-  const refStart = formData.startingReferenceLevel || 'a';
+  const refStart = startingRefLetterFor(formData.documentType, formData.startingReferenceLevel);
   const refText = references.filter(r => r.trim())
     .map((r, i) => `(${refLetterAt(refStart, i)}) ${r}`).join('\n');
 
-  const enclStart = parseInt(formData.startingEnclosureNumber || '1', 10);
+  const enclStart = startingEnclosureNumberFor(formData.documentType, formData.startingEnclosureNumber);
   const enclText = enclosures.filter(e => e.trim())
     .map((e, i) => `(${enclStart + i}) ${e}`).join('\n');
 
   const copyText = copyTos.filter(c => c.trim()).join('\n');
 
-  const supp = paragraphs
-    .filter(p => p.content.trim())
-    .map((p, i) => {
-      const { citation } = generateCitation(p, i, paragraphs);
-      const indent = '    '.repeat(Math.max(0, (p.level || 1) - 1));
-      return `${indent}${citation}  ${p.content}`;
-    })
-    .join('\n\n');
+  // Block 12 then block 13, the typed name three lines under the text.
+  // Text past both blocks is the export gate's business (a block-severity
+  // validator), never silently clipped here.
+  const body = flowAaBody(paragraphs, (formData.sig as string) || '');
 
   return XFA_WRAP([
-    tag('Date', formData.date || ''),
+    tag('Date', normalizeAaDate(formData.date || '')),
     tag('ActNum', formData.actionNo || ''),
     tag('FileNum', formData.ssic || ''),
     tag('NameFrom', formData.from || ''),
@@ -110,8 +119,8 @@ export function buildNavmc10274Xml(slices: FormSlices): string {
     tag('CopyTo', copyText),
     tag('RefAuth', refText),
     tag('Encl1', enclText),
-    tag('SuppInfo', supp),
-    tag('ProcAct', ''),
+    tagKeepingLead('SuppInfo', aaBlockText(body.block12)),
+    tagKeepingLead('ProcAct', aaBlockText(body.block13)),
   ].join(''));
 }
 
