@@ -92,7 +92,7 @@ describe('describeAaFit', () => {
     const notes = describeAaFit(navmc10274FitReport(inputs({ to: Array.from({ length: 9 }, (_, i) => `L${i}`).join('\n') })));
     expect(notes).toEqual([
       'Block 7 (To) takes 9 lines and holds 7.',
-      'Block 12 is full; 1 line continues in block 13 on page 3.',
+      'Block 12 is full; 4 lines continue in block 13 on page 3.',
     ]);
   });
 

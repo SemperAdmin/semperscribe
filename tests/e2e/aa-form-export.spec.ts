@@ -51,7 +51,7 @@ test('the official NAVMC 10274 carries the date picture and the typed name', asy
   expect(datasets).not.toContain('19 Oct 26');
   // The name three blank lines under the text (four line breaks) with its
   // centring lead, in block 12 or, when block 12 is full, opening block 13.
-  expect(datasets).toMatch(/&#xD;&#xD;&#xD;&#xD; {40,}F\. M\. LASTNAME<\/SuppInfo>|<ProcAct> {40,}F\. M\. LASTNAME/);
+  expect(datasets).toMatch(/&#xD;&#xD;&#xD;&#xD; {40,}F\. M\. LASTNAME<\/SuppInfo>|<ProcAct>&#xD;&#xD;&#xD; {40,}F\. M\. LASTNAME/);
 
   expect(errors, errors.join('\n')).toEqual([]);
 });

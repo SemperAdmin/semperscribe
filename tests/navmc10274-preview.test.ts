@@ -96,7 +96,8 @@ describe('NAVMC 10274 preview geometry', () => {
     const lead = timesRomanWidth(' '.repeat(aaSignatureLead()), 10);
     const glyphStart = name!.text.startsWith(' ') ? name!.x + lead : name!.x;
     expect(near(glyphStart, box.left + box.width / 2, 3)).toBe(true);
-    expect(near(name!.y, box.top - aaFirstBaselineOffset(NAVMC10274_FIELDS.ProcAct))).toBe(true);
+    // Three blank lines above it: the fourth line of block 13.
+    expect(near(name!.y, box.top - aaFirstBaselineOffset(NAVMC10274_FIELDS.ProcAct) - 3 * NAVMC10274_FIELDS.ProcAct.lineHeight)).toBe(true);
   });
 
   it('wraps the via inside block 6 at 9 pt instead of running into block 5', () => {

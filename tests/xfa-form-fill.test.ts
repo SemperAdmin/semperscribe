@@ -146,7 +146,7 @@ describe('NAVMC 10274 body and date (handoff of 2026-10-21)', () => {
     s.paragraphs = Array.from({ length: 15 }, (_, i) => ({ id: i + 1, level: 1, content: `Para ${i + 1}` }));
     const xml = buildNavmc10274Xml(s);
     expect(field(xml, 'SuppInfo')!.endsWith('15.  Para 15')).toBe(true);
-    expect(field(xml, 'ProcAct')).toBe(`${lead}S. N. SHORTER`);
+    expect(field(xml, 'ProcAct')).toBe(`&#xD;&#xD;&#xD;${lead}S. N. SHORTER`);
   });
 
   it('lays the owner\'s request out the way the layout module says', () => {
@@ -154,7 +154,7 @@ describe('NAVMC 10274 body and date (handoff of 2026-10-21)', () => {
     const xml = buildNavmc10274Xml({ ...f, formData: f.formData as FormData });
     const flow = flowAaBody(f.paragraphs, f.formData.sig as string);
     expect(field(xml, 'SuppInfo')).toBe(aaBlockText(flow.block12).replace(/\n/g, '&#xD;'));
-    expect(field(xml, 'ProcAct')).toBe(`${lead}F. M. LASTNAME`);
+    expect(field(xml, 'ProcAct')).toBe(`&#xD;&#xD;&#xD;${lead}F. M. LASTNAME`);
     expect(field(xml, 'Date')).toBe('2026-10-19');
     expect(field(xml, 'Via1')).toBe('(1) Commanding Officer, Marine Aviation Training Support Group 23&#xD;(2) Deputy Commandant for Manpower and Reserve Affairs (MPO)');
   });

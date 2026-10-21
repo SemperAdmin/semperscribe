@@ -1,4 +1,5 @@
 import React from 'react';
+import type { PreviewKind } from '@/hooks/useLivePreview';
 import Link from 'next/link';
 import { Menu, Eye } from 'lucide-react';
 import { Sidebar } from './Sidebar';
@@ -20,6 +21,8 @@ interface ModernAppShellProps {
   onDocumentTypeChange: (type: string) => void;
   previewUrl?: string;
   previewBlob?: Blob | null;
+  previewKind?: PreviewKind;
+  previewFieldValues?: Readonly<Record<string, string>>;
   /** P6-13: the last render failed; the pane shows the previous render with a notice. */
   previewError?: string | null;
   validationIssues?: PreviewIssue[];
@@ -81,6 +84,8 @@ export function ModernAppShell({
   onDocumentTypeChange,
   previewUrl,
   previewBlob,
+  previewKind,
+  previewFieldValues,
   previewError,
   validationIssues,
   isGeneratingPreview,
@@ -408,6 +413,8 @@ export function ModernAppShell({
             <LivePreview
               previewUrl={previewUrl}
               previewBlob={previewBlob}
+              previewKind={previewKind}
+              previewFieldValues={previewFieldValues}
               isLoading={isGeneratingPreview}
               onUpdatePreview={onUpdatePreview}
               documentType={documentType}
