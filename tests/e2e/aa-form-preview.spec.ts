@@ -52,3 +52,33 @@ test('the AA Form previews as the official form, then as the redraw once a signa
 
   expect(errors, errors.join('\n')).toEqual([]);
 });
+
+test('a name that opens block 13 shows three lines down at the centre line, as the export writes it', async ({ page }, testInfo) => {
+  // pdf.js trims a data value's leading whitespace; the pane restores it
+  // from the values the app wrote (src/lib/xfa-preview-values.ts). The
+  // committed fixture is the case: block 12 holds 29 lines, the name
+  // alone spills.
+  const { TLE_EXTENSION_FIXTURE: fx } = await import('../fixtures/navmc10274-tle-extension');
+  const listed = (xs: readonly string[]) => xs.map((text, i) => ({ text, order: i + 1 }));
+  const pkg = {
+    format: 'NLDP', version: '1.1',
+    metadata: { createdAt: new Date().toISOString(), formatVersion: '1.1', createdBy: 'test' },
+    data: {
+      formData: fx.formData, paragraphs: fx.paragraphs,
+      references: listed(fx.references), enclosures: listed(fx.enclosures), vias: listed(fx.vias), copyTos: listed(fx.copyTos),
+    },
+  };
+  const fixture = testInfo.outputPath('aa-spill.nldp');
+  writeFileSync(fixture, JSON.stringify(pkg));
+
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await enterApp(page);
+  await page.locator('input[type="file"][accept=".nldp,.json"]').setInputFiles(fixture);
+  const official = page.getByTestId('official-form-preview');
+  await expect(official.locator('.xfaPreviewPage')).toHaveCount(3, { timeout: 30_000 });
+  const block13 = official.locator('.xfaPreviewPage[data-page="3"] textarea').first();
+  await expect(block13).toHaveText(/F\. M\. LASTNAME/);
+  const text = await block13.evaluate(el => el.textContent ?? '');
+  expect(text.startsWith('\n\n\n')).toBe(true);
+  expect(text.replace(/^\n+/, '').startsWith(' '.repeat(40))).toBe(true);
+});

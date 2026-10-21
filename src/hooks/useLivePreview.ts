@@ -77,6 +77,8 @@ export function useLivePreview(
   // previewUrl stays for the iframe and downloads.
   const [previewBlob, setPreviewBlob] = useState<Blob | undefined>(undefined);
   const [previewKind, setPreviewKind] = useState<PreviewKind>('pdf');
+  // The datasets values behind an official-form render, for XfaFormPreview.
+  const [previewFieldValues, setPreviewFieldValues] = useState<Record<string, string> | undefined>(undefined);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   // E.3: where the same-page endorsement landed on the last render.
   // Null for every other document.
@@ -118,6 +120,7 @@ export function useLivePreview(
       const ctx = { formData, vias, references, enclosures, copyTos, paragraphs, distList, mode: 'preview' as const };
       let blob: Blob;
       let kind: PreviewKind = 'pdf';
+      let fieldValues: Record<string, string> | undefined;
       let status: SamePageStatus | null = null;
       // E.3 (M-5216.5 9-1, Figure 9-1): a same-page endorsement with the
       // letter attached previews as that letter with the endorsement on
@@ -137,8 +140,10 @@ export function useLivePreview(
         // bytes, laid out by pdf.js's XFA engine in the pane. A signature
         // field or a bound file sends it to the redraw below, as the export
         // routes (useDocumentExport.ts), so the preview stays the export.
-        const { exportOfficialForm } = await import('@/lib/xfa-form-fill');
-        blob = await exportOfficialForm({ formData, vias, references, enclosures, copyTos, paragraphs });
+        const { exportOfficialForm, navmc10274FieldValues } = await import('@/lib/xfa-form-fill');
+        const slices = { formData, vias, references, enclosures, copyTos, paragraphs };
+        blob = await exportOfficialForm(slices);
+        fieldValues = navmc10274FieldValues(slices);
         kind = 'official-xfa';
       } else {
         blob = await applySignatureFields(await generatePdfForDocType(ctx));
@@ -171,6 +176,7 @@ export function useLivePreview(
       });
       setPreviewBlob(blob);
       setPreviewKind(kind);
+      setPreviewFieldValues(fieldValues);
       setSamePageStatus(status);
       setPreviewError(null);
     } catch (e) {
@@ -196,5 +202,5 @@ export function useLivePreview(
     return () => clearTimeout(timer);
   }, [updatePreview]);
 
-  return { previewUrl, previewBlob, previewKind, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus, previewError };
+  return { previewUrl, previewBlob, previewKind, previewFieldValues, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus, previewError };
 }

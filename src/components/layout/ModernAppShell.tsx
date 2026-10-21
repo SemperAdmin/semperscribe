@@ -22,6 +22,7 @@ interface ModernAppShellProps {
   previewUrl?: string;
   previewBlob?: Blob | null;
   previewKind?: PreviewKind;
+  previewFieldValues?: Readonly<Record<string, string>>;
   /** P6-13: the last render failed; the pane shows the previous render with a notice. */
   previewError?: string | null;
   validationIssues?: PreviewIssue[];
@@ -84,6 +85,7 @@ export function ModernAppShell({
   previewUrl,
   previewBlob,
   previewKind,
+  previewFieldValues,
   previewError,
   validationIssues,
   isGeneratingPreview,
@@ -412,6 +414,7 @@ export function ModernAppShell({
               previewUrl={previewUrl}
               previewBlob={previewBlob}
               previewKind={previewKind}
+              previewFieldValues={previewFieldValues}
               isLoading={isGeneratingPreview}
               onUpdatePreview={onUpdatePreview}
               documentType={documentType}

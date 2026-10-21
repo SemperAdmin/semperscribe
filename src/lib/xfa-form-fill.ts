@@ -81,33 +81,46 @@ export interface FormSlices {
  * three lines under the text, and the same split between block 12 and
  * block 13 (owner's rulings, 2026-10-21).
  */
-export function buildNavmc10274Xml(slices: FormSlices): string {
+/**
+ * Every NAVMC 10274 field value as the datasets carry it, before XML
+ * escaping, newlines as "\n". The datasets builder below writes exactly
+ * these; the live preview reads them too, because pdf.js's XFA engine
+ * trims the leading whitespace of a data value (XFAAttribute
+ * $getDataValue) and would otherwise put a name that opens block 13 on
+ * its first line at the left edge instead of three lines down at the
+ * centre line. One table, so the preview cannot show other words than
+ * the file holds.
+ */
+export function navmc10274FieldValues(slices: FormSlices): Record<string, string> {
   const { formData, paragraphs } = slices;
-
-  // Every small box reads the one value table the preview and the fit
-  // validator read (src/lib/navmc10274-layout.ts): the via numbering, the
-  // reference letter walk past (z), the enclosure start, the date picture.
   const boxes = Object.fromEntries(aaFieldValues(slices).map(v => [v.field.name, v.value]));
-
   // Block 12 then block 13, the typed name three lines under the text.
   // Text past both blocks is the export gate's business (a block-severity
   // validator in src/lib/navmc10274-fit.ts), never silently clipped here.
   const body = flowAaBody(paragraphs, (formData.sig as string) || '');
+  return {
+    ...boxes,
+    SuppInfo: aaBlockText(body.block12).replace(/\s+$/, ''),
+    ProcAct: aaBlockText(body.block13).replace(/\s+$/, ''),
+  };
+}
 
+export function buildNavmc10274Xml(slices: FormSlices): string {
+  const v = navmc10274FieldValues(slices);
   return XFA_WRAP([
-    tag('Date', boxes.Date),
-    tag('ActNum', boxes.ActNum),
-    tag('FileNum', boxes.FileNum),
-    tag('NameFrom', boxes.NameFrom),
-    tag('Via1', boxes.Via1),
-    tag('OrgStat', boxes.OrgStat),
-    tag('AddrTo', boxes.AddrTo),
-    tag('NatOfAct', boxes.NatOfAct),
-    tag('CopyTo', boxes.CopyTo),
-    tag('RefAuth', boxes.RefAuth),
-    tag('Encl1', boxes.Encl1),
-    tagKeepingLead('SuppInfo', aaBlockText(body.block12)),
-    tagKeepingLead('ProcAct', aaBlockText(body.block13)),
+    tag('Date', v.Date),
+    tag('ActNum', v.ActNum),
+    tag('FileNum', v.FileNum),
+    tag('NameFrom', v.NameFrom),
+    tag('Via1', v.Via1),
+    tag('OrgStat', v.OrgStat),
+    tag('AddrTo', v.AddrTo),
+    tag('NatOfAct', v.NatOfAct),
+    tag('CopyTo', v.CopyTo),
+    tag('RefAuth', v.RefAuth),
+    tag('Encl1', v.Encl1),
+    tagKeepingLead('SuppInfo', v.SuppInfo),
+    tagKeepingLead('ProcAct', v.ProcAct),
   ].join(''));
 }
 

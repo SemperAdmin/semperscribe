@@ -161,17 +161,20 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
         // NAVMC 10274: the same fit the compliance dialog reports, said
         // at export time like the Page 11 note above. Text past block 13
         // never reaches here (getExportBlockers refuses it).
+        let aaNotes = '';
         if (formData.documentType === 'aa-form') {
           const { navmc10274FitReport, describeAaFit } = await import('@/lib/navmc10274-fit');
           const notes = describeAaFit(navmc10274FitReport({ formData, vias, references, enclosures, copyTos, paragraphs }));
-          if (notes.length > 0) {
-            toast?.({
-              title: 'NAVMC 10274 layout',
-              description: notes.join(' ') + ' The preview marks every clipped line.',
-            });
-          }
+          if (notes.length > 0) aaNotes = notes.join(' ') + ' The preview marks every clipped line.';
         }
-        if (signatureFields.length === 0 && !hasBoundFiles && !startNeedsFlattened && page11Pages === 1) {
+        const officialRoute = signatureFields.length === 0 && !hasBoundFiles && !startNeedsFlattened && page11Pages === 1;
+        // The toaster shows one toast at a time, so on the official route
+        // the notes ride the export toast below; the redraw has no toast
+        // of its own and takes them here.
+        if (aaNotes && !officialRoute) {
+          toast?.({ title: 'NAVMC 10274 layout', description: aaNotes });
+        }
+        if (officialRoute) {
           const { exportOfficialForm } = await import('@/lib/xfa-form-fill');
           const formBlob = await exportOfficialForm({ formData, vias, references, enclosures, copyTos, paragraphs });
           deliver(formBlob, format);
@@ -188,7 +191,7 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
             title: 'Official Form Exported',
             description:
               'This is the fillable NAVMC form - open it in Adobe Acrobat or Reader. Browsers show a placeholder page. Add signature fields to export a flattened print PDF instead.' +
-              startNote,
+              startNote + (aaNotes ? ` ${aaNotes}` : ''),
           });
           return;
         }

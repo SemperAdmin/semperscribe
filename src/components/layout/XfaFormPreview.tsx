@@ -17,17 +17,24 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { getPdfWorkerSrc } from '@/lib/pdf-worker';
+import { applyXfaFieldValues, type XfaHtmlNode } from '@/lib/xfa-preview-values';
 import './xfa-preview.css';
 
 interface XfaFormPreviewProps {
   blob: Blob;
+  /**
+   * The field values as the datasets carry them, by field name. pdf.js
+   * trims a data value's leading whitespace; these put it back
+   * (src/lib/xfa-preview-values.ts).
+   */
+  values?: Readonly<Record<string, string>>;
   className?: string;
 }
 
 /** pdf.js asks the link service only when the form carries a link; this form carries none. */
 const NO_LINKS = { addLinkAttributes() { /* no links on the form */ } };
 
-export function XfaFormPreview({ blob, className }: XfaFormPreviewProps) {
+export function XfaFormPreview({ blob, values, className }: XfaFormPreviewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState<number | null>(null);
@@ -67,6 +74,7 @@ export function XfaFormPreview({ blob, className }: XfaFormPreviewProps) {
           const page = await loaded.getPage(n);
           const xfaHtml = await page.getXfa();
           if (cancelled) return;
+          if (values) applyXfaFieldValues(xfaHtml as XfaHtmlNode | null, values);
           const base = page.getViewport({ scale: 1 });
           const scale = Math.max(0.25, paneWidth / base.width);
           const viewport = page.getViewport({ scale });
@@ -101,7 +109,7 @@ export function XfaFormPreview({ blob, className }: XfaFormPreviewProps) {
       cancelled = true;
       doc?.destroy().catch(() => undefined);
     };
-  }, [blob, width]);
+  }, [blob, values, width]);
 
   return (
     <div className={className} data-testid="official-form-preview" data-pages={pageCount ?? undefined}>

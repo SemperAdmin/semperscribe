@@ -22,6 +22,8 @@ interface LivePreviewProps {
    * the pane instead. Default 'pdf': the blob iframe.
    */
   previewKind?: PreviewKind;
+  /** With 'official-xfa': the datasets values behind the render, by field name. */
+  previewFieldValues?: Readonly<Record<string, string>>;
   isLoading?: boolean;
   onUpdatePreview?: () => void;
   documentType?: string;
@@ -81,7 +83,7 @@ export function PreviewEmptyState({ fields }: { fields: RequiredFieldStatus[] })
   );
 }
 
-export function LivePreview({ className, previewUrl, previewBlob, previewKind = 'pdf', isLoading, onUpdatePreview, documentType = 'standard', downloadFileName, onDownloadExport, emptyStateFields, previewError }: LivePreviewProps) {
+export function LivePreview({ className, previewUrl, previewBlob, previewKind = 'pdf', previewFieldValues, isLoading, onUpdatePreview, documentType = 'standard', downloadFileName, onDownloadExport, emptyStateFields, previewError }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // R12 (USER_DRIVEN_ROADMAP): the Print and Download buttons were inert.
@@ -179,7 +181,7 @@ export function LivePreview({ className, previewUrl, previewBlob, previewKind = 
             </div>
           </div>
         ) : previewKind === 'official-xfa' && previewBlob ? (
-          <XfaFormPreview blob={previewBlob} className="w-full h-full" />
+          <XfaFormPreview blob={previewBlob} values={previewFieldValues} className="w-full h-full" />
         ) : previewUrl ? (
           <iframe ref={iframeRef} src={previewUrl} className="w-full h-full border-none" title="PDF Preview" />
         ) : (
