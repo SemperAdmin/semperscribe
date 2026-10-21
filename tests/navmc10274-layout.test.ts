@@ -138,7 +138,8 @@ describe('flowAaBody', () => {
     const flow = flowAaBody(ones(15), 'F. M. LASTNAME');
     expect(flow.block12).toHaveLength(29);
     expect(flow.block12[28].text).toBe('15.  Para 15');
-    expect(flow.block13.map((l) => l.text)).toEqual([`${' '.repeat(aaSignatureLead())}F. M. LASTNAME`]);
+    // The name keeps its three blank lines when it opens block 13 (ruling, second round).
+    expect(flow.block13.map((l) => l.text)).toEqual(['', '', '', `${' '.repeat(aaSignatureLead())}F. M. LASTNAME`]);
     expect(flow.signatureBlock).toBe(13);
     expect(flow.fits).toBe(true);
     // A block never opens on a blank line, and block 12 never ends on one:
@@ -166,7 +167,7 @@ describe('flowAaBody', () => {
     expect(flow.block12.length).toBeGreaterThanOrEqual(27);
     expect(flow.block12[0].text.startsWith('1.  Per references (a), (b), and (c)')).toBe(true);
     expect(flow.signatureBlock).toBe(13);
-    expect(flow.block13.map((l) => l.text.trim())).toEqual(['F. M. LASTNAME']);
+    expect(flow.block13.map((l) => l.text.trim())).toEqual(['', '', '', 'F. M. LASTNAME']);
   });
 });
 

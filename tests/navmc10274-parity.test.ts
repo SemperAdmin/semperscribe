@@ -77,8 +77,11 @@ describe('NAVMC 10274 preview and official export parity', () => {
 
   it('block 13: the typed name, alone, on both paths', () => {
     const fromExport = acrobatLines(field(datasets, 'ProcAct'), 'ProcAct').map(squash);
-    expect(fromExport).toEqual([fx.formData.sig]);
+    expect(fromExport).toEqual(['', '', '', fx.formData.sig]);
     expect(drawnIn('ProcAct')).toEqual([fx.formData.sig]);
+    const box = aaTextBox(NAVMC10274_FIELDS.ProcAct);
+    const name = drawn.find(i => i.page === 3 && squash(i.text) === fx.formData.sig);
+    expect(Math.abs(name!.y - (box.top - 0.891 * 10 - 3 * NAVMC10274_FIELDS.ProcAct.lineHeight))).toBeLessThan(1.5);
   });
 
   it('every small box carries the same words on both paths', () => {

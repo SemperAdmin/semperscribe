@@ -33,6 +33,11 @@
  *   - The typed name goes three blank lines under the text, starting at
  *     the box's horizontal centre line (block 12's caption: "type name of
  *     orginiator and sign 3 lines below text", the form's own spelling).
+ *     When the name alone spills past block 12 it keeps those three blank
+ *     lines at the top of block 13 (ruling of 2026-10-21, second round).
+ *   - The 30-line safe capacity stands: the owner's Acrobat check of the
+ *     v3 request (29 lines in block 12, the name in block 13) passed on
+ *     2026-10-21.
  *   - The date is the form's own picture, YYYY-MM-DD, on both paths.
  */
 import type { FormData, ParagraphData } from '@/types';
@@ -330,7 +335,14 @@ export function flowAaBody(paragraphs: readonly ParagraphData[], signature: stri
       signatureBlock = 13;
     }
   }
-  while (rest.length > 0 && !rest[0].text.trim()) rest.shift();
+  // A block never opens on a blank line, with one exception the owner
+  // ruled on 2026-10-21: when the signature group alone spills, the name
+  // keeps its three blank lines at the top of block 13, so it sits three
+  // lines under the text just as it would have in block 12.
+  const groupOpensBlock13 = group.length > 0 && rest.length === group.length && signatureBlock === 13;
+  if (!groupOpensBlock13) {
+    while (rest.length > 0 && !rest[0].text.trim()) rest.shift();
+  }
   while (block12.length > 0 && !block12[block12.length - 1].text.trim()) block12.pop();
   const fits = rest.length <= cap13;
   return {

@@ -1,6 +1,6 @@
 # NAVMC 10274 (AA Form): one layout for the preview and the official export
 
-Status: PR 3 of 3 (0.13.7); PR 1 shipped in 0.13.5, PR 2 in 0.13.6. Open: the owner's Acrobat check (item 7) and the cloud.gov dispatch. Owner's handoff of 2026-10-21, verified against
+Status: the three PRs shipped (0.13.5, 0.13.6, 0.13.7), cloud.gov deployed from 0f17cad on 2026-10-21, the owner's Acrobat check passed. 0.13.8 carries the second-round rulings below. Owner's handoff of 2026-10-21, verified against
 `main` at `da11784` by four independent reads of the code, the XFA blank,
 and the test suite. Decisions marked "ruled" are the owner's and binding.
 
@@ -67,7 +67,12 @@ lines below text".
    owner renders a 31-line and a 32-line file in Acrobat and reports which
    clips. One constant, `AA_DEFAULT_LINE_HEIGHT`, moves it.
 4. The typed name starts at the box's centre line, three blank lines under
-   the text, on both paths.
+   the text, on both paths. Second round (2026-10-21, after PR 2): when the
+   name alone spills past block 12 it keeps those three blank lines at the
+   top of block 13.
+6. Second round: the Acrobat check of the v3 request passed, so the 30-line
+   safe capacity stands; the `aa-sgtmaj-slate` template stays as shipped
+   (30 lines in block 12, 12 in block 13).
 5. Unchanged from 2026-07-17 and 2026-08-28: unsigned forms export onto the
    official XFA form; the bundled blank stays byte-for-byte the government
    file.
