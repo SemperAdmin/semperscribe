@@ -218,3 +218,24 @@ describe('an initial session on screen (handoff D-01, D-03, D-07)', () => {
     expect(within(step2).queryByText(/Record the Marine's component/)).toBeNull();
   });
 });
+
+describe('duties and the standard tag on screen (handoff D-05, D-06)', () => {
+  it('records primary and collateral duties in step 2 and clears the objective 7 suggestion', () => {
+    render(<Harness initial={{ counselingIcsObjectives: ['mission'] }} />);
+    const step2 = screen.getByTestId('counseling-step-2');
+    expect(within(step2).getByText(/record the Marine's primary and collateral duties/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Primary duties (one per line)'), { target: { value: 'Unit diary\nLegal correspondence' } });
+    fireEvent.change(screen.getByLabelText('Collateral duties (one per line)'), { target: { value: 'Mail orderly' } });
+    expect(data().counselingPrimaryDuties).toBe('Unit diary\nLegal correspondence');
+    expect(data().counselingCollateralDuties).toBe('Mail orderly');
+    expect(within(step2).queryByText(/record the Marine's primary and collateral duties/i)).toBeNull();
+  });
+
+  it('offers Tag quantity for a numeric standard and the tag lights up', () => {
+    render(<Harness initial={{ counselingTargets: [{ action: 'To achieve', object: 'a PFT', standard: 'of 235 or higher', standardKinds: [], dueDate: '', area: 'fitness' }] } as Partial<FormData>} />);
+    const step6 = screen.getByTestId('counseling-step-6');
+    fireEvent.click(within(step6).getByRole('button', { name: 'Tag quantity' }));
+    expect(data().counselingTargets[0].standardKinds).toEqual(['quantity']);
+    expect(within(step6).getByRole('button', { name: 'Quantity', pressed: true })).toBeInTheDocument();
+  });
+});

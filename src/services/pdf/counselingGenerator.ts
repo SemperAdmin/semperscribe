@@ -23,7 +23,7 @@ import {
   counselingPriorTargets, counselingSubjects, counselingTargets, rankAbbreviation, targetSentence,
   JEPES_ADVERSE_REASONS, JEPES_ATTRIBUTES, JEPES_CITATION, benchmarkHasMarks, counselingBenchmark, counselingPriorBenchmark,
   isJepesGrade, jepesBand,
-  type CounselingAreaEntry, type CounselingPriorTarget, type CounselingSubject, type CounselingTarget,
+  type CounselingAreaEntry, type CounselingPriorTarget, type CounselingSubject, type CounselingTarget, dutyLines,
 } from '@/lib/counseling';
 
 // --- the model ---
@@ -139,7 +139,16 @@ export function counselingFormModel(formData: FormData): CounselingFormModel {
     { n: 9, label: 'EDIPI', value: get('counselingMarineEdipi') },
     { n: 10, label: 'DOR', value: get('counselingMarineDor') },
     { n: 11, label: 'PMOS', value: get('counselingMarinePmos') },
-    { n: 12, label: 'BILLET TITLE AND DESCRIPTION', value: [get('counselingBilletTitle'), get('counselingBilletDescription')].filter(Boolean).join('. ') },
+    {
+      n: 12, label: 'BILLET TITLE AND DESCRIPTION',
+      // Primary and collateral duties on page 1 under the billet, one
+      // list each, the record of ICS objective 7 (handoff D-05, 22 Oct 26).
+      value: [
+        [get('counselingBilletTitle'), get('counselingBilletDescription')].filter(Boolean).join('. '),
+        dutyLines(get('counselingPrimaryDuties')).length ? `Primary duties: ${dutyLines(get('counselingPrimaryDuties')).join('; ')}.` : '',
+        dutyLines(get('counselingCollateralDuties')).length ? `Collateral duties: ${dutyLines(get('counselingCollateralDuties')).join('; ')}.` : '',
+      ].filter(Boolean).join('\n'),
+    },
     { n: 13, label: 'BMOS', value: get('counselingMarineBilletMos') },
     { n: 14, label: 'COMP', checks: [{ label: 'AC', on: component === 'active' }, { label: 'RC', on: component === 'reserve' }] },
     { n: 15, label: 'NAME (Last, First, MI)', value: name(formData, 'counselingSenior') },

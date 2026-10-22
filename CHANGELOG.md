@@ -5,6 +5,12 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.17] - 2026-10-22
+
+### Added
+
+- Counseling Worksheet, duties and the standard tag (handoff of 22 Oct 26, D-05 and D-06). Step 2 takes the Marine's primary duties and collateral duties, one per line, and the record prints them on page 1 under the billet in block 12; objective 7 of an initial session is that the junior understands them (NAVMC 2795 para 2001.1.b), so an initial session with objective 7 ticked and no duties recorded raises a step 2 suggestion. A target that states a standard but carries no quantity, quality, timeliness or manner tag printed a blank STD column in block 26; it now raises a step 6 suggestion, with a one-click Tag quantity when the standard holds a number.
+
 ## [0.13.16] - 2026-10-22
 
 ### Fixed

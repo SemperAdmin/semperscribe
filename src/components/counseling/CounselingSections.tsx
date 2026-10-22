@@ -30,7 +30,7 @@ import type { FormData } from '@/types';
 import {
   AREA_CITATION, AREA_STATUS_LABELS, COUNSELING_AREAS, COUNSELING_GRADES, COUNSELING_LIFE_EVENTS, COUNSELING_OCCASIONS,
   HANDLING_STATEMENT, ICS_CITATION, ICS_OBJECTIVES, LIFE_EVENT_CITATION, PRIOR_TARGET_STATUS_LABELS, STANDARD_KINDS,
-  areaPrompts, sincePhrase,
+  areaPrompts, sincePhrase, DUTIES_CITATION,
   TARGET_ACTIONS, TARGET_CITATION, computedNextSessionDate, counselingAreaEntries, counselingField, counselingIcsObjectives,
   counselingLifeEvents, counselingOccasion, counselingPriorTargets, counselingSubjects, counselingSuggestions, counselingTargets,
   dismissedSuggestions, emptyTarget, nextSessionInterval, targetSentence,
@@ -221,6 +221,13 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
           <TextField name="counselingBilletTitle" label="Billet title" value={get('counselingBilletTitle')} onChange={(v) => set('counselingBilletTitle', v)} className="md:col-span-3" />
           <TextField name="counselingBilletDescription" label="Billet description (if required)" value={get('counselingBilletDescription')} onChange={(v) => set('counselingBilletDescription', v)} className="md:col-span-3" />
         </div>
+        <fieldset className="mt-4" data-testid="counseling-duties">
+          <legend className="text-sm font-medium">Duties <span className="text-[11px] text-muted-foreground font-normal">(objective 7 of an initial session, {DUTIES_CITATION}; print under the billet on page 1)</span></legend>
+          <div className="grid gap-4 md:grid-cols-2 mt-2">
+            <AreaField name="counselingPrimaryDuties" label="Primary duties (one per line)" value={get('counselingPrimaryDuties')} onChange={(v) => set('counselingPrimaryDuties', v)} />
+            <AreaField name="counselingCollateralDuties" label="Collateral duties (one per line)" value={get('counselingCollateralDuties')} onChange={(v) => set('counselingCollateralDuties', v)} />
+          </div>
+        </fieldset>
         <h4 className="text-sm font-semibold mt-6 mb-2">Marine performing counseling (senior)</h4>
         <div className="grid gap-4 md:grid-cols-3">
           <TextField name="counselingSeniorLastName" label="Last name" value={get('counselingSeniorLastName')} onChange={(v) => set('counselingSeniorLastName', v)} />

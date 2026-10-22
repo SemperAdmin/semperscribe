@@ -45,6 +45,8 @@
       "counselingMarineBilletMos": "0111",
       "counselingBilletTitle": "Administrative Chief, S-1",
       "counselingBilletDescription": "Supervises three Marines. Owns the unit diary, awards and correspondence.",
+      "counselingPrimaryDuties": "Unit diary: daily entries, audits, and the monthly certification\nAwards: drafting, routing, and tracking to approval\nCorrespondence: naval letters and directives for the S-1, turnaround within five working days\nSupervision of three Marines: training, counseling, and the section's work schedule",
+      "counselingCollateralDuties": "Section safety representative\nUnit voting assistance officer's assistant",
       "counselingSeniorLastName": "LEADER",
       "counselingSeniorFirstName": "SAMPLE",
       "counselingSeniorMiddleInitial": "B",
