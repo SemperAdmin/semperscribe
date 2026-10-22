@@ -42,5 +42,6 @@ describe('PreviewModal official-form route', () => {
       <PreviewModal open onOpenChange={() => {}} documentType="aa-form" previewUrl="blob:x" previewKind="official-xfa" />,
     );
     expect(screen.getByTitle('PDF Preview')).toBeTruthy();
+    expect(screen.queryByTestId('official-form-preview')).toBeNull();
   });
 });
