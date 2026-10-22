@@ -622,27 +622,27 @@ export async function generateCounseling(formData: FormData): Promise<Uint8Array
   // section numbers after it stay as they are so block 26 is block 26 on
   // every occasion.
   if (model.agenda !== 'ics') {
-  s.section('SECTION VII. REVIEW OF TARGETS FROM LAST SESSION (follow-on only, NAVMC 2795 para 2001.2.b)');
-  const reviewCols = [24, WIDTH - 24 - 150, 150];
-  const reviewRows = model.priorTargets.length >= 2 ? model.priorTargets : [...model.priorTargets, ...Array.from({ length: 2 - model.priorTargets.length }, () => ({ text: '', status: '' as const }))];
-  s.table(
-    [
-      { w: reviewCols[0], value: '25.', bold: true, size: LABEL + 0.5 },
-      { w: reviewCols[1], value: it(25).label, bold: true, size: LABEL + 0.5 },
-      { w: reviewCols[2], value: 'RESULT', bold: true, size: LABEL + 0.5 },
-    ],
-    reviewRows.map((t, i) => [
-      { w: reviewCols[0], value: `${String.fromCharCode(97 + (i % 26))}.` },
-      { w: reviewCols[1], value: t.text.trim(), minLines: 2 },
-      {
-        w: reviewCols[2], perLine: 3, size: VALUE - 1,
-        checks: [
-          { label: 'Met', on: t.status === 'met' }, { label: 'Part', on: t.status === 'partly-met' }, { label: 'Not', on: t.status === 'not-met' },
-          { label: 'Dropped', on: t.status === 'dropped' }, { label: 'Carried', on: t.status === 'carried-forward' }, { label: '', on: false },
-        ],
-      },
-    ]),
-  );
+    s.section('SECTION VII. REVIEW OF TARGETS FROM LAST SESSION (follow-on only, NAVMC 2795 para 2001.2.b)');
+    const reviewCols = [24, WIDTH - 24 - 150, 150];
+    const reviewRows = model.priorTargets.length >= 2 ? model.priorTargets : [...model.priorTargets, ...Array.from({ length: 2 - model.priorTargets.length }, () => ({ text: '', status: '' as const }))];
+    s.table(
+      [
+        { w: reviewCols[0], value: '25.', bold: true, size: LABEL + 0.5 },
+        { w: reviewCols[1], value: it(25).label, bold: true, size: LABEL + 0.5 },
+        { w: reviewCols[2], value: 'RESULT', bold: true, size: LABEL + 0.5 },
+      ],
+      reviewRows.map((t, i) => [
+        { w: reviewCols[0], value: `${String.fromCharCode(97 + (i % 26))}.` },
+        { w: reviewCols[1], value: t.text.trim(), minLines: 2 },
+        {
+          w: reviewCols[2], perLine: 3, size: VALUE - 1,
+          checks: [
+            { label: 'Met', on: t.status === 'met' }, { label: 'Part', on: t.status === 'partly-met' }, { label: 'Not', on: t.status === 'not-met' },
+            { label: 'Dropped', on: t.status === 'dropped' }, { label: 'Carried', on: t.status === 'carried-forward' }, { label: '', on: false },
+          ],
+        },
+      ]),
+    );
   }
 
   // Section VIII. Targets, five rows always.
