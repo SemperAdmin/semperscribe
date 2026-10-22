@@ -5,6 +5,12 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.15] - 2026-10-22
+
+### Fixed
+
+- A share link cut by a mail or chat client opened an empty document in silence. The payload is LZ-string, which yields nothing for a truncated stream, so the page saw no link at all. The page now says the link is damaged or incomplete, that nothing was loaded, and to ask the sender to copy it again or send the .nldp file; the cut payload is cleared from the address bar. The copy step now warns when a link passes 2,000 characters, the length at which mail and chat apps start cutting one, instead of only at the 8,000-character browser cap.
+
 ## [0.13.14] - 2026-10-22
 
 ### Fixed

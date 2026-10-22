@@ -44,6 +44,14 @@ export interface ShareableState {
 
 const CURRENT_VERSION = 2;
 const MAX_URL_LENGTH = 8000; // Safe limit for most browsers
+/**
+ * Above this, mail and chat clients start breaking the link: plain-text
+ * mail wraps long lines, and some messengers cut a pasted URL. A link
+ * cut anywhere decodes to nothing (LZ-string yields an empty string), so
+ * the recipient opens an empty document. The owner's 2,100-character
+ * link of 2026-10-21 arrived cut. The copy step warns at this length.
+ */
+export const WRAP_RISK_URL_LENGTH = 2000;
 
 /**
  * P2-11 size caps. A share payload is attacker-supplied input reaching
@@ -157,11 +165,11 @@ export function decodeStateFromUrl(encoded: string): ShareableState | null {
 export function generateShareableUrl(
   state: ShareableState,
   baseUrl?: string
-): { url: string; isLong: boolean; error?: string } {
+): { url: string; isLong: boolean; wrapRisk: boolean; error?: string } {
   try {
     const encoded = encodeStateForUrl({ ...state, version: CURRENT_VERSION });
     if (encoded.length > MAX_ENCODED_SHARE_LENGTH) {
-      return { url: '', isLong: true, error: ENCODED_TOO_LARGE };
+      return { url: '', isLong: true, wrapRisk: true, error: ENCODED_TOO_LARGE };
     }
     const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '');
     // THE FRAGMENT, NOT THE QUERY STRING. A query string is sent to the
@@ -180,12 +188,14 @@ export function generateShareableUrl(
     return {
       url,
       isLong,
+      wrapRisk: url.length > WRAP_RISK_URL_LENGTH,
       error: isLong ? 'URL is very long and may not work in all browsers/applications' : undefined
     };
   } catch (error) {
     return {
       url: '',
       isLong: false,
+      wrapRisk: false,
       error: error instanceof Error ? error.message : 'Failed to generate URL'
     };
   }
@@ -212,6 +222,20 @@ export const SHARE_HASH_PREFIX = '#s=';
  * reaching server logs; it does nothing about the link being
  * attacker-constructable, which is a different problem with its own answer.
  */
+/**
+ * True when the URL carries an unprotected share payload at all, whether
+ * or not it decodes. The loader uses it to tell a damaged link (payload
+ * present, decode failed) from a plain visit, so the recipient of a cut
+ * link hears that nothing loaded instead of seeing an empty document.
+ */
+export function hasSharePayloadInUrl(): boolean {
+  if (typeof window === 'undefined') return false;
+  const hash = window.location.hash;
+  if (hash.startsWith(SHARE_HASH_PREFIX) && hash.length > SHARE_HASH_PREFIX.length) return true;
+  const encoded = new URLSearchParams(window.location.search).get('share');
+  return typeof encoded === 'string' && encoded.length > 0;
+}
+
 export function getStateFromUrl(): ShareableState | null {
   if (typeof window === 'undefined') return null;
 
@@ -268,11 +292,11 @@ export async function generateEncryptedShareUrl(
   state: ShareableState,
   password: string,
   baseUrl?: string
-): Promise<{ url: string; isLong: boolean; error?: string }> {
+): Promise<{ url: string; isLong: boolean; wrapRisk: boolean; error?: string }> {
   try {
     const compressed = encodeStateForUrl({ ...state, version: CURRENT_VERSION });
     if (compressed.length > MAX_ENCODED_SHARE_LENGTH) {
-      return { url: '', isLong: true, error: ENCODED_TOO_LARGE };
+      return { url: '', isLong: true, wrapRisk: true, error: ENCODED_TOO_LARGE };
     }
     const payload = await encryptText(compressed, password);
     const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '');
@@ -281,12 +305,14 @@ export async function generateEncryptedShareUrl(
     return {
       url,
       isLong,
+      wrapRisk: url.length > WRAP_RISK_URL_LENGTH,
       error: isLong ? 'URL is very long and may not work in all browsers/applications' : undefined,
     };
   } catch (error) {
     return {
       url: '',
       isLong: false,
+      wrapRisk: false,
       error: error instanceof Error ? error.message : 'Failed to generate encrypted URL',
     };
   }

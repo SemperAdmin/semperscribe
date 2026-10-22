@@ -102,6 +102,25 @@ describe('generateShareableUrl', () => {
     expect(new URL(url).search).toBe('');
   });
 
+  it('flags the length at which mail and chat apps cut a link, below the browser cap', () => {
+    const short = generateShareableUrl(makeState(), 'https://example.com/app');
+    expect(short.wrapRisk).toBe(false);
+    const state = makeState({
+      paragraphs: Array.from({ length: 40 }, (_, i): ParagraphData => ({
+        id: i + 1,
+        level: 1,
+        content: `Paragraph ${i} :: ${Math.sin(i)} ${Math.cos(i * 7)} ${(i * 2654435761 % 4294967296).toString(36)}`,
+      })),
+    });
+    const { url, isLong, wrapRisk } = generateShareableUrl(state, 'https://example.com/app');
+    expect(url.length).toBeGreaterThan(2000);
+    expect(url.length).toBeLessThan(8000);
+    expect(wrapRisk).toBe(true);
+    expect(isLong).toBe(false);
+    // The front of that link, as a cut would leave it, decodes to nothing.
+    expect(decodeStateFromUrl(url.slice(url.indexOf('#s=') + 3, -20))).toBeNull();
+  });
+
   it('flags URLs beyond the 8000-char soft cap without failing', () => {
     const state = makeState({
       // lz-string compresses repetition well, so use varied content
