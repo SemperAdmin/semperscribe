@@ -70,6 +70,21 @@ export function counselingArea(id: string): CounselingArea | undefined {
   return COUNSELING_AREAS.find((a) => a.id === id);
 }
 
+/**
+ * The period a session looks back over. An initial session has no last
+ * session: the Marine is new to this senior (NAVMC 2795 para 2001.1.a),
+ * so its prompts and guidance say so instead of pointing at a session
+ * that never happened (handoff D-03, 22 Oct 26).
+ */
+export function sincePhrase(kind: CounselingOccasionKind | undefined): string {
+  return kind === 'initial' ? 'since assignment to this senior' : 'since the last session';
+}
+
+/** An area's prompts with the look-back phrase set for the occasion. */
+export function areaPrompts(area: CounselingArea, kind: CounselingOccasionKind | undefined): string[] {
+  return area.prompts.map((prompt) => prompt.replace('since the last session', sincePhrase(kind)));
+}
+
 export type CounselingAreaStatus = '' | 'discussed' | 'not-this-session' | 'target-set';
 
 export interface CounselingAreaEntry {
@@ -532,6 +547,14 @@ export function counselingSuggestions(formData: FormData): CounselingSuggestion[
   if (!get('counselingSeniorLastName')) {
     out.push({ id: 'senior-name', step: 2, field: 'counselingSeniorLastName', text: 'Record who performed the counseling.', citation: 'NAVMC 2795 Figures A-1 and A-2' });
   }
+  if (!component) {
+    out.push({
+      id: 'component', step: 2, field: 'counselingMarineComponent',
+      text: "Record the Marine's component, active or reserve. Block 14 prints it, and the next-session rule differs for reservists.",
+      citation: 'NAVMC 2795 para 2001.3.a, 2001.3.f',
+      action: { label: 'Set active', apply: () => ({ counselingMarineComponent: 'active' }) },
+    });
+  }
   const billets = `${get('counselingSeniorBillet')} ${get('counselingBilletTitle')}`.toLowerCase();
   if (/\bmentor/.test(billets)) {
     out.push({
@@ -958,6 +981,11 @@ export function benchmarkSuggestions(formData: FormData): CounselingSuggestion[]
   const out: CounselingSuggestion[] = [];
 
   if (!benchmarkHasMarks(benchmark)) {
+    // An initial session is the senior's first look at the Marine, so
+    // the benchmark is optional there and nothing asks for it (handoff
+    // D-07, 22 Oct 26). The block stays available for a senior who has
+    // a basis; marks entered on an ICS still get the band rules below.
+    if (counselingOccasion(counselingField(formData, 'counselingOccasion'))?.kind === 'initial') return out;
     out.push({
       id: 'benchmark-start', step: 5, field: 'counselingBenchmark.character.mark',
       text: 'Start each attribute at 2.5 and move from there. Until proven otherwise, a Marine begins at 2.5 in all three categories.',

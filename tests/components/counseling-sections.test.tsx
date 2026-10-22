@@ -169,8 +169,8 @@ describe('JEPES benchmark block (docs/COUNSELING_JEPES_BENCHMARK_PLAN.md)', () =
     expect(within(card).getByText('prior 2.5, +0.7')).toBeInTheDocument();
   });
 
-  it('surfaces the step-5 suggestions for the benchmark', () => {
-    render(<Harness initial={{ counselingMarineGrade: 'E-4' }} />);
+  it('surfaces the step-5 suggestions for the benchmark on a follow-on session', () => {
+    render(<Harness initial={{ counselingMarineGrade: 'E-4', counselingOccasion: 'follow-on' }} />);
     expect(screen.getAllByText(/Start each attribute at 2.5/).length).toBeGreaterThanOrEqual(1);
     const card = screen.getByTestId('benchmark-mos');
     fireEvent.change(within(card).getByLabelText('Mark (0.0 to 5.0)'), { target: { value: '4.5' } });
@@ -189,5 +189,32 @@ describe('EDIPI inputs', () => {
     const senior = document.getElementById('counselingSeniorEdipi') as HTMLInputElement;
     fireEvent.change(senior, { target: { value: '12-34' } });
     expect(data().counselingSeniorEdipi).toBe('1234');
+  });
+});
+
+/** Handoff of 22 Oct 26: an initial session has no last session, on screen as on the record. */
+describe('an initial session on screen (handoff D-01, D-03, D-07)', () => {
+  it('names no last session anywhere on an ICS, and does on a follow-on', () => {
+    render(<Harness initial={{ counselingMarineGrade: 'E-4' }} />);
+    expect(screen.queryAllByText(/last session/i)).toHaveLength(0);
+    expect(screen.getAllByText(/since assignment to this senior/).length).toBeGreaterThan(0);
+    expect(screen.getByTestId('ics-date-note')).toBeInTheDocument();
+    expect(screen.getByTestId('benchmark-optional')).toBeInTheDocument();
+    expect(screen.queryByText(/Start each attribute at 2\.5/)).toBeNull();
+    cleanup();
+    render(<Harness initial={{ counselingOccasion: 'follow-on', counselingMarineGrade: 'E-4' }} />);
+    expect(screen.getAllByText(/last session/i).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('ics-date-note')).toBeNull();
+    expect(screen.queryByTestId('benchmark-optional')).toBeNull();
+    expect(screen.getAllByText(/Start each attribute at 2\.5/).length).toBeGreaterThan(0);
+  });
+
+  it('D-08: asks for the component when it is blank and sets active in one click', () => {
+    render(<Harness initial={{ counselingMarineComponent: '' }} />);
+    const step2 = screen.getByTestId('counseling-step-2');
+    expect(within(step2).getByText(/Record the Marine's component/)).toBeInTheDocument();
+    fireEvent.click(within(step2).getByRole('button', { name: 'Set active' }));
+    expect(data().counselingMarineComponent).toBe('active');
+    expect(within(step2).queryByText(/Record the Marine's component/)).toBeNull();
   });
 });

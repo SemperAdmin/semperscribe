@@ -121,8 +121,12 @@ export function counselingFormModel(formData: FormData): CounselingFormModel {
     },
     { n: 2, label: 'DATE OF SESSION', value: get('date') },
     { n: 3, label: 'TARGET DATE, NEXT SESSION', value: get('counselingNextSessionDate') },
-    { n: 4, label: 'DATE OF ICS', value: get('counselingIcsDate') },
-    { n: 5, label: 'DATE OF LAST SESSION', value: get('counselingLastSessionDate') },
+    // An initial session IS the ICS, so block 4 is the session date and
+    // there is no last session to date (handoff D-01, D-03, 22 Oct 26).
+    { n: 4, label: 'DATE OF ICS', value: kind === 'initial' ? get('date') : get('counselingIcsDate') },
+    kind === 'initial'
+      ? { n: 5, label: 'PRIOR SESSION', value: 'None. Initial session.' }
+      : { n: 5, label: 'DATE OF LAST SESSION', value: get('counselingLastSessionDate') },
     {
       n: 6, label: 'LIFE EVENTS',
       checks: [
@@ -613,28 +617,33 @@ export async function generateCounseling(formData: FormData): Promise<Uint8Array
     );
   }
 
-  // Section VII. Review of targets from last session.
-  s.section('SECTION VII. REVIEW OF TARGETS FROM LAST SESSION (follow-on only, NAVMC 2795 para 2001.2.b)');
-  const reviewCols = [24, WIDTH - 24 - 150, 150];
-  const reviewRows = model.priorTargets.length >= 2 ? model.priorTargets : [...model.priorTargets, ...Array.from({ length: 2 - model.priorTargets.length }, () => ({ text: '', status: '' as const }))];
-  s.table(
-    [
-      { w: reviewCols[0], value: '25.', bold: true, size: LABEL + 0.5 },
-      { w: reviewCols[1], value: it(25).label, bold: true, size: LABEL + 0.5 },
-      { w: reviewCols[2], value: 'RESULT', bold: true, size: LABEL + 0.5 },
-    ],
-    reviewRows.map((t, i) => [
-      { w: reviewCols[0], value: `${String.fromCharCode(97 + (i % 26))}.` },
-      { w: reviewCols[1], value: t.text.trim(), minLines: 2 },
-      {
-        w: reviewCols[2], perLine: 3, size: VALUE - 1,
-        checks: [
-          { label: 'Met', on: t.status === 'met' }, { label: 'Part', on: t.status === 'partly-met' }, { label: 'Not', on: t.status === 'not-met' },
-          { label: 'Dropped', on: t.status === 'dropped' }, { label: 'Carried', on: t.status === 'carried-forward' }, { label: '', on: false },
-        ],
-      },
-    ]),
-  );
+  // Section VII. Review of targets from last session. Not on an initial
+  // session, which has none to review (handoff D-02, 22 Oct 26); the
+  // section numbers after it stay as they are so block 26 is block 26 on
+  // every occasion.
+  if (model.agenda !== 'ics') {
+    s.section('SECTION VII. REVIEW OF TARGETS FROM LAST SESSION (follow-on only, NAVMC 2795 para 2001.2.b)');
+    const reviewCols = [24, WIDTH - 24 - 150, 150];
+    const reviewRows = model.priorTargets.length >= 2 ? model.priorTargets : [...model.priorTargets, ...Array.from({ length: 2 - model.priorTargets.length }, () => ({ text: '', status: '' as const }))];
+    s.table(
+      [
+        { w: reviewCols[0], value: '25.', bold: true, size: LABEL + 0.5 },
+        { w: reviewCols[1], value: it(25).label, bold: true, size: LABEL + 0.5 },
+        { w: reviewCols[2], value: 'RESULT', bold: true, size: LABEL + 0.5 },
+      ],
+      reviewRows.map((t, i) => [
+        { w: reviewCols[0], value: `${String.fromCharCode(97 + (i % 26))}.` },
+        { w: reviewCols[1], value: t.text.trim(), minLines: 2 },
+        {
+          w: reviewCols[2], perLine: 3, size: VALUE - 1,
+          checks: [
+            { label: 'Met', on: t.status === 'met' }, { label: 'Part', on: t.status === 'partly-met' }, { label: 'Not', on: t.status === 'not-met' },
+            { label: 'Dropped', on: t.status === 'dropped' }, { label: 'Carried', on: t.status === 'carried-forward' }, { label: '', on: false },
+          ],
+        },
+      ]),
+    );
+  }
 
   // Section VIII. Targets, five rows always.
   s.section('SECTION VIII. TARGETS FOR THE COMING PERIOD (NAVMC 2795 para 4002)');

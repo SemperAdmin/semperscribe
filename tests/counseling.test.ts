@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { registerNodeAssets } from './node-assets';
 import { extractPdfTextLayout } from './golden/helpers';
+import { areaPrompts, sincePhrase, benchmarkSuggestions } from '@/lib/counseling';
 import {
   COUNSELING_AREAS, COUNSELING_GRADES, COUNSELING_OCCASIONS, ICS_OBJECTIVES, HANDLING_STATEMENT, PRIVACY_MARKING,
   computedNextSessionDate, counselingSuggestions, emptyTarget, isLcplOrBelow, nextSessionInterval, parseNavalDate,
@@ -385,8 +386,8 @@ describe('JEPES benchmark: bands, scope, suggestions', () => {
     for (const a of JEPES_ATTRIBUTES) for (const b of JEPES_BANDS) expect(a.bands[b.id].length).toBeGreaterThanOrEqual(3);
   });
 
-  it('offers the 2.5 baseline when all three are blank, and applies it to all three', () => {
-    const fd = cpl();
+  it('offers the 2.5 baseline when all three are blank on a follow-on, and applies it to all three', () => {
+    const fd = cpl({ counselingOccasion: 'follow-on' });
     const start = counselingSuggestions(fd).find((s) => s.id === 'benchmark-start');
     expect(start).toBeDefined();
     const applied = { ...fd, ...start!.action!.apply(fd) };
@@ -480,5 +481,71 @@ describe('JEPES benchmark on the record', () => {
     expect(model.benchmark).toHaveLength(3);
     expect(model.benchmark![1]).toMatchObject({ attribute: 'MOS Proficiency and/or Mission Accomplishment', mark: '2.5', band: 'Meets Expectations', prior: '', justification: '' });
     expect(model.benchmark![0].mark).toBe('');
+  });
+});
+
+/**
+ * Handoff of 22 Oct 26 (MATSG-23 S-1 test runs), defects D-01, D-02, D-03,
+ * D-07 and D-08: an initial session is the ICS and has no last session,
+ * and the record and the screens say so.
+ */
+describe('an initial session on the record and the screens (handoff D-01 to D-03, D-07, D-08)', () => {
+  const pdfText = async (overrides: Partial<FormData> = {}) => {
+    const bytes = await generateCounseling(form(overrides));
+    const items = await extractPdfTextLayout(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
+    return items.map((i) => i.text).join(' ');
+  };
+
+  it('D-01: block 4, Date of ICS, is the session date on an initial session', () => {
+    const item = (fd: FormData, n: number) => counselingFormModel(fd).items.find((i) => i.n === n)!;
+    expect(item(form({ date: '22 Oct 26' }), 4).value).toBe('22 Oct 26');
+    expect(item(form({ date: '22 Oct 26', counselingOccasion: 'follow-on', counselingIcsDate: '1 Jul 26' }), 4).value).toBe('1 Jul 26');
+    expect(item(form({ counselingOccasion: 'follow-on' }), 4).value).toBe('');
+  });
+
+  it('D-01: the ICS PDF prints the session date in block 4', async () => {
+    const text = await pdfText({ date: '22 Oct 26' });
+    expect(text).toMatch(/4\.\s*DATE OF ICS\s*22 Oct 26/);
+  });
+
+  it('D-02: the ICS PDF carries no Section VII; a follow-on PDF does', async () => {
+    const ics = await pdfText();
+    expect(ics).not.toMatch(/SECTION VII\./);
+    expect(ics).toMatch(/SECTION VIII\./);
+    const follow = await pdfText({ counselingOccasion: 'follow-on', counselingPriorTargets: [{ text: 'To pass the PFT', status: 'met' }] });
+    expect(follow).toMatch(/SECTION VII\. REVIEW OF TARGETS FROM LAST SESSION/);
+    expect(follow).toMatch(/To pass the PFT/);
+  });
+
+  it('D-03: no ICS prompt, guidance or PDF text names a last session', async () => {
+    expect(sincePhrase('initial')).toBe('since assignment to this senior');
+    expect(sincePhrase('follow-on')).toBe('since the last session');
+    for (const area of COUNSELING_AREAS) {
+      for (const prompt of areaPrompts(area, 'initial')) expect(prompt).not.toMatch(/last session/i);
+    }
+    expect(areaPrompts(COUNSELING_AREAS[0], 'initial')[0]).toBe('Conduct on and off duty since assignment to this senior.');
+    expect(areaPrompts(COUNSELING_AREAS[0], 'follow-on')[0]).toBe('Conduct on and off duty since the last session.');
+    const text = await pdfText({ counselingMarineGrade: 'E-4', counselingAreas: [{ area: 'fidelity', status: 'discussed', notes: 'Steady' }] });
+    expect(text).not.toMatch(/last session/i);
+    expect(text).toMatch(/PRIOR SESSION\s*None\. Initial session\./);
+  });
+
+  it('D-07: an initial session for a corporal raises no 2.5 benchmark item; a follow-on does; marks entered on an ICS still get the band rules', () => {
+    const ids = (fd: FormData) => counselingSuggestions(fd).map((s) => s.id);
+    expect(ids(form({ counselingMarineGrade: 'E-4' }))).not.toContain('benchmark-start');
+    expect(ids(form({ counselingMarineGrade: 'E-4', counselingOccasion: 'follow-on' }))).toContain('benchmark-start');
+    const marked = form({ counselingMarineGrade: 'E-4', counselingBenchmark: { character: { mark: '4.5', justification: '', commendatory: false, adverseReason: '' }, mos: { mark: '', justification: '', commendatory: false, adverseReason: '' }, leadership: { mark: '', justification: '', commendatory: false, adverseReason: '' } } } as Partial<FormData>);
+    expect(benchmarkSuggestions(marked).map((s) => s.id)).toContain('benchmark-justify-character');
+  });
+
+  it('D-08: an empty component raises a suggestion whose action sets active; a set component raises none', () => {
+    const fd = form({ counselingMarineComponent: '' });
+    const s = counselingSuggestions(fd).find((x) => x.id === 'component');
+    expect(s).toBeDefined();
+    expect(s!.step).toBe(2);
+    const applied = { ...fd, ...s!.action!.apply(fd) };
+    expect(applied.counselingMarineComponent).toBe('active');
+    expect(counselingSuggestions(applied).find((x) => x.id === 'component')).toBeUndefined();
+    expect(counselingFormModel(applied).items.find((i) => i.n === 14)!.checks).toEqual([{ label: 'AC', on: true }, { label: 'RC', on: false }]);
   });
 });
