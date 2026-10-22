@@ -458,6 +458,9 @@ export function ModernAppShell({
         formData={formData}
         amhsReferences={formData?.amhsReferences}
         previewUrl={previewUrl}
+        previewBlob={previewBlob}
+        previewKind={previewKind}
+        previewFieldValues={previewFieldValues}
         isLoading={isGeneratingPreview}
         onUpdatePreview={onUpdatePreview}
         issues={validationIssues}
