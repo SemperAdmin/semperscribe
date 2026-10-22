@@ -34,6 +34,26 @@ export function parseIsoLocalDate(value: string): Date | null {
   return localDateFromParts(Number(match[1]), Number(match[2]), Number(match[3]));
 }
 
+const FULL_MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/**
+ * "MARCH 2026" for the I-Type cover's date line. An ISO calendar date is
+ * read as a local date, so the first of a month west of Greenwich is not
+ * shown as the month before (security review 2026-10-21, item 7: three
+ * copies of this helper used `new Date(string)`, which parses a
+ * date-only ISO string as UTC midnight). Any other string is parsed as
+ * the browser would, and an unreadable one is returned as typed.
+ */
+export function formatMonthYearUpper(dateString?: string): string {
+  if (!dateString) return '';
+  const date = parseIsoLocalDate(dateString) ?? new Date(dateString);
+  if (Number.isNaN(date.getTime())) return dateString;
+  return `${FULL_MONTH_NAMES[date.getMonth()].toUpperCase()} ${date.getFullYear()}`;
+}
+
 /**
  * Formats a date string to Business Letter format (Month D, YYYY)
  * e.g., "January 5, 2015"

@@ -6,10 +6,10 @@
  *       mode refuses a request link with no password. The sensitive-data
  *       export gate runs on the document before any link is built.
  * P2-6  buildSignReadyBlob runs the same gate before generating the PDF.
- * P2-2  A proxy base URL is loopback-only unless the caller passes an
- *       explicit allowRemote. In EDMS mode a stored remote proxy is
- *       refused at send time in client.ts, regardless of what settings
- *       persisted.
+ * P2-2  A proxy base URL is loopback-only, in every mode (owner ruling
+ *       2026-10-21: no API key goes to a remote URL). A remote value
+ *       planted in localStorage by hand or by an older build is refused
+ *       at send time in client.ts, EDMS mode or not.
  * P3-2  ShareLinkDialog wants 12 characters and can generate a passphrase.
  * P2-11 decodeStateFromUrl refuses an oversized payload before parsing.
  */
@@ -185,17 +185,19 @@ describe('P2-2 proxy destination', () => {
     expect(normalizeProxyUrl('http://[::1]:8443')).toBe('http://[::1]:8443');
   });
 
-  it('rejects a remote host without allowRemote and accepts it with', () => {
+  it('rejects a remote host in every mode and stores nothing', () => {
     expect(normalizeProxyUrl('https://example.org')).toBeNull();
-    expect(normalizeProxyUrl('https://example.org', { allowRemote: true })).toBe('https://example.org');
     expect(setProxyUrl('genaimil', 'https://example.org')).toBeNull();
     expect(getProxyUrl('genaimil')).toBeNull();
-    expect(setProxyUrl('genaimil', 'https://example.org', { allowRemote: true })).toBe('https://example.org');
+    expect(setProxyUrl('genaimil', 'https://api.genai.mil')).toBeNull();
+    expect(getProxyUrl('genaimil')).toBeNull();
   });
 
-  it('refuses a stored remote proxy at send time in EDMS mode', async () => {
-    setProxyUrl('genaimil', 'https://example.org/gw', { allowRemote: true });
-    setEdmsContext({ requestId: 'REQ-1', ruc: '12345', ssic: '1650', docType: 'basic' });
+  /** A remote value no current build writes: by hand, or by a build before the ruling. */
+  const plantRemoteProxy = () =>
+    window.localStorage.setItem('gunnybot.proxy.v1', JSON.stringify({ genaimil: 'https://example.org/gw' }));
+
+  const sendWithStoredProxy = async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
     const events: GunnyStreamEvent[] = [];
@@ -203,12 +205,31 @@ describe('P2-2 proxy destination', () => {
       { provider: 'genaimil', model: 'gemini-2.5-flash', apiKey: 'STARK_TESTKEY0123456789', messages: [{ role: 'user', content: 'hi' }], maxOutputTokens: 64 },
       { onEvent: e => events.push(e) },
     );
+    return { fetchSpy, events };
+  };
+
+  it('refuses a planted remote proxy at send time outside EDMS mode', async () => {
+    plantRemoteProxy();
+    expect(getProxyUrl('genaimil')).toBe('https://example.org/gw');
+    const { fetchSpy, events } = await sendWithStoredProxy();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(events).toHaveLength(1);
     const err = events[0] as { kind: string; message: string };
     expect(err.kind).toBe('error');
     expect(err.message).toMatch(/example\.org/);
-    expect(err.message).toMatch(/EDMS/);
+    expect(err.message).toMatch(/never sends your API key/);
+    expect(err.message).not.toMatch(/STARK_TESTKEY/);
+  });
+
+  it('refuses a planted remote proxy at send time in EDMS mode', async () => {
+    plantRemoteProxy();
+    setEdmsContext({ requestId: 'REQ-1', ruc: '12345', ssic: '1650', docType: 'basic' });
+    const { fetchSpy, events } = await sendWithStoredProxy();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(events).toHaveLength(1);
+    const err = events[0] as { kind: string; message: string };
+    expect(err.kind).toBe('error');
+    expect(err.message).toMatch(/example\.org/);
   });
 
   it('still sends to a loopback proxy in EDMS mode', async () => {
