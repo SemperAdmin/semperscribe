@@ -12,7 +12,7 @@ import { detectDocumentType, DocTypeDetection } from '@/services/import/docTypeD
 import { extractDocumentText, DocumentExtractionError } from '@/services/import/documentTextExtractor';
 import { debugUserAction } from '@/lib/console-utils';
 
-/** P4-5: the largest file the importer will read, matching useNLDP's cap. */
+/** P4-5: the largest file the importer will read (10 MB, the data-package cap). */
 export const MAX_IMPORT_MB = 10;
 export const MAX_IMPORT_BYTES = MAX_IMPORT_MB * 1024 * 1024;
 
@@ -198,7 +198,7 @@ export function useDocumentImport({
 
   const startImport = useCallback(async (file: File) => {
     // P4-5: refuse before the bytes are read. mammoth and pdfjs parse the
-    // whole buffer in memory; the cap matches useNLDP's.
+    // whole buffer in memory; the cap matches the data-package importer's.
     if (file.size > MAX_IMPORT_BYTES) {
       toast({
         title: 'File too large',

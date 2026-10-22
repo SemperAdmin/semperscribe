@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   description: 'SemperScribe Privacy and Security Notice. Non-official Proof of Concept disclosures.',
 };
 
-const LAST_REVIEWED = '2026-09-05';
-const DOC_VERSION = '1.2';
+const LAST_REVIEWED = '2026-10-22';
+const DOC_VERSION = '1.3';
 /** Inlined at build time from package.json via next.config.ts. */
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? 'dev';
 
@@ -111,7 +111,7 @@ export default function PrivacyAndSecurityNoticePage() {
         <section>
           <h2 className="text-lg font-semibold mb-2">5B. The Pre-Export Scan</h2>
           <p>
-            Before any PDF, DOCX, official-form, or batch ZIP download, the application scans the document in the browser for the Social Security number digit pattern, the ten-digit EDIPI, and clusters of medical keywords. A match opens a dialog naming the finding, and the file is written only if the user acknowledges it. The scan never leaves the browser and records nothing.
+            Before any file carrying a document leaves the browser, whether a PDF, DOCX, official form, batch ZIP, data package (.nldp), AMHS message, NAVMC 10132 sheet, merged package, or the copy written to the optional backup folder, the application scans the document in the browser for the Social Security number digit pattern, the ten-digit EDIPI, and clusters of medical keywords. A match opens a dialog naming the finding, and the file is written only if the user acknowledges it. The scan never leaves the browser and records nothing.
           </p>
           <p className="mt-2">
             This scan is the control behind Section 4. Several document types exist to carry identifiers, among them the NAVMC 10132 Unit Punishment Book, the NAVMC 118(11) Page 11, the NAVMC 10274 Administrative Action form, and the Counseling Worksheet, each of which asks for a Marine&apos;s EDIPI. The scan does not block those exports. It makes the user say, at the moment of export, that a file carrying a personal identifier is leaving the browser and is now subject to their command&apos;s handling rules. It is a tripwire, not a certification: it does not detect CUI, classification markings, or any identifier outside those patterns, and it produces occasional false matches on unrelated ten-digit numbers.

@@ -38,6 +38,36 @@ describe('workflow actions', () => {
     }
   });
 
+  // Hardened 2026-10-21 (security review item 5). A job holding a
+  // repository or environment secret is the one a package script or a
+  // branch dispatch would aim at, so it runs on main only, inside an
+  // environment whose rules the owner sets, and runs nothing from npm.
+  const secretJobs = workflows.flatMap(({ name, text }) => {
+    const jobsBlock = text.slice(text.indexOf('\njobs:'));
+    const heads = [...jobsBlock.matchAll(/^  ([A-Za-z0-9_-]+):\s*$/gm)];
+    return heads
+      .map((h, i) => ({ name, job: h[1], body: jobsBlock.slice(h.index, heads[i + 1]?.index ?? jobsBlock.length) }))
+      .filter(j => /secrets\.(?!GITHUB_TOKEN\b)/.test(j.body));
+  });
+
+  it('name the secret-holding jobs this suite expects', () => {
+    expect(secretJobs.map(j => `${j.name}:${j.job}`).sort()).toEqual(['deploy-cloudgov.yml:deploy', 'mirror-to-gitlab.yml:mirror']);
+  });
+
+  it('run a secret-holding job on main (or a tag) only, inside an environment', () => {
+    for (const { name, job, body } of secretJobs) {
+      expect(body, `${name}: ${job} needs a ref guard`).toMatch(/^    if:[\s\S]*?github\.ref == 'refs\/heads\/main'/m);
+      expect(body, `${name}: ${job} needs an environment`).toMatch(/^    environment:/m);
+    }
+  });
+
+  it('run nothing from npm, and check nothing out, in a job holding a credential', () => {
+    for (const { name, job, body } of secretJobs) {
+      expect(body, `${name}: ${job} runs npm`).not.toMatch(/\b(npm|npx|yarn|pnpm)\s/);
+      expect(body, `${name}: ${job} checks the repository out`).not.toMatch(/actions\/checkout/);
+    }
+  });
+
   it('never use pull_request_target', () => {
     for (const { name, text } of workflows) {
       expect(text, name).not.toMatch(/pull_request_target/);

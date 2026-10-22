@@ -28,7 +28,7 @@ Auditor-friendly mapping of project artifacts to NIST SP 800-218 (SSDF v1.1) pra
 |----------|-------------|----------------------|----------|
 | PS.1.1 | Store code securely | GitHub repository, contributor model | https://github.com/SemperAdmin/semperscribe |
 | PS.2.1 | Provide software integrity verification | Git commit SHA hashes, CycloneDX SBOM with hashes | `npm run sbom` output, GitHub commit signatures |
-| PS.3.1 | Securely archive necessary files | GitHub repository plus a GitLab mirror on every push. Tagged releases begin at v0.2.0 and are created automatically from `package.json` version bumps on `main`. Earlier tags (`baseline-pre-compliance`, `pre-p2-2-orphan-removal`) did not survive the 2026-07-15 history reset and are no longer citable. | `.github/workflows/mirror-to-gitlab.yml`, `.github/workflows/release.yml`, `git tag -l` |
+| PS.3.1 | Securely archive necessary files | GitHub repository plus a GitLab mirror of every ref on each push to `main` or a tag and nightly. Tagged releases begin at v0.2.0 and are created automatically from `package.json` version bumps on `main`. Earlier tags (`baseline-pre-compliance`, `pre-p2-2-orphan-removal`) did not survive the 2026-07-15 history reset and are no longer citable. | `.github/workflows/mirror-to-gitlab.yml`, `.github/workflows/release.yml`, `git tag -l` |
 | PS.3.2 | Collect, safeguard, and share provenance data | SBOM artifact uploaded on every deploy, retained 90 days | Workflow artifact `sbom-{sha}` |
 
 ### PW. Produce Well-Secured Software
