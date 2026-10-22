@@ -5,6 +5,12 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.13] - 2026-10-22
+
+### Fixed
+
+- Deploy to cloud.gov was refused whole by GitHub since 0.13.11: the deploy job's `env` read `runner.temp`, a context that exists only inside steps, so every run failed at parse time with no job started (run #7). The isolated `CF_HOME` is now set from the job's first step. The workflow test gains a rule: a workflow-level or job-level `env` block never reads the `runner`, `steps`, `job` or `env` contexts, which fails on the 0.13.11 file and passes on this one.
+
 ## [0.13.12] - 2026-10-22
 
 ### Security

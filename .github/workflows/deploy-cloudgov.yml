@@ -135,10 +135,18 @@ jobs:
       CF_API: https://api.fr.cloud.gov
       CF_ORG: sandbox-usmc
       CF_SPACE: stephen.shorter
+    steps:
       # The cf CLI writes its session token under CF_HOME. A directory of
       # this run's own, logged out at the end, never the runner's home.
-      CF_HOME: ${{ runner.temp }}/cf-home
-    steps:
+      # Set from the step, not the job: the `runner` context does not
+      # exist at job level, and a file using it there is refused whole
+      # (run #7, 2026-10-21).
+      - name: Give cf an isolated home
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/cf-home"
+          echo "CF_HOME=$RUNNER_TEMP/cf-home" >> "$GITHUB_ENV"
+
       - name: Download the export
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -177,7 +185,6 @@ jobs:
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
         run: |
           set -euo pipefail
-          mkdir -p "$CF_HOME"
           cf api "$CF_API"
           cf auth "$CF_USERNAME" "$CF_PASSWORD"
           cf target -o "$CF_ORG" -s "$CF_SPACE"
@@ -187,7 +194,7 @@ jobs:
         if: always()
         run: |
           cf logout || true
-          rm -rf "$CF_HOME"
+          rm -rf "${CF_HOME:-$RUNNER_TEMP/cf-home}"
 
   smoke:
     needs: deploy

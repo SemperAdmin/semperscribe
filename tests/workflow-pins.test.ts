@@ -68,6 +68,29 @@ describe('workflow actions', () => {
     }
   });
 
+  // GitHub refuses a workflow file whole when an expression names a
+  // context its position cannot see, and the refusal shows only as a
+  // failed run with no job (deploy-cloudgov run #7, 2026-10-21:
+  // `runner.temp` in a job-level env). A workflow-level or job-level
+  // `env:` block may read github, needs, strategy, matrix, vars,
+  // secrets and inputs; `runner`, `steps`, `job` and `env` belong to
+  // steps.
+  it('reference only step-visible contexts inside step blocks', () => {
+    const stepOnly = /\$\{\{[^}]*\b(runner|steps|job|env)\./;
+    for (const { name, text } of workflows) {
+      const lines = text.split('\n');
+      let envIndent: number | null = null;
+      lines.forEach((line, i) => {
+        const indent = line.search(/\S/);
+        if (envIndent !== null && indent !== -1 && indent <= envIndent) envIndent = null;
+        if (envIndent === null && /^(|    )env:\s*$/.test(line)) { envIndent = indent; return; }
+        if (envIndent !== null) {
+          expect(line, `${name}:${i + 1} job/workflow env reads a step-only context`).not.toMatch(stepOnly);
+        }
+      });
+    }
+  });
+
   it('never use pull_request_target', () => {
     for (const { name, text } of workflows) {
       expect(text, name).not.toMatch(/pull_request_target/);
