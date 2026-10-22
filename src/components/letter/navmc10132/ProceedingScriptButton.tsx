@@ -31,6 +31,7 @@
  */
 
 import React from 'react';
+import { clearedForExport } from '@/lib/export-gate';
 import { Button } from '@/components/ui/button';
 import { FileText, AlertTriangle } from 'lucide-react';
 import { FormData } from '@/types';
@@ -72,6 +73,9 @@ export function ProceedingScriptButton({
     setBusy(true);
     setError(null);
     try {
+      // Same scan and prompt as every other download (owner, 2026-10-21): a
+      // warning, never a block.
+      if (!(await clearedForExport({ formData }))) { setBusy(false); return; }
       const doc = await renderNjpProceedingScript(formData);
       const url = window.URL.createObjectURL(
         new Blob([new Uint8Array(doc.bytes)], { type: 'application/pdf' }),

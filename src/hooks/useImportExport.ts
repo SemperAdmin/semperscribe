@@ -213,6 +213,10 @@ export function useImportExport(deps: ImportExportDeps) {
   // on the safe side: understating status never publishes a draft as
   // policy, overstating it does.
   const handleExportNldp = useCallback(async (status: NLDPLifecycle = 'draft') => {
+    // The data package carries the whole letter: the same scan and the same
+    // prompt as a PDF, by the owner's ruling of 2026-10-21 (a warning, never
+    // a block; the user owns what they type).
+    if (!(await clearedForExport({ formData, vias, references, enclosures, copyTos, paragraphs, distList }))) return;
     const nldpFile = await createNLDPFile(
       // distList is app-local UI state, not part of the NLDP contract;
       // it rides inside formData-adjacent app exports only.
@@ -301,6 +305,7 @@ export function useImportExport(deps: ImportExportDeps) {
     }
 
     const message = generateFullMessage(formData, formData.amhsReferences || [], formData.amhsPocs || []);
+    if (!(await clearedForExport({ formData, message }))) return;
     const copied = await copyToClipboard(message);
     if (copied) {
       toast({ title: "Copied to Clipboard", description: "Message text is ready to paste into AMHS." });
@@ -309,7 +314,7 @@ export function useImportExport(deps: ImportExportDeps) {
     }
   }, [formData, toast]);
 
-  const handleExportAMHS = useCallback(() => {
+  const handleExportAMHS = useCallback(async () => {
     const validation = validateAMHSMessage(formData, formData.amhsReferences || []);
     if (!validation.isValid) {
       toast({ title: "Validation Failed", description: validation.errors.join('. '), variant: "destructive" });
@@ -317,6 +322,7 @@ export function useImportExport(deps: ImportExportDeps) {
     }
 
     const message = generateFullMessage(formData, formData.amhsReferences || [], formData.amhsPocs || []);
+    if (!(await clearedForExport({ formData, message }))) return;
     const blob = new Blob([message], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

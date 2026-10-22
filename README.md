@@ -28,7 +28,7 @@ A professional-grade, local-first web application for creating, formatting, and 
 - 👀 **Live PDF preview** as you type, with a compliance-issue banner
 - 📦 **Export anywhere** — PDF, DOCX, AMHS plain text, batch mail-merge ZIPs, shareable links
 - 🔒 **Local-first** — no backend, no telemetry. Document formatting never leaves the browser. The one exception is the optional GunnyBot assistant, off until you add your own provider key, which sends only the text you submit to it.
-- 🛡️ **Sensitive-data check before export** — every PDF, DOCX, official-form, and batch download is scanned for SSN and EDIPI patterns and PHI keyword clusters, and asks before the file is written
+- 🛡️ **Sensitive-data check before export** — every download (PDF, DOCX, official form, batch, data package, AMHS text, the NAVMC 10132 sheets and the package merge) and the backup-folder copy is scanned for SSN and EDIPI patterns and PHI keyword clusters, and asks before the file is written. It asks; it never blocks and never rewrites your text
 
 ## Document Types
 

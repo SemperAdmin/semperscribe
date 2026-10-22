@@ -191,9 +191,26 @@ async function currentBackupDir(): Promise<FileSystemDirectoryHandle | null> {
  * name of a good one. P3-3: older snapshots past BACKUP_KEEP go after
  * the new one is safely closed.
  */
+/**
+ * What the user has already cleared for the folder this session, by
+ * letter: the findings they said yes to. The folder copy is an export
+ * like any other (owner's ruling of 2026-10-21: every path warns, none
+ * blocks), but a save happens often, so one letter prompts again only
+ * when its findings change, as when an SSN is added after the first
+ * clearance, not on every save.
+ */
+const clearedForFolder = new Map<string, string>();
+
 export async function backupDocument(letter: SavedLetter): Promise<boolean> {
   const handle = await currentBackupDir();
   if (!handle) return false;
+  const { exportFindings, requestExportAck } = await import('@/lib/export-gate');
+  const findings = exportFindings(letter);
+  const signature = findings.join('\n');
+  if (findings.length > 0 && clearedForFolder.get(letter.id) !== signature) {
+    if (!(await requestExportAck(findings))) return false;
+    clearedForFolder.set(letter.id, signature);
+  }
   const fileName = snapshotName(letter);
   const fileHandle = await handle.getFileHandle(fileName, { create: true });
   const writable = await fileHandle.createWritable();

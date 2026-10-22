@@ -5,6 +5,17 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.10] - 2026-10-21
+
+### Changed
+
+- The sensitive-data prompt now runs on every path that writes a document out of the browser: the data package (.nldp) export, the AMHS message copy and download, the NAVMC 10132 unit diary, rights election, item 21 continuation, Page 11 and proceeding script sheets, the package merge, and the backup-folder copy (once per letter per session). It asks and never blocks, by the owner's ruling of 2026-10-21. A static test fails when a new download site skips it. README and SECURITY.md now describe the scan and the dependency audit as they stand.
+- Counseling worksheet step links take their accessible name from their visible text ("1 Occasion and timing", with a hidden "done" suffix) instead of an aria-label that rephrased it, which axe-core 4.14 reports as a WCAG 2.5.3 label-content mismatch and which held back the dependency updates.
+
+### Removed
+
+- The unused `useNLDP` hook, a second data-package export path with no sensitive-data prompt that nothing mounted.
+
 ## [0.13.9] - 2026-10-21
 
 ### Changed

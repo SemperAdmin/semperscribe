@@ -127,6 +127,11 @@ describe('handleCopyAMHS (P6-10)', () => {
     let done: Promise<void> = Promise.resolve();
     act(() => { done = result.current.api.handleCopyAMHS(); });
     expect(result.current.toast).not.toHaveBeenCalled();
+    // The handler runs the sensitive-data prompt (an awaited no-op here)
+    // before it reaches the clipboard, so let that turn pass before
+    // resolving the copy it then starts.
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(result.current.toast).not.toHaveBeenCalled();
     await act(async () => { resolveCopy(true); await done; });
     expect(result.current.toast).toHaveBeenCalledWith(expect.objectContaining({ title: expect.stringMatching(/copied/i) }));
   });
