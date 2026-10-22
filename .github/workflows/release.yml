@@ -8,6 +8,13 @@
 # Idempotent: skips when the tag already exists, so re-runs and pushes
 # that leave the version alone are safe. Release notes are the matching
 # CHANGELOG.md section.
+#
+# Hardened 2026-10-21. The job runs on main only: a manual dispatch from
+# another branch would otherwise publish that branch's package.json as a
+# release of main. The version reaches the shell through an environment
+# variable, never through `${{ }}` inside a run block, and is checked
+# against the semver shape before it names a tag, so a crafted version
+# string is a failed step and not a shell command.
 name: Release
 
 on:
@@ -25,30 +32,41 @@ concurrency:
 
 jobs:
   release:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Resolve version
+      - name: Resolve and validate version
         id: v
-        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::package.json version '$version' is not a semver string. No release made."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Create release if it does not exist
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.v.outputs.version }}
         run: |
-          tag="v${{ steps.v.outputs.version }}"
+          set -euo pipefail
+          tag="v${VERSION}"
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Release $tag already exists. Nothing to do."
             exit 0
           fi
           # Notes = this version's CHANGELOG section, body under the heading.
-          awk -v n="${{ steps.v.outputs.version }}" '
-            $0 ~ "^## \\["n"\\]" { grab = 1; next }
+          # The version is dotted, so it is matched literally, not as a pattern.
+          awk -v n="$VERSION" '
+            index($0, "## [" n "]") == 1 { grab = 1; next }
             grab && /^## \[/ { exit }
             grab { print }
           ' CHANGELOG.md | sed '/./,$!d' > notes.md
           if [ ! -s notes.md ]; then
             printf 'Release %s\n' "$tag" > notes.md
           fi
-          gh release create "$tag" --target "${{ github.sha }}" --title "$tag" --notes-file notes.md
+          gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes-file notes.md

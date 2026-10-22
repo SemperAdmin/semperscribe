@@ -134,8 +134,11 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
         format === 'pdf' &&
         (formData.documentType === 'aa-form' || formData.documentType === 'page11' || formData.documentType === 'navmc10922')
       ) {
-        const signatureFields = (formData.signatureFields as unknown[] | undefined) ?? [];
-        const hasBoundFiles = Boolean(enclosureRows?.some(r => r.fileId && enclosureFiles?.has(r.fileId)));
+        // The same two facts route the live preview (useLivePreview.ts), so
+        // what the pane shows is what this delivers.
+        const { signatureFieldCount, hasBoundEnclosureFiles } = await import('@/lib/official-form-route');
+        const signatureFields = { length: signatureFieldCount(formData) };
+        const hasBoundFiles = hasBoundEnclosureFiles(enclosureRows, enclosureFiles);
         // START (10922): the checkbox is unbindable in the XFA datasets,
         // so a START application routes to the flattened redraw where
         // the box CAN be checked (build plan Phase 5 routing).
@@ -155,7 +158,23 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
             description: 'The official fillable NAVMC 118(11) is a single page, so this export is the app\'s redraw with continuation pages carrying the same name and DoD ID. Shorten the entry to export the official form.',
           });
         }
-        if (signatureFields.length === 0 && !hasBoundFiles && !startNeedsFlattened && page11Pages === 1) {
+        // NAVMC 10274: the same fit the compliance dialog reports, said
+        // at export time like the Page 11 note above. Text past block 13
+        // never reaches here (getExportBlockers refuses it).
+        let aaNotes = '';
+        if (formData.documentType === 'aa-form') {
+          const { navmc10274FitReport, describeAaFit } = await import('@/lib/navmc10274-fit');
+          const notes = describeAaFit(navmc10274FitReport({ formData, vias, references, enclosures, copyTos, paragraphs }));
+          if (notes.length > 0) aaNotes = notes.join(' ') + ' The preview marks every clipped line.';
+        }
+        const officialRoute = signatureFields.length === 0 && !hasBoundFiles && !startNeedsFlattened && page11Pages === 1;
+        // The toaster shows one toast at a time, so on the official route
+        // the notes ride the export toast below; the redraw has no toast
+        // of its own and takes them here.
+        if (aaNotes && !officialRoute) {
+          toast?.({ title: 'NAVMC 10274 layout', description: aaNotes });
+        }
+        if (officialRoute) {
           const { exportOfficialForm } = await import('@/lib/xfa-form-fill');
           const formBlob = await exportOfficialForm({ formData, vias, references, enclosures, copyTos, paragraphs });
           deliver(formBlob, format);
@@ -172,7 +191,7 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
             title: 'Official Form Exported',
             description:
               'This is the fillable NAVMC form - open it in Adobe Acrobat or Reader. Browsers show a placeholder page. Add signature fields to export a flattened print PDF instead.' +
-              startNote,
+              startNote + (aaNotes ? ` ${aaNotes}` : ''),
           });
           return;
         }

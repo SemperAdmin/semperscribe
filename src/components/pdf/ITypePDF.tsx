@@ -17,6 +17,7 @@ import {
   PAGE3_LINKS,
 } from '@/lib/i-type/page3-derivations';
 import { coverColumnWidths } from '@/lib/i-type/cover-columns';
+import { formatMonthYearUpper } from '@/lib/date-utils';
 import { ITypeAppendixPDF } from './ITypeAppendixPDF';
 
 interface ITypePDFProps {
@@ -173,17 +174,6 @@ const styles = StyleSheet.create({
   p3Distribution: { marginTop: 29 },
 });
 
-const formatDateAsMonthYear = (dateString?: string) => {
-  if (!dateString) return '';
-  try {
-    const date = new Date(dateString);
-    const month = date.toLocaleString('en-US', { month: 'long' }).toUpperCase();
-    return `${month} ${date.getFullYear()}`;
-  } catch {
-    return dateString;
-  }
-};
-
 const join = (parts: Array<string | undefined>, sep: string) =>
   parts.filter(Boolean).join(sep);
 
@@ -243,7 +233,7 @@ export function ITypePDF({ formData, sealImageUrl }: ITypePDFProps) {
       <Page size="LETTER" style={styles.page}>
         <View>
           <View style={styles.headerRow}>
-            <Text>{formatDateAsMonthYear(formData.date)}</Text>
+            <Text>{formatMonthYearUpper(formData.date)}</Text>
             <View style={styles.headerRight}>
               <Text>{formData.shortTitle || ''}</Text>
               {formData.volume ? <Text>VOLUME {formData.volume}</Text> : null}

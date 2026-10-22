@@ -25,6 +25,7 @@ import {
   PAGE3_LINKS,
 } from '@/lib/i-type/page3-derivations';
 import { coverColumnWidths } from '@/lib/i-type/cover-columns';
+import { formatMonthYearUpper } from '@/lib/date-utils';
 import { appendixSection } from './i-type-appendix-docx';
 import { loadOptionalAssetBytes } from '@/lib/assets';
 
@@ -69,17 +70,6 @@ const noTableBorders = {
   insideVertical: NONE,
 };
 const noCellBorders = { top: NONE, bottom: NONE, left: NONE, right: NONE };
-
-const formatDateAsMonthYear = (dateString?: string) => {
-  if (!dateString) return '';
-  try {
-    const date = new Date(dateString);
-    const month = date.toLocaleString('en-US', { month: 'long' }).toUpperCase();
-    return `${month} ${date.getFullYear()}`;
-  } catch {
-    return dateString;
-  }
-};
 
 const join = (parts: Array<string | undefined>, sep: string) =>
   parts.filter(Boolean).join(sep);
@@ -171,7 +161,7 @@ export async function generateITypeDocx(formData: ITypeDocxData): Promise<Buffer
                   new Paragraph({
                     children: [
                       new TextRun({
-                        text: formatDateAsMonthYear(formData.date),
+                        text: formatMonthYearUpper(formData.date),
                         font: FONT,
                         size: SIZE,
                       }),

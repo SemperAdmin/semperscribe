@@ -27,6 +27,7 @@
  */
 
 import React from 'react';
+import { clearedForExport } from '@/lib/export-gate';
 import { Button } from '@/components/ui/button';
 import { ClipboardList, Copy, AlertTriangle, FileDown } from 'lucide-react';
 import { FormData } from '@/types';
@@ -87,6 +88,9 @@ export function UnitDiarySection({ formData, SectionCard }: SectionProps) {
     setDownloading(true);
     setDownloadError(null);
     try {
+      // Same scan and prompt as every other download (owner, 2026-10-21): a
+      // warning, never a block.
+      if (!(await clearedForExport({ formData }))) { setDownloading(false); return; }
       const sheet = await renderUnitDiaryWorksheetPdf(formData);
       const url = window.URL.createObjectURL(
         new Blob([new Uint8Array(sheet.bytes)], { type: 'application/pdf' }),

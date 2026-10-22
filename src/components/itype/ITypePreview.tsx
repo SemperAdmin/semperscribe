@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useITypeStore } from '@/store/iTypeStore';
+import { formatMonthYearUpper } from '@/lib/date-utils';
 import styles from '@/styles/itype-preview.module.css';
 import { ITypeHeader } from './sections/ITypeHeader';
 import { ITypeTitleBlock } from './sections/ITypeTitleBlock';
@@ -49,18 +50,6 @@ export const ITypePreview: React.FC<ITypePreviewProps> = ({ formData: externalFo
     return blocks;
   }, [formData]);
 
-  const formatDateAsMonthYear = (dateString: string) => {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      const month = date.toLocaleString('en-US', { month: 'long' }).toUpperCase();
-      const year = date.getFullYear();
-      return `${month} ${year}`;
-    } catch {
-      return dateString;
-    }
-  };
-
   const renderComponentsTable = (rows: any[]) => (
     <table className={styles.iTypeHeaderTable}>
       <thead>
@@ -98,7 +87,7 @@ export const ITypePreview: React.FC<ITypePreviewProps> = ({ formData: externalFo
       <div className={`${styles.page} ${styles.coverPage}`}>
         <div className={styles.coverTop}>
           <ITypeHeader
-            date={formatDateAsMonthYear(formData?.date) || ''}
+            date={formatMonthYearUpper(formData?.date) || ''}
             shortTitle={formData?.shortTitle || ''}
             volume={formData?.volume}
           />

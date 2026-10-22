@@ -1,7 +1,7 @@
 /**
  * P4-5 (remediation 2026-09): useDocumentImport had no size cap before
  * handing the buffer to mammoth or pdfjs. A file over 10 MB (the same
- * limit useNLDP applies) is refused with a toast naming the limit,
+ * limit the data-package importer applies) is refused with a toast naming the limit,
  * before the bytes are read.
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';

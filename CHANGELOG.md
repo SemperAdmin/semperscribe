@@ -5,6 +5,62 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.11] - 2026-10-21
+
+### Changed
+
+- GunnyBot refuses a proxy off this machine in every mode, not only in EDMS mode. The proxy receives the API key and the draft, and by the owner's ruling of 2026-10-21 no key goes to a remote URL. The Settings acknowledgement that let a remote host be saved is gone; a remote address typed there is named and refused, and one planted in storage by hand or by an older build is shown as refused and blocked at send time.
+- Opening a data package (.nldp or .json) now checks it before anything reaches the editor: a size cap of 10 MB, the shapes the app writes (full package, bare data block, legacy form record), and the integrity block when the file carries one. A file the app cannot read as a letter is refused with the reason. A file changed since export opens on the user's consent, never a refusal.
+- Deploy to cloud.gov now builds in one job, hands the export to a second as an artifact, and that second job, main only, inside the `cloudgov` environment, never checks the repository out or runs anything from npm: it downloads the export, pushes it, and logs out in every case. The live header check and the browser smoke run in a third job with no credential. The GitLab mirror runs on pushes to main and tags, nightly, on deletions and on dispatch from main, no longer on every branch push, since a branch push ran that branch's copy of the workflow with the mirror token. The release job runs on main only, reads the version through the environment and refuses one that is not a semver string. The workflow test now holds these rules for every job which touches a secret. (Owner action: move `CF_USERNAME`, `CF_PASSWORD` and the GitLab token from repository secrets to the `cloudgov` and `gitlab-mirror` environments.)
+- The I-Type cover's date line reads an ISO date as a local date. The three copies of the month-year helper parsed it as UTC midnight, so the first of a month west of Greenwich printed the month before. One shared helper now serves the preview, the PDF and the DOCX.
+- The privacy posture document (version 2.1) and the privacy notice (version 1.3) describe the application as built: PII entered at the user's discretion and scanned on every export path, the three browser stores plus the optional backup folder, and the delete path with what it does not reach.
+
+## [0.13.10] - 2026-10-21
+
+### Changed
+
+- The sensitive-data prompt now runs on every path that writes a document out of the browser: the data package (.nldp) export, the AMHS message copy and download, the NAVMC 10132 unit diary, rights election, item 21 continuation, Page 11 and proceeding script sheets, the package merge, and the backup-folder copy (once per letter per session). It asks and never blocks, by the owner's ruling of 2026-10-21. A static test fails when a new download site skips it. README and SECURITY.md now describe the scan and the dependency audit as they stand.
+- Counseling worksheet step links take their accessible name from their visible text ("1 Occasion and timing", with a hidden "done" suffix) instead of an aria-label that rephrased it, which axe-core 4.14 reports as a WCAG 2.5.3 label-content mismatch and which held back the dependency updates.
+
+### Removed
+
+- The unused `useNLDP` hook, a second data-package export path with no sensitive-data prompt that nothing mounted.
+
+## [0.13.9] - 2026-10-21
+
+### Changed
+
+- NAVMC 10274 (AA Form) live preview shows the official form itself being filled, as the NAVMC 10132 preview does: the pane lays out the export's own bytes, the government's fillable form with the app's datasets, through pdf.js's XFA engine, three pages, read-only, scaled to the pane. Placing a signature field, or binding an enclosure file, switches the preview to the flattened redraw, the same two facts that route the export, so the preview stays the export. Print is off for the official form in the pane; Download is the export as before.
+- NAVMC 10274: when the typed name alone spills past block 12, it keeps its three blank lines at the top of block 13, so it sits three lines under the text there too, on the official export and in the preview alike (owner's ruling of 2026-10-21, second round). The owner's Acrobat check of the v3 request passed at the 30-line safe capacity, which stands.
+
+## [0.13.7] - 2026-10-21
+
+### Added
+
+- NAVMC 10274 parity proof: a test exports the owner's request through the official form, re-wraps the fields it carries with the layout module's own metrics, and requires the same lines the preview drew, box by box, block 12 and block 13 included. A browser test opens the file the app downloads and reads the date picture and the typed name out of its datasets. Every shipped AA Form template runs through the fit check: no small box overflows anywhere in the pack; the Reserve O6-level SgtMaj slate request fills block 12 and runs twelve lines into block 13.
+
+## [0.13.6] - 2026-10-21
+
+### Fixed
+
+- NAVMC 10274 (AA Form) preview drawn from the shared layout module: every box at the official form's own position, width, face size (9 pt or 10 pt) and line pitch, the Via wrapped inside block 6, the body laid out by the same block 12 then block 13 flow the official export fills, and the typed name three blank lines under the text at the box's centre line. The preview is the form's three pages, always, and no longer appends a continuation sheet the official form does not have.
+- NAVMC 10274 preview clips nothing in silence: a box whose text does not fit shows the lines that fit and a red count of the lines past the box, and text past block 13 shows the same mark. A character outside WinAnsi (an arrow, a ligature) draws as "?" instead of taking the whole preview down, and a newline pasted inside a paragraph collapses to a space on both paths instead of throwing.
+- NAVMC 10274 export gate: text past block 13 blocks the export with the line count (the official form has no further page); block 13 in use and a small box that overflows are warnings in the Compliance Issues dialog, each naming the block, and the PDF export says the same in a toast as the Page 11 note does.
+- NAVMC 10274: a date naming a day its month does not have ("31 Feb 26") stays as typed instead of becoming a picture no calendar holds.
+- NAVMC 10274: the small boxes (date picture, via numbering, reference letters, enclosure numbers, copy to) are built once for the official export, the preview and the validator, so no box holds different words on different paths.
+
+## [0.13.5] - 2026-10-21
+
+### Fixed
+
+- NAVMC 10274 (AA Form) official export: the date is written in the form's own picture, YYYY-MM-DD, as the preview already showed it; the typed name of the originator now goes three blank lines under the text, starting at the box's centre line, where the export used to drop it; a blank paragraph no longer renumbers the paragraphs after it, and a title-only paragraph prints under its number as the preview always did; the starting reference letter and enclosure number follow the shared helpers (past (z) reads "aa" in the preview too, and a stray enclosure start no longer prints "(NaN)").
+- NAVMC 10274: the date text is read by hand in the app's own "D Mon YY" form and in the form's picture, so no engine date parser and no time zone touches the day written; a string carrying its own zone is read in that zone. Via numbering lives in the shared layout module and both renderers call it.
+- NAVMC 10274: text that overruns block 12 continues in block 13 (Processing Action) on the official export, by the owner's ruling of 2026-10-21; the processing chain endorses on a separate page. The new src/lib/navmc10274-layout.ts holds the measured geometry of every field on the official blank, and both renderers are being moved onto it (the preview follows in the next release).
+
+### Security
+
+- Production dependencies cleared of the four advisories at or above high severity reported by `npm audit` on 2026-10-21: Next.js 16.3.6 to 16.4.2 (six advisories, GHSA-3w37-wq28-93x7 and five others), sharp 0.35.4 to 0.35.5 (GHSA-wq5f-xc86-pv6w), proxy-addr 2.0.7 to 2.0.8 (GHSA-jqcg-44mw-7w3h) and source-map-js 1.2.1 to 1.2.2 (GHSA-68fv-2mgg-jv7q). hono, ip-address, fast-uri and the MCP SDK move with them. The three moderate findings left are sprintf-js, reached only through mammoth's command-line parser, which the app does not load.
+
 ## [0.13.4] - 2026-09-26
 
 ### Added
