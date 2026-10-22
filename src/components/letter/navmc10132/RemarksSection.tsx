@@ -26,6 +26,7 @@
  */
 
 import React from 'react';
+import { clearedForExport } from '@/lib/export-gate';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -376,6 +377,9 @@ function Item21ContinuationPanel({ formData }: { formData: FormData }) {
     setBusy(true);
     setError(null);
     try {
+      // Same scan and prompt as every other download (owner, 2026-10-21): a
+      // warning, never a block.
+      if (!(await clearedForExport({ formData }))) { setBusy(false); return; }
       const { blob } = await renderItem21Continuation(overflow, {
         name: (formData.accusedName as string) ?? '',
         edipi: (formData.accusedEdipi as string) ?? '',

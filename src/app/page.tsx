@@ -388,7 +388,7 @@ function NavalLetterGeneratorInner() {
 
   // Live preview (debounced PDF regeneration) via hook. ENC: the
   // preview merges bound enclosure files, so it shows the full package.
-  const { previewUrl, previewBlob, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus, previewError } = useLivePreview(
+  const { previewUrl, previewBlob, previewKind, previewFieldValues, isGeneratingPreview, updatePreview, applySignatureFields, samePageStatus, previewError } = useLivePreview(
     documentData,
     { enclosureRows, enclosureFiles, attachmentCoverPages },
     resolveSamePageHost,
@@ -1428,8 +1428,8 @@ function NavalLetterGeneratorInner() {
   const hasBodyText = paragraphs.some(p => p.content.trim() !== '');
   const { dictionary } = useMilitaryDictionary(hasBodyText);
   const validationIssues = useMemo(
-    () => runLetterValidators(formData, vias, references, paragraphs, { dictionary, enclosures }),
-    [formData, vias, references, paragraphs, enclosures, dictionary],
+    () => runLetterValidators(formData, vias, references, paragraphs, { dictionary, enclosures, copyTos }),
+    [formData, vias, references, paragraphs, enclosures, copyTos, dictionary],
   );
 
   return (
@@ -1441,6 +1441,8 @@ function NavalLetterGeneratorInner() {
       onDocumentTypeChange={handleDocumentTypeChange}
       previewUrl={previewUrl}
       previewBlob={previewBlob}
+      previewKind={previewKind}
+      previewFieldValues={previewFieldValues}
       previewError={previewError}
       isGeneratingPreview={isGeneratingPreview}
       onExportDocx={() => generateDocument('docx')}

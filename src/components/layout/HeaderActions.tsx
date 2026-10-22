@@ -267,22 +267,46 @@ export function HeaderActions({
     if (documentInputRef.current) documentInputRef.current.value = '';
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    const resetInput = () => {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    // Size, then shape and integrity, before anything reaches the editor
+    // (src/lib/nldp-import-check.ts). The cap runs on the File's own
+    // byte count before the file is read or parsed, so an oversized
+    // file never reaches JSON.parse. A package that cannot be read is
+    // refused; one changed since export opens on consent.
+    const { checkImportedPackage, describeOversize } = await import('@/lib/nldp-import-check');
+    const tooBig = describeOversize(file.size);
+    if (tooBig) {
+      alert(tooBig);
+      resetInput();
+      return;
+    }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const content = e.target?.result as string;
         const data = JSON.parse(content);
+        const check = await checkImportedPackage(data);
+        if (!check.ok) {
+          alert(check.errors.join('\n'));
+          return;
+        }
+        if (check.warnings.length > 0 && !window.confirm(check.warnings.join('\n') + '\n\nOpen it anyway?')) {
+          return;
+        }
         onImport(data);
       } catch (error) {
         console.error('Failed to parse imported file', error);
         alert('Failed to parse file. Please ensure it is a valid .nldp or .json file.');
+      } finally {
+        resetInput();
       }
-      // Reset input
-      if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsText(file);
   };

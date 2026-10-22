@@ -77,23 +77,25 @@ export async function streamChat(req: GunnyRequest, handlers: StreamHandlers): P
     return;
   }
 
-  // EDMS destination check (P2-2).
+  // Destination check (P2-2, every mode since 2026-10-21).
   //
   // The provider gate above says WHICH service may see the draft. A proxy
   // says WHERE the bytes actually go, and a stored proxy on a remote host
   // sends the key and the draft to that host whatever the provider is.
-  // The stored value is not trusted here: it may predate the
-  // acknowledgement in Settings, or have been written by hand. Loopback
-  // is the documented deployment and passes.
-  if (isEdmsMode() && proxyBaseUrl !== undefined && isRemoteProxyUrl(proxyBaseUrl)) {
+  // The stored value is not trusted here: it may have been written by
+  // hand, by another page on a shared origin, or by an older build that
+  // still took an acknowledgement. The owner ruled that no key goes to a
+  // remote URL, so only loopback passes, EDMS mode or not.
+  if (proxyBaseUrl !== undefined && isRemoteProxyUrl(proxyBaseUrl)) {
     const host = classifyProxyUrl(proxyBaseUrl);
     emit({
       kind: 'error',
       message:
-        'Blocked. This draft is bound for an EDMS request, and the configured proxy ' +
+        'Blocked. The configured proxy ' +
         (host.kind === 'invalid' ? proxyBaseUrl : host.host) +
-        ' is not on this machine. In EDMS mode GunnyBot only sends through a local ' +
-        '(127.0.0.1) proxy. Change the proxy URL in Settings, Assistant tab.',
+        ' is not on this machine, and GunnyBot never sends your API key or your draft to a ' +
+        'remote proxy. It only sends through a local (127.0.0.1) proxy. Change or clear the ' +
+        'proxy URL in Settings, Assistant tab.',
     });
     return;
   }

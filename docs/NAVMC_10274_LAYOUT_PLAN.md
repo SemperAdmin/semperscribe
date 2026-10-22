@@ -1,6 +1,6 @@
 # NAVMC 10274 (AA Form): one layout for the preview and the official export
 
-Status: PR 1 of 3 (0.13.5). Owner's handoff of 2026-10-21, verified against
+Status: the three PRs shipped (0.13.5, 0.13.6, 0.13.7), cloud.gov deployed from 0f17cad on 2026-10-21, the owner's Acrobat check passed. 0.13.8 carries the second-round rulings below. Owner's handoff of 2026-10-21, verified against
 `main` at `da11784` by four independent reads of the code, the XFA blank,
 and the test suite. Decisions marked "ruled" are the owner's and binding.
 
@@ -67,7 +67,12 @@ lines below text".
    owner renders a 31-line and a 32-line file in Acrobat and reports which
    clips. One constant, `AA_DEFAULT_LINE_HEIGHT`, moves it.
 4. The typed name starts at the box's centre line, three blank lines under
-   the text, on both paths.
+   the text, on both paths. Second round (2026-10-21, after PR 2): when the
+   name alone spills past block 12 it keeps those three blank lines at the
+   top of block 13.
+6. Second round: the Acrobat check of the v3 request passed, so the 30-line
+   safe capacity stands; the `aa-sgtmaj-slate` template stays as shipped
+   (30 lines in block 12, 12 in block 13).
 5. Unchanged from 2026-07-17 and 2026-08-28: unsigned forms export onto the
    official XFA form; the bundled blank stays byte-for-byte the government
    file.
@@ -82,15 +87,27 @@ lines below text".
    `tests/xfa-form-fill.test.ts` (10274 body and date),
    `tests/fixtures/navmc10274-tle-extension.ts` (the v3 request with every
    personal detail replaced by a same-length placeholder).
-2. Next: the preview draws each box at the form's own size and pitch from the
-   module, wraps the Via, prints block 13 with block 13's geometry instead of
-   the generic sheet, draws the name per ruling 4, surfaces overflow instead
-   of dropping lines, and survives non-WinAnsi text. A block-severity
-   validator refuses export past block 13 and a warning names the small boxes
-   that overflow, through the existing export gate, with the Page 11 toast
-   pattern in the hook.
-3. Then: a parity test rendering the fixture through both paths and asserting
-   identical block 12 and block 13 line breaks, a browser test reading the
-   exported datasets for the date and the name, a sweep of the 27 AA
-   templates for fit, a manual cloud.gov dispatch, and the owner's Acrobat
-   check on the v3 file, which alone closes the item.
+2. 0.13.6 (this PR): the preview draws each box at the form's own position,
+   size and pitch from the module (`aaFieldFrame`, `aaTextBox`), wraps the
+   Via, prints block 13 on page 3 with block 13's geometry, draws the name
+   per ruling 4 through the shared flow, marks every clipped line in red,
+   and survives non-WinAnsi text (`sanitizeForTimesRoman`) and a pasted
+   newline. `src/lib/navmc10274-fit.ts` blocks export past block 13, warns
+   on block 13 in use and on each small box that overflows, through the
+   existing export gate, and the hook says the same in a toast. The small
+   boxes are built once (`aaFieldValues`) for all three consumers. Tests:
+   `tests/navmc10274-fit.test.ts`, `tests/navmc10274-preview.test.ts`
+   (text positions read back from the rendered PDF).
+3. 0.13.7 (this PR): `tests/navmc10274-parity.test.ts` exports the fixture
+   through the official form, re-wraps every field value with the module's
+   metrics and requires the lines the preview drew, box by box;
+   `tests/e2e/aa-form-export.spec.ts` opens the downloaded file in a real
+   browser run and reads the date picture and the typed name out of its
+   datasets; `tests/navmc10274-template-sweep.test.ts` runs the 27 shipped
+   AA templates through the fit check and pins the result. Findings of the
+   sweep, 2026-10-21: no small box overflows anywhere in the pack; one
+   template, `aa-sgtmaj-slate`, fills block 12 (30 lines) and runs 12 lines
+   into block 13 with the name. Whether to shorten it is the owner's call.
+   Still open after this PR: the manual cloud.gov dispatch (run after the
+   merge) and the owner's Acrobat check on the v3 file (item 7, and the
+   30 versus 32 line measurement), which alone closes the handoff.

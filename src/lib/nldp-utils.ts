@@ -18,7 +18,7 @@ import { version as APP_VERSION } from '../../package.json';
 /**
  * Calculate SHA-256 hash of a string
  */
-async function calculateSHA256(data: string): Promise<string> {
+export async function calculateSHA256(data: string): Promise<string> {
   const encoder = new TextEncoder();
   const dataBuffer = encoder.encode(data);
   const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
@@ -29,7 +29,7 @@ async function calculateSHA256(data: string): Promise<string> {
 /**
  * Calculate CRC32 checksum
  */
-function calculateCRC32(str: string): string {
+export function calculateCRC32(str: string): string {
   const crcTable = makeCRCTable();
   let crc = 0 ^ (-1);
   

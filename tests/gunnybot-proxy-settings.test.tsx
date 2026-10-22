@@ -64,51 +64,50 @@ describe('GunnyBotSettings proxy control', () => {
     expect(screen.queryByText(/Provider proxy/i)).toBeNull();
   });
 
-  it('surfaces the saved proxy and lets it be cleared', () => {
-    setProxyUrl('genaimil', 'https://gw.example/base', { allowRemote: true });
+  it('surfaces a planted remote proxy as refused and lets it be cleared', () => {
+    // No current build writes a remote value. One planted by hand, or by a
+    // build before the ruling, is shown with the refusal and a way out.
+    window.localStorage.setItem('gunnybot.proxy.v1', JSON.stringify({ genaimil: 'https://gw.example/base' }));
     render(<GunnyBotSettings />);
 
     expect(screen.getByText('https://gw.example/base')).toBeTruthy();
-    expect(screen.getByText(/gw\.example \(remote\)/)).toBeTruthy();
+    expect(screen.getByText(/gw\.example \(remote\)\. The send path refuses this proxy/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /clear proxy/i }));
     expect(getProxyUrl('genaimil')).toBeNull();
     expect(screen.getByText(/will not work until you set a proxy URL/i)).toBeTruthy();
   });
 });
 
-describe('GunnyBotSettings remote proxy acknowledgement (P2-2)', () => {
-  it('refuses a remote host until the acknowledgement naming it is ticked', () => {
+describe('GunnyBotSettings remote proxy refusal (P2-2)', () => {
+  it('refuses a remote host, names it, and stores nothing', () => {
     render(<GunnyBotSettings />);
     const field = screen.getByPlaceholderText('http://127.0.0.1:8443');
     fireEvent.change(field, { target: { value: 'https://example.org:8443/gw' } });
 
-    const ack = screen.getByLabelText(/example\.org:8443 is not on this machine/i);
+    expect(screen.getByText(/example\.org:8443 is not on this machine/i)).toBeTruthy();
+    expect(screen.queryByRole('checkbox')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /save proxy/i }));
     expect(getProxyUrl('genaimil')).toBeNull();
-
-    fireEvent.click(ack);
-    fireEvent.click(screen.getByRole('button', { name: /save proxy/i }));
-    expect(getProxyUrl('genaimil')).toBe('https://example.org:8443/gw');
+    expect(window.localStorage.getItem('gunnybot.proxy.v1') ?? '{}').not.toMatch(/example\.org/);
   });
 
-  it('saves a loopback host with no acknowledgement shown', () => {
+  it('saves a loopback host with no warning shown', () => {
     render(<GunnyBotSettings />);
     fireEvent.change(screen.getByPlaceholderText('http://127.0.0.1:8443'), { target: { value: 'http://localhost:9000' } });
-    expect(screen.queryByLabelText(/is not on this machine/i)).toBeNull();
+    expect(screen.queryByText(/is not on this machine/i)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /save proxy/i }));
     expect(getProxyUrl('genaimil')).toBe('http://localhost:9000');
     expect(screen.getByText(/this machine \(loopback\)/i)).toBeTruthy();
   });
 
-  it('offers no acknowledgement in EDMS mode and refuses the remote host', async () => {
+  it('refuses the remote host in EDMS mode the same way', async () => {
     const { setEdmsContext, clearEdmsContext, resetEdmsCacheForTests } = await import('@/lib/edms-mode');
     resetEdmsCacheForTests();
     setEdmsContext({ requestId: 'REQ-1', ruc: '12345', ssic: '1650', docType: 'basic' });
     try {
       render(<GunnyBotSettings />);
       fireEvent.change(screen.getByPlaceholderText('http://127.0.0.1:8443'), { target: { value: 'https://example.org/gw' } });
-      expect(screen.queryByLabelText(/is not on this machine/i)).toBeNull();
-      expect(screen.getByText(/EDMS mode only permits a loopback proxy/i)).toBeTruthy();
+      expect(screen.getByText(/example\.org is not on this machine/i)).toBeTruthy();
       fireEvent.click(screen.getByRole('button', { name: /save proxy/i }));
       expect(getProxyUrl('genaimil')).toBeNull();
     } finally {
@@ -123,12 +122,12 @@ describe('GunnyBotSettings in EDMS mode', () => {
     const { setEdmsContext, clearEdmsContext, resetEdmsCacheForTests } = await import('@/lib/edms-mode');
     resetEdmsCacheForTests();
     setEdmsContext({ requestId: 'REQ-1', ruc: '12345', ssic: '1650', docType: 'basic' });
-    setProxyUrl('genaimil', 'https://gw.example/edms', { allowRemote: true });
+    setProxyUrl('genaimil', 'http://127.0.0.1:8443');
     useGunnyStore.setState({ provider: 'gemini', model: 'gemini-2.5-flash', keyPresent: false });
     try {
       render(<GunnyBotSettings />);
       expect(useGunnyStore.getState().provider).toBe('genaimil');
-      expect(screen.getByText('https://gw.example/edms')).toBeTruthy();
+      expect(screen.getByText('http://127.0.0.1:8443')).toBeTruthy();
       expect(screen.queryByText(/will not work until you set a proxy URL/i)).toBeNull();
     } finally {
       clearEdmsContext();
