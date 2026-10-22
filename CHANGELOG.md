@@ -5,6 +5,12 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.14] - 2026-10-22
+
+### Fixed
+
+- On phones and tablets (any window under 1280 px) the preview sheet showed the NAVMC 10274 as the "Please wait..." placeholder page instead of the form. The sheet received only the blob URL and put it in an iframe, and a browser's own PDF viewer cannot lay out a dynamic XFA form; the desktop pane had gone through pdf.js's XFA engine since 0.13.9, the sheet had not. The sheet now takes the same route: the official form is laid out by pdf.js, read-only, three pages, scaled to the sheet, and the flattened redraw appears once a signature field is placed, exactly as on the desktop. A phone-width browser test pins it.
+
 ## [0.13.13] - 2026-10-22
 
 ### Fixed

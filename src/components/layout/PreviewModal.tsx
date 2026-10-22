@@ -12,6 +12,8 @@ import { FormData, AMHSReference } from '@/types';
 import { generateFullMessage } from '@/services/amhs/amhsFormatter';
 import { ComplianceBanner, type PreviewIssue } from './ComplianceBanner';
 import { PreviewEmptyState } from './LivePreview';
+import { XfaFormPreview } from './XfaFormPreview';
+import type { PreviewKind } from '@/hooks/useLivePreview';
 import type { RequiredFieldStatus } from '@/lib/required-fields';
 
 interface PreviewModalProps {
@@ -23,6 +25,17 @@ interface PreviewModalProps {
   amhsReferences?: AMHSReference[];
   // For PDF preview
   previewUrl?: string;
+  /**
+   * The same three the desktop pane takes (LivePreview). An official
+   * XFA form goes through pdf.js's XFA engine here as there: a browser's
+   * own PDF viewer shows a dynamic XFA form as its "Please wait..."
+   * placeholder page, which is what every phone and tablet user saw for
+   * the NAVMC 10274 preview while this sheet took only the URL
+   * (owner's report, 2026-10-21).
+   */
+  previewBlob?: Blob | null;
+  previewKind?: PreviewKind;
+  previewFieldValues?: Readonly<Record<string, string>>;
   isLoading?: boolean;
   onUpdatePreview?: () => void;
   /** D.2: the sheet is the only preview below 1280 px, so it carries
@@ -39,6 +52,9 @@ export function PreviewModal({
   formData,
   amhsReferences = [],
   previewUrl,
+  previewBlob,
+  previewKind = 'pdf',
+  previewFieldValues,
   isLoading,
   onUpdatePreview,
   issues,
@@ -122,6 +138,8 @@ export function PreviewModal({
                     <p className="text-xs text-foreground/70">Generating preview...</p>
                   </div>
                 </div>
+              ) : previewKind === 'official-xfa' && previewBlob ? (
+                <XfaFormPreview blob={previewBlob} values={previewFieldValues} className="w-full h-full" />
               ) : previewUrl ? (
                 <iframe
                   src={previewUrl}

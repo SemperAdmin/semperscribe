@@ -82,3 +82,35 @@ test('a name that opens block 13 shows three lines down at the centre line, as t
   expect(text.startsWith('\n\n\n')).toBe(true);
   expect(text.replace(/^\n+/, '').startsWith(' '.repeat(40))).toBe(true);
 });
+
+test('at phone width the preview sheet shows the official form, not the viewer placeholder', async ({ page }, testInfo) => {
+  // Below 1280 px the pane is hidden and the floating button opens the
+  // preview sheet. It took only the blob URL and put it in an iframe,
+  // and a browser's own PDF viewer shows a dynamic XFA form as its
+  // "Please wait..." placeholder page: every phone and tablet user saw
+  // that for the NAVMC 10274 (owner's report, 2026-10-21).
+  const errors = collectErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  const pkg = JSON.parse(readFileSync(TEMPLATE, 'utf-8'));
+  pkg.data.formData.date = '19 Oct 26';
+  pkg.data.formData.sig = 'F. M. LASTNAME';
+  const fixture = testInfo.outputPath('aa-request-phone.nldp');
+  writeFileSync(fixture, JSON.stringify(pkg));
+
+  await enterApp(page);
+  await page.locator('input[type="file"][accept=".nldp,.json"]').setInputFiles(fixture);
+  await expect(page.getByText('AA Form Details')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Open document preview' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Document Preview' });
+  await expect(sheet).toBeVisible();
+  const official = sheet.getByTestId('official-form-preview');
+  await expect(official).toBeVisible({ timeout: 30_000 });
+  await expect(official.locator('.xfaPreviewPage')).toHaveCount(3, { timeout: 30_000 });
+  await expect(official.locator('input[value="2026-10-19"]')).toHaveCount(1);
+  await expect(sheet.locator('iframe[title="PDF Preview"]')).toHaveCount(0);
+  await official.screenshot({ path: testInfo.outputPath('official-form-preview-phone.png') });
+
+  expect(errors, errors.join('\n')).toEqual([]);
+});
