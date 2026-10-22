@@ -4,16 +4,28 @@ name: Mirror to GitLab
 # Pushes every branch and tag with --prune, so GitLab becomes an exact copy.
 # Never pulls from GitLab.
 #
-# Required repository secret, either name works:
+# Required secret, either name works:
 #   GITLAB_MIRROR_TOKEN or GITLAB_SYNC_TOKEN
 #   GitLab project access token, Maintainer role, write_repository scope.
+#   Hold it as a secret of the `gitlab-mirror` environment, not of the
+#   repository: a repository secret reaches any workflow run on any
+#   branch, an environment secret reaches only this job, and the
+#   environment's own protection rules decide which branches get it.
+#
+# WHEN IT RUNS (hardened 2026-10-21). A push to main or a tag, the
+# nightly schedule, a branch or tag deletion, and a manual dispatch from
+# main. A push to any other branch no longer runs it: a workflow run
+# executes the definition on the branch pushed, so a branch push with an
+# edited copy of this file ran with the GitLab token in hand. Feature
+# branches still reach GitLab, from the nightly full mirror and from the
+# next main push, both of which push every ref.
 #
 # No competing mirror exists on this project.
 #
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
     tags: ['**']
   delete:
   workflow_dispatch:
@@ -30,12 +42,17 @@ permissions:
 
 jobs:
   mirror:
-    # Dependabot-triggered runs receive no repository secrets, so the
-    # push step has no token and fails on every Dependabot branch. Those
-    # branches reach GitLab when they merge to main. Skip them here.
-    if: github.actor != 'dependabot[bot]'
+    # Only the main definition of this file, or a tag's, runs with the
+    # token: a dispatch from another branch executes that branch's copy.
+    # Dependabot-triggered runs receive no secrets, so the push step
+    # would fail on every Dependabot branch; those reach GitLab when they
+    # merge to main. Skip them here.
+    if: >-
+      github.actor != 'dependabot[bot]'
+      && (github.ref == 'refs/heads/main' || github.ref_type == 'tag')
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: gitlab-mirror
     env:
       GITLAB_HOST: web.git.mil
       GITLAB_PATH: semper_admin/semperscribe

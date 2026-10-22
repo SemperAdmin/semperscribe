@@ -146,6 +146,12 @@ export function usePackageAssembly({ savedLetters, toast }: UsePackageAssemblyAr
   /** Exports the chain as a single merged PDF with numbering applied. */
   const exportPackage = useCallback(async () => {
     if (memberIds.length === 0) return;
+    // The package carries every member letter: scan them all and ask
+    // once, as a single export does (owner's ruling of 2026-10-21),
+    // before any rendering so a declined prompt costs nothing.
+    const { clearedForExport } = await import('@/lib/export-gate');
+    const packaged = memberIds.map((id) => savedLetters.find((l) => l.id === id)).filter(Boolean);
+    if (!(await clearedForExport(packaged))) return;
     setBusy(true);
     try {
       const { generatePdfForDocType } = await import('@/services/export/pdfPipelineService');

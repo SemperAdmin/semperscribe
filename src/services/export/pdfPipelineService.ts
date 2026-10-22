@@ -5,6 +5,8 @@ import { Navmc11811Data } from '@/types/navmc';
 import { mergeAdminSubsections } from '@/lib/naval-format-utils';
 import type { Navmc10132ExportReport } from '@/lib/navmc10132-export';
 
+import { refLetterAt, startingEnclosureNumberFor, startingRefLetterFor } from '@/lib/reference-letters';
+import { aaFieldValues } from '@/lib/navmc10274-layout';
 // Generators are imported dynamically inside each pipeline so the PDF
 // engines (@react-pdf/renderer, pdf-lib, the seal data) stay out of the
 // first-load bundle and load on the first preview/export instead.
@@ -34,32 +36,24 @@ interface PdfBuildContext {
 }
 
 function buildNavmc10274Data(ctx: PdfBuildContext) {
+  // The small boxes come from the one value table the official export
+  // and the fit validator read (src/lib/navmc10274-layout.ts), so the
+  // preview cannot number a via or letter a reference differently.
+  const boxes = Object.fromEntries(aaFieldValues(ctx).map(v => [v.field.name, v.value]));
   return {
-    actionNo: ctx.formData.actionNo || '',
-    ssic: ctx.formData.ssic || '',
-    date: ctx.formData.date || '',
-    from: ctx.formData.from || '',
-    orgStation: ctx.formData.orgStation || '',
-    to: ctx.formData.to || '',
-    via: ctx.vias.filter(v => v.trim()).join('\n'),
-    subject: ctx.formData.subj || '',
-    reference: (() => {
-      const startCode = (ctx.formData.startingReferenceLevel || 'a').charCodeAt(0);
-      return ctx.references
-        .filter(r => r.trim())
-        .map((r, i) => `(${String.fromCharCode(startCode + i)}) ${r}`)
-        .join('\n');
-    })(),
-    enclosure: (() => {
-      const startNum = parseInt(ctx.formData.startingEnclosureNumber || '1', 10);
-      return ctx.enclosures
-        .filter(e => e.trim())
-        .map((e, i) => `(${startNum + i}) ${e}`)
-        .join('\n');
-    })(),
+    actionNo: boxes.ActNum,
+    ssic: boxes.FileNum,
+    date: boxes.Date,
+    from: boxes.NameFrom,
+    orgStation: boxes.OrgStat,
+    to: boxes.AddrTo,
+    via: boxes.Via1,
+    subject: boxes.NatOfAct,
+    reference: boxes.RefAuth,
+    enclosure: boxes.Encl1,
+    copyTo: boxes.CopyTo,
     supplementalInfo: ctx.paragraphs.map(p => p.content).join('\n'),
     supplementalInfoParagraphs: ctx.paragraphs,
-    copyTo: ctx.copyTos.filter(c => c.trim()).join('\n'),
     signature: ctx.formData.sig || '',
   };
 }
