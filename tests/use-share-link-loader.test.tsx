@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useShareLinkLoader } from '@/hooks/useShareLinkLoader';
+import { useShareLinkLoader, DAMAGED_LINK_TOAST } from '@/hooks/useShareLinkLoader';
 import { encodeStateForUrl, type ShareableState } from '@/lib/url-state';
 import { clearEdmsContext, isEdmsMode, resetEdmsCacheForTests } from '@/lib/edms-mode';
 import type { FormData } from '@/types';
@@ -43,6 +43,26 @@ describe('useShareLinkLoader', () => {
     expect(result.current.sharedPending).toBeNull();
     expect(result.current.hasEncryptedPending).toBe(false);
     expect(result.current.routingRequest).toBeNull();
+  });
+
+  it('reports a cut #s= link as damaged, loads nothing, and clears it', () => {
+    // A link cut by a mail or chat client: the front of a valid payload.
+    const whole = encodeStateForUrl(makeState());
+    window.history.replaceState({}, '', `/#s=${whole.slice(0, Math.floor(whole.length * 0.8))}`);
+    const { result, handleImport, toast } = mount();
+    expect(result.current.sharedPending).toBeNull();
+    expect(result.current.hasEncryptedPending).toBe(false);
+    expect(handleImport).not.toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledWith(DAMAGED_LINK_TOAST);
+    expect(window.location.hash).toBe('');
+  });
+
+  it('reports a cut legacy ?share= link the same way', () => {
+    window.history.replaceState({}, '', `/?share=${encodeStateForUrl(makeState()).slice(0, 40)}`);
+    const { result, toast } = mount();
+    expect(result.current.sharedPending).toBeNull();
+    expect(toast).toHaveBeenCalledWith(DAMAGED_LINK_TOAST);
+    expect(new URLSearchParams(window.location.search).has('share')).toBe(false);
   });
 
   it('holds a legacy share link until confirmed, then imports and clears the param', () => {

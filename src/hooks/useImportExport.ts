@@ -271,7 +271,7 @@ export function useImportExport(deps: ImportExportDeps) {
       state.expires = new Date(Date.now() + options.expiresDays * 24 * 60 * 60 * 1000).toISOString();
     }
 
-    const { url, isLong, error } = options.password
+    const { url, isLong, wrapRisk, error } = options.password
       ? await generateEncryptedShareUrl(state, options.password)
       : generateShareableUrl(state);
 
@@ -282,7 +282,14 @@ export function useImportExport(deps: ImportExportDeps) {
 
     const success = await copyToClipboard(url);
     if (success) {
-      const lengthNote = isLong ? " Note: This link is very long and may not work in all applications." : "";
+      // A cut link decodes to nothing and the recipient sees an empty
+      // document, so the warning comes at the length mail and chat apps
+      // start cutting, not only at the browser cap.
+      const lengthNote = isLong
+        ? " Note: This link is very long and may not work in all applications."
+        : wrapRisk
+          ? " This link is long enough for mail and chat apps to cut it. If the recipient sees an empty document, send the .nldp file instead."
+          : "";
       toast({
         title: "Link Copied!",
         description: options.password

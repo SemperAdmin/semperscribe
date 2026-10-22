@@ -6,6 +6,7 @@ import { useSyncedState } from '@/hooks/useSyncedState';
 import { consumeEdmsPrefill, clearEdmsHash, getEdmsPrefillFromHash, type EdmsPrefill } from '@/lib/edms-handoff';
 import {
   getStateFromUrl,
+  hasSharePayloadInUrl,
   clearShareParam,
   getEncryptedPayloadFromHash,
   decryptSharedState,
@@ -33,7 +34,9 @@ type InboundLink =
   | { kind: 'none' }
   | { kind: 'edms'; prefill: EdmsPrefill }
   | { kind: 'encrypted'; payload: string }
-  | { kind: 'shared'; state: ShareableState };
+  | { kind: 'shared'; state: ShareableState }
+  /** A share payload is present but does not decode: a cut or altered link. */
+  | { kind: 'damaged' };
 
 const NO_LINK: InboundLink = { kind: 'none' };
 
@@ -50,8 +53,20 @@ function readInboundLink(): InboundLink {
   if (payload) return { kind: 'encrypted', payload };
   const state = getStateFromUrl();
   if (state) return { kind: 'shared', state };
+  // A link cut by a mail or chat client decodes to nothing (LZ-string
+  // yields an empty string for a truncated stream), and the page used to
+  // open an empty document in silence (owner's report, 2026-10-21).
+  if (hasSharePayloadInUrl()) return { kind: 'damaged' };
   return NO_LINK;
 }
+
+export const DAMAGED_LINK_TOAST = {
+  title: 'Link Damaged',
+  description:
+    'This link is damaged or incomplete, so nothing was loaded. Mail and chat apps often cut a link ' +
+    'this long. Ask the sender to copy it again, or to send the .nldp file instead.',
+  variant: 'destructive' as const,
+};
 
 /**
  * Loads shared state from a share link on mount and surfaces the S2
@@ -105,6 +120,16 @@ export function useShareLinkLoader({ handleImport, toast, onComments, onEdmsPref
     // page; mount-consumed links never re-fire (same posture as before).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A damaged share link: say so once and clear it, so a reload does not
+  // repeat the notice and the cut payload leaves the address bar.
+  useEffect(() => {
+    if (inbound.kind !== 'damaged') return;
+    toast(DAMAGED_LINK_TOAST);
+    clearShareParam();
+    // Consumed once per inbound link.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inbound]);
 
   // EDMS handoff. It latches EDMS mode, which gates GunnyBot egress in
   // lib/gunnybot/client.ts, so it runs as soon as the link is read and
