@@ -5,6 +5,12 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.12] - 2026-10-22
+
+### Security
+
+- Two dependency pins clear every moderate advisory from the tree. `postcss-selector-parser` is held at its patched 7.1.x under Tailwind 3 (GHSA-rj75-hqrm-r3gf, quadratic selector parsing); the built stylesheet is byte-identical before and after. `argparse` is held at 2.x under `mammoth`, which removes `sprintf-js` (GHSA-hp3w-g68c-fv3c, no fixed release): the app imports mammoth's browser library, which never loads argparse; only mammoth's own command-line binary did, and that binary is not used here. The production tree now audits clean at every severity. The one advisory left, `braces` 3.0.3 in build tooling, has no fixed release upstream.
+
 ## [0.13.11] - 2026-10-21
 
 ### Changed
