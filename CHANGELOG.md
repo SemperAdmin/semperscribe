@@ -5,6 +5,12 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.16] - 2026-10-22
+
+### Fixed
+
+- Counseling Worksheet, initial session (handoff of 22 Oct 26, D-01 to D-03, D-07, D-08). Block 4, Date of ICS, printed empty on an initial session because its field is shown only on later occasions; it now takes the session date, and step 1 says so. Section VII, the review of targets from last session, printed with blank rows on an initial session; it is left out there and kept on every other occasion, with the section numbers after it unchanged. The Fidelity prompt, the step 3 and step 5 guidance and block 5 named a last session on an initial session; they now say "since assignment to this senior" and "Prior session: none", and no initial-session screen or page names a last session. The JEPES 2.5 benchmark item no longer appears in the open suggestions on an initial session, where the senior has had no period to observe; the block stays available and marked optional, and marks entered there still get the band rules. An empty component (active or reserve) now raises a step 2 suggestion with a one-click Set active, so block 14 is never silently blank.
+
 ## [0.13.15] - 2026-10-22
 
 ### Fixed

@@ -30,12 +30,13 @@ import type { FormData } from '@/types';
 import {
   AREA_CITATION, AREA_STATUS_LABELS, COUNSELING_AREAS, COUNSELING_GRADES, COUNSELING_LIFE_EVENTS, COUNSELING_OCCASIONS,
   HANDLING_STATEMENT, ICS_CITATION, ICS_OBJECTIVES, LIFE_EVENT_CITATION, PRIOR_TARGET_STATUS_LABELS, STANDARD_KINDS,
+  areaPrompts, sincePhrase,
   TARGET_ACTIONS, TARGET_CITATION, computedNextSessionDate, counselingAreaEntries, counselingField, counselingIcsObjectives,
   counselingLifeEvents, counselingOccasion, counselingPriorTargets, counselingSubjects, counselingSuggestions, counselingTargets,
   dismissedSuggestions, emptyTarget, nextSessionInterval, targetSentence,
   JEPES_ADVERSE_REASONS, JEPES_ATTRIBUTES, JEPES_BANDS, JEPES_CITATION, JEPES_GUIDANCE, benchmarkAtBaseline,
   counselingBenchmark, counselingPriorBenchmark, isJepesGrade, jepesBand, jepesMarkValue,
-  type CounselingAreaId, type CounselingAreaStatus, type CounselingStep, type CounselingSuggestion, type CounselingTarget,
+  type CounselingAreaId, type CounselingAreaStatus, type CounselingOccasionKind, type CounselingStep, type CounselingSuggestion, type CounselingTarget,
   type JepesAttribute, type JepesBenchmark, type JepesMark, type JepesPriorBenchmark, type PriorTargetStatus, type StandardKind,
 } from '@/lib/counseling';
 
@@ -51,10 +52,23 @@ interface StepMeta {
   citation: string;
 }
 
+/**
+ * The step guidance for the occasion. An initial session has no last
+ * session, so steps 3 and 5 say what the session looks back over
+ * instead (handoff D-03, 22 Oct 26).
+ */
+function stepMeta(n: number, kind: CounselingOccasionKind | undefined): StepMeta {
+  const meta = STEPS[n - 1];
+  if (kind !== 'initial') return meta;
+  if (n === 3) return { ...meta, guidance: 'Initial: the seven objectives, each confirmed with the Marine.' };
+  if (n === 5) return { ...meta, guidance: `Major accomplishments, strengths and deficiencies ${sincePhrase(kind)}.` };
+  return meta;
+}
+
 const STEPS: readonly StepMeta[] = [
   { n: 1, title: 'Occasion and timing', guidance: 'Pick the occasion and any life events. The next-session date follows the interval for this Marine.', citation: 'NAVMC 2795 para 2001; MCO 1500.61 para 4.b(1)(b), 4.b(2)' },
   { n: 2, title: 'Who', guidance: 'The Marine counseled and the Marine performing the counseling.', citation: 'NAVMC 2795 para 3005.1.j(2), Figures A-1 and A-2' },
-  { n: 3, title: 'Agenda', guidance: 'Initial: the seven objectives. Follow-on: last session’s targets, each marked. Event-related: the event.', citation: 'NAVMC 2795 para 2001.1.b, 2001.2.b, 2001.4' },
+  { n: 3, title: 'Agenda', guidance: 'Initial: the seven objectives. Follow-on: the targets set last session, each marked. Event-related: the event.', citation: 'NAVMC 2795 para 2001.1.b, 2001.2.b, 2001.4' },
   { n: 4, title: 'The six functional areas', guidance: 'Walk each area with its prompts. Answer discussed, not this session, or target set. Notes become subjects discussed.', citation: AREA_CITATION },
   { n: 5, title: 'Performance', guidance: 'Major accomplishments, strengths and deficiencies since the last session.', citation: 'NAVMC 2795 para 3005.1.g, 2001.2.b' },
   { n: 6, title: 'Targets for the coming period', guidance: 'Three to five, each an action, its object, a standard, and a due date before the next session.', citation: TARGET_CITATION },
@@ -139,7 +153,12 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
             </Select>
             {occasion && <p className="text-[11px] text-muted-foreground mt-1">{occasion.citation}</p>}
           </Field>
-          <TextField name="date" label="Date of session" value={get('date')} onChange={(v) => set('date', v)} placeholder="D MMM YY" />
+          <div>
+            <TextField name="date" label="Date of session" value={get('date')} onChange={(v) => set('date', v)} placeholder="D MMM YY" />
+            {occasion?.kind === 'initial' && (
+              <p className="text-[11px] text-muted-foreground mt-1" data-testid="ics-date-note">This is the initial session, so it is also the date of ICS (block 4).</p>
+            )}
+          </div>
           {occasion?.kind === 'event' && (
             <TextField name="counselingEventDescription" label="The event" value={get('counselingEventDescription')} onChange={(v) => set('counselingEventDescription', v)} className="md:col-span-2" />
           )}
@@ -219,7 +238,7 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
       </StepCard>
 
       {/* Step 3 */}
-      <StepCard meta={STEPS[2]} done={done[3]} suggestions={forStep(3)} onApply={applySuggestion} onDismiss={dismissSuggestion}>
+      <StepCard meta={stepMeta(3, occasion?.kind)} done={done[3]} suggestions={forStep(3)} onApply={applySuggestion} onDismiss={dismissSuggestion}>
         {!occasion && <p className="text-sm text-muted-foreground">Pick the occasion in step 1 and the agenda for it appears here.</p>}
         {occasion?.kind === 'initial' && (
           <fieldset>
@@ -272,7 +291,7 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{area.definition}</p>
                 <ul className="text-xs mt-2 list-disc pl-4 space-y-0.5">
-                  {area.prompts.map((p) => <li key={p}>{p}</li>)}
+                  {areaPrompts(area, occasion?.kind).map((p) => <li key={p}>{p}</li>)}
                 </ul>
                 <div className="flex flex-wrap gap-1 mt-3" role="group" aria-label={`${area.title} status`}>
                   {(Object.keys(AREA_STATUS_LABELS) as Exclude<CounselingAreaStatus, ''>[]).map((status) => (
@@ -309,7 +328,7 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
       </StepCard>
 
       {/* Step 5 */}
-      <StepCard meta={STEPS[4]} done={done[5]} suggestions={forStep(5)} onApply={applySuggestion} onDismiss={dismissSuggestion}>
+      <StepCard meta={stepMeta(5, occasion?.kind)} done={done[5]} suggestions={forStep(5)} onApply={applySuggestion} onDismiss={dismissSuggestion}>
         <div className="grid gap-4">
           <AreaField name="counselingAccomplishments" label="Major accomplishments and significant events this period" value={get('counselingAccomplishments')} onChange={(v) => set('counselingAccomplishments', v)} />
           <AreaField name="counselingStrengths" label="Strengths" value={get('counselingStrengths')} onChange={(v) => set('counselingStrengths', v)} />
@@ -317,6 +336,7 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
         </div>
         {showBenchmark && (
           <BenchmarkBlock
+            optional={occasion?.kind === 'initial'}
             benchmark={benchmark}
             prior={priorBenchmark}
             onMark={setMark}
@@ -418,7 +438,9 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
  * (owner decision, 2026-09-06). Marks start blank; the one button
  * applies the para 3.a(3) baseline.
  */
-function BenchmarkBlock({ benchmark, prior, onMark, onPrior, onBaseline }: {
+function BenchmarkBlock({ optional, benchmark, prior, onMark, onPrior, onBaseline }: {
+  /** An initial session: the block is offered, nothing asks for it. */
+  optional?: boolean;
   benchmark: JepesBenchmark;
   prior: JepesPriorBenchmark;
   onMark: (id: JepesAttribute['id'], change: Partial<JepesMark>) => void;
@@ -435,6 +457,11 @@ function BenchmarkBlock({ benchmark, prior, onMark, onPrior, onBaseline }: {
             The senior&apos;s mark at this session, not the mark of record. The reporting chain enters JEPES command input at period end; this is the trail it rests on. Pvt through Cpl only.
           </p>
           <p className="text-[11px] text-muted-foreground">{JEPES_CITATION}</p>
+          {optional && (
+            <p className="text-xs text-muted-foreground mt-1" data-testid="benchmark-optional">
+              Optional on an initial session: the senior has had no period to observe. Leave it blank unless there is a basis.
+            </p>
+          )}
         </div>
         <Button type="button" variant="secondary" size="sm" onClick={onBaseline} data-testid="benchmark-baseline">Start at 2.5</Button>
       </div>
