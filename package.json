@@ -1,6 +1,6 @@
 {
   "name": "semperscribe",
-  "version": "0.13.11",
+  "version": "0.13.12",
   "private": true,
   "license": "MIT",
   "//": [
@@ -83,6 +83,10 @@
     },
     "docx": {
       "nanoid": "^5.1.16"
+    },
+    "postcss-selector-parser": "^7.1.7",
+    "mammoth": {
+      "argparse": "^2.0.1"
     }
   },
   "devDependencies": {
