@@ -76,27 +76,17 @@ function writeMap(map: ProxyMap): void {
  * public origin reaching loopback prompts the user for permission and is
  * deniable by enterprise policy.
  *
- * HOST POLICY (P2-2). Loopback hosts pass. Any other host is refused
- * unless `options.allowRemote` is true; see ProxyUrlOptions.
+ * HOST POLICY (P2-2, tightened 2026-10-21). Loopback hosts pass. Any
+ * other host is refused, always: a proxy receives the user's API key and
+ * the draft text, and the owner ruled that no key goes to a remote URL.
+ * The acknowledgement path that once let Settings store a remote host is
+ * gone, so a stored remote value can only have been written by hand or
+ * by an older build, and the send path refuses it too (client.ts).
  */
-export function normalizeProxyUrl(raw: string, options: ProxyUrlOptions = {}): string | null {
+export function normalizeProxyUrl(raw: string): string | null {
   const classified = classifyProxyUrl(raw);
-  if (classified.kind === 'invalid') return null;
-  if (classified.kind === 'remote' && options.allowRemote !== true) return null;
+  if (classified.kind !== 'loopback') return null;
   return classified.url;
-}
-
-export interface ProxyUrlOptions {
-  /**
-   * P2-2. A proxy receives the user's API key and the draft text, so a
-   * proxy on any host other than this machine is an egress destination
-   * chosen by whoever wrote the setting. Loopback is the documented
-   * deployment (the SemperScribe local proxy) and passes by default. A
-   * remote host is refused unless the caller says so explicitly, and the
-   * only caller which does is the Settings UI after the user ticks an
-   * acknowledgement naming the host.
-   */
-  allowRemote?: boolean;
 }
 
 export type ProxyUrlClass =
@@ -162,8 +152,8 @@ export function getProxyUrl(provider: GunnyProviderId): string | null {
  * Persist a proxy base URL. Returns the normalised value on success and
  * null when the input was rejected, in which case nothing is written.
  */
-export function setProxyUrl(provider: GunnyProviderId, raw: string, options: ProxyUrlOptions = {}): string | null {
-  const normalized = normalizeProxyUrl(raw, options);
+export function setProxyUrl(provider: GunnyProviderId, raw: string): string | null {
+  const normalized = normalizeProxyUrl(raw);
   if (normalized === null) return null;
   const map = readMap();
   map[provider] = normalized;

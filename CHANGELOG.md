@@ -5,6 +5,13 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.11] - 2026-10-21
+
+### Changed
+
+- GunnyBot refuses a proxy off this machine in every mode, not only in EDMS mode. The proxy receives the API key and the draft, and by the owner's ruling of 2026-10-21 no key goes to a remote URL. The Settings acknowledgement that let a remote host be saved is gone; a remote address typed there is named and refused, and one planted in storage by hand or by an older build is shown as refused and blocked at send time.
+- Opening a data package (.nldp or .json) now checks it before anything reaches the editor: a size cap of 10 MB, the shapes the app writes (full package, bare data block, legacy form record), and the integrity block when the file carries one. A file the app cannot read as a letter is refused with the reason. A file changed since export opens on the user's consent, never a refusal.
+
 ## [0.13.10] - 2026-10-21
 
 ### Changed

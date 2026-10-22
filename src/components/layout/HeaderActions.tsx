@@ -272,17 +272,30 @@ export function HeaderActions({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const content = e.target?.result as string;
         const data = JSON.parse(content);
+        // Shape, size and integrity before anything reaches the editor
+        // (src/lib/nldp-import-check.ts). A package that cannot be read
+        // is refused; one changed since export opens on consent.
+        const { checkImportedPackage } = await import('@/lib/nldp-import-check');
+        const check = await checkImportedPackage(data, file.size);
+        if (!check.ok) {
+          alert(check.errors.join('\n'));
+          return;
+        }
+        if (check.warnings.length > 0 && !window.confirm(check.warnings.join('\n') + '\n\nOpen it anyway?')) {
+          return;
+        }
         onImport(data);
       } catch (error) {
         console.error('Failed to parse imported file', error);
         alert('Failed to parse file. Please ensure it is a valid .nldp or .json file.');
+      } finally {
+        // Reset input
+        if (fileInputRef.current) fileInputRef.current.value = '';
       }
-      // Reset input
-      if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsText(file);
   };
