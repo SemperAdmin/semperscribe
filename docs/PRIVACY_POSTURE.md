@@ -2,14 +2,20 @@
 
 Auditor-facing privacy posture statement. Complements the user-facing Privacy and Security Notice at `src/app/privacy/page.tsx` (rendered at the `/privacy` route).
 
-- Last reviewed: 2026-08-04
-- Document version: 2.0
+- Last reviewed: 2026-10-22
+- Document version: 2.1
 - User-facing notice: https://semperadmin.github.io/semperscribe/privacy
 
 Version 2.0 corrects a material misstatement. Version 1.0 claimed zero outbound
 transmission of user data at runtime. That claim was true when written and became
 false when GunnyBot shipped. Sections 1, 2, 3, 8, and 9 are revised. Section 13 is
 new and covers the EDMS handoff mode.
+
+Version 2.1 (security review of 2026-10-21, item 7) brings sections 3, 7 and 9 to
+the application as built: PII is entered at the user's discretion and scanned on
+every export path, browser storage is three stores plus an optional folder on
+disk, not `localStorage` alone, and the delete path is named with what it does
+not reach.
 
 ## 1. Statement of Facts
 
@@ -56,7 +62,7 @@ The scope of the pre-send scan is narrow by design and stated plainly here so no
 
 | Category | Processed by SemperScribe? | Notes |
 |----------|-----------------------------|-------|
-| Personally Identifiable Information (PII) | No, by design. | User responsibility not to enter. Banner and Privacy Notice surface this. If entered and then sent through GunnyBot, it leaves the browser for the chosen provider. The pre-send scan catches SSN and EDIPI patterns only. |
+| Personally Identifiable Information (PII) | Yes, at the user's discretion and risk. | Several document types ask for a Marine's EDIPI (NAVMC 10132, NAVMC 118(11), NAVMC 10274, Counseling Worksheet). The user decides what to enter, on a computer approved for it. The data is held in the browser only (section 7). Every path which writes a document out of the browser (PDF, DOCX, official form, batch ZIP, data package, AMHS message, NAVMC 10132 sheets, package merge, backup-folder copy) and every GunnyBot send first scans for the SSN and EDIPI digit patterns, exports also for clusters of medical keywords, and asks; by the owner's ruling nothing is blocked and nothing is rewritten. Text sent through GunnyBot leaves the browser for the chosen provider. |
 | Controlled Unclassified Information (CUI) | No, by design. | User responsibility not to enter. Reference DoDI 5200.48. GunnyBot performs no CUI detection of any kind. A user who enters CUI and invokes a commercial provider has transmitted CUI to a commercial service. |
 | Protected Health Information (PHI) | No. | Not applicable to USMC correspondence drafts. |
 | Classified information | No. | Public unclassified system. |
@@ -98,15 +104,16 @@ MCO 5211.5, USMC Privacy Program, dated 28 August 2024, paragraph 5b on PII prot
 
 ## 7. Browser Storage Disclosure
 
-The application uses browser `localStorage` for the following user-controlled functions only.
+The application keeps user data in three browser stores and, at the user's option, one folder on disk. All of it is scoped to the application's origin and this browser profile, and none of it is read by the maintainer.
 
-- Draft persistence between sessions (the user's own draft letters and forms).
-- User profile defaults (signature line, unit, originator code).
-- UI preferences (theme, font selection).
-
-`localStorage` is scoped to the application's origin per the W3C Web Storage specification. Data does not leave the user's browser. The user can clear it at any time via standard browser controls or via the Settings dialog's Data tab.
+- `IndexedDB`, database `semperscribe`: the document library (object store `documents`, the full contents of every saved document), the settings store (the autosaved working copy of each open tab, and the handle of the backup folder when one is chosen), and the uploaded files store (`enclosureFiles`: enclosure PDFs, scanned forms and other files the user binds to a document).
+- `localStorage`: user profile defaults (signature line, unit, originator code), UI preferences (theme, font selection), the disclaimer acknowledgement, the autosave session marker, and the GunnyBot proxy address, which is workstation configuration and not a secret. The GunnyBot API key is held in memory only and is gone when the tab closes.
+- `sessionStorage`, per tab: the EDMS handoff context (request number, RUC, SSIC, document type) while an EDMS draft is open.
+- The optional backup folder (File System Access API, Chromium browsers): on every library save the application writes the newest five snapshots of each document to a folder the user chose. The folder is on the user's disk, outside the browser's storage, and the application warns when the folder name suggests a sync client, because a synced folder does leave the machine. The backup copy runs the same pre-export scan as any other export, once per document per session.
 
 No cookies are set by SemperScribe. No third-party cookies are loaded. No fingerprinting libraries are present.
+
+Settings, Data, "Delete all local data" clears every store named above and reloads. It does not delete files already written to the backup folder, nor any exported file; those are the user's files on the user's disk.
 
 ## 8. Cross-Border Data Transfer
 
@@ -118,7 +125,11 @@ Build-time external touches (npm registry, Google Fonts API for the build-time d
 
 ## 9. Data Retention
 
-The application retains no user data. `localStorage` contents persist until the user clears them. There is no maintainer-side retention period because there is no maintainer-side data store.
+The maintainer retains no user data: there is no maintainer-side data store. What the application keeps in the browser (section 7) persists until the user removes it. Nothing expires on its own.
+
+The retention and disposition of the records a user produces belong to the user's command's records schedule, through the command records manager; the application applies none. A Counseling Worksheet is destroyed when the senior and junior relationship ends (NAVMC 2795 paragraph 3005.1.i), and it is the user's action, not the application's, which does that.
+
+The delete path is Settings, Data, "Delete all local data", which clears the document library, the uploaded files, the working copies, the profile and preferences, and the stored proxy address, then reloads. Clearing the form or starting a new case deletes the uploaded file bound to that document. Deleting a document from the library removes it and its bound files. None of these reach a copy the user has made outside the browser: exported PDFs, data packages, or the snapshots in the backup folder remain until the user deletes them.
 
 Text sent through GunnyBot is retained per the selected provider's own policy. The application has no visibility into, and no control over, that retention. This is disclosed in the GunnyBot settings panel before a key is saved.
 
