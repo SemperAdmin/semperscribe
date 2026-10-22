@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { registerNodeAssets } from './node-assets';
 import { extractPdfTextLayout } from './golden/helpers';
-import { areaPrompts, sincePhrase, benchmarkSuggestions } from '@/lib/counseling';
+import { areaPrompts, sincePhrase, benchmarkSuggestions, dutyLines, counselingTargets } from '@/lib/counseling';
 import {
   COUNSELING_AREAS, COUNSELING_GRADES, COUNSELING_OCCASIONS, ICS_OBJECTIVES, HANDLING_STATEMENT, PRIVACY_MARKING,
   computedNextSessionDate, counselingSuggestions, emptyTarget, isLcplOrBelow, nextSessionInterval, parseNavalDate,
@@ -547,5 +547,49 @@ describe('an initial session on the record and the screens (handoff D-01 to D-03
     expect(applied.counselingMarineComponent).toBe('active');
     expect(counselingSuggestions(applied).find((x) => x.id === 'component')).toBeUndefined();
     expect(counselingFormModel(applied).items.find((i) => i.n === 14)!.checks).toEqual([{ label: 'AC', on: true }, { label: 'RC', on: false }]);
+  });
+});
+
+/** Handoff of 22 Oct 26, D-05 and D-06: duties on the record, and the STD code behind a stated standard. */
+describe('duties and the standard tag (handoff D-05, D-06)', () => {
+  const ids = (fd: FormData) => counselingSuggestions(fd).map((s) => s.id);
+
+  it('D-05: splits duties one per line or by semicolon', () => {
+    expect(dutyLines('Legal clerk\nUnit diary; Mail orderly\n\n')).toEqual(['Legal clerk', 'Unit diary', 'Mail orderly']);
+    expect(dutyLines(undefined)).toEqual([]);
+  });
+
+  it('D-05: an ICS with objective 7 ticked and no duties raises the suggestion; duties entered or objective unticked clear it', () => {
+    expect(ids(form({ counselingIcsObjectives: ['mission'] }))).toContain('duties');
+    expect(ids(form({ counselingIcsObjectives: ['mission'], counselingPrimaryDuties: 'Legal clerk' } as Partial<FormData>))).not.toContain('duties');
+    expect(ids(form({ counselingIcsObjectives: ['expectations'] }))).not.toContain('duties');
+    expect(ids(form({ counselingOccasion: 'follow-on', counselingIcsObjectives: ['mission'] }))).not.toContain('duties');
+  });
+
+  it('D-05: duties print on page 1 under the billet, in block 12', async () => {
+    const fd = form({ counselingBilletTitle: 'Legal Clerk', counselingPrimaryDuties: 'Unit diary\nLegal correspondence', counselingCollateralDuties: 'Mail orderly' } as Partial<FormData>);
+    expect(counselingFormModel(fd).items.find((i) => i.n === 12)!.value).toBe('Legal Clerk\nPrimary duties: Unit diary; Legal correspondence.\nCollateral duties: Mail orderly.');
+    const bytes = await generateCounseling(fd);
+    const items = await extractPdfTextLayout(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
+    const page1 = items.filter((i) => i.page === 1).map((i) => i.text).join(' ');
+    expect(page1).toMatch(/Primary duties: Unit diary; Legal correspondence\./);
+    expect(page1).toMatch(/Collateral duties: Mail orderly\./);
+  });
+
+  it('D-06: a stated standard with no tag raises the suggestion; a number offers Tag quantity; a tagged target prints its code', async () => {
+    const untagged = { ...emptyTarget('fitness'), action: 'To achieve', object: 'a PFT', standard: 'with a first-class score of 235 or higher', dueDate: '1 Dec 26' };
+    const fd = form({ counselingTargets: [untagged] });
+    const s = counselingSuggestions(fd).find((x) => x.id === 'target-standard-kind-0');
+    expect(s).toBeDefined();
+    expect(s!.action!.label).toBe('Tag quantity');
+    const applied = { ...fd, ...s!.action!.apply(fd) } as FormData;
+    expect(counselingTargets(applied)[0].standardKinds).toEqual(['quantity']);
+    expect(ids(applied)).not.toContain('target-standard-kind-0');
+    const noNumber = form({ counselingTargets: [{ ...untagged, standard: 'to the standard of the MOS manual' }] });
+    expect(counselingSuggestions(noNumber).find((x) => x.id === 'target-standard-kind-0')!.action).toBeUndefined();
+    expect(ids(form({ counselingTargets: [{ ...untagged, standard: '' }] }))).not.toContain('target-standard-kind-0');
+    const bytes = await generateCounseling(applied);
+    const items = await extractPdfTextLayout(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
+    expect(items.some((i) => i.text.trim() === 'Qn')).toBe(true);
   });
 });

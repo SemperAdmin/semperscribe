@@ -169,6 +169,18 @@ export const ICS_OBJECTIVES: readonly IcsObjective[] = [
 
 export const ICS_CITATION = 'NAVMC 2795 para 2001.1.b';
 
+/**
+ * Primary and collateral duties, one per line (handoff D-05, 22 Oct 26).
+ * Objective 7 of an initial session is that the junior understands them,
+ * so the record carries the list the senior walked through, on page 1
+ * under the billet (block 12).
+ */
+export const DUTIES_CITATION = 'NAVMC 2795 para 2001.1.b';
+
+export function dutyLines(text: string | undefined): string[] {
+  return (text ?? '').split(/\r?\n|;/).map((d) => d.trim()).filter(Boolean);
+}
+
 // --- Grades ---
 
 export interface CounselingGrade {
@@ -576,6 +588,18 @@ export function counselingSuggestions(formData: FormData): CounselingSuggestion[
       });
     }
   }
+  if (
+    occasion?.kind === 'initial'
+    && counselingIcsObjectives(formData).includes('mission')
+    && dutyLines(get('counselingPrimaryDuties')).length === 0
+    && dutyLines(get('counselingCollateralDuties')).length === 0
+  ) {
+    out.push({
+      id: 'duties', step: 2, field: 'counselingPrimaryDuties',
+      text: "Objective 7 is ticked: record the Marine's primary and collateral duties in step 2, so the record shows what the Marine was told to understand.",
+      citation: DUTIES_CITATION,
+    });
+  }
   if (occasion?.kind === 'follow-on' && priorTargets.filter((t) => t.text.trim()).length === 0) {
     out.push({
       id: 'follow-on-review', step: 3,
@@ -726,6 +750,20 @@ export function counselingSuggestions(formData: FormData): CounselingSuggestion[
         id: `target-form-${index}`, step: 6,
         text: `Target ${index + 1}: state it as an action, its object, and a standard or due date (quantity, quality, timeliness or manner).`,
         citation: 'NAVMC 2795 para 4002.1.f to h',
+      });
+    }
+    if (t.standard.trim() && t.standardKinds.length === 0) {
+      // The record prints the STD code from the tags, not from the text
+      // (handoff D-06, 22 Oct 26). A number in the standard reads as a
+      // quantity; the one-click sets that tag and the senior corrects it.
+      const numeric = /\d/.test(t.standard);
+      out.push({
+        id: `target-standard-kind-${index}`, step: 6,
+        text: `Target ${index + 1} states a standard. Tag it quantity, quality, timeliness or manner so block 26 prints the STD code.`,
+        citation: 'NAVMC 2795 para 4002.1.h',
+        action: numeric
+          ? { label: 'Tag quantity', apply: (fd) => ({ counselingTargets: counselingTargets(fd).map((x, i) => (i === index ? { ...x, standardKinds: ['quantity' as StandardKind] } : x)) }) }
+          : undefined,
       });
     }
     const due = parseNavalDate(t.dueDate);

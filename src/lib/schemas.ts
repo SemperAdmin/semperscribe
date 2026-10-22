@@ -3472,6 +3472,8 @@ export const CounselingSchema = z.object({
   counselingMarineBilletMos: counselingText(),
   counselingBilletTitle: counselingText(),
   counselingBilletDescription: counselingText(),
+  counselingPrimaryDuties: counselingText(),
+  counselingCollateralDuties: counselingText(),
   counselingSeniorLastName: counselingText(),
   counselingSeniorFirstName: counselingText(),
   counselingSeniorMiddleInitial: counselingText(),
