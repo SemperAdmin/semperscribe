@@ -50,12 +50,21 @@ export interface PackageCheck {
   warnings: string[];
 }
 
+/**
+ * The refusal for a file over the cap, or null when it fits. The caller
+ * runs this on the File's byte count before reading or parsing it, so an
+ * oversized file never reaches JSON.parse.
+ */
+export function describeOversize(byteLength: number): string | null {
+  if (byteLength <= MAX_PACKAGE_BYTES) return null;
+  return `The file is ${(byteLength / 1024 / 1024).toFixed(1)} MB; the importer reads up to ${MAX_PACKAGE_BYTES / 1024 / 1024} MB.`;
+}
+
 export async function checkImportedPackage(raw: unknown, byteLength?: number): Promise<PackageCheck> {
   const errors: string[] = [];
   const warnings: string[] = [];
-  if (typeof byteLength === 'number' && byteLength > MAX_PACKAGE_BYTES) {
-    return { ok: false, errors: [`The file is ${(byteLength / 1024 / 1024).toFixed(1)} MB; the importer reads up to ${MAX_PACKAGE_BYTES / 1024 / 1024} MB.`], warnings };
-  }
+  const oversize = typeof byteLength === 'number' ? describeOversize(byteLength) : null;
+  if (oversize) return { ok: false, errors: [oversize], warnings };
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return { ok: false, errors: ['The file is not a data package: it does not hold a JSON object.'], warnings };
   }
@@ -65,11 +74,15 @@ export async function checkImportedPackage(raw: unknown, byteLength?: number): P
     if (integrity) {
       // Recomputed over the file's own data block, not zod's copy: the
       // parser reorders keys, and the exporter hashed the bytes as written.
+      // Both checks, independently: CRC32 is linear, so an edit which
+      // keeps it is easy to construct, and the SHA-256 is the one that
+      // detects it. One warning names whichever failed.
       const serialized = JSON.stringify((raw as { data: unknown }).data);
-      if (typeof integrity.crc32 === 'string' && calculateCRC32(serialized) !== integrity.crc32) {
-        warnings.push('The package was changed after it was exported (CRC32 mismatch).');
-      } else if (typeof integrity.dataHash === 'string' && (await calculateSHA256(serialized)) !== integrity.dataHash) {
-        warnings.push('The package was changed after it was exported (SHA-256 mismatch).');
+      const failed: string[] = [];
+      if (typeof integrity.crc32 === 'string' && calculateCRC32(serialized) !== integrity.crc32) failed.push('CRC32');
+      if (typeof integrity.dataHash === 'string' && (await calculateSHA256(serialized)) !== integrity.dataHash) failed.push('SHA-256');
+      if (failed.length > 0) {
+        warnings.push(`The package was changed after it was exported (${failed.join(' and ')} mismatch).`);
       }
     }
     return { ok: true, errors, warnings };

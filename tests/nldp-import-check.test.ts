@@ -3,8 +3,8 @@
  * the app opens, the ones it refuses, and the integrity warning.
  */
 import { describe, it, expect } from 'vitest';
-import { checkImportedPackage, MAX_PACKAGE_BYTES } from '@/lib/nldp-import-check';
-import { createNLDPFile } from '@/lib/nldp-utils';
+import { checkImportedPackage, describeOversize, MAX_PACKAGE_BYTES } from '@/lib/nldp-import-check';
+import { createNLDPFile, calculateCRC32 } from '@/lib/nldp-utils';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FormData, ParagraphData } from '@/types';
@@ -25,7 +25,18 @@ describe('checkImportedPackage', () => {
     edited.data.formData.subj = 'EDITED BY HAND';
     const check = await checkImportedPackage(edited);
     expect(check.ok).toBe(true);
-    expect(check.warnings).toEqual(['The package was changed after it was exported (CRC32 mismatch).']);
+    expect(check.warnings).toEqual(['The package was changed after it was exported (CRC32 and SHA-256 mismatch).']);
+  });
+
+  it('runs the SHA-256 check even when the CRC32 still matches', async () => {
+    const pkg = await createNLDPFile(formData, [], [], [], [], paragraphs, { package: { title: 'T', description: '' } });
+    const edited = JSON.parse(JSON.stringify(pkg));
+    edited.data.formData.subj = 'EDITED BY HAND';
+    // A forged CRC32 over the edited bytes: only the hash can catch it.
+    edited.integrity.crc32 = calculateCRC32(JSON.stringify(edited.data));
+    const check = await checkImportedPackage(edited);
+    expect(check.ok).toBe(true);
+    expect(check.warnings).toEqual(['The package was changed after it was exported (SHA-256 mismatch).']);
   });
 
   it('opens the shipped templates, which carry no integrity block', async () => {
@@ -51,5 +62,8 @@ describe('checkImportedPackage', () => {
     const check = await checkImportedPackage({ data: { formData: {} } }, MAX_PACKAGE_BYTES + 1);
     expect(check.ok).toBe(false);
     expect(check.errors[0]).toMatch(/10 MB/);
+    // The caller's pre-read gate, on the File's byte count alone.
+    expect(describeOversize(MAX_PACKAGE_BYTES)).toBeNull();
+    expect(describeOversize(MAX_PACKAGE_BYTES + 1)).toMatch(/10 MB/);
   });
 });
