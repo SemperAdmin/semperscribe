@@ -17,6 +17,11 @@ interface GunnyBotReviewSectionProps {
   documentType: string;
   subject: string;
   body: string;
+  /**
+   * When set, the review is closed for this document and the reason is
+   * shown in place of the Run button, so no payload is built (D-10).
+   */
+  unavailableReason?: string | null;
 }
 
 /**
@@ -24,7 +29,7 @@ interface GunnyBotReviewSectionProps {
  * distinct lane so a model opinion never reads as a rule-based pass or
  * fail. Sends the draft to the configured provider on click.
  */
-export function GunnyBotReviewSection({ documentType, subject, body }: GunnyBotReviewSectionProps) {
+export function GunnyBotReviewSection({ documentType, subject, body, unavailableReason = null }: GunnyBotReviewSectionProps) {
   const provider = useGunnyStore(s => s.provider);
   const model = useGunnyStore(s => s.model);
   const keyPresent = useGunnyStore(s => s.keyPresent);
@@ -92,29 +97,33 @@ export function GunnyBotReviewSection({ documentType, subject, body }: GunnyBotR
         </div>
         <Badge variant="secondary" className="text-[10px] font-normal shrink-0">{provider} / {model}</Badge>
       </div>
-      <div className="p-3 space-y-3">
-        {output.length > 0 && (
-          <div className="text-sm whitespace-pre-wrap rounded-md bg-muted/40 p-3 border border-border">
-            {output}
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          {reviewing ? (
-            <Button variant="outline" size="sm" onClick={stop}>
-              <Square className="h-3 w-3 mr-1" /> Stop
-            </Button>
-          ) : (
-            <Button size="sm" onClick={() => void run()} disabled={!keyPresent}>
-              {output.length > 0 ? <Sparkles className="h-3 w-3 mr-1" /> : <Bot className="h-3 w-3 mr-1" />}
-              {output.length > 0 ? 'Review again' : 'Run GunnyBot review'}
-            </Button>
+      {unavailableReason !== null ? (
+        <p className="p-3 text-xs text-muted-foreground" data-testid="gunnybot-review-closed">{unavailableReason}</p>
+      ) : (
+        <div className="p-3 space-y-3">
+          {output.length > 0 && (
+            <div className="text-sm whitespace-pre-wrap rounded-md bg-muted/40 p-3 border border-border">
+              {output}
+            </div>
           )}
-          {reviewing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          <div className="flex items-center gap-2">
+            {reviewing ? (
+              <Button variant="outline" size="sm" onClick={stop}>
+                <Square className="h-3 w-3 mr-1" /> Stop
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => void run()} disabled={!keyPresent}>
+                {output.length > 0 ? <Sparkles className="h-3 w-3 mr-1" /> : <Bot className="h-3 w-3 mr-1" />}
+                {output.length > 0 ? 'Review again' : 'Run GunnyBot review'}
+              </Button>
+            )}
+            {reviewing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          </div>
+          {!keyPresent && (
+            <p className="text-xs text-muted-foreground">Add your API key in Settings, Assistant tab, to enable review.</p>
+          )}
         </div>
-        {!keyPresent && (
-          <p className="text-xs text-muted-foreground">Add your API key in Settings, Assistant tab, to enable review.</p>
-        )}
-      </div>
+      )}
     </div>
   );
 }

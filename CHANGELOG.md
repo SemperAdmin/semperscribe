@@ -5,6 +5,12 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.19] - 2026-10-23
+
+### Added
+
+- GunnyBot and the Counseling Worksheet (handoff of 22 Oct 26, D-10). The assistant panel now states under its title what leaves the browser from it: the typed text only, never the open document, and on a Counseling Worksheet it names the worksheet. The proofreading review is closed on a Counseling Worksheet, with the reason shown in place of the Run button, so paragraphs left in state from a letter cannot go out under the counseling label; the worksheet's own fields were never part of any GunnyBot payload. The Privacy and Security Notice and the privacy posture document say the same. A browser test drafts a worksheet with a name and an EDIPI, opens the panel, sends without a key, opens the checklist, and holds that no request leaves the application's origin.
+
 ## [0.13.18] - 2026-10-22
 
 ### Changed

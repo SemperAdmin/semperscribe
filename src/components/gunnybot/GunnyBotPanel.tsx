@@ -20,6 +20,7 @@ import { getKey } from '@/lib/gunnybot/keyring';
 import { clearedForEgress } from '@/lib/gunnybot/redaction';
 import { getAdapter } from '@/lib/gunnybot/providers';
 import { getProxyUrl, classifyProxyUrl } from '@/lib/gunnybot/proxy-config';
+import { panelScopeNote } from '@/lib/gunnybot/document-scope';
 import type { GunnyMessage, GunnyProviderId } from '@/lib/gunnybot/types';
 import { useToast } from '@/hooks/use-toast';
 import { useHydrated } from '@/hooks/useHydrated';
@@ -46,7 +47,12 @@ function describeDestination(provider: GunnyProviderId, model: string): { host: 
   }
 }
 
-export function GunnyBotPanel() {
+interface GunnyBotPanelProps {
+  /** The open document's type. Drives the scope line under the title (D-10). */
+  documentType?: string;
+}
+
+export function GunnyBotPanel({ documentType }: GunnyBotPanelProps = {}) {
   const open = useGunnyStore(s => s.panelOpen);
   const setOpen = useGunnyStore(s => s.setPanelOpen);
   const provider = useGunnyStore(s => s.provider);
@@ -137,6 +143,9 @@ export function GunnyBotPanel() {
           <SheetDescription className="text-xs">
             Format and policy questions. Your message goes to your configured provider. Do not enter CUI, PII, or classified text. Answers are advisory - verify against the source.
           </SheetDescription>
+          <p className="text-xs text-muted-foreground" data-testid="gunnybot-scope">
+            {panelScopeNote(documentType)}
+          </p>
         </SheetHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto p-4 native-scroll">

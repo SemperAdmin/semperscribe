@@ -3,7 +3,7 @@
 Auditor-facing privacy posture statement. Complements the user-facing Privacy and Security Notice at `src/app/privacy/page.tsx` (rendered at the `/privacy` route).
 
 - Last reviewed: 2026-10-22
-- Document version: 2.1
+- Document version: 2.2
 - User-facing notice: https://semperadmin.github.io/semperscribe/privacy
 
 Version 2.0 corrects a material misstatement. Version 1.0 claimed zero outbound
@@ -16,6 +16,10 @@ the application as built: PII is entered at the user's discretion and scanned on
 every export path, browser storage is three stores plus an optional folder on
 disk, not `localStorage` alone, and the delete path is named with what it does
 not reach.
+
+Version 2.2 (counseling handoff of 2026-10-22, D-10) states what GunnyBot does
+with the open document, and with a Counseling Worksheet in particular, in
+section 2.
 
 ## 1. Statement of Facts
 
@@ -57,6 +61,8 @@ The privacy posture is enforced by architecture, not by policy alone.
 One code path in the active source contacts a third-party host at runtime, and only on explicit user action: `streamChat` in `lib/gunnybot/client.ts`. It is the sole `fetch` call in the GunnyBot subsystem, which makes it the single enforcement point for every egress control described here. No other runtime third-party contact exists.
 
 The scope of the pre-send scan is narrow by design and stated plainly here so no reader over-reads it. `redaction.ts` screens for two high-confidence structured identifiers, the SSN digit pattern and a bare 10-digit EDIPI. It does not screen for names, ranks, unit designators, duty status, subject lines, or free-text body content. Those pass to the chosen provider untouched. The PHI keyword list in `security-utils.ts` is deliberately not consulted, because bare-substring matching flagged ordinary correspondence vocabulary constantly. The control is a consent prompt, not a filter.
+
+What each GunnyBot path sends is fixed by `lib/gunnybot/context-builder.ts`: the document type, the subject line, the letter paragraphs and the typed question, and nothing else. The assistant panel sends the typed question and the conversation so far, never the open document, and states this under its title. Draft and Rewrite exist only in the letter paragraph editor. Review, inside the Proofread checklist, sends the subject and paragraphs. A Counseling Worksheet has no subject and no paragraphs of its own, and none of its fields (the Marine's name, EDIPI, targets, duties, marks) pass through the context builder. Paragraphs left in state from a letter the drafter switched away from would, so the review is closed on the worksheet (`lib/gunnybot/document-scope.ts`), and a browser test (`tests/e2e/counseling-gunnybot-egress.spec.ts`) holds that drafting a worksheet, opening the panel, sending without a key and opening the checklist makes no request off the application's origin.
 
 ## 3. Information Handling Categories
 

@@ -106,6 +106,9 @@ export default function PrivacyAndSecurityNoticePage() {
           <p className="mt-2">
             Before any GunnyBot feature sends text, the application scans it in the browser for two high-confidence structured identifiers, the Social Security number digit pattern and the ten-digit EDIPI. A match opens a consent prompt naming the finding, and the send proceeds only if the user acknowledges it. This scan runs on all four GunnyBot paths and never leaves the browser. It is a narrow tripwire, not a certification: it does not detect CUI, PHI, classification markings, or any identifier outside those two patterns, and it produces occasional false matches on unrelated ten-digit numbers. GunnyBot applies no attestation prompt beyond this. The user remains solely responsible for not submitting CUI, PII, PHI, or classified text to GunnyBot.
           </p>
+          <p className="mt-2">
+            The open document is not part of a GunnyBot question. The assistant panel sends only the text typed into it, and says so under its title. On a Counseling Worksheet no GunnyBot feature reads the worksheet: the paragraph drafting and rewrite controls exist only in the letter editor, and the proofreading review is closed on the worksheet, so the Marine's name, EDIPI, targets, duties and marks never leave the browser through GunnyBot.
+          </p>
         </section>
 
         <section>
