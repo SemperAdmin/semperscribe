@@ -5,6 +5,12 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.20] - 2026-10-23
+
+### Added
+
+- Counseling Worksheet, the handoff's retest runs 1 to 4 (22 Oct 26) as browser tests against the built export. Run 1: the 30-day rule sets the next session for a LCpl and a PFC, and a reservist LCpl is on the quarterly rule. Run 2: a follow-on session prints Section VII with the prior targets and their results, and Section VIII keeps its number. Run 3: a Sgt on an initial session has no JEPES block and the 90-day post-ICS interval, a follow-on moves to the 6-month interval, and a GySgt and a WO have no JEPES block either. Run 4: a PDF, a DOCX and an encrypted share link from a worksheet carrying a name and an EDIPI leave no request off the application's origin; each path meets the pre-export scan prompt on the EDIPI first, and the link holds the ciphertext envelope and nothing of the draft in the clear. Run 5 landed in 0.13.19.
+
 ## [0.13.19] - 2026-10-23
 
 ### Added
