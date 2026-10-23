@@ -91,6 +91,20 @@ describe('workflow actions', () => {
     }
   });
 
+  it('run the e2e job in the Playwright image of the installed @playwright/test version, pinned by digest', () => {
+    // The image carries the browsers and their system packages, so the
+    // job installs nothing through apt (2026-10-23: four e2e jobs died at
+    // the job limit inside `playwright install --with-deps`). A Playwright
+    // bump has to move the image tag with it, or the browsers in the image
+    // and the test runner drift apart.
+    const text = workflows.find(w => w.name === 'test.yml')!.text;
+    const installed = (JSON.parse(readFileSync(join(process.cwd(), 'node_modules', '@playwright', 'test', 'package.json'), 'utf8')) as { version: string }).version;
+    const image = /image:\s*mcr\.microsoft\.com\/playwright:v(\d+\.\d+\.\d+)-noble@sha256:[0-9a-f]{64}/.exec(text);
+    expect(image, 'test.yml e2e job runs in a digest-pinned Playwright image').not.toBeNull();
+    expect(image![1]).toBe(installed);
+    expect(text).not.toMatch(/run:.*playwright install/);
+  });
+
   it('never use pull_request_target', () => {
     for (const { name, text } of workflows) {
       expect(text, name).not.toMatch(/pull_request_target/);

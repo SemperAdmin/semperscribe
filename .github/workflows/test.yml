@@ -119,9 +119,22 @@ jobs:
     # does (public/nginx/conf/includes/security-headers.conf), so the
     # production CSP is under test here too - see tests/e2e/csp-pdfjs.spec.ts.
     runs-on: ubuntu-latest
+    # The browsers and their system packages come preinstalled in the
+    # Playwright image, pinned by digest and matched to the @playwright/test
+    # version in package.json (tests/workflow-pins.test.ts holds the two
+    # together). Before this, `playwright install --with-deps` pulled
+    # WebKit's 185 apt packages on every run; on 2026-10-23 the Ubuntu
+    # mirror served them so slowly that four e2e jobs in a row died at the
+    # job limit before a single test ran. No apt in this job now.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:47b510dd9230bf0b9bfc9b20102241e577ea7a99334ab4c3ca19f19770e9b8ea
     timeout-minutes: 15
     permissions:
       contents: read
+    env:
+      # The image's browsers live under /ms-playwright; the runner's
+      # default HOME inside a container is not root's.
+      HOME: /root
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -129,8 +142,6 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Install Playwright Chromium and WebKit
-        run: npx playwright install --with-deps chromium webkit
       - name: Build static export
         run: npm run build
       - name: Bundle report
