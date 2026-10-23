@@ -31,6 +31,7 @@ import {
   CheckStatus,
 } from '@/lib/proofread-checks';
 import { GunnyBotReviewSection } from '@/components/gunnybot/GunnyBotReviewSection';
+import { reviewUnavailableReason } from '@/lib/gunnybot/document-scope';
 
 interface ProofreadModalProps {
   open: boolean;
@@ -282,6 +283,7 @@ export function ProofreadModal({
               documentType={formData.documentType}
               subject={typeof formData.subj === 'string' ? formData.subj : ''}
               body={paragraphs.map(p => p.content).join('\n\n')}
+              unavailableReason={reviewUnavailableReason(formData.documentType)}
             />
           </div>
         </div>

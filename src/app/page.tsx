@@ -1725,7 +1725,7 @@ function NavalLetterGeneratorInner() {
         savedLetterCount={savedLetters.length}
         onClearSavedLetters={handleClearSavedLetters}
       />
-      <GunnyBotPanel />
+      <GunnyBotPanel documentType={formData.documentType} />
       <GunnyBotRuntime />
       <ExportScanGate />
     </ModernAppShell>
