@@ -123,3 +123,47 @@ for (const width of WIDTHS) {
     });
   }
 }
+
+/**
+ * The reported keyboard failure, made deterministic. Radix Select moved
+ * focus on an arrow key inside a zero-delay timer, so an Enter already
+ * queued behind the ArrowDown was handled by the option that still had
+ * focus and the grade above the chosen one was committed. A key queue
+ * drained after a long frame delivers exactly that pair on a slow phone
+ * or a loaded runner; here the two keydowns are dispatched in one task.
+ * The select wrapper (src/components/ui/select.tsx) now moves focus in
+ * the same task, so the next grade lands every time.
+ */
+test('keyboard: ArrowDown and Enter in one task land the next grade, not the previous one', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await openCounseling(page);
+  const trigger = page.getByRole('combobox', { name: "Senior's grade" });
+  await trigger.click();
+  await page.getByRole('option', { name: 'Pvt (E-1)' }).click();
+  await expect(trigger).toHaveText('Pvt (E-1)');
+  for (let i = 1; i < GRADES.length; i += 1) {
+    await trigger.focus();
+    await page.keyboard.press('ArrowDown');
+    await listReady(page, 'bottom');
+    await page.evaluate(() => {
+      const fire = (key: string) => (document.activeElement as HTMLElement).dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      fire('ArrowDown');
+      fire('Enter');
+    });
+    await expect(trigger).toHaveText(GRADES[i][1]);
+  }
+  // And back up the list the same way.
+  for (let i = GRADES.length - 2; i >= 0; i -= 1) {
+    await trigger.focus();
+    await page.keyboard.press('ArrowDown');
+    await listReady(page, 'bottom');
+    await page.evaluate(() => {
+      const fire = (key: string) => (document.activeElement as HTMLElement).dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      fire('ArrowUp');
+      fire('Enter');
+    });
+    await expect(trigger).toHaveText(GRADES[i][1]);
+  }
+  expect(errors, errors.join('\n')).toEqual([]);
+});

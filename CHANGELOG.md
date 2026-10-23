@@ -7,6 +7,10 @@ matching GitHub release with this file's section as the notes.
 
 ## [0.13.20] - 2026-10-23
 
+### Fixed
+
+- Every drop-down list in the app (handoff of 22 Oct 26, D-04, the grade select). The list library moved keyboard focus on an arrow key inside a zero-delay timer, so an Enter already queued behind the ArrowDown was handled by the option that still had focus and the entry above the chosen one was committed. A key queue drained after a long frame delivers that pair on a slow phone or a loaded machine, which is where the report and the CI failure came from; the browser test for the grade select caught it on the first run on a loaded runner. Focus now moves in the same task as the key. The list's open and close animation fades only, where it zoomed and slid by up to 8px before, so a click in the first 150ms after opening lands on the row under the pointer.
+
 ### Added
 
 - Counseling Worksheet, the handoff's retest runs 1 to 4 (22 Oct 26) as browser tests against the built export. Run 1: the 30-day rule sets the next session for a LCpl and a PFC, and a reservist LCpl is on the quarterly rule. Run 2: a follow-on session prints Section VII with the prior targets and their results, and Section VIII keeps its number. Run 3: a Sgt on an initial session has no JEPES block and the 90-day post-ICS interval, a follow-on moves to the 6-month interval, and a GySgt and a WO have no JEPES block either. Run 4: a PDF, a DOCX and an encrypted share link from a worksheet carrying a name and an EDIPI leave no request off the application's origin; each path meets the pre-export scan prompt on the EDIPI first, and the link holds the ciphertext envelope and nothing of the draft in the clear. Run 5 landed in 0.13.19.
