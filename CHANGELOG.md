@@ -5,6 +5,12 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [0.13.18] - 2026-10-22
+
+### Added
+
+- Counseling Worksheet, grade select (handoff of 22 Oct 26, D-04). A browser test selects every grade from Pvt through CWO2 by mouse, by arrow keys and by typeahead, with the list opening above and below the field, at desktop and phone widths, and checks the field shows the grade chosen each time. The reported mis-selection does not reproduce under any of those paths; the test stays in the suite so a regression in the select would be caught.
+
 ## [0.13.17] - 2026-10-22
 
 ### Added
