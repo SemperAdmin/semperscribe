@@ -67,20 +67,65 @@ const SelectScrollDownButton = React.forwardRef<
 SelectScrollDownButton.displayName =
   SelectPrimitive.ScrollDownButton.displayName
 
+const NAVIGATION_KEYS = ["ArrowUp", "ArrowDown", "Home", "End"];
+
+/**
+ * Move focus between options on the arrow keys synchronously.
+ *
+ * Radix Select (2.4.1) runs its own arrow-key handler through
+ * `setTimeout(() => focusFirst(...))`, so the focus move lands a task
+ * later than the keydown. An Enter already queued behind the ArrowDown,
+ * which is what a key queue drained after a long frame delivers on a
+ * slow phone or a loaded CI runner, is then handled by the option that
+ * still has focus, and the select commits the grade above the one the
+ * user chose (handoff of 22 Oct 26, D-04: "the keyboard path failed").
+ * Reproduced on demand by dispatching ArrowDown and Enter in one task.
+ *
+ * This handler runs before Radix's (composeEventHandlers skips Radix's
+ * when the event is default-prevented), moves focus in the same task,
+ * and leaves everything else (typeahead, Enter, Escape, Tab) to Radix.
+ */
+function moveFocusNow(event: React.KeyboardEvent<HTMLDivElement>) {
+  if (!NAVIGATION_KEYS.includes(event.key) || event.ctrlKey || event.altKey || event.metaKey) return
+  const items = Array.from(
+    event.currentTarget.querySelectorAll<HTMLElement>('[role="option"]:not([data-disabled])')
+  )
+  if (items.length === 0) return
+  let candidates = event.key === "ArrowUp" || event.key === "End" ? [...items].reverse() : items
+  if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+    candidates = candidates.slice(candidates.indexOf(event.target as HTMLElement) + 1)
+  }
+  const next = candidates[0]
+  if (next && next !== document.activeElement) {
+    next.scrollIntoView({ block: "nearest" })
+    next.focus()
+  }
+  event.preventDefault()
+}
+
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
+>(({ className, children, position = "popper", onKeyDown, ...props }, ref) => (
   <SelectPrimitive.Portal>
+    {/* The open and close animations fade only. The zoom and slide the
+        shadcn default carried moved the options by up to 8px during the
+        first 150ms, so a click landed on a different row than the one
+        under the pointer when the list opened (D-04, the mouse path:
+        "clicking SSgt registered Sgt when the list opened above"). */}
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className
       )}
       position={position}
+      onKeyDown={(event) => {
+        onKeyDown?.(event)
+        if (!event.defaultPrevented) moveFocusNow(event)
+      }}
       {...props}
     >
       <SelectScrollUpButton />
