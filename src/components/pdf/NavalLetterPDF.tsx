@@ -51,7 +51,7 @@ const CONTINUATION_SPACER_DIRECTIVE =
   CONTINUATION_DIRECTIVE_STACK_TOP - PDF_MARGINS.top + 3 * LINE_HEIGHT_12PT_COURIER;
 import { getPDFSealDataUrl } from '@/lib/pdf-seal';
 import { parseAndFormatDate, formatBusinessDate } from '@/lib/date-utils';
-import { splitSubject, formatCancellationDate, getDirectiveDesignation, buildDirectiveTitle, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose, getSignatureBlankLines, resolveDistributionStatement } from '@/lib/naval-format-utils';
+import { splitSubject, formatCancellationDate, getDirectiveDesignation, buildDirectiveTitle, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose, getSignatureBlankLines, resolveDistributionStatement, supportsUnitSubName } from '@/lib/naval-format-utils';
 import { parseFormattedText } from '@/lib/pdf-text-parser';
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from '@/lib/indent-engine';
 import { getClassification, bannerText, needsCuiBlock, cuiBlockLines, portionPrefix, paragraphLevel } from '@/lib/classification';
@@ -1003,7 +1003,7 @@ export function NavalLetterPDF({
                 : (
                   <>
                     {formData.line1 && <Text style={styles.headerLine}>{formData.line1}</Text>}
-                    {['basic', 'multiple-address', 'endorsement'].includes(formData.documentType) && formData.line1b && <Text style={styles.headerLine}>{formData.line1b}</Text>}
+                    {supportsUnitSubName(formData.documentType) && formData.line1b && <Text style={styles.headerLine}>{formData.line1b}</Text>}
                   </>
                 )}
               {formData.line2 && <Text style={styles.headerLine}>{formData.line2}</Text>}

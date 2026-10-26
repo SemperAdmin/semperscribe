@@ -801,3 +801,18 @@ export function resolveDistributionStatement(formData: FormData): string {
   }
   return text;
 }
+
+/**
+ * Document types whose letterhead carries the optional unit sub-name
+ * line (FormData.line1b) between the unit name and the street address:
+ * the standard letter family plus the MOA/MOU, whose letterhead is the
+ * same seal-and-address block. One list so the form, the preview and
+ * the Word export cannot drift apart.
+ */
+const UNIT_SUB_NAME_TYPES = new Set([
+  'basic', 'multiple-address', 'endorsement', 'moa', 'mou',
+]);
+
+export function supportsUnitSubName(documentType: string | undefined): boolean {
+  return UNIT_SUB_NAME_TYPES.has(documentType || '');
+}

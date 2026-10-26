@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { supportsUnitSubName } from '@/lib/naval-format-utils';
 
 interface UnitInfoSectionProps {
     formData: Partial<FormData>;
@@ -60,11 +61,9 @@ export function UnitInfoSection({
     setIsEditing(false);
   };
 
-  // Optional letterhead sub-name line (Line 2) applies only to the standard
-  // letter family: Basic Letter, Multiple-Address Letter, Endorsement.
-  const showSubName = ['basic', 'multiple-address', 'endorsement'].includes(
-    formData.documentType || ''
-  );
+  // Optional letterhead sub-name line (Line 2) applies to the standard
+  // letter family and the MOA/MOU (supportsUnitSubName).
+  const showSubName = supportsUnitSubName(formData.documentType);
 
   const filteredUnits = searchQuery.length > 1
     ? units.filter(unit =>
