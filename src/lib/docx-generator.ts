@@ -37,7 +37,7 @@ import {
   getRefSpacing, 
   getEnclSpacing, 
   getCopyToSpacing, 
-  getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle, resolveDistributionStatement } from './naval-format-utils';
+  getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle, resolveDistributionStatement, supportsUnitSubName } from './naval-format-utils';
 import { createFormattedParagraph } from "./paragraph-formatter";
 import { refLetterAt, startingRefLetterFor, startingEnclosureNumberFor } from "./reference-letters";
 import { isSamePageBlockRender, isSamePageEndorsement, omitsIdentification, endorsementLineText } from "./same-page-endorsement";
@@ -307,11 +307,11 @@ async function buildDocxParts(
       // Address Lines. When the selected unit supplies spelled-out heading
       // lines, they replace the abbreviated unitName heading on every document
       // type. Otherwise line1b is an optional sub-name for the standard letter
-      // family: Basic Letter, Multiple-Address Letter, Endorsement.
+      // family and the MOA/MOU (supportsUnitSubName).
       const unitHeadingLines: string[] = Array.isArray(formData.headingLines)
         ? formData.headingLines.filter((l: string) => l)
         : [];
-      const showUnitSubName = ['basic', 'multiple-address', 'endorsement'].includes(formData.documentType);
+      const showUnitSubName = supportsUnitSubName(formData.documentType);
       const addressLines = unitHeadingLines.length > 0
         ? [...unitHeadingLines, formData.line2, formData.line3]
         : showUnitSubName

@@ -2166,8 +2166,11 @@ export const MOADefinition: DocumentTypeDefinition = {
     ...STANDARD_LETTER_FEATURES,
     showHeaderSettings: false,
     showVia: false,
-    showReferences: false,
-    showEnclosures: false,
+    // MOA/MOU references and enclosures sit below the subject as on a
+    // standard letter. Both renderers already print them, so the
+    // drafter needs the editors to enter them.
+    showReferences: true,
+    showEnclosures: true,
     showClosingBlock: false,
     showSignature: false,
     showMOAForm: true,
