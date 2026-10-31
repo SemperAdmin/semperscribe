@@ -46,9 +46,21 @@ export function useBatchGenerate() {
   }, []);
 
   /**
-   * Import and parse a CSV file. Returns parsed result.
+   * Import and parse a roster: a CSV, or an Excel .xlsx workbook.
    */
   const importCsv = useCallback(async (file: File): Promise<CsvParseResult> => {
+    const name = file.name.toLowerCase();
+    // An Excel workbook reads from its first sheet (src/lib/xlsx-reader.ts).
+    if (name.endsWith('.xlsx')) {
+      const { parseXlsx } = await import('@/lib/xlsx-reader');
+      return parseXlsx(await file.arrayBuffer());
+    }
+    if (name.endsWith('.xls')) {
+      return {
+        headers: [], rows: [],
+        errors: ['The older Excel format (.xls) is not read. In Excel, use File > Save As > Excel Workbook (.xlsx) or CSV UTF-8.'],
+      };
+    }
     const text = await file.text();
     return parseCsv(text);
   }, []);

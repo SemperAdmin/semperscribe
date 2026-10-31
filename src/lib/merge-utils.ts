@@ -483,6 +483,13 @@ export function applyMergeRecord(
     const component = String(f.counselingMarineComponent ?? '').trim().toLowerCase();
     if (component === 'ac' || component === 'active') f.counselingMarineComponent = 'active';
     if (component === 'rc' || component === 'reserve') f.counselingMarineComponent = 'reserve';
+    // What the Marine said and the two signatures belong to one session
+    // with one Marine. A template's own values are left blank on every
+    // worksheet; a {{TOKEN}} there is a column, already filled above.
+    for (const key of COUNSELING_CLEARED_FIELDS.map(([k]) => k)) {
+      const value = String((templateFormData as Record<string, unknown>)[key] ?? '');
+      if (value.trim() && extractTokens(value).length === 0) f[key] = '';
+    }
     const templateNext = String((templateFormData as Record<string, unknown>).counselingNextSessionDate ?? '');
     if (!templateNext || templateNext === computedNextSessionDate(templateFormData)) {
       f.counselingNextSessionDate = computedNextSessionDate(formData);
@@ -551,10 +558,30 @@ function counselingRowProblems(formData: FormData): string[] {
 }
 
 /**
+ * Counseling fields a merge leaves blank on every worksheet when the
+ * template holds its own value: the Marine's comments and both signed
+ * dates record one session with one Marine.
+ */
+const COUNSELING_CLEARED_FIELDS: [string, string][] = [
+  ['counselingMarineComments', "Marine's comments"],
+  ['counselingMarineSignedDate', 'Marine signed date'],
+  ['counselingSeniorSignedDate', 'Senior signed date'],
+];
+
+/** The counseling fields this template fills that a merge will leave blank. */
+export function counselingClearedContent(formData: FormData): string[] {
+  if (formData.documentType !== 'counseling') return [];
+  const f = formData as Record<string, unknown>;
+  return COUNSELING_CLEARED_FIELDS
+    .filter(([key]) => typeof f[key] === 'string' && (f[key] as string).trim() !== '' && extractTokens(f[key] as string).length === 0)
+    .map(([, label]) => label);
+}
+
+/**
  * Content in a counseling template that describes one Marine, which a
- * merge copies onto every worksheet: the assessments, the comments, the
- * signed dates, the area notes and the targets. The dialog names them
- * so the drafter clears them, or makes them {{TOKENS}}, before a batch.
+ * merge copies onto every worksheet: the assessments, the senior's
+ * comments, the area notes and the targets. The dialog names them so the
+ * drafter clears them, or makes them {{TOKENS}}, before a batch.
  */
 export function counselingCopiedContent(formData: FormData): string[] {
   if (formData.documentType !== 'counseling') return [];
@@ -567,9 +594,6 @@ export function counselingCopiedContent(formData: FormData): string[] {
     ['counselingStrengths', 'Strengths'],
     ['counselingDeficiencies', 'Deficiencies'],
     ['counselingSeniorComments', "Senior's comments"],
-    ['counselingMarineComments', "Marine's comments"],
-    ['counselingMarineSignedDate', 'Marine signed date'],
-    ['counselingSeniorSignedDate', 'Senior signed date'],
   ];
   for (const [key, label] of scalars) if (filled(key)) copied.push(label);
   if (list<{ notes?: string }>('counselingAreas').some(a => (a.notes ?? '').trim())) copied.push('Functional area notes');

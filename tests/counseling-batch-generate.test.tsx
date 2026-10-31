@@ -112,8 +112,8 @@ describe('Batch Generate dialog on a Counseling Worksheet', () => {
     const alert = screen.getByRole('alert');
     expect(alert.textContent).toContain('Copied to every worksheet:');
     expect(alert.textContent).toContain('Strengths');
-    expect(alert.textContent).toContain("Marine's comments");
-    expect(alert.textContent).toContain('Marine signed date');
+    expect(alert.textContent).not.toContain("Marine's comments");
+    expect(screen.getByText(/Left blank on every worksheet: Marine's comments, Marine signed date, Senior signed date\./)).toBeTruthy();
     // The warning informs; it does not block the batch.
     expect((screen.getByRole('button', { name: /Continue/ }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: /Continue/ }));

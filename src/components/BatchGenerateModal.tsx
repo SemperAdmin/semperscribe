@@ -33,7 +33,7 @@ import {
   detectMergeFields,
 } from '@/lib/merge-utils';
 import { useBatchGenerate } from '@/hooks/useBatchGenerate';
-import { CsvParseResult, applyMergeRecord, counselingCopiedContent, defaultMergeFormKeys, mergedRowProblems } from '@/lib/merge-utils';
+import { CsvParseResult, applyMergeRecord, counselingClearedContent, counselingCopiedContent, defaultMergeFormKeys, mergedRowProblems } from '@/lib/merge-utils';
 
 interface BatchGenerateModalProps {
   open: boolean;
@@ -88,6 +88,8 @@ export function BatchGenerateModal({
 
   // Counseling content written for one Marine, which every worksheet would copy
   const copiedContent = useMemo(() => counselingCopiedContent(formData), [formData]);
+  // ...and the parts the merge leaves blank instead (the Marine's comments, the signed dates)
+  const clearedContent = useMemo(() => counselingClearedContent(formData), [formData]);
 
   // Template blanks such as (Date) or [YYYYMMDD] in a Page 11 entry
   const placeholderFields = useMemo(() => {
@@ -189,7 +191,7 @@ export function BatchGenerateModal({
             Batch Generate (Mail Merge)
           </DialogTitle>
           <DialogDescription>
-            Generate multiple documents from a CSV spreadsheet. Each row produces one PDF.
+            Generate multiple documents from a CSV or Excel (.xlsx) roster. Each row produces one PDF.
           </DialogDescription>
         </DialogHeader>
 
@@ -272,9 +274,15 @@ export function BatchGenerateModal({
                   <p>{copiedContent.join(', ')}.</p>
                   <p>
                     This worksheet already holds content written for one Marine. Clear it before the batch, or make the part that changes a
-                    {' '}<code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">{'{{TOKEN}}'}</code> column, so no Marine's record carries another Marine's assessment, comments or signature dates.
+                    {' '}<code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">{'{{TOKEN}}'}</code> column, so no Marine's record carries another Marine's assessment.
                   </p>
                 </div>
+              )}
+
+              {clearedContent.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Left blank on every worksheet: {clearedContent.join(', ')}. They record one session with one Marine, so each worksheet starts them empty.
+                </p>
               )}
 
               {/* Template blanks found in the entry */}
@@ -332,9 +340,9 @@ export function BatchGenerateModal({
           {step === 'import' && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <h4 className="text-sm font-semibold">Import your filled CSV:</h4>
+                <h4 className="text-sm font-semibold">Import your filled roster:</h4>
                 <p className="text-xs text-muted-foreground">
-                  Upload the CSV file with one row per document. Column headers must match:
+                  Upload the CSV or Excel (.xlsx) file with one row per document. In a workbook the first sheet is read. Column headers must match:
                 </p>
                 <div className="flex flex-wrap gap-1.5 my-2">
                   {mergeFields.map(f => (
@@ -348,7 +356,7 @@ export function BatchGenerateModal({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv,.txt"
+                accept=".csv,.txt,.xlsx"
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -362,8 +370,8 @@ export function BatchGenerateModal({
                 )}
               >
                 <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                <p className="text-sm font-medium">Click to upload CSV file</p>
-                <p className="text-xs text-muted-foreground mt-1">.csv files accepted</p>
+                <p className="text-sm font-medium">Click to upload a CSV or Excel file</p>
+                <p className="text-xs text-muted-foreground mt-1">.csv and .xlsx files accepted</p>
               </div>
 
               <div className="flex gap-2 pt-2">

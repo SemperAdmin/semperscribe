@@ -88,6 +88,19 @@ The fonts are used because they are metrically compatible with the faces the man
 
 SIL OFL 1.1 is not on the OSS Guidance paragraph 3G approved-without-action list. It is a permissive font-specific license whose only substantive restrictions are on redistribution under a Reserved Font Name and on selling the fonts standalone, neither of which this project does. Per the same paragraph, "Component CIOs may grant permission to use other licenses if required"; expect to seek that approval alongside the axe-core MPL-2.0 item if the PoC moves to a sponsoring DoD Component.
 
+### Interface fonts
+
+These ship as files under `src/app/fonts/` and are served with the web interface through `next/font/local`. They style the application itself and are never embedded in a generated document.
+
+| File | Family | License |
+|------|--------|---------|
+| roboto-latin-400-normal.woff2 | Roboto (Fontsource 5.3.0) | SIL OFL 1.1 |
+| roboto-latin-500-normal.woff2 | Roboto (Fontsource 5.3.0) | SIL OFL 1.1 |
+| roboto-latin-700-normal.woff2 | Roboto (Fontsource 5.3.0) | SIL OFL 1.1 |
+| bebas-neue-latin-400-normal.woff2 | Bebas Neue (Fontsource 5.3.0) | SIL OFL 1.1 |
+
+Source: the `@fontsource/roboto` and `@fontsource/bebas-neue` 5.3.0 packages, which redistribute the Google Fonts builds. Roboto: copyright 2011 The Roboto Project Authors. Bebas Neue: copyright 2019 The Bebas Neue Project Authors. The full license texts ship beside the fonts at `src/app/fonts/LICENSE-Roboto.txt` and `src/app/fonts/LICENSE-BebasNeue.txt` (OFL 1.1 clause 2). They are bundled rather than fetched from Google Fonts at build time so that a build depends on no third-party service; the same OFL 1.1 note above applies.
+
 ## License Family Summary
 
 Approximate breakdown of the dependency tree by primary license.
@@ -127,6 +140,7 @@ For an SBOM that includes license fields, see the planned P3-2 cyclonedx-npm int
 - If sharp's transitive role changes from unused to actively exercised, re-evaluate the LGPL distribution obligations.
 - If axe-core moves from dev to runtime dependency, escalate the MPL-2.0 review.
 - If a font file is added to `public/fonts/`, record it in the bundled-font table above and confirm `public/fonts/LICENSE-Liberation.txt` still covers it.
+- If a font file is added to `src/app/fonts/`, record it in the interface-font table above and ship its license text beside it.
 
 ## Compliance References
 

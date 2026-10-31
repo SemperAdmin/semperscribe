@@ -14,6 +14,7 @@ import { registerNodeAssets } from './node-assets';
 import { extractPdfTextLayout } from './golden/helpers';
 import {
   applyMergeRecord,
+  counselingClearedContent,
   counselingCopiedContent,
   defaultMergeFormKeys,
   detectMergeFields,
@@ -188,9 +189,35 @@ describe('Counseling template content copied to every worksheet', () => {
   it('names the one-Marine content a library sample carries', () => {
     const copied = counselingCopiedContent(loadTemplate('counseling-initial'));
     expect(copied).toEqual(expect.arrayContaining([
-      'Major accomplishments', 'Strengths', 'Deficiencies', "Senior's comments", "Marine's comments",
-      'Marine signed date', 'Senior signed date', 'Functional area notes', 'Targets',
+      'Major accomplishments', 'Strengths', 'Deficiencies', "Senior's comments", 'Functional area notes', 'Targets',
     ]));
+    // These are cleared, not copied.
+    expect(copied).not.toContain("Marine's comments");
+    expect(copied).not.toContain('Marine signed date');
+    expect(counselingClearedContent(loadTemplate('counseling-initial'))).toEqual([
+      "Marine's comments", 'Marine signed date', 'Senior signed date',
+    ]);
+  });
+
+  it('leaves the sample\'s Marine comments and both signed dates blank on every merged worksheet', () => {
+    const sample = loadTemplate('counseling-initial');
+    expect(sample.counselingMarineComments).toBeTruthy();
+    const fields = detectMergeFields(sample, NO_PARAGRAPHS, defaultMergeFormKeys('counseling'));
+    const { formData } = applyMergeRecord(sample, NO_PARAGRAPHS, { LAST_NAME: 'DOE', GRADE: 'Sgt' }, fields);
+    expect(formData.counselingMarineComments).toBe('');
+    expect(formData.counselingMarineSignedDate).toBe('');
+    expect(formData.counselingSeniorSignedDate).toBe('');
+    // The session's own content is still the template's.
+    expect(formData.counselingStrengths).toBe(sample.counselingStrengths);
+    expect(sample.counselingMarineComments).toBeTruthy();
+  });
+
+  it('keeps a comment or signed date the drafter made a {{TOKEN}} column', () => {
+    const template = sessionTemplate({ counselingMarineComments: '{{COMMENT}}', counselingSeniorSignedDate: '{{SIGNED}}' });
+    expect(counselingClearedContent(template)).toEqual([]);
+    const { formData } = applyMergeRecord(template, NO_PARAGRAPHS, { LAST_NAME: 'DOE', COMMENT: 'Agree with targets.', SIGNED: '2 Nov 26' }, fieldsFor(template));
+    expect(formData.counselingMarineComments).toBe('Agree with targets.');
+    expect(formData.counselingSeniorSignedDate).toBe('2 Nov 26');
   });
 
   it('names nothing for a session set up for a section', () => {

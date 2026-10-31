@@ -1,21 +1,28 @@
 import type {Metadata} from 'next';
-import { Bebas_Neue, Roboto } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { DisclaimerModal } from "@/components/DisclaimerModal";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
-const bebasNeue = Bebas_Neue({
+// The UI fonts ship with the app (src/app/fonts, SIL OFL 1.1, from
+// Fontsource 5.3.0) rather than being fetched from Google Fonts at build
+// time: a bad response from Google failed the cloud.gov build of an
+// unchanged commit, and the build should not depend on a third party.
+const bebasNeue = localFont({
+  src: './fonts/bebas-neue-latin-400-normal.woff2',
   weight: '400',
-  subsets: ['latin'],
   variable: '--font-bebas-neue',
   display: 'swap',
 });
 
-const roboto = Roboto({
-  weight: ['400', '500', '700'],
-  subsets: ['latin'],
+const roboto = localFont({
+  src: [
+    { path: './fonts/roboto-latin-400-normal.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/roboto-latin-500-normal.woff2', weight: '500', style: 'normal' },
+    { path: './fonts/roboto-latin-700-normal.woff2', weight: '700', style: 'normal' },
+  ],
   variable: '--font-roboto',
   display: 'swap',
 });
