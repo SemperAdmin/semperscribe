@@ -91,6 +91,28 @@ describe('Page 11 batch generate', () => {
     }
   }, 60_000);
 
+  it('skips a row whose EDIPI Excel mangled, reports it, and zips the rest', async () => {
+    const csv = ROSTER.trimEnd() + '\n"ROE, RICHARD",9.87654E+08,03 Mar 26,Pvt\n';
+    const result = await runPage11Batch(csv);
+
+    expect(result.current.status).toBe('done');
+    expect(result.current.progress.errors).toEqual([
+      { row: 3, label: 'ROE, RICHARD', error: expect.stringContaining('EDIPI "9.87654E+08" is not a 10-digit DoD ID') },
+    ]);
+    expect(result.current.progress.currentLabel).toBe('Done! 2 of 3 documents generated.');
+    const zip = await JSZip.loadAsync(await downloaded!.arrayBuffer());
+    const names = Object.keys(zip.files);
+    expect(names).toHaveLength(2);
+    expect(names.some((n) => n.includes('ROE'))).toBe(false);
+  }, 60_000);
+
+  it('downloads nothing when every row is refused', async () => {
+    const result = await runPage11Batch('NAME,EDIPI,DATE,RANK\n"DOE, JOHN M.",123,01 Mar 26,LCpl\n');
+    expect(result.current.status).toBe('error');
+    expect(result.current.progress.currentLabel).toBe('No documents generated: every row had errors.');
+    expect(downloaded).toBeNull();
+  });
+
   it('stops the whole batch when the drafter declines the EDIPI prompt', async () => {
     registerExportAckHandler(async () => false);
     const result = await runPage11Batch(ROSTER);

@@ -7,13 +7,17 @@
  * the form and in the remarks, and nothing from any other row.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { registerNodeAssets } from './node-assets';
 import { extractPdfTextLayout } from './golden/helpers';
 import {
   applyMergeRecord,
+  defaultMergeFormKeys,
   detectMergeFields,
   generateCsvTemplate,
   getMergeableFieldsForDocType,
+  mergedRowProblems,
   parseCsv,
   validateCsvColumns,
 } from '@/lib/merge-utils';
@@ -239,4 +243,70 @@ describe('Page 11 merged PDFs', () => {
     const all = items.map((i) => i.text).join(' ');
     expect(all).toContain('sentence 160 of a long entry.');
   }, 60_000);
+});
+
+describe('Page 11 template plus a name/EDIPI spreadsheet', () => {
+  const GLOBAL_DIR = join(__dirname, '..', 'public', 'templates', 'global');
+  const loadTemplate = (id: string) =>
+    JSON.parse(readFileSync(join(GLOBAL_DIR, `${id}.nldp`), 'utf-8')).data.formData as FormData;
+
+  it('starts a Page 11 merge with NAME and EDIPI selected, other types with none', () => {
+    expect(defaultMergeFormKeys('page11')).toEqual(['name', 'edipi']);
+    expect(defaultMergeFormKeys('basic')).toEqual([]);
+    expect(defaultMergeFormKeys(undefined)).toEqual([]);
+  });
+
+  it('fills a library template\'s blank name and EDIPI from each row and keeps its entry text', async () => {
+    const template = loadTemplate('page11-6105-warning');
+    expect(template.documentType).toBe('page11');
+    expect(template.name).toBe('');
+    expect(template.edipi).toBe('');
+
+    const fields = detectMergeFields(template, NO_PARAGRAPHS, defaultMergeFormKeys('page11'));
+    expect(fields.map((f) => f.name)).toEqual(['NAME', 'EDIPI']);
+    const csv = generateCsvTemplate(fields);
+    expect(csv.split('\n')[0]).toBe('NAME,EDIPI');
+
+    const roster = parseCsv('NAME,EDIPI\n"DOE, JOHN M.",1234567890\n"SMITH, JANE A.",0987654321\n');
+    expect(validateCsvColumns(roster.headers, fields).valid).toBe(true);
+
+    for (const row of roster.rows) {
+      const { formData } = applyMergeRecord(template, NO_PARAGRAPHS, row, fields);
+      expect(mergedRowProblems(formData)).toEqual([]);
+      expect(formData.remarksLeft).toBe(template.remarksLeft);
+      const text = await pdfText(formData);
+      expect(text).toContain(row.NAME);
+      expect(text).toContain(row.EDIPI);
+      expect(text).toContain('Counseled this date concerning the following deficiencies');
+    }
+  }, 60_000);
+});
+
+describe('Page 11 merged row checks', () => {
+  const merged = (name: string, edipi: string) => ({ ...page11Template(), name, edipi }) as FormData;
+
+  it('accepts a name and a 10-digit EDIPI with a leading zero', () => {
+    expect(mergedRowProblems(merged('SMITH, JANE A.', '0987654321'))).toEqual([]);
+  });
+
+  it.each([
+    ['dropped leading zero', '987654321'],
+    ['Excel scientific notation', '1.23457E+09'],
+    ['eleven digits', '12345678901'],
+    ['spaces around it', ' 1234567890'],
+    ['dashes', '123-456-7890'],
+  ])('refuses an EDIPI with %s', (_label, edipi) => {
+    const problems = mergedRowProblems(merged('DOE, JOHN M.', edipi));
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain(`EDIPI "${edipi}" is not a 10-digit DoD ID`);
+  });
+
+  it('refuses an empty name or EDIPI', () => {
+    expect(mergedRowProblems(merged('', '1234567890'))).toEqual(['NAME is empty']);
+    expect(mergedRowProblems(merged('DOE, JOHN M.', ''))).toEqual(['EDIPI is empty']);
+  });
+
+  it('checks nothing on other document types', () => {
+    expect(mergedRowProblems({ documentType: 'basic', edipi: '12' } as FormData)).toEqual([]);
+  });
 });

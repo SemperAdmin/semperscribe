@@ -6,6 +6,7 @@ import {
   MergeField,
   applyMergeRecord,
   generateCsvTemplate,
+  mergedRowProblems,
   parseCsv,
   validateCsvColumns,
   CsvParseResult,
@@ -147,6 +148,14 @@ export function useBatchGenerate() {
           mergeFields,
         );
 
+        // A row whose merged document is unusable (a Page 11 without a
+        // 10-digit DoD ID) is reported and skipped, never printed.
+        const problems = mergedRowProblems(mergedFormData);
+        if (problems.length > 0) {
+          errors.push({ row: i + 1, label, error: problems.join('; ') });
+          continue;
+        }
+
         // Generate PDF via unified pipeline
         const blob = await generatePdfForDocType({
           formData: mergedFormData,
@@ -177,6 +186,12 @@ export function useBatchGenerate() {
       currentLabel: 'Creating ZIP archive...',
       errors,
     }));
+
+    if (errors.length === rows.length) {
+      setStatus('error');
+      setProgress(prev => ({ ...prev, currentLabel: 'No documents generated: every row had errors.' }));
+      return;
+    }
 
     try {
       const zipBlob = await zip.generateAsync({ type: 'blob' });

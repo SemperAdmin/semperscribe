@@ -341,3 +341,34 @@ export function applyMergeRecord(
 
   return { formData, paragraphs };
 }
+
+// ─── Per-document defaults and row checks ──────────────────────────────────
+
+/**
+ * Form columns switched on when Batch Generate opens. A Page 11 merge is
+ * a fixed entry (a template or the drafter's own text) plus one Marine
+ * per row, so its name and DoD ID columns start selected.
+ */
+export function defaultMergeFormKeys(documentType: string | undefined): string[] {
+  return documentType === 'page11' ? ['name', 'edipi'] : [];
+}
+
+/**
+ * Problems that make one merged document unusable. A Page 11 carries the
+ * Marine's name and 10-digit DoD ID on every page; a spreadsheet that
+ * dropped a leading zero or rounded the number to 1.23457E+09 would put
+ * the entry in the wrong record, so such a row is refused, not printed.
+ */
+export function mergedRowProblems(formData: FormData): string[] {
+  if (formData.documentType !== 'page11') return [];
+  const problems: string[] = [];
+  const name = typeof formData.name === 'string' ? formData.name : '';
+  const edipi = typeof formData.edipi === 'string' ? formData.edipi : '';
+  if (!name.trim()) problems.push('NAME is empty');
+  if (!edipi.trim()) {
+    problems.push('EDIPI is empty');
+  } else if (!/^\d{10}$/.test(edipi)) {
+    problems.push(`EDIPI "${edipi}" is not a 10-digit DoD ID (format the EDIPI column as Text in Excel so it keeps leading zeros)`);
+  }
+  return problems;
+}
