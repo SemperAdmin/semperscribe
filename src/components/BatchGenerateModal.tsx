@@ -191,7 +191,7 @@ export function BatchGenerateModal({
             Batch Generate (Mail Merge)
           </DialogTitle>
           <DialogDescription>
-            Generate multiple documents from a CSV spreadsheet. Each row produces one PDF.
+            Generate multiple documents from a CSV or Excel (.xlsx) roster. Each row produces one PDF.
           </DialogDescription>
         </DialogHeader>
 
@@ -340,9 +340,9 @@ export function BatchGenerateModal({
           {step === 'import' && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <h4 className="text-sm font-semibold">Import your filled CSV:</h4>
+                <h4 className="text-sm font-semibold">Import your filled roster:</h4>
                 <p className="text-xs text-muted-foreground">
-                  Upload the CSV file with one row per document. Column headers must match:
+                  Upload the CSV or Excel (.xlsx) file with one row per document. In a workbook the first sheet is read. Column headers must match:
                 </p>
                 <div className="flex flex-wrap gap-1.5 my-2">
                   {mergeFields.map(f => (
@@ -356,7 +356,7 @@ export function BatchGenerateModal({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv,.txt"
+                accept=".csv,.txt,.xlsx"
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -370,8 +370,8 @@ export function BatchGenerateModal({
                 )}
               >
                 <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                <p className="text-sm font-medium">Click to upload CSV file</p>
-                <p className="text-xs text-muted-foreground mt-1">.csv files accepted</p>
+                <p className="text-sm font-medium">Click to upload a CSV or Excel file</p>
+                <p className="text-xs text-muted-foreground mt-1">.csv and .xlsx files accepted</p>
               </div>
 
               <div className="flex gap-2 pt-2">
