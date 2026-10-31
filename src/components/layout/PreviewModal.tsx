@@ -131,29 +131,39 @@ export function PreviewModal({
             <div className="h-full bg-muted/40 relative">
               {emptyStateFields && emptyStateFields.length > 0 ? (
                 <PreviewEmptyState fields={emptyStateFields} />
-              ) : isLoading ? (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                    <p className="text-xs text-foreground/70">Generating preview...</p>
-                  </div>
-                </div>
-              ) : previewKind === 'official-xfa' && previewBlob ? (
-                <XfaFormPreview blob={previewBlob} values={previewFieldValues} className="w-full h-full" />
-              ) : previewUrl ? (
-                <iframe
-                  src={previewUrl}
-                  className="w-full h-full border-none"
-                  title="PDF Preview"
-                />
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-center text-foreground/70">
-                  <div>
-                    <FileText className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                    <p className="text-sm">Preview not available</p>
-                    <p className="text-xs mt-1">Click Refresh to generate</p>
-                  </div>
-                </div>
+                // The last preview stays mounted while the next one is
+                // generated, under the spinner, rather than being swapped
+                // out for it: the form no longer flashes away on every
+                // auto-refresh, and a reader (or a test) holding it does
+                // not lose it mid-refresh.
+                <>
+                  {previewKind === 'official-xfa' && previewBlob ? (
+                    <XfaFormPreview blob={previewBlob} values={previewFieldValues} className="w-full h-full" />
+                  ) : previewUrl ? (
+                    <iframe
+                      src={previewUrl}
+                      className="w-full h-full border-none"
+                      title="PDF Preview"
+                    />
+                  ) : !isLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center text-center text-foreground/70">
+                      <div>
+                        <FileText className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                        <p className="text-sm">Preview not available</p>
+                        <p className="text-xs mt-1">Click Refresh to generate</p>
+                      </div>
+                    </div>
+                  )}
+                  {isLoading && (
+                    <div className={cn('absolute inset-0 flex items-center justify-center', (previewBlob || previewUrl) && 'bg-background/60')}>
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                        <p className="text-xs text-foreground/70">Generating preview...</p>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
