@@ -33,7 +33,7 @@ import {
   detectMergeFields,
 } from '@/lib/merge-utils';
 import { useBatchGenerate } from '@/hooks/useBatchGenerate';
-import { CsvParseResult } from '@/lib/merge-utils';
+import { CsvParseResult, applyMergeRecord, defaultMergeFormKeys, mergedRowProblems } from '@/lib/merge-utils';
 
 interface BatchGenerateModalProps {
   open: boolean;
@@ -61,9 +61,14 @@ export function BatchGenerateModal({
   distList,
 }: BatchGenerateModalProps) {
   const [step, setStep] = useState<Step>('fields');
-  const [selectedFormKeys, setSelectedFormKeys] = useState<string[]>([]);
+  // null until the drafter toggles a field: the dialog then shows the
+  // columns this document type merges by default (a Page 11: NAME and
+  // EDIPI), and closing it returns to that default.
+  const [toggledFormKeys, setToggledFormKeys] = useState<string[] | null>(null);
+  const selectedFormKeys = toggledFormKeys ?? defaultMergeFormKeys(formData.documentType);
   const [csvData, setCsvData] = useState<CsvParseResult | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [invalidRowCount, setInvalidRowCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -87,8 +92,8 @@ export function BatchGenerateModal({
   }, [mergeFields]);
 
   const toggleFormField = (key: string) => {
-    setSelectedFormKeys(prev =>
-      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    setToggledFormKeys(
+      selectedFormKeys.includes(key) ? selectedFormKeys.filter(k => k !== key) : [...selectedFormKeys, key]
     );
   };
 
@@ -112,6 +117,20 @@ export function BatchGenerateModal({
     if (validation.extra.length > 0) {
       // Extras are warnings, not blocking
     }
+    // Rows whose merged document would be unusable (a Page 11 EDIPI that
+    // is not 10 digits) are listed now and skipped by the batch.
+    // Spreadsheet row numbers: the header is row 1.
+    let invalid = 0;
+    result.rows.forEach((row, i) => {
+      const merged = applyMergeRecord(formData, paragraphs, row, mergeFields).formData;
+      const problems = mergedRowProblems(merged);
+      if (problems.length > 0) {
+        invalid++;
+        const who = row['NAME'] ? ` (${row['NAME']})` : '';
+        errors.push(`Row ${i + 2}${who}: ${problems.join('; ')}. This row will be skipped.`);
+      }
+    });
+    setInvalidRowCount(invalid);
     setValidationErrors(errors);
 
     // Reset file input so the same file can be re-selected
@@ -141,8 +160,10 @@ export function BatchGenerateModal({
   const handleClose = () => {
     // Reset state when closing
     setStep('fields');
+    setToggledFormKeys(null);
     setCsvData(null);
     setValidationErrors([]);
+    setInvalidRowCount(0);
     reset();
     onOpenChange(false);
   };
@@ -383,11 +404,11 @@ export function BatchGenerateModal({
                 </Button>
                 <Button
                   onClick={handleGenerate}
-                  disabled={csvData.rows.length === 0 || validationErrors.some(e => e.startsWith('Missing columns'))}
+                  disabled={csvData.rows.length - invalidRowCount === 0 || validationErrors.some(e => e.startsWith('Missing columns'))}
                   className="flex-1"
                 >
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Generate {csvData.rows.length} PDF{csvData.rows.length !== 1 ? 's' : ''}
+                  Generate {csvData.rows.length - invalidRowCount} PDF{csvData.rows.length - invalidRowCount !== 1 ? 's' : ''}
                 </Button>
               </div>
             </div>

@@ -193,17 +193,19 @@ export interface CsvParseResult {
 
 /**
  * Parse a CSV string into rows of key-value records.
- * Handles quoted fields, commas within quotes, and escaped quotes.
+ * Handles quoted fields, commas within quotes, escaped quotes, and line
+ * breaks within quotes. A Page 11 entry runs to several paragraphs, so a
+ * quoted cell holding one is a single field, not several rows.
  */
 export function parseCsv(csvText: string): CsvParseResult {
   const errors: string[] = [];
-  const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
+  const records = splitCsvRecords(csvText).filter(r => r.some(v => v.trim().length > 0));
 
-  if (lines.length < 2) {
+  if (records.length < 2) {
     return { headers: [], rows: [], errors: ['CSV must have at least a header row and one data row.'] };
   }
 
-  const headers = parseCsvLine(lines[0]).map(h => h.trim().toUpperCase());
+  const headers = records[0].map(h => h.trim().toUpperCase());
 
   if (headers.length === 0) {
     return { headers: [], rows: [], errors: ['No column headers found in CSV.'] };
@@ -211,8 +213,8 @@ export function parseCsv(csvText: string): CsvParseResult {
 
   const rows: Record<string, string>[] = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const values = parseCsvLine(lines[i]);
+  for (let i = 1; i < records.length; i++) {
+    const values = records[i];
     if (values.length !== headers.length) {
       errors.push(`Row ${i + 1}: expected ${headers.length} columns, got ${values.length}. Skipping.`);
       continue;
@@ -227,38 +229,52 @@ export function parseCsv(csvText: string): CsvParseResult {
   return { headers, rows, errors };
 }
 
-/** Parse a single CSV line respecting quoted fields. */
-function parseCsvLine(line: string): string[] {
-  const result: string[] = [];
+/**
+ * Split CSV text into records of fields, respecting quoted fields. A
+ * line break (LF or CRLF) ends a record only outside quotes; inside
+ * quotes it is kept as LF.
+ */
+function splitCsvRecords(text: string): string[][] {
+  const records: string[][] = [];
+  let record: string[] = [];
   let current = '';
   let inQuotes = false;
 
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
     if (inQuotes) {
       if (ch === '"') {
-        if (i + 1 < line.length && line[i + 1] === '"') {
+        if (i + 1 < text.length && text[i + 1] === '"') {
           current += '"';
           i++; // skip escaped quote
         } else {
           inQuotes = false;
         }
+      } else if (ch === '\r' && text[i + 1] === '\n') {
+        // CRLF inside a quoted field: keep one LF.
       } else {
         current += ch;
       }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      record.push(current);
+      current = '';
+    } else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      record.push(current);
+      records.push(record);
+      record = [];
+      current = '';
     } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ',') {
-        result.push(current);
-        current = '';
-      } else {
-        current += ch;
-      }
+      current += ch;
     }
   }
-  result.push(current);
-  return result;
+  if (current.length > 0 || record.length > 0) {
+    record.push(current);
+    records.push(record);
+  }
+  return records;
 }
 
 /**
@@ -324,4 +340,35 @@ export function applyMergeRecord(
   }
 
   return { formData, paragraphs };
+}
+
+// ─── Per-document defaults and row checks ──────────────────────────────────
+
+/**
+ * Form columns switched on when Batch Generate opens. A Page 11 merge is
+ * a fixed entry (a template or the drafter's own text) plus one Marine
+ * per row, so its name and DoD ID columns start selected.
+ */
+export function defaultMergeFormKeys(documentType: string | undefined): string[] {
+  return documentType === 'page11' ? ['name', 'edipi'] : [];
+}
+
+/**
+ * Problems that make one merged document unusable. A Page 11 carries the
+ * Marine's name and 10-digit DoD ID on every page; a spreadsheet that
+ * dropped a leading zero or rounded the number to 1.23457E+09 would put
+ * the entry in the wrong record, so such a row is refused, not printed.
+ */
+export function mergedRowProblems(formData: FormData): string[] {
+  if (formData.documentType !== 'page11') return [];
+  const problems: string[] = [];
+  const name = typeof formData.name === 'string' ? formData.name : '';
+  const edipi = typeof formData.edipi === 'string' ? formData.edipi : '';
+  if (!name.trim()) problems.push('NAME is empty');
+  if (!edipi.trim()) {
+    problems.push('EDIPI is empty');
+  } else if (!/^\d{10}$/.test(edipi)) {
+    problems.push(`EDIPI "${edipi}" is not a 10-digit DoD ID (format the EDIPI column as Text in Excel so it keeps leading zeros)`);
+  }
+  return problems;
 }
