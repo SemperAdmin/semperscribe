@@ -66,4 +66,19 @@ describe('Batch Generate dialog on a Page 11', () => {
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: /Generate 2 PDFs/ })).toBeTruthy();
   });
+
+  it('lists the template blanks with their lead-in words and marks them optional on import', () => {
+    renderModal({
+      ...PAGE11,
+      remarksLeft: '(Date). Counseled this date concerning the following deficiencies: (List deficiencies).',
+    } as FormData);
+    expect(screen.getByText('Template blanks found in the entry:')).toBeTruthy();
+    expect(screen.getByText('LIST_DEFICIENCIES')).toBeTruthy();
+    expect(screen.getByText(/concerning the following deficiencies: \(List deficiencies\)$/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Continue/ }));
+    expect(screen.getByText('NAME')).toBeTruthy();
+    expect(screen.getByText('DATE (optional)')).toBeTruthy();
+    expect(screen.getByText('LIST_DEFICIENCIES (optional)')).toBeTruthy();
+  });
 });

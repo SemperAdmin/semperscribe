@@ -33,7 +33,7 @@ import {
   detectMergeFields,
 } from '@/lib/merge-utils';
 import { useBatchGenerate } from '@/hooks/useBatchGenerate';
-import { CsvParseResult, applyMergeRecord, defaultMergeFormKeys, mergedRowProblems } from '@/lib/merge-utils';
+import { CsvParseResult, applyMergeRecord, counselingCopiedContent, defaultMergeFormKeys, mergedRowProblems } from '@/lib/merge-utils';
 
 interface BatchGenerateModalProps {
   open: boolean;
@@ -85,6 +85,14 @@ export function BatchGenerateModal({
   const mergeFields: MergeField[] = useMemo(() => {
     return detectMergeFields(formData, paragraphs, selectedFormKeys);
   }, [formData, paragraphs, selectedFormKeys]);
+
+  // Counseling content written for one Marine, which every worksheet would copy
+  const copiedContent = useMemo(() => counselingCopiedContent(formData), [formData]);
+
+  // Template blanks such as (Date) or [YYYYMMDD] in a Page 11 entry
+  const placeholderFields = useMemo(() => {
+    return mergeFields.filter(f => f.source === 'placeholder');
+  }, [mergeFields]);
 
   // Inline {{TOKEN}} fields detected in the document text
   const inlineTokenFields = useMemo(() => {
@@ -254,6 +262,42 @@ export function BatchGenerateModal({
                 </div>
               )}
 
+              {/* Counseling content that would be copied to every Marine */}
+              {copiedContent.length > 0 && (
+                <div role="alert" className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-200 space-y-1">
+                  <p className="font-semibold flex items-center gap-1.5">
+                    <AlertTriangle className="h-4 w-4" />
+                    Copied to every worksheet:
+                  </p>
+                  <p>{copiedContent.join(', ')}.</p>
+                  <p>
+                    This worksheet already holds content written for one Marine. Clear it before the batch, or make the part that changes a
+                    {' '}<code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">{'{{TOKEN}}'}</code> column, so no Marine's record carries another Marine's assessment, comments or signature dates.
+                  </p>
+                </div>
+              )}
+
+              {/* Template blanks found in the entry */}
+              {placeholderFields.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold flex items-center gap-1.5">
+                    <Braces className="h-4 w-4 text-blue-500" />
+                    Template blanks found in the entry:
+                  </h4>
+                  <ul className="space-y-1">
+                    {placeholderFields.map(f => (
+                      <li key={f.name} className="flex items-baseline gap-2 text-xs">
+                        <Badge variant="secondary" className="font-mono text-xs shrink-0">{f.name}</Badge>
+                        <span className="text-muted-foreground truncate" title={f.description}>{f.description}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-muted-foreground">
+                    Each blank is an optional column. A filled cell replaces the blank for that Marine; an empty cell, or no column, keeps the blank on the form to fill by hand.
+                  </p>
+                </div>
+              )}
+
               {mergeFields.length === 0 && (
                 <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-800 dark:text-amber-200">
                   <AlertTriangle className="h-4 w-4 inline mr-2" />
@@ -295,7 +339,7 @@ export function BatchGenerateModal({
                 <div className="flex flex-wrap gap-1.5 my-2">
                   {mergeFields.map(f => (
                     <Badge key={f.name} variant="outline" className="font-mono text-xs">
-                      {f.name}
+                      {f.name}{f.optional ? ' (optional)' : ''}
                     </Badge>
                   ))}
                 </div>

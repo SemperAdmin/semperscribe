@@ -125,12 +125,18 @@ export function useBatchGenerate() {
     const { default: JSZip } = await import('jszip');
     const zip = new JSZip();
     const errors: { row: number; label: string; error: string }[] = [];
+    // Two Marines can share a last name and a session date, which is the
+    // whole of a counseling worksheet's file name, so every name in the
+    // ZIP is made unique rather than letting one row overwrite another.
+    const usedNames = new Set<string>();
 
     for (let i = 0; i < rows.length; i++) {
       const record = rows[i];
 
-      // Use the TO field or row number as a label for the filename
-      const label = record['TO'] || record['NAME'] || record['SIGNATURE'] || `row_${i + 1}`;
+      // Use the addressee or the Marine as a label for the filename
+      const label = record['TO'] || record['NAME']
+        || [record['LAST_NAME'], record['FIRST_NAME']].filter(Boolean).join(', ')
+        || record['SIGNATURE'] || `row_${i + 1}`;
       const safeLabel = label.replace(/[^A-Za-z0-9_\- ]/g, '').replace(/\s+/g, '_').slice(0, 60);
 
       setProgress(prev => ({
@@ -169,7 +175,9 @@ export function useBatchGenerate() {
 
         // Determine filename
         const baseFilename = getExportFilename(mergedFormData, 'pdf').replace('.pdf', '');
-        const filename = `${baseFilename}_${safeLabel}.pdf`;
+        let filename = `${baseFilename}_${safeLabel}.pdf`;
+        for (let n = 2; usedNames.has(filename); n++) filename = `${baseFilename}_${safeLabel}_${n}.pdf`;
+        usedNames.add(filename);
 
         // Add to ZIP
         const arrayBuffer = await blob.arrayBuffer();

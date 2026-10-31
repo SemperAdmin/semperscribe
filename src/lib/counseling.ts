@@ -213,6 +213,25 @@ export function rankAbbreviation(value: string): string {
   return label ? label.replace(/\s*\(.*\)$/, '') : value;
 }
 
+/**
+ * The stored grade value ("E-3") for a grade as a roster types it: the
+ * pay grade with or without the hyphen ("E3"), the rank abbreviation in
+ * any case and with or without periods ("LCpl", "capt."), or the
+ * picker's own label ("LCpl (E-3)"). null when it names no grade.
+ */
+export function parseGrade(text: string): string | null {
+  const key = (s: string) => s.toLowerCase().replace(/[\s.]/g, '');
+  const typed = key(text);
+  if (!typed) return null;
+  for (const g of COUNSELING_GRADES) {
+    const ranks = g.label.replace(/\s*\(.*\)$/, '').split(/\s+or\s+/);
+    const keys = [g.value, g.value.replace('-', ''), g.label, ...ranks].map(key);
+    if (g.value === 'W-1') keys.push('wo1');
+    if (keys.includes(typed)) return g.value;
+  }
+  return null;
+}
+
 export function isLcplOrBelow(grade: string): boolean {
   return /^E-[123]$/.test(grade.trim());
 }
