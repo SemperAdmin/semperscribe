@@ -86,6 +86,11 @@ export function BatchGenerateModal({
     return detectMergeFields(formData, paragraphs, selectedFormKeys);
   }, [formData, paragraphs, selectedFormKeys]);
 
+  // Template blanks such as (Date) or [YYYYMMDD] in a Page 11 entry
+  const placeholderFields = useMemo(() => {
+    return mergeFields.filter(f => f.source === 'placeholder');
+  }, [mergeFields]);
+
   // Inline {{TOKEN}} fields detected in the document text
   const inlineTokenFields = useMemo(() => {
     return mergeFields.filter(f => f.source === 'paragraph' || (f.source === 'form' && !f.formKey));
@@ -254,6 +259,27 @@ export function BatchGenerateModal({
                 </div>
               )}
 
+              {/* Template blanks found in the entry */}
+              {placeholderFields.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold flex items-center gap-1.5">
+                    <Braces className="h-4 w-4 text-blue-500" />
+                    Template blanks found in the entry:
+                  </h4>
+                  <ul className="space-y-1">
+                    {placeholderFields.map(f => (
+                      <li key={f.name} className="flex items-baseline gap-2 text-xs">
+                        <Badge variant="secondary" className="font-mono text-xs shrink-0">{f.name}</Badge>
+                        <span className="text-muted-foreground truncate" title={f.description}>{f.description}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-muted-foreground">
+                    Each blank is an optional column. A filled cell replaces the blank for that Marine; an empty cell, or no column, keeps the blank on the form to fill by hand.
+                  </p>
+                </div>
+              )}
+
               {mergeFields.length === 0 && (
                 <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-800 dark:text-amber-200">
                   <AlertTriangle className="h-4 w-4 inline mr-2" />
@@ -295,7 +321,7 @@ export function BatchGenerateModal({
                 <div className="flex flex-wrap gap-1.5 my-2">
                   {mergeFields.map(f => (
                     <Badge key={f.name} variant="outline" className="font-mono text-xs">
-                      {f.name}
+                      {f.name}{f.optional ? ' (optional)' : ''}
                     </Badge>
                   ))}
                 </div>

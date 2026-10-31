@@ -92,9 +92,11 @@ export function getMergeableFieldsForDocType(documentType: string): typeof MERGE
 
 export interface MergeField {
   name: string;       // e.g. "RANK_NAME"
-  source: 'form' | 'paragraph' | 'custom';
+  source: 'form' | 'paragraph' | 'custom' | 'placeholder';
   formKey?: string;    // e.g. "to" — only for form-level fields
   description?: string;
+  /** A column the CSV may leave out (a template blank). */
+  optional?: boolean;
 }
 
 /**
@@ -130,7 +132,16 @@ export function detectMergeFields(
     }
   }
 
-  // 3. Scan all paragraph content
+  // 3. Template blanks such as (Date) or [YYYYMMDD] in a Page 11 entry.
+  //    A blank whose column already exists (NAME for "(Name)") shares it.
+  for (const blank of findTemplatePlaceholders(formData)) {
+    if (!seen.has(blank.column)) {
+      seen.add(blank.column);
+      fields.push({ name: blank.column, source: 'placeholder', description: blank.context, optional: true });
+    }
+  }
+
+  // 4. Scan all paragraph content
   for (const para of paragraphs) {
     if (para.content) {
       for (const token of extractTokens(para.content)) {
@@ -143,6 +154,61 @@ export function detectMergeFields(
   }
 
   return fields;
+}
+
+// ─── Template Placeholders ─────────────────────────────────────────────────
+
+/**
+ * Blanks the Page 11 library templates leave for the drafter: any
+ * [BRACKETED] text, and the parenthetical blanks (Date), (Name),
+ * (List ...) and (___). Parentheticals that are wording, such as (OMPF)
+ * or (0.25), are not blanks, and neither are the (to) / (not to) choices
+ * the Marine marks when signing.
+ */
+const PLACEHOLDER_RE = /\[[^\]\n]{1,80}\]|\((?:Date|Name|[Ll]ist\b[^)\n]{0,70}|_+)\)/g;
+
+/** The Page 11 text fields a template blank can sit in, in reading order. */
+const PLACEHOLDER_FIELDS = ['remarksLeft', 'remarksRight'] as const;
+
+export interface TemplatePlaceholder {
+  /** CSV column: the blank's text in capitals, numbered when it repeats. */
+  column: string;
+  /** The blank as written, e.g. "(Date)". */
+  text: string;
+  /** The words leading up to the blank, so the drafter can tell repeats apart. */
+  context: string;
+  field: (typeof PLACEHOLDER_FIELDS)[number];
+  index: number;
+}
+
+/**
+ * Find the template blanks in a Page 11 entry. A blank that repeats
+ * gets a numbered column (YYYYMMDD, YYYYMMDD_2, ...), because one
+ * template uses [YYYYMMDD] for three different dates.
+ */
+export function findTemplatePlaceholders(formData: FormData): TemplatePlaceholder[] {
+  if (formData.documentType !== 'page11') return [];
+  const counts = new Map<string, number>();
+  const found: TemplatePlaceholder[] = [];
+  for (const field of PLACEHOLDER_FIELDS) {
+    const value = (formData as Record<string, unknown>)[field];
+    const text = typeof value === 'string' ? value : '';
+    for (const m of text.matchAll(PLACEHOLDER_RE)) {
+      const base = m[0].slice(1, -1).toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'BLANK';
+      const n = (counts.get(base) ?? 0) + 1;
+      counts.set(base, n);
+      const index = m.index ?? 0;
+      const lead = text.slice(Math.max(0, index - 40), index).replace(/\s+/g, ' ').trimStart();
+      found.push({
+        column: n === 1 ? base : `${base}_${n}`,
+        text: m[0],
+        context: `${index > 40 ? '...' : ''}${lead}${m[0]}`,
+        field,
+        index,
+      });
+    }
+  }
+  return found;
 }
 
 // ─── CSV Template Export ────────────────────────────────────────────────────
@@ -174,6 +240,7 @@ export function generateCsvTemplate(fields: MergeField[]): string {
     if (name === 'SIG_TITLE') return csvEscape('Colonel, U.S. Marine Corps');
     if (name === 'NAME') return csvEscape('DOE, JOHN M.');
     if (name === 'EDIPI') return csvEscape('1234567890');
+    if (name.startsWith('YYYYMMDD')) return csvEscape('20260301');
     if (name.includes('RANK')) return csvEscape('Cpl');
     if (name.includes('UNIT')) return csvEscape('1st Bn 5th Mar');
     if (name.includes('DATE')) return csvEscape('01 Mar 26');
@@ -286,9 +353,10 @@ export function validateCsvColumns(
   expectedFields: MergeField[]
 ): { valid: boolean; missing: string[]; extra: string[] } {
   const expected = new Set(expectedFields.map(f => f.name.toUpperCase()));
+  const required = new Set(expectedFields.filter(f => !f.optional).map(f => f.name.toUpperCase()));
   const actual = new Set(csvHeaders.map(h => h.toUpperCase()));
 
-  const missing = [...expected].filter(e => !actual.has(e));
+  const missing = [...required].filter(e => !actual.has(e));
   const extra = [...actual].filter(a => !expected.has(a));
 
   return { valid: missing.length === 0, missing, extra };
@@ -325,14 +393,29 @@ export function applyMergeRecord(
     }
   }
 
-  // 2. Substitute {{TOKEN}} in all string form fields
+  // 2. Fill template blanks from their columns, last first so the
+  //    earlier positions stay valid. An empty or absent cell keeps the
+  //    blank on the form for hand entry.
+  const blanks = findTemplatePlaceholders(templateFormData);
+  for (const field of PLACEHOLDER_FIELDS) {
+    const inField = blanks.filter(b => b.field === field);
+    if (inField.length === 0) continue;
+    let text = formData[field] as string;
+    for (const blank of inField.reverse()) {
+      const value = record[blank.column];
+      if (value) text = text.slice(0, blank.index) + value + text.slice(blank.index + blank.text.length);
+    }
+    (formData as Record<string, unknown>)[field] = text;
+  }
+
+  // 3. Substitute {{TOKEN}} in all string form fields
   for (const [key, value] of Object.entries(formData)) {
     if (typeof value === 'string') {
       (formData as Record<string, unknown>)[key] = substituteString(value, record);
     }
   }
 
-  // 3. Substitute {{TOKEN}} in all paragraph content
+  // 4. Substitute {{TOKEN}} in all paragraph content
   for (const para of paragraphs) {
     if (para.content) {
       para.content = substituteString(para.content, record);

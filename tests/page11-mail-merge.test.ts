@@ -15,6 +15,7 @@ import {
   applyMergeRecord,
   defaultMergeFormKeys,
   detectMergeFields,
+  findTemplatePlaceholders,
   generateCsvTemplate,
   getMergeableFieldsForDocType,
   mergedRowProblems,
@@ -263,9 +264,10 @@ describe('Page 11 template plus a name/EDIPI spreadsheet', () => {
     expect(template.edipi).toBe('');
 
     const fields = detectMergeFields(template, NO_PARAGRAPHS, defaultMergeFormKeys('page11'));
-    expect(fields.map((f) => f.name)).toEqual(['NAME', 'EDIPI']);
+    // NAME and EDIPI are required; the template's blanks follow as optional columns.
+    expect(fields.filter((f) => !f.optional).map((f) => f.name)).toEqual(['NAME', 'EDIPI']);
     const csv = generateCsvTemplate(fields);
-    expect(csv.split('\n')[0]).toBe('NAME,EDIPI');
+    expect(csv.split('\n')[0].startsWith('NAME,EDIPI,')).toBe(true);
 
     const roster = parseCsv('NAME,EDIPI\n"DOE, JOHN M.",1234567890\n"SMITH, JANE A.",0987654321\n');
     expect(validateCsvColumns(roster.headers, fields).valid).toBe(true);
@@ -309,4 +311,106 @@ describe('Page 11 merged row checks', () => {
   it('checks nothing on other document types', () => {
     expect(mergedRowProblems({ documentType: 'basic', edipi: '12' } as FormData)).toEqual([]);
   });
+});
+
+describe('Page 11 template blanks as merge columns', () => {
+  const GLOBAL_DIR = join(__dirname, '..', 'public', 'templates', 'global');
+  const loadTemplate = (id: string) =>
+    JSON.parse(readFileSync(join(GLOBAL_DIR, `${id}.nldp`), 'utf-8')).data.formData as FormData;
+  const fieldsFor = (template: FormData) =>
+    detectMergeFields(template, NO_PARAGRAPHS, defaultMergeFormKeys('page11'));
+
+  it('turns the 6105 warning blanks into optional columns after NAME and EDIPI', () => {
+    const fields = fieldsFor(loadTemplate('page11-6105-warning'));
+    expect(fields.map((f) => f.name)).toEqual([
+      'NAME', 'EDIPI', 'DATE', 'LIST_DEFICIENCIES', 'LIST_RECOMMENDATIONS', 'LIST_RESOURCES',
+    ]);
+    expect(fields.filter((f) => f.optional).map((f) => f.name)).toEqual([
+      'DATE', 'LIST_DEFICIENCIES', 'LIST_RECOMMENDATIONS', 'LIST_RESOURCES',
+    ]);
+    expect(generateCsvTemplate(fields).split('\n')[0]).toBe(
+      'NAME,EDIPI,DATE,LIST_DEFICIENCIES,LIST_RECOMMENDATIONS,LIST_RESOURCES',
+    );
+  });
+
+  it('numbers a repeated blank and shows the words before each one', () => {
+    const blanks = findTemplatePlaceholders(loadTemplate('page11-6105-shaving-six-month-enlisted'));
+    expect(blanks.map((b) => b.column)).toEqual(['YYYYMMDD', 'YYYYMMDD_2', 'YYYYMMDD_3']);
+    expect(blanks[1].context).toMatch(/approved by the commanding officer on \[YYYYMMDD\]$/);
+    expect(blanks[2].context).toMatch(/accommodation expires \[YYYYMMDD\]$/);
+  });
+
+  it('leaves wording and the Marine\'s (to) / (not to) choice alone', () => {
+    const shaving = findTemplatePlaceholders(loadTemplate('page11-6105-shaving-final-enlisted')).map((b) => b.text);
+    expect(shaving).not.toContain('(OMPF)');
+    expect(shaving).not.toContain('(0.25)');
+    expect(shaving).not.toContain('(MEB)');
+    const alcohol = findTemplatePlaceholders(loadTemplate('page11-alcohol-abuse')).map((b) => b.text);
+    expect(alcohol).toEqual(['(Date)', '(list charge/incident)']);
+  });
+
+  it('finds blanks only on a Page 11', () => {
+    expect(findTemplatePlaceholders({ documentType: 'basic', remarksLeft: '(Date)' } as FormData)).toEqual([]);
+  });
+
+  it('accepts a roster without the optional blank columns but still requires NAME and EDIPI', () => {
+    const fields = fieldsFor(loadTemplate('page11-6105-warning'));
+    expect(validateCsvColumns(['NAME', 'EDIPI'], fields)).toMatchObject({ valid: true, missing: [] });
+    expect(validateCsvColumns(['EDIPI', 'DATE'], fields)).toMatchObject({ valid: false, missing: ['NAME'] });
+  });
+
+  it('fills each blank from its column, keeps a blank whose cell is empty, and leaves the template unchanged', () => {
+    const template = loadTemplate('page11-6105-warning');
+    const before = JSON.stringify(template);
+    const { formData } = applyMergeRecord(template, NO_PARAGRAPHS, {
+      NAME: 'DOE, JOHN M.',
+      EDIPI: '1234567890',
+      DATE: '20260301',
+      LIST_DEFICIENCIES: 'failure to obey a lawful order',
+      LIST_RECOMMENDATIONS: '',
+    }, fieldsFor(template));
+    const text = formData.remarksLeft as string;
+    expect(text.startsWith('20260301. Counseled this date concerning the following deficiencies: failure to obey a lawful order.')).toBe(true);
+    expect(text).toContain('(List recommendations)');
+    expect(text).toContain('(List resources)');
+    expect(text).not.toContain('(Date)');
+    expect(JSON.stringify(template)).toBe(before);
+  });
+
+  it('fills "(Name)" in the entry and the name box from the same NAME cell', () => {
+    const template = loadTemplate('page11-prp-decertification');
+    const { formData } = applyMergeRecord(template, NO_PARAGRAPHS, {
+      NAME: 'DOE, JOHN M.', EDIPI: '1234567890', DATE: '20260301',
+    }, fieldsFor(template));
+    expect(formData.name).toBe('DOE, JOHN M.');
+    expect(formData.remarksLeft).toContain('20260301. I, DOE, JOHN M.');
+    expect(formData.remarksLeft).not.toContain('(Name)');
+  });
+
+  it('carries $ characters in a blank\'s value through literally', () => {
+    const template = loadTemplate('page11-alcohol-abuse');
+    const { formData } = applyMergeRecord(template, NO_PARAGRAPHS, {
+      NAME: 'DOE, JOHN M.', EDIPI: '1234567890', LIST_CHARGE_INCIDENT: 'DUI, fined $1,000 ($& costs)',
+    }, fieldsFor(template));
+    expect(formData.remarksLeft).toContain('my conviction of DUI, fined $1,000 ($& costs),');
+  });
+
+  it('prints three different shaving dates in the right places on the rendered Page 11', async () => {
+    const template = loadTemplate('page11-6105-shaving-six-month-enlisted');
+    const fields = fieldsFor(template);
+    const roster = parseCsv(
+      'NAME,EDIPI,YYYYMMDD,YYYYMMDD_2,YYYYMMDD_3\n"DOE, JOHN M.",1234567890,20260301,20250901,20260901\n',
+    );
+    expect(validateCsvColumns(roster.headers, fields).valid).toBe(true);
+    const { formData } = applyMergeRecord(template, NO_PARAGRAPHS, roster.rows[0], fields);
+    expect(mergedRowProblems(formData)).toEqual([]);
+    expect(formData.remarksLeft).toMatch(/^20260301: Counseled this date/);
+    expect(formData.remarksLeft).toContain('approved by the commanding officer on 20250901');
+    expect(formData.remarksLeft).toContain('accommodation expires 20260901');
+
+    const text = await pdfText(formData);
+    expect(text).not.toContain('YYYYMMDD');
+    for (const date of ['20260301', '20250901', '20260901']) expect(text).toContain(date);
+    expect(text).toContain('DOE, JOHN M.');
+  }, 60_000);
 });
