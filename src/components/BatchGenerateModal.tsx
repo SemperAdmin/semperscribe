@@ -33,7 +33,7 @@ import {
   detectMergeFields,
 } from '@/lib/merge-utils';
 import { useBatchGenerate } from '@/hooks/useBatchGenerate';
-import { CsvParseResult, applyMergeRecord, defaultMergeFormKeys, mergedRowProblems } from '@/lib/merge-utils';
+import { CsvParseResult, applyMergeRecord, counselingCopiedContent, defaultMergeFormKeys, mergedRowProblems } from '@/lib/merge-utils';
 
 interface BatchGenerateModalProps {
   open: boolean;
@@ -85,6 +85,9 @@ export function BatchGenerateModal({
   const mergeFields: MergeField[] = useMemo(() => {
     return detectMergeFields(formData, paragraphs, selectedFormKeys);
   }, [formData, paragraphs, selectedFormKeys]);
+
+  // Counseling content written for one Marine, which every worksheet would copy
+  const copiedContent = useMemo(() => counselingCopiedContent(formData), [formData]);
 
   // Template blanks such as (Date) or [YYYYMMDD] in a Page 11 entry
   const placeholderFields = useMemo(() => {
@@ -255,6 +258,21 @@ export function BatchGenerateModal({
                   </div>
                   <p className="text-xs text-muted-foreground">
                     These will automatically become columns in the CSV template.
+                  </p>
+                </div>
+              )}
+
+              {/* Counseling content that would be copied to every Marine */}
+              {copiedContent.length > 0 && (
+                <div role="alert" className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-200 space-y-1">
+                  <p className="font-semibold flex items-center gap-1.5">
+                    <AlertTriangle className="h-4 w-4" />
+                    Copied to every worksheet:
+                  </p>
+                  <p>{copiedContent.join(', ')}.</p>
+                  <p>
+                    This worksheet already holds content written for one Marine. Clear it before the batch, or make the part that changes a
+                    {' '}<code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">{'{{TOKEN}}'}</code> column, so no Marine's record carries another Marine's assessment, comments or signature dates.
                   </p>
                 </div>
               )}

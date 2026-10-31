@@ -6,6 +6,7 @@
  */
 
 import { FormData, ParagraphData } from '@/types';
+import { computedNextSessionDate, parseGrade, COUNSELING_GRADES } from '@/lib/counseling';
 
 // ─── Merge Token Detection ─────────────────────────────────────────────────
 
@@ -40,6 +41,17 @@ export const MERGEABLE_FORM_FIELDS: { key: string; label: string; description: s
   { key: 'background', label: 'BACKGROUND', description: 'Background (Papers)' },
   { key: 'discussion', label: 'DISCUSSION', description: 'Discussion (Papers)' },
   { key: 'recommendation', label: 'RECOMMENDATION', description: 'Recommendation (Papers)' },
+  // Counseling Worksheet: the Marine counseled (blocks 7 to 14).
+  { key: 'counselingMarineLastName', label: 'LAST_NAME', description: 'Marine counseled: last name' },
+  { key: 'counselingMarineFirstName', label: 'FIRST_NAME', description: 'Marine counseled: first name' },
+  { key: 'counselingMarineMiddleInitial', label: 'MI', description: 'Marine counseled: middle initial' },
+  { key: 'counselingMarineGrade', label: 'GRADE', description: 'Grade: LCpl, Sgt or E-3' },
+  { key: 'counselingMarineEdipi', label: 'EDIPI', description: 'DoD ID Number (10 digits)' },
+  { key: 'counselingMarineDor', label: 'DOR', description: 'Date of rank' },
+  { key: 'counselingMarinePmos', label: 'PMOS', description: 'Primary MOS' },
+  { key: 'counselingMarineBilletMos', label: 'BMOS', description: 'Billet MOS' },
+  { key: 'counselingBilletTitle', label: 'BILLET_TITLE', description: 'Billet title' },
+  { key: 'counselingMarineComponent', label: 'COMPONENT', description: 'AC or RC' },
 ];
 
 /**
@@ -79,6 +91,13 @@ export const DOCUMENT_TYPE_FIELDS: Record<string, string[]> = {
 
   // AMHS
   'amhs': ['to', 'from', 'subj', 'date'],
+
+  // Counseling Worksheet: one session, one Marine per row
+  'counseling': [
+    'counselingMarineLastName', 'counselingMarineFirstName', 'counselingMarineMiddleInitial',
+    'counselingMarineGrade', 'counselingMarineEdipi', 'counselingMarineDor', 'counselingMarinePmos',
+    'counselingMarineBilletMos', 'counselingBilletTitle', 'counselingMarineComponent', 'date',
+  ],
 };
 
 /**
@@ -120,14 +139,13 @@ export function detectMergeFields(
     }
   }
 
-  // 2. Scan all string values in formData for {{TOKEN}} patterns
-  for (const [, value] of Object.entries(formData)) {
-    if (typeof value === 'string') {
-      for (const token of extractTokens(value)) {
-        if (!seen.has(token)) {
-          seen.add(token);
-          fields.push({ name: token, source: 'form' });
-        }
+  // 2. Scan every string in formData for {{TOKEN}} patterns, including
+  //    strings inside lists (a counseling target, subject or area note)
+  for (const value of allStrings(formData)) {
+    for (const token of extractTokens(value)) {
+      if (!seen.has(token)) {
+        seen.add(token);
+        fields.push({ name: token, source: 'form' });
       }
     }
   }
@@ -211,6 +229,26 @@ export function findTemplatePlaceholders(formData: FormData): TemplatePlaceholde
   return found;
 }
 
+// ─── Nested strings ─────────────────────────────────────────────────────────
+
+/** Every string in a value, however deep in arrays and objects. */
+function allStrings(value: unknown, out: string[] = []): string[] {
+  if (typeof value === 'string') out.push(value);
+  else if (Array.isArray(value)) value.forEach(v => allStrings(v, out));
+  else if (value && typeof value === 'object') Object.values(value).forEach(v => allStrings(v, out));
+  return out;
+}
+
+/** A copy of a value with every string in it, however deep, passed through fn. */
+function mapStrings<T>(value: T, fn: (s: string) => string): T {
+  if (typeof value === 'string') return fn(value) as T;
+  if (Array.isArray(value)) return value.map(v => mapStrings(v, fn)) as T;
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, mapStrings(v, fn)])) as T;
+  }
+  return value;
+}
+
 // ─── CSV Template Export ────────────────────────────────────────────────────
 
 /** Escape a value for CSV (wrap in quotes if it contains commas, quotes, or newlines). */
@@ -240,6 +278,13 @@ export function generateCsvTemplate(fields: MergeField[]): string {
     if (name === 'SIG_TITLE') return csvEscape('Colonel, U.S. Marine Corps');
     if (name === 'NAME') return csvEscape('DOE, JOHN M.');
     if (name === 'EDIPI') return csvEscape('1234567890');
+    if (name === 'LAST_NAME') return csvEscape('DOE');
+    if (name === 'FIRST_NAME') return csvEscape('JOHN');
+    if (name === 'MI') return csvEscape('M');
+    if (name === 'GRADE') return csvEscape('LCpl');
+    if (name === 'DOR') return csvEscape('01 Mar 26');
+    if (name === 'PMOS' || name === 'BMOS') return csvEscape('0311');
+    if (name === 'COMPONENT') return csvEscape('AC');
     if (name.startsWith('YYYYMMDD')) return csvEscape('20260301');
     if (name.includes('RANK')) return csvEscape('Cpl');
     if (name.includes('UNIT')) return csvEscape('1st Bn 5th Mar');
@@ -386,10 +431,17 @@ export function applyMergeRecord(
   const formData: FormData = JSON.parse(JSON.stringify(templateFormData));
   const paragraphs: ParagraphData[] = JSON.parse(JSON.stringify(templateParagraphs));
 
-  // 1. Override top-level form fields
-  for (const field of mergeFields) {
-    if (field.source === 'form' && field.formKey && record[field.name] !== undefined) {
-      (formData as Record<string, unknown>)[field.formKey] = record[field.name];
+  // 1. Override top-level form fields: the ones selected for the
+  //    template, and any column the CSV adds that names a field of this
+  //    document type (a DOR column on a counseling roster fills block 10)
+  const formColumns = [
+    ...mergeFields.filter(f => f.source === 'form' && f.formKey).map(f => ({ name: f.name, key: f.formKey! })),
+    ...(DOCUMENT_TYPE_FIELDS[templateFormData.documentType] ? getMergeableFieldsForDocType(templateFormData.documentType) : [])
+      .map(f => ({ name: f.label, key: f.key })),
+  ];
+  for (const { name, key } of formColumns) {
+    if (record[name] !== undefined) {
+      (formData as Record<string, unknown>)[key] = record[name];
     }
   }
 
@@ -408,17 +460,32 @@ export function applyMergeRecord(
     (formData as Record<string, unknown>)[field] = text;
   }
 
-  // 3. Substitute {{TOKEN}} in all string form fields
+  // 3. Substitute {{TOKEN}} in every form string, inside lists too
   for (const [key, value] of Object.entries(formData)) {
-    if (typeof value === 'string') {
-      (formData as Record<string, unknown>)[key] = substituteString(value, record);
-    }
+    (formData as Record<string, unknown>)[key] = mapStrings(value, s => substituteString(s, record));
   }
 
   // 4. Substitute {{TOKEN}} in all paragraph content
   for (const para of paragraphs) {
     if (para.content) {
       para.content = substituteString(para.content, record);
+    }
+  }
+
+  // 5. Counseling: read the roster's grade and component into the
+  //    stored values the grade rules key on, and when the session left
+  //    the next-session date to the rule, apply the rule for this Marine
+  //    (30 days for a LCpl, about 90 for a Sgt on an initial session).
+  if (formData.documentType === 'counseling') {
+    const f = formData as Record<string, unknown>;
+    const grade = parseGrade(String(f.counselingMarineGrade ?? ''));
+    if (grade) f.counselingMarineGrade = grade;
+    const component = String(f.counselingMarineComponent ?? '').trim().toLowerCase();
+    if (component === 'ac' || component === 'active') f.counselingMarineComponent = 'active';
+    if (component === 'rc' || component === 'reserve') f.counselingMarineComponent = 'reserve';
+    const templateNext = String((templateFormData as Record<string, unknown>).counselingNextSessionDate ?? '');
+    if (!templateNext || templateNext === computedNextSessionDate(templateFormData)) {
+      f.counselingNextSessionDate = computedNextSessionDate(formData);
     }
   }
 
@@ -433,7 +500,11 @@ export function applyMergeRecord(
  * per row, so its name and DoD ID columns start selected.
  */
 export function defaultMergeFormKeys(documentType: string | undefined): string[] {
-  return documentType === 'page11' ? ['name', 'edipi'] : [];
+  if (documentType === 'page11') return ['name', 'edipi'];
+  if (documentType === 'counseling') {
+    return ['counselingMarineLastName', 'counselingMarineFirstName', 'counselingMarineMiddleInitial', 'counselingMarineGrade', 'counselingMarineEdipi'];
+  }
+  return [];
 }
 
 /**
@@ -443,6 +514,7 @@ export function defaultMergeFormKeys(documentType: string | undefined): string[]
  * the entry in the wrong record, so such a row is refused, not printed.
  */
 export function mergedRowProblems(formData: FormData): string[] {
+  if (formData.documentType === 'counseling') return counselingRowProblems(formData);
   if (formData.documentType !== 'page11') return [];
   const problems: string[] = [];
   const name = typeof formData.name === 'string' ? formData.name : '';
@@ -451,7 +523,59 @@ export function mergedRowProblems(formData: FormData): string[] {
   if (!edipi.trim()) {
     problems.push('EDIPI is empty');
   } else if (!/^\d{10}$/.test(edipi)) {
-    problems.push(`EDIPI "${edipi}" is not a 10-digit DoD ID (format the EDIPI column as Text in Excel so it keeps leading zeros)`);
+    problems.push(EDIPI_PROBLEM(edipi));
   }
   return problems;
+}
+
+const EDIPI_PROBLEM = (edipi: string) =>
+  `EDIPI "${edipi}" is not a 10-digit DoD ID (format the EDIPI column as Text in Excel so it keeps leading zeros)`;
+
+/**
+ * A counseling worksheet needs the Marine's last name. A grade or EDIPI
+ * is optional, but one that is there must be readable: a grade the rules
+ * cannot place would skip the 30-day interval and the JEPES block.
+ */
+function counselingRowProblems(formData: FormData): string[] {
+  const f = formData as Record<string, unknown>;
+  const text = (k: string) => (typeof f[k] === 'string' ? (f[k] as string) : '');
+  const problems: string[] = [];
+  if (!text('counselingMarineLastName').trim()) problems.push('LAST_NAME is empty');
+  const grade = text('counselingMarineGrade').trim();
+  if (grade && !COUNSELING_GRADES.some(g => g.value === grade)) {
+    problems.push(`GRADE "${grade}" is not a Marine grade (use LCpl, Sgt or E-3)`);
+  }
+  const edipi = text('counselingMarineEdipi');
+  if (edipi.trim() && !/^\d{10}$/.test(edipi)) problems.push(EDIPI_PROBLEM(edipi));
+  return problems;
+}
+
+/**
+ * Content in a counseling template that describes one Marine, which a
+ * merge copies onto every worksheet: the assessments, the comments, the
+ * signed dates, the area notes and the targets. The dialog names them
+ * so the drafter clears them, or makes them {{TOKENS}}, before a batch.
+ */
+export function counselingCopiedContent(formData: FormData): string[] {
+  if (formData.documentType !== 'counseling') return [];
+  const f = formData as Record<string, unknown>;
+  const filled = (k: string) => typeof f[k] === 'string' && (f[k] as string).trim() !== '';
+  const list = <T,>(k: string) => (Array.isArray(f[k]) ? (f[k] as T[]) : []);
+  const copied: string[] = [];
+  const scalars: [string, string][] = [
+    ['counselingAccomplishments', 'Major accomplishments'],
+    ['counselingStrengths', 'Strengths'],
+    ['counselingDeficiencies', 'Deficiencies'],
+    ['counselingSeniorComments', "Senior's comments"],
+    ['counselingMarineComments', "Marine's comments"],
+    ['counselingMarineSignedDate', 'Marine signed date'],
+    ['counselingSeniorSignedDate', 'Senior signed date'],
+  ];
+  for (const [key, label] of scalars) if (filled(key)) copied.push(label);
+  if (list<{ notes?: string }>('counselingAreas').some(a => (a.notes ?? '').trim())) copied.push('Functional area notes');
+  if (list<{ text?: string }>('counselingPriorTargets').some(t => (t.text ?? '').trim())) copied.push('Prior targets');
+  if (list<{ object?: string }>('counselingTargets').some(t => (t.object ?? '').trim())) copied.push('Targets');
+  const bench = f.counselingBenchmark as Record<string, { mark?: string }> | undefined;
+  if (bench && Object.values(bench).some(m => (m?.mark ?? '').trim())) copied.push('JEPES marks');
+  return copied;
 }
