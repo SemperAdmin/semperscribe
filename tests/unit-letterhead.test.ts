@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { UNITS } from '@/lib/units';
 import { loadUnits } from '@/lib/reference-data';
-import { resolveUnit } from '@/hooks/useUserProfile';
+import { resolveUnit, findUnit } from '@/hooks/useUserProfile';
 
 const SEVENTH_COMM = [
   '7TH COMMUNICATION BATTALION',
@@ -26,6 +26,25 @@ describe('unit letterhead overrides', () => {
     expect(r.line1).toBe('7TH COMMUNICATION BATTALION');
     expect(r.line2).toBe('OPC 567 BOX 53');
     expect(r.line3).toBe('FPO AP 96384-9001');
+  });
+
+  it('MATSG-23 (MCC G91) prints the spelled-out name and corrected address', () => {
+    const unit = UNITS.find(u => u.mcc === 'G91');
+    expect(unit?.unitName).toBe('MATSG-23 TRNG COM NAS PENSACOLA FL');
+    expect(unit?.letterhead).toEqual(['MARINE AVIATION TRAINING SUPPORT GROUP 23']);
+    const r = resolveUnit('06015', 'G91');
+    expect(r.headingLines).toEqual(['MARINE AVIATION TRAINING SUPPORT GROUP 23']);
+    expect(r.line2).toBe('211 FARRAR ROAD');
+    expect(r.line3).toBe('PENSACOLA FLORIDA 32508-5009');
+  });
+
+  it('a shared RUC resolves to the MCC the user picked, and falls back to RUC only without one', () => {
+    expect(findUnit('06015', 'G91')?.unitName).toBe('MATSG-23 TRNG COM NAS PENSACOLA FL');
+    expect(findUnit('06015', 'G77')?.unitName).toBe('CNATT NAS PENSACOLA FL');
+    // Profiles saved before unitMcc existed: first entry for the RUC, as before.
+    expect(findUnit('06015')?.mcc).toBe('G77');
+    // Unknown MCC: RUC-only fallback rather than nothing.
+    expect(findUnit('06015', 'ZZZ')?.ruc).toBe('06015');
   });
 
   it('resolveUnit leaves headingLines undefined for units without an override', () => {

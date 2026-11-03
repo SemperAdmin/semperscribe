@@ -55,7 +55,8 @@ export function SettingsDialog({
   const { units } = useUnits();
 
   const selectedUnit = profile.unitRuc
-    ? units.find(u => u.ruc === profile.unitRuc)
+    ? (profile.unitMcc ? units.find(u => u.ruc === profile.unitRuc && u.mcc === profile.unitMcc) : undefined)
+      ?? units.find(u => u.ruc === profile.unitRuc)
     : null;
 
   const filteredUnits = unitSearchQuery.length > 1
@@ -98,7 +99,7 @@ export function SettingsDialog({
                         variant="ghost"
                         size="sm"
                         className="h-6 text-xs text-muted-foreground hover:text-destructive"
-                        onClick={() => onUpdateProfile({ unitRuc: '' })}
+                        onClick={() => onUpdateProfile({ unitRuc: '', unitMcc: '' })}
                       >
                         Clear
                       </Button>
@@ -209,7 +210,7 @@ export function SettingsDialog({
                           <button
                             key={`${unit.ruc}-${unit.mcc}`}
                             onClick={() => {
-                              onUpdateProfile({ unitRuc: unit.ruc });
+                              onUpdateProfile({ unitRuc: unit.ruc, unitMcc: unit.mcc });
                               setUnitSearchOpen(false);
                               setUnitSearchQuery('');
                             }}

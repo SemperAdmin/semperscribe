@@ -6,7 +6,7 @@ import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { EXAMPLE_DOCUMENT_URL } from '@/components/layout/LandingPage';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
 import { getLoadedUnits, loadUnits } from '@/lib/reference-data';
-import { resolveUnit } from '@/hooks/useUserProfile';
+import { resolveUnit, findUnit } from '@/hooks/useUserProfile';
 import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename } from '@/lib/naval-format-utils';
 import { defaultAdminSubsections } from '@/lib/constants';
@@ -521,7 +521,7 @@ function NavalLetterGeneratorInner() {
     }));
     // Sync unit code/name for header display
     if (profile.unitRuc) {
-      const unit = getLoadedUnits().find(u => u.ruc === profile.unitRuc);
+      const unit = findUnit(profile.unitRuc, profile.unitMcc);
       if (unit) {
         setCurrentUnitCode(unit.ruc);
         setCurrentUnitName(unit.unitName.toUpperCase());
@@ -532,7 +532,7 @@ function NavalLetterGeneratorInner() {
       setCurrentUnitName(profile.manualUnitName.trim().toUpperCase());
     }
     setFormKey(prev => prev + 1);
-  }, [getFormDefaults, profile.unitRuc, profile.manualUnitName]);
+  }, [getFormDefaults, profile.unitRuc, profile.unitMcc, profile.manualUnitName]);
 
   // Apply user profile defaults once the profile has loaded. Keyed on
   // the loaded flag only: re-application on later profile edits happens
