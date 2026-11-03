@@ -3,7 +3,7 @@ import { FormData } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Building, Search, X, Pencil, Check } from 'lucide-react';
+import { Building, Search, X, Pencil, Check, Flag } from 'lucide-react';
 import type { Unit } from '@/lib/units';
 import { useUnits } from '@/hooks/useReferenceData';
 import {
@@ -15,6 +15,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { supportsUnitSubName } from '@/lib/naval-format-utils';
+import { sendLetterheadReport, letterheadReportMessage, type LetterheadReportInput, type LetterheadReportResult } from '@/lib/letterhead-report';
+import { useToast } from '@/hooks/use-toast';
 
 interface UnitInfoSectionProps {
     formData: Partial<FormData>;
@@ -34,6 +36,11 @@ export function UnitInfoSection({
   const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { units, loading: unitsLoading } = useUnits();
+  const { toast } = useToast();
+  // The directory entry behind the current letterhead, when the user
+  // picked it here. A letterhead filled from the Settings default has
+  // no entry in this state, so its report asks the user for the codes.
+  const [selectedUnit, setSelectedUnit] = useState<Unit | undefined>(undefined);
 
   const handleUnitSelect = (unit: Unit) => {
     const headingLines = unit.letterhead?.length
@@ -49,6 +56,7 @@ export function UnitInfoSection({
     }));
     setCurrentUnitCode(unit.ruc);
     setCurrentUnitName(unit.unitName.toUpperCase());
+    setSelectedUnit(unit);
     setIsSearchOpen(false);
     setIsEditing(false);
     setSearchQuery('');
@@ -58,7 +66,24 @@ export function UnitInfoSection({
     setFormData(prev => ({ ...prev, line1: '', line1b: '', line2: '', line3: '', headingLines: undefined }));
     setCurrentUnitCode(undefined);
     setCurrentUnitName(undefined);
+    setSelectedUnit(undefined);
     setIsEditing(false);
+  };
+
+  // Spelled-out heading lines replace line1 (and line1b) when present,
+  // the same rule the PDF and DOCX letterheads follow.
+  const headingLines = Array.isArray(formData.headingLines)
+    ? (formData.headingLines as string[]).filter(Boolean)
+    : [];
+
+  const reportLetterhead = async (input: LetterheadReportInput) => {
+    let result: LetterheadReportResult;
+    try {
+      result = await sendLetterheadReport(input);
+    } catch {
+      result = { copied: false, opened: false };
+    }
+    toast(letterheadReportMessage(result));
   };
 
   // Optional letterhead sub-name line (Line 2) applies to the standard
@@ -163,6 +188,18 @@ export function UnitInfoSection({
                 )}
               </div>
             </div>
+            <div className="border-t border-border pt-3 text-xs text-muted-foreground">
+              Unit missing, or its address out of date?{' '}
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs"
+                onClick={() => reportLetterhead({ lines: [] })}
+              >
+                Report it
+              </Button>{' '}
+              so the directory gets fixed for everyone.
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -237,8 +274,16 @@ export function UnitInfoSection({
 
             {formData.line1 && (
                 <div className="group relative rounded-md border border-primary/20 bg-primary/5 p-3 space-y-1 hover:border-primary/40 transition-colors">
-                    <div className="font-medium text-sm text-primary pr-6">{formData.line1}</div>
-                    {showSubName && formData.line1b && <div className="text-xs text-foreground/80">{formData.line1b}</div>}
+                    {headingLines.length > 0 ? (
+                      headingLines.map((line, i) => (
+                        <div key={i} className={i === 0 ? 'font-medium text-sm text-primary pr-6' : 'text-xs text-foreground/80'}>{line}</div>
+                      ))
+                    ) : (
+                      <>
+                        <div className="font-medium text-sm text-primary pr-6">{formData.line1}</div>
+                        {showSubName && formData.line1b && <div className="text-xs text-foreground/80">{formData.line1b}</div>}
+                      </>
+                    )}
                     <div className="text-xs text-foreground/80">{formData.line2}</div>
                     <div className="text-xs text-foreground/80">{formData.line3}</div>
                     
@@ -252,6 +297,28 @@ export function UnitInfoSection({
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
                 </div>
+            )}
+
+            {formData.line1 && (
+              <Button
+                variant="link"
+                size="sm"
+                className="text-muted-foreground h-auto p-0 text-xs hover:text-primary"
+                onClick={() => reportLetterhead({
+                  ruc: selectedUnit?.ruc,
+                  mcc: selectedUnit?.mcc,
+                  lines: [
+                    ...(headingLines.length > 0
+                      ? headingLines
+                      : [formData.line1 ?? '', showSubName ? formData.line1b ?? '' : '']),
+                    formData.line2 ?? '',
+                    formData.line3 ?? '',
+                  ],
+                })}
+              >
+                <Flag className="w-3 h-3 mr-1" />
+                Letterhead outdated or incorrect? Report it
+              </Button>
             )}
           </>
         )}
