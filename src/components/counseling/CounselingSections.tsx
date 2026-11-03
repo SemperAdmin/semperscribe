@@ -30,7 +30,7 @@ import type { FormData } from '@/types';
 import {
   AREA_CITATION, AREA_STATUS_LABELS, COUNSELING_AREAS, COUNSELING_GRADES, COUNSELING_LIFE_EVENTS, COUNSELING_OCCASIONS,
   HANDLING_STATEMENT, ICS_CITATION, ICS_OBJECTIVES, LIFE_EVENT_CITATION, PRIOR_TARGET_STATUS_LABELS, STANDARD_KINDS,
-  areaPrompts, sincePhrase, DUTIES_CITATION,
+  areaPrompts, sincePhrase, DUTIES_CITATION, SHARED_GRADES, isSharedGrade,
   TARGET_ACTIONS, TARGET_CITATION, computedNextSessionDate, counselingAreaEntries, counselingField, counselingIcsObjectives,
   counselingLifeEvents, counselingOccasion, counselingPriorTargets, counselingSubjects, counselingSuggestions, counselingTargets,
   dismissedSuggestions, emptyTarget, nextSessionInterval, targetSentence,
@@ -77,6 +77,17 @@ const STEPS: readonly StepMeta[] = [
 
 function stepId(n: number): string {
   return `counseling-step-${n}`;
+}
+
+/**
+ * The picker's grades. A draft saved with a shared E-8 or E-9 value
+ * (handoff N-03) shows it as a disabled first option so the trigger reads
+ * it instead of going blank, and the user picks the rank below it.
+ */
+function gradeOptions(current: string) {
+  return isSharedGrade(current)
+    ? [{ value: current, label: SHARED_GRADES[current] }, ...COUNSELING_GRADES]
+    : COUNSELING_GRADES;
 }
 
 export function CounselingSections({ formData, setFormData }: CounselingSectionsProps) {
@@ -202,7 +213,7 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
           <Field name="counselingMarineGrade" label="Grade">
             <Select value={get('counselingMarineGrade')} onValueChange={(v) => set('counselingMarineGrade', v)}>
               <SelectTrigger id="counselingMarineGrade" aria-label="Grade"><SelectValue placeholder="Grade" /></SelectTrigger>
-              <SelectContent>{COUNSELING_GRADES.map((g) => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}</SelectContent>
+              <SelectContent>{gradeOptions(get('counselingMarineGrade')).map((g) => <SelectItem key={g.value} value={g.value} disabled={isSharedGrade(g.value)}>{g.label}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
           <Field name="counselingMarineComponent" label="Component">
@@ -236,7 +247,7 @@ export function CounselingSections({ formData, setFormData }: CounselingSections
           <Field name="counselingSeniorGrade" label="Grade">
             <Select value={get('counselingSeniorGrade')} onValueChange={(v) => set('counselingSeniorGrade', v)}>
               <SelectTrigger id="counselingSeniorGrade" aria-label="Senior's grade"><SelectValue placeholder="Grade" /></SelectTrigger>
-              <SelectContent>{COUNSELING_GRADES.map((g) => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}</SelectContent>
+              <SelectContent>{gradeOptions(get('counselingSeniorGrade')).map((g) => <SelectItem key={g.value} value={g.value} disabled={isSharedGrade(g.value)}>{g.label}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
           <TextField name="counselingSeniorEdipi" label="EDIPI" value={get('counselingSeniorEdipi')} onChange={(v) => set('counselingSeniorEdipi', v)} placeholder="10 digits" maxLength={10} digitsOnly />

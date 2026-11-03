@@ -13,7 +13,8 @@ import { enterApp, collectErrors } from './helpers';
 
 const GRADES: Array<[value: string, label: string]> = [
   ['E-1', 'Pvt (E-1)'], ['E-2', 'PFC (E-2)'], ['E-3', 'LCpl (E-3)'], ['E-4', 'Cpl (E-4)'], ['E-5', 'Sgt (E-5)'],
-  ['E-6', 'SSgt (E-6)'], ['E-7', 'GySgt (E-7)'], ['E-8', 'MSgt or 1stSgt (E-8)'], ['E-9', 'MGySgt or SgtMaj (E-9)'],
+  ['E-6', 'SSgt (E-6)'], ['E-7', 'GySgt (E-7)'], ['E-8-MSGT', 'MSgt (E-8)'], ['E-8-1STSGT', '1stSgt (E-8)'],
+  ['E-9-MGYSGT', 'MGySgt (E-9)'], ['E-9-SGTMAJ', 'SgtMaj (E-9)'],
   ['W-1', 'WO (W-1)'], ['W-2', 'CWO2 (W-2)'],
 ];
 

@@ -129,7 +129,10 @@ describe('Counseling merge substitution', () => {
 
   it.each([
     ['LCpl', 'E-3'], ['lcpl', 'E-3'], ['E3', 'E-3'], ['E-3', 'E-3'], ['LCpl (E-3)', 'E-3'],
-    ['Sgt', 'E-5'], ['1stSgt', 'E-8'], ['SgtMaj', 'E-9'], ['CWO2', 'W-2'], ['2ndLt', 'O-1'], ['Capt.', 'O-3'],
+    ['Sgt', 'E-5'], ['MSgt', 'E-8-MSGT'], ['1stSgt', 'E-8-1STSGT'], ['MGySgt', 'E-9-MGYSGT'], ['SgtMaj', 'E-9-SGTMAJ'],
+    // A bare pay grade with two ranks in it loads as the shared value.
+    ['E-8', 'E-8'], ['E9', 'E-9'],
+    ['CWO2', 'W-2'], ['2ndLt', 'O-1'], ['Capt.', 'O-3'],
   ])('reads grade "%s" as %s', (typed, stored) => {
     const template = sessionTemplate();
     const { formData } = applyMergeRecord(template, NO_PARAGRAPHS, { LAST_NAME: 'DOE', GRADE: typed }, fieldsFor(template));

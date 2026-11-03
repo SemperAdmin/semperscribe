@@ -593,3 +593,56 @@ describe('duties and the standard tag (handoff D-05, D-06)', () => {
     expect(items.some((i) => i.text.trim() === 'Qn')).toBe(true);
   });
 });
+
+describe('E-8 and E-9 print one rank (handoff N-03, 3 Nov 26)', () => {
+  const item = (fd: FormData, n: number) => counselingFormModel(fd).items.find((i) => i.n === n)!.value;
+
+  it.each([
+    ['E-8-MSGT', 'MSgt E-8', 'MSgt LEADER'],
+    ['E-8-1STSGT', '1stSgt E-8', '1stSgt LEADER'],
+    ['E-9-MGYSGT', 'MGySgt E-9', 'MGySgt LEADER'],
+    ['E-9-SGTMAJ', 'SgtMaj E-9', 'SgtMaj LEADER'],
+  ])('%s prints "%s" in block 16 and "%s" in block 29', (value, block16, block29) => {
+    const fd = form({ counselingSeniorGrade: value });
+    expect(item(fd, 16)).toBe(block16);
+    expect(item(fd, 29)).toBe(block29);
+  });
+
+  it('every picker label names exactly one rank', () => {
+    for (const g of COUNSELING_GRADES) expect(g.label).not.toMatch(/\bor\b/);
+  });
+
+  it('a draft saved with the shared E-8 value prints the pay grade and no rank', () => {
+    const fd = form({ counselingSeniorGrade: 'E-8', counselingMarineGrade: 'E-9' });
+    expect(item(fd, 16)).toBe('E-8');
+    expect(item(fd, 29)).toBe('LEADER');
+    expect(item(fd, 8)).toBe('E-9');
+    expect(item(fd, 31)).toBe('SAMPLE, MARINE');
+  });
+
+  it('a shared value asks for the rank in step 2 and still never blocks the export', () => {
+    const fd = form({ counselingSeniorGrade: 'E-8' });
+    const s = counselingSuggestions(fd).find((x) => x.id === 'counselingSeniorGrade-rank');
+    expect(s?.step).toBe(2);
+    expect(s?.field).toBe('counselingSeniorGrade');
+    expect(s?.text).toContain('Choose the rank of the senior');
+    expect(runCounselingValidators(fd).every((i) => i.severity !== 'block')).toBe(true);
+    expect(counselingSuggestions(form({ counselingSeniorGrade: 'E-8-1STSGT' })).some((x) => x.id.endsWith('-rank'))).toBe(false);
+  });
+
+  it('the printed record carries one rank on the signature line', async () => {
+    const bytes = await generateCounseling(form({ counselingSeniorGrade: 'E-8-1STSGT' }));
+    const items = await extractPdfTextLayout(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
+    const all = items.map((i) => i.text).join(' ');
+    expect(all).toContain('1stSgt LEADER');
+    expect(all).not.toContain('MSgt or 1stSgt');
+  });
+
+  it('the E-8 and E-9 ranks keep the corporal-through-colonel interval', () => {
+    for (const v of ['E-8-MSGT', 'E-8-1STSGT', 'E-9-MGYSGT', 'E-9-SGTMAJ']) {
+      expect(isLcplOrBelow(v)).toBe(false);
+      expect(isJepesGrade(v)).toBe(false);
+      expect(nextSessionInterval(v, 'active', 'initial')).toEqual(nextSessionInterval('E-7', 'active', 'initial'));
+    }
+  });
+});

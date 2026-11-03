@@ -20,7 +20,7 @@ import type { FormData } from '@/types';
 import {
   AREA_CITATION, COUNSELING_AREAS, COUNSELING_LIFE_EVENTS, HANDLING_STATEMENT, ICS_OBJECTIVES, PRIVACY_MARKING, STANDARD_KINDS,
   counselingArea, counselingAreaEntries, counselingField, counselingIcsObjectives, counselingLifeEvents, counselingOccasion,
-  counselingPriorTargets, counselingSubjects, counselingTargets, rankAbbreviation, targetSentence,
+  counselingPriorTargets, counselingSubjects, counselingTargets, rankAbbreviation, gradeText, targetSentence,
   JEPES_ADVERSE_REASONS, JEPES_ATTRIBUTES, JEPES_CITATION, benchmarkHasMarks, counselingBenchmark, counselingPriorBenchmark,
   isJepesGrade, jepesBand,
   type CounselingAreaEntry, type CounselingPriorTarget, type CounselingSubject, type CounselingTarget, dutyLines,
@@ -88,10 +88,6 @@ function benchmarkRows(formData: FormData): BenchmarkRow[] | null {
   });
 }
 
-function gradeText(value: string): string {
-  const abbr = rankAbbreviation(value);
-  return value && abbr !== value ? `${abbr} ${value}` : value;
-}
 
 function name(formData: FormData, prefix: string): string {
   const get = (f: string) => counselingField(formData, `${prefix}${f}`).trim();
