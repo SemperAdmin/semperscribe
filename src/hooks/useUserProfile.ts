@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { loadUnits, getLoadedUnits } from '@/lib/reference-data';
+import type { Unit } from '@/lib/units';
 import { STORAGE_KEYS, readStorage, writeStorage, removeStorage } from '@/lib/storage-utils';
 
 export interface UserProfile {
@@ -13,6 +14,11 @@ export interface UserProfile {
   officeCode: string;
   fromTitle: string;
   unitRuc: string;
+  // MCC of the selected unit. Most RUCs cover several units (RUC 06015
+  // alone spans CNATT, CNATTU and MATSG-23), so the RUC by itself does
+  // not identify which letterhead the user picked. Empty on profiles
+  // saved before this field existed - those fall back to RUC only.
+  unitMcc: string;
   // SET-1: manual unit entry for units missing from the RUC dataset.
   // Used only when unitRuc is empty - a selected unit always wins.
   // Mirrors the app's 4-line letterhead: name, optional sub-name
@@ -42,6 +48,7 @@ const persistedProfileSchema = z.object({
   officeCode: z.string(),
   fromTitle: z.string(),
   unitRuc: z.string(),
+  unitMcc: z.string(),
   manualUnitName: z.string(),
   manualUnitSubName: z.string(),
   manualUnitLine2: z.string(),
@@ -60,6 +67,7 @@ const DEFAULT_PROFILE: UserProfile = {
   officeCode: '',
   fromTitle: '',
   unitRuc: '',
+  unitMcc: '',
   manualUnitName: '',
   manualUnitSubName: '',
   manualUnitLine2: '',
@@ -74,14 +82,27 @@ const DEFAULT_PROFILE: UserProfile = {
 /**
  * Resolve a unit RUC to line1/line2/line3 address fields.
  */
-export function resolveUnit(ruc: string) {
-  if (!ruc) return { line1: '', line2: '', line3: '' };
+export function findUnit(ruc: string, mcc?: string): Unit | undefined {
+  if (!ruc) return undefined;
   // Reads the lazy-loaded snapshot; useUserProfile awaits loadUnits()
   // before reporting loaded, so profile-gated callers see real data.
-  const unit = getLoadedUnits().find(u => u.ruc === ruc);
+  const units = getLoadedUnits();
+  return (mcc ? units.find(u => u.ruc === ruc && u.mcc === mcc) : undefined)
+    ?? units.find(u => u.ruc === ruc);
+}
+
+export function resolveUnit(ruc: string, mcc?: string) {
+  if (!ruc) return { line1: '', line2: '', line3: '' };
+  const unit = findUnit(ruc, mcc);
   if (!unit) return { line1: '', line2: '', line3: '' };
+  // A unit with spelled-out letterhead lines prints those instead of the
+  // abbreviated unitName, the same as picking it in UnitInfoSection.
+  const headingLines = unit.letterhead?.length
+    ? unit.letterhead.map(l => l.toUpperCase())
+    : undefined;
   return {
-    line1: unit.unitName.toUpperCase(),
+    line1: (headingLines?.[0] ?? unit.unitName).toUpperCase(),
+    headingLines,
     line2: unit.streetAddress.toUpperCase(),
     line3: `${unit.cityState} ${unit.zip}`.toUpperCase(),
   };
@@ -134,15 +155,16 @@ export function useUserProfile() {
     // sub-name line - the dataset has no equivalent, so it fills only
     // from manual entry.
     const unit = profile.unitRuc
-      ? { ...resolveUnit(profile.unitRuc), line1b: '' }
+      ? { ...resolveUnit(profile.unitRuc, profile.unitMcc), line1b: '' }
       : profile.manualUnitName.trim()
         ? {
             line1: profile.manualUnitName.trim().toUpperCase(),
             line1b: profile.manualUnitSubName.trim().toUpperCase(),
             line2: profile.manualUnitLine2.trim().toUpperCase(),
             line3: profile.manualUnitLine3.trim().toUpperCase(),
+            headingLines: undefined as string[] | undefined,
           }
-        : { line1: '', line1b: '', line2: '', line3: '' };
+        : { line1: '', line1b: '', line2: '', line3: '', headingLines: undefined as string[] | undefined };
     return {
       sig: profile.fullName,
       originatorCode: profile.officeCode,

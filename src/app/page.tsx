@@ -6,7 +6,7 @@ import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { EXAMPLE_DOCUMENT_URL } from '@/components/layout/LandingPage';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
 import { getLoadedUnits, loadUnits } from '@/lib/reference-data';
-import { resolveUnit } from '@/hooks/useUserProfile';
+import { resolveUnit, findUnit } from '@/hooks/useUserProfile';
 import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename } from '@/lib/naval-format-utils';
 import { defaultAdminSubsections } from '@/lib/constants';
@@ -511,7 +511,7 @@ function NavalLetterGeneratorInner() {
       ...(prev.sig ? {} : { sig: defaults.sig }),
       ...(prev.from ? {} : { from: defaults.from }),
       ...(prev.originatorCode ? {} : { originatorCode: defaults.originatorCode }),
-      ...(prev.line1 ? {} : { line1: defaults.line1, line1b: defaults.line1b, line2: defaults.line2, line3: defaults.line3 }),
+      ...(prev.line1 ? {} : { line1: defaults.line1, line1b: defaults.line1b, line2: defaults.line2, line3: defaults.line3, headingLines: defaults.headingLines }),
       // Formatting defaults always track the profile
       headerType: defaults.headerType,
       bodyFont: defaults.bodyFont,
@@ -521,7 +521,7 @@ function NavalLetterGeneratorInner() {
     }));
     // Sync unit code/name for header display
     if (profile.unitRuc) {
-      const unit = getLoadedUnits().find(u => u.ruc === profile.unitRuc);
+      const unit = findUnit(profile.unitRuc, profile.unitMcc);
       if (unit) {
         setCurrentUnitCode(unit.ruc);
         setCurrentUnitName(unit.unitName.toUpperCase());
@@ -532,7 +532,7 @@ function NavalLetterGeneratorInner() {
       setCurrentUnitName(profile.manualUnitName.trim().toUpperCase());
     }
     setFormKey(prev => prev + 1);
-  }, [getFormDefaults, profile.unitRuc, profile.manualUnitName]);
+  }, [getFormDefaults, profile.unitRuc, profile.unitMcc, profile.manualUnitName]);
 
   // Apply user profile defaults once the profile has loaded. Keyed on
   // the loaded flag only: re-application on later profile edits happens
@@ -919,6 +919,7 @@ function NavalLetterGeneratorInner() {
       line1b: previous.line1 ? (previous.line1b ?? '') : defaults.line1b,
       line2: previous.line1 ? (previous.line2 ?? '') : defaults.line2,
       line3: previous.line1 ? (previous.line3 ?? '') : defaults.line3,
+      headingLines: previous.line1 ? previous.headingLines : defaults.headingLines,
       ssic: '', originatorCode: defaults.originatorCode, date: getTodaysDate(),
       from: defaults.from, to: '', subj: '', sig: defaults.sig, delegationText: '',
       startingPageNumber: 1,
@@ -1395,7 +1396,7 @@ function NavalLetterGeneratorInner() {
       void loadUnits().then(() => {
         const unit = resolveUnit(p.ruc);
         if (!unit.line1) return;
-        setFormData(prev => ({ ...prev, line1: unit.line1, line2: unit.line2, line3: unit.line3 }));
+        setFormData(prev => ({ ...prev, line1: unit.line1, line1b: '', line2: unit.line2, line3: unit.line3, headingLines: unit.headingLines }));
       });
       toast({
         title: 'Drafting for EDMS',
