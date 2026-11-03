@@ -75,6 +75,7 @@ import { useHydrated } from '@/hooks/useHydrated';
 import { useSyncedUpdate } from '@/hooks/useSyncedState';
 import { ITypePreview } from '@/components/itype/ITypePreview';
 import { useITypeStore } from '@/store/iTypeStore';
+import { defaultDraftTitle, savedLetterTitle } from '@/lib/draft-title';
 
 // Inner component that uses useSearchParams (requires Suspense boundary)
 function NavalLetterGeneratorInner() {
@@ -742,7 +743,7 @@ function NavalLetterGeneratorInner() {
           ...formData,
           id: saveId,
           savedAt: now.toLocaleString(),
-          name: name ?? (formData.subj || 'Untitled'),
+          name: name ?? (defaultDraftTitle(formData) || 'Untitled'),
           updatedAt: now.toISOString(),
           vias,
           references,
@@ -832,7 +833,7 @@ function NavalLetterGeneratorInner() {
       id: now.toISOString(),
       savedAt: now.toLocaleString(),
       updatedAt: now.toISOString(),
-      name: `${letter.name || letter.subj || 'Untitled'} (copy)`,
+      name: `${savedLetterTitle(letter)} (copy)`,
     };
     setSavedLetters(prev => [copy, ...prev]);
     libPut(copy).catch((error) => {

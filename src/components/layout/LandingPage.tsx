@@ -98,7 +98,11 @@ export function LandingPage({ onSelectType, onLoadExample }: LandingPageProps) {
             You bring the content - the formatting, citations, and compliance checks are handled.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-            {['26 document types', 'SECNAV M-5216.5 aligned', 'Live compliance checks', '100% on-device - no server'].map((chip) => (
+            {/* Handoff N-02 (22 Oct 26): "100% on-device - no server" was
+                false once GunnyBot has a key, since it sends typed text to
+                api.genai.mil. The chip states the default and names the
+                opt-in path; GunnyBot warns in its own panel before use. */}
+            {['26 document types', 'SECNAV M-5216.5 aligned', 'Live compliance checks', 'On-device, AI assistant opt-in'].map((chip) => (
               <span
                 key={chip}
                 className="rounded-full border border-secondary-foreground/20 bg-secondary-foreground/10 px-3 py-1 text-xs font-medium text-secondary-foreground/90"

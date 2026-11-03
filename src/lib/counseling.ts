@@ -196,21 +196,60 @@ export interface CounselingGrade {
 export const COUNSELING_GRADES: readonly CounselingGrade[] = [
   { value: 'E-1', label: 'Pvt (E-1)' }, { value: 'E-2', label: 'PFC (E-2)' }, { value: 'E-3', label: 'LCpl (E-3)' },
   { value: 'E-4', label: 'Cpl (E-4)' }, { value: 'E-5', label: 'Sgt (E-5)' }, { value: 'E-6', label: 'SSgt (E-6)' },
-  { value: 'E-7', label: 'GySgt (E-7)' }, { value: 'E-8', label: 'MSgt or 1stSgt (E-8)' }, { value: 'E-9', label: 'MGySgt or SgtMaj (E-9)' },
+  { value: 'E-7', label: 'GySgt (E-7)' },
+  { value: 'E-8-MSGT', label: 'MSgt (E-8)' }, { value: 'E-8-1STSGT', label: '1stSgt (E-8)' },
+  { value: 'E-9-MGYSGT', label: 'MGySgt (E-9)' }, { value: 'E-9-SGTMAJ', label: 'SgtMaj (E-9)' },
   { value: 'W-1', label: 'WO (W-1)' }, { value: 'W-2', label: 'CWO2 (W-2)' }, { value: 'W-3', label: 'CWO3 (W-3)' },
   { value: 'W-4', label: 'CWO4 (W-4)' }, { value: 'W-5', label: 'CWO5 (W-5)' },
   { value: 'O-1', label: '2ndLt (O-1)' }, { value: 'O-2', label: '1stLt (O-2)' }, { value: 'O-3', label: 'Capt (O-3)' },
   { value: 'O-4', label: 'Maj (O-4)' }, { value: 'O-5', label: 'LtCol (O-5)' }, { value: 'O-6', label: 'Col (O-6)' },
 ];
 
-export function gradeLabel(value: string): string {
-  return COUNSELING_GRADES.find((g) => g.value === value)?.label ?? value;
+/**
+ * Values saved before E-8 and E-9 split by rank (handoff N-03, 3 Nov 26).
+ * One value stood for two ranks, and the record printed both. The value
+ * still loads and keeps its pay grade, but it names no rank: the record
+ * prints the pay grade alone and step 2 asks for the rank. Mapping it to
+ * one of the two ranks would print the wrong rank for the other half.
+ */
+export const SHARED_GRADES: Readonly<Record<string, string>> = {
+  'E-8': 'E-8 (choose MSgt or 1stSgt)',
+  'E-9': 'E-9 (choose MGySgt or SgtMaj)',
+};
+
+export function isSharedGrade(value: string): boolean {
+  return Object.prototype.hasOwnProperty.call(SHARED_GRADES, value.trim());
 }
 
-/** Rank abbreviation alone ("LCpl"), for names on the record. */
+/** A value the worksheet places: a picker grade or a saved shared one. */
+export function isKnownGrade(value: string): boolean {
+  return COUNSELING_GRADES.some((g) => g.value === value) || isSharedGrade(value);
+}
+
+/** The pay grade alone ("E-8") for any stored value ("E-8-1STSGT"). */
+export function payGrade(value: string): string {
+  return /^[EWO]-\d+/.exec(value.trim())?.[0] ?? value;
+}
+
+export function gradeLabel(value: string): string {
+  return COUNSELING_GRADES.find((g) => g.value === value)?.label ?? SHARED_GRADES[value] ?? value;
+}
+
+/**
+ * Rank abbreviation alone ("LCpl"), for names on the record. Empty for a
+ * shared E-8 or E-9 value, which names no single rank.
+ */
 export function rankAbbreviation(value: string): string {
+  if (isSharedGrade(value)) return '';
   const label = COUNSELING_GRADES.find((g) => g.value === value)?.label;
   return label ? label.replace(/\s*\(.*\)$/, '') : value;
+}
+
+/** Block 8 and 16 text: "MSgt E-8", or "E-8" when no rank is known. */
+export function gradeText(value: string): string {
+  const abbr = rankAbbreviation(value);
+  const pay = payGrade(value);
+  return abbr && abbr !== value ? `${abbr} ${pay}` : pay;
 }
 
 /**
@@ -228,6 +267,10 @@ export function parseGrade(text: string): string | null {
     const keys = [g.value, g.value.replace('-', ''), g.label, ...ranks].map(key);
     if (g.value === 'W-1') keys.push('wo1');
     if (keys.includes(typed)) return g.value;
+  }
+  // A bare "E-8" or "E-9" names a pay grade with two ranks in it.
+  for (const shared of Object.keys(SHARED_GRADES)) {
+    if ([shared, shared.replace('-', '')].map(key).includes(typed)) return shared;
   }
   return null;
 }
@@ -457,6 +500,28 @@ export function counselingMarineDisplayName(formData: FormData): string {
   return [rank, name].filter(Boolean).join(' ');
 }
 
+const OCCASION_SHORT: Readonly<Record<string, string>> = {
+  initial: 'ICS', 'follow-on': 'Follow-on', 'thirty-day': '30-day', 'event-related': 'Event',
+};
+
+/**
+ * Library title for a counseling draft (handoff N-04): grade, last name,
+ * occasion and session date, "LCpl CARPENTER ICS 3 Nov 26". A worksheet
+ * has no subject, so without this every draft saved as "Untitled". Empty
+ * until the Marine has a last name.
+ */
+export function counselingDraftTitle(formData: FormData): string {
+  const last = counselingField(formData, 'counselingMarineLastName').trim();
+  if (!last) return '';
+  const occasion = counselingField(formData, 'counselingOccasion').trim();
+  return [
+    rankAbbreviation(counselingField(formData, 'counselingMarineGrade')),
+    last,
+    OCCASION_SHORT[occasion] ?? (occasion ? 'Counseling' : ''),
+    counselingField(formData, 'date').trim(),
+  ].filter(Boolean).join(' ');
+}
+
 export function counselingSeniorDisplayName(formData: FormData): string {
   const rank = rankAbbreviation(counselingField(formData, 'counselingSeniorGrade'));
   const last = counselingField(formData, 'counselingSeniorLastName').trim();
@@ -577,6 +642,16 @@ export function counselingSuggestions(formData: FormData): CounselingSuggestion[
   }
   if (!get('counselingSeniorLastName')) {
     out.push({ id: 'senior-name', step: 2, field: 'counselingSeniorLastName', text: 'Record who performed the counseling.', citation: 'NAVMC 2795 Figures A-1 and A-2' });
+  }
+  for (const [field, who] of [['counselingMarineGrade', 'the Marine counseled'], ['counselingSeniorGrade', 'the senior']] as const) {
+    const value = get(field);
+    if (isSharedGrade(value)) {
+      out.push({
+        id: `${field}-rank`, step: 2, field,
+        text: `Choose the rank of ${who}. ${value} covers two ranks, so the record prints the pay grade alone until one is chosen.`,
+        citation: 'NAVMC 2795 Figures A-1 and A-2',
+      });
+    }
   }
   if (!component) {
     out.push({

@@ -58,6 +58,7 @@ import { Badge } from '@/components/ui/badge';
 import { SavedLetter } from '@/types';
 import { useTemplates, templateMatchesDocumentType, Template } from '@/hooks/useTemplates';
 import { useGunnyStore } from '@/store/gunnyStore';
+import { savedLetterTitle } from '@/lib/draft-title';
 
 interface TemplateListProps {
   templates: Template[];
@@ -505,7 +506,7 @@ export function HeaderActions({
                  savedLetters.map((letter) => (
                    <DropdownMenuItem key={letter.id} onClick={() => onLoadDraft(letter.id)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
                      <div className="flex flex-col gap-0.5">
-                       <span className="font-medium truncate max-w-[200px]">{'subj' in letter ? (letter.subj as string) || 'Untitled' : 'Untitled'}</span>
+                       <span className="font-medium truncate max-w-[200px]">{savedLetterTitle(letter)}</span>
                        <span className="text-[10px] text-muted-foreground">{formatTimeAgo(letter.savedAt)}</span>
                      </div>
                    </DropdownMenuItem>

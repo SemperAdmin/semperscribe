@@ -239,3 +239,17 @@ describe('duties and the standard tag on screen (handoff D-05, D-06)', () => {
     expect(within(step6).getByRole('button', { name: 'Quantity', pressed: true })).toBeInTheDocument();
   });
 });
+
+describe('a draft saved with a shared E-8 or E-9 value (handoff N-03)', () => {
+  it('shows the value in the picker and asks for the rank', () => {
+    render(<Harness initial={{ counselingSeniorGrade: 'E-8', counselingSeniorLastName: 'SHORTER' } as Partial<FormData>} />);
+    expect(screen.getByRole('combobox', { name: "Senior's grade" }).textContent).toBe('E-8 (choose MSgt or 1stSgt)');
+    expect(screen.getAllByText(/Choose the rank of the senior/).length).toBeGreaterThan(0);
+  });
+
+  it('shows no shared option once a rank is chosen', () => {
+    render(<Harness initial={{ counselingSeniorGrade: 'E-8-MSGT' } as Partial<FormData>} />);
+    expect(screen.getByRole('combobox', { name: "Senior's grade" }).textContent).toBe('MSgt (E-8)');
+    expect(screen.queryByText(/Choose the rank of the senior/)).not.toBeInTheDocument();
+  });
+});

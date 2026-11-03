@@ -6,7 +6,7 @@
  */
 
 import { FormData, ParagraphData } from '@/types';
-import { computedNextSessionDate, parseGrade, COUNSELING_GRADES } from '@/lib/counseling';
+import { computedNextSessionDate, parseGrade, isKnownGrade } from '@/lib/counseling';
 
 // ─── Merge Token Detection ─────────────────────────────────────────────────
 
@@ -549,7 +549,7 @@ function counselingRowProblems(formData: FormData): string[] {
   const problems: string[] = [];
   if (!text('counselingMarineLastName').trim()) problems.push('LAST_NAME is empty');
   const grade = text('counselingMarineGrade').trim();
-  if (grade && !COUNSELING_GRADES.some(g => g.value === grade)) {
+  if (grade && !isKnownGrade(grade)) {
     problems.push(`GRADE "${grade}" is not a Marine grade (use LCpl, Sgt or E-3)`);
   }
   const edipi = text('counselingMarineEdipi');

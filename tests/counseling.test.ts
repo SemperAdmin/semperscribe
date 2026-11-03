@@ -508,10 +508,15 @@ describe('an initial session on the record and the screens (handoff D-01 to D-03
     expect(text).toMatch(/4\.\s*DATE OF ICS\s*22 Oct 26/);
   });
 
-  it('D-02: the ICS PDF carries no Section VII; a follow-on PDF does', async () => {
+  it('D-02 and N-01: the ICS PDF has no target review, and Section VII says why; a follow-on PDF reviews', async () => {
     const ics = await pdfText();
-    expect(ics).not.toMatch(/SECTION VII\./);
-    expect(ics).toMatch(/SECTION VIII\./);
+    expect(ics).not.toMatch(/REVIEW OF TARGETS FROM LAST SESSION/);
+    expect(ics).toMatch(/SECTION VII\. NOT USED ON AN INITIAL SESSION/);
+    // The numbering reads VI, VII, VIII with no gap.
+    expect(ics.indexOf('SECTION VI.')).toBeLessThan(ics.indexOf('SECTION VII.'));
+    expect(ics.indexOf('SECTION VII.')).toBeLessThan(ics.indexOf('SECTION VIII.'));
+    const follow0 = await pdfText({ counselingOccasion: 'follow-on' });
+    expect(follow0).not.toMatch(/NOT USED ON AN INITIAL SESSION/);
     const follow = await pdfText({ counselingOccasion: 'follow-on', counselingPriorTargets: [{ text: 'To pass the PFT', status: 'met' }] });
     expect(follow).toMatch(/SECTION VII\. REVIEW OF TARGETS FROM LAST SESSION/);
     expect(follow).toMatch(/To pass the PFT/);
@@ -591,5 +596,58 @@ describe('duties and the standard tag (handoff D-05, D-06)', () => {
     const bytes = await generateCounseling(applied);
     const items = await extractPdfTextLayout(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
     expect(items.some((i) => i.text.trim() === 'Qn')).toBe(true);
+  });
+});
+
+describe('E-8 and E-9 print one rank (handoff N-03, 3 Nov 26)', () => {
+  const item = (fd: FormData, n: number) => counselingFormModel(fd).items.find((i) => i.n === n)!.value;
+
+  it.each([
+    ['E-8-MSGT', 'MSgt E-8', 'MSgt LEADER'],
+    ['E-8-1STSGT', '1stSgt E-8', '1stSgt LEADER'],
+    ['E-9-MGYSGT', 'MGySgt E-9', 'MGySgt LEADER'],
+    ['E-9-SGTMAJ', 'SgtMaj E-9', 'SgtMaj LEADER'],
+  ])('%s prints "%s" in block 16 and "%s" in block 29', (value, block16, block29) => {
+    const fd = form({ counselingSeniorGrade: value });
+    expect(item(fd, 16)).toBe(block16);
+    expect(item(fd, 29)).toBe(block29);
+  });
+
+  it('every picker label names exactly one rank', () => {
+    for (const g of COUNSELING_GRADES) expect(g.label).not.toMatch(/\bor\b/);
+  });
+
+  it('a draft saved with the shared E-8 value prints the pay grade and no rank', () => {
+    const fd = form({ counselingSeniorGrade: 'E-8', counselingMarineGrade: 'E-9' });
+    expect(item(fd, 16)).toBe('E-8');
+    expect(item(fd, 29)).toBe('LEADER');
+    expect(item(fd, 8)).toBe('E-9');
+    expect(item(fd, 31)).toBe('SAMPLE, MARINE');
+  });
+
+  it('a shared value asks for the rank in step 2 and still never blocks the export', () => {
+    const fd = form({ counselingSeniorGrade: 'E-8' });
+    const s = counselingSuggestions(fd).find((x) => x.id === 'counselingSeniorGrade-rank');
+    expect(s?.step).toBe(2);
+    expect(s?.field).toBe('counselingSeniorGrade');
+    expect(s?.text).toContain('Choose the rank of the senior');
+    expect(runCounselingValidators(fd).every((i) => i.severity !== 'block')).toBe(true);
+    expect(counselingSuggestions(form({ counselingSeniorGrade: 'E-8-1STSGT' })).some((x) => x.id.endsWith('-rank'))).toBe(false);
+  });
+
+  it('the printed record carries one rank on the signature line', async () => {
+    const bytes = await generateCounseling(form({ counselingSeniorGrade: 'E-8-1STSGT' }));
+    const items = await extractPdfTextLayout(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }));
+    const all = items.map((i) => i.text).join(' ');
+    expect(all).toContain('1stSgt LEADER');
+    expect(all).not.toContain('MSgt or 1stSgt');
+  });
+
+  it('the E-8 and E-9 ranks keep the corporal-through-colonel interval', () => {
+    for (const v of ['E-8-MSGT', 'E-8-1STSGT', 'E-9-MGYSGT', 'E-9-SGTMAJ']) {
+      expect(isLcplOrBelow(v)).toBe(false);
+      expect(isJepesGrade(v)).toBe(false);
+      expect(nextSessionInterval(v, 'active', 'initial')).toEqual(nextSessionInterval('E-7', 'active', 'initial'));
+    }
   });
 });
