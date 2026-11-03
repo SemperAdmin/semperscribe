@@ -6,8 +6,7 @@ import { resolveUnit } from '@/hooks/useUserProfile';
 const SEVENTH_COMM = [
   '7TH COMMUNICATION BATTALION',
   'III MARINE INFORMATION GROUP',
-  'III MARINE EXPEDITIONARY FORCE',
-  'FMF',
+  'III MARINE EXPEDITIONARY FORCE FMF',
 ];
 
 describe('unit letterhead overrides', () => {

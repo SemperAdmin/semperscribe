@@ -300,7 +300,7 @@ export const UNITS: Unit[] = [
     {"ruc": "83001", "mcc": "A08", "uic": "MS5604", "unitName": "6TH MARINE CORPS DISTRICT HQTRS", "streetAddress": "2140 PEACHTREE ROAD SUITE 220", "cityState": "ATLANTA GA", "zip": "30309-0000"},
     {"ruc": "83001", "mcc": "A12", "uic": "MS5604", "unitName": "6TH MARINE CORPS DISTRICT HQTRS", "streetAddress": "1133 CHASTAIN RD SUITE 100", "cityState": "KENNESAW GA", "zip": "30144-0000"},
     {"ruc": "01053", "mcc": "186", "uic": "M00208", "unitName": "6TH SP SEC COMM TM HQTRS 2D MAW", "streetAddress": "PSC BOX 8076", "cityState": "CHERRY POINT NC", "zip": "28533-0000"},
-    {"ruc": "21635", "mcc": "1G7", "uic": "M21635", "unitName": "7TH COMM BN MIG III MEF", "letterhead": ["7TH COMMUNICATION BATTALION", "III MARINE INFORMATION GROUP", "III MARINE EXPEDITIONARY FORCE", "FMF"], "streetAddress": "OPC 567 BOX 53", "cityState": "FPO AP", "zip": "96384-9001"},
+    {"ruc": "21635", "mcc": "1G7", "uic": "M21635", "unitName": "7TH COMM BN MIG III MEF", "letterhead": ["7TH COMMUNICATION BATTALION", "III MARINE INFORMATION GROUP", "III MARINE EXPEDITIONARY FORCE FMF"], "streetAddress": "OPC 567 BOX 53", "cityState": "FPO AP", "zip": "96384-9001"},
     {"ruc": "21300", "mcc": "1YB", "uic": "M21300", "unitName": "7TH ESB CLR 1 1ST MLG", "streetAddress": "BOX 555677", "cityState": "CAMP PENDLETON CA", "zip": "92055-5677"},
     {"ruc": "21640", "mcc": "1G8", "uic": "M21640", "unitName": "8TH COMM BN MIG II MEF", "streetAddress": "PSC BOX 20137", "cityState": "CAMP LEJEUNE NC", "zip": "28542-0137"},
     {"ruc": "21310", "mcc": "15L", "uic": "M21310", "unitName": "8TH ESB CLR 2 2D MLG", "streetAddress": "PSC BOX 20131", "cityState": "CAMP LEJEUNE NC", "zip": "28542-0131"},
