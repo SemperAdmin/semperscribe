@@ -47,3 +47,25 @@ describe('UnitInfoSection', () => {
     expect(screen.getByText('Change Unit...')).toBeInTheDocument();
   });
 });
+
+describe('UnitInfoSection letterhead report', () => {
+  const props = { setFormData: vi.fn(), setCurrentUnitCode: vi.fn(), setCurrentUnitName: vi.fn() };
+
+  it('offers a report link once a letterhead is shown, and none before', () => {
+    const { rerender } = render(<UnitInfoSection {...props} formData={{}} />);
+    expect(screen.queryByText(/Letterhead outdated or incorrect/)).not.toBeInTheDocument();
+    rerender(<UnitInfoSection {...props} formData={{ line1: 'X', line2: 'Y', line3: 'Z' }} />);
+    expect(screen.getByText(/Letterhead outdated or incorrect/)).toBeInTheDocument();
+  });
+
+  it('shows every spelled-out heading line in the unit card', () => {
+    render(<UnitInfoSection {...props} formData={{
+      line1: '7TH COMMUNICATION BATTALION',
+      line2: 'OPC 567 BOX 53',
+      line3: 'FPO AP 96384-9001',
+      headingLines: ['7TH COMMUNICATION BATTALION', 'III MARINE INFORMATION GROUP', 'III MARINE EXPEDITIONARY FORCE FMF'],
+    } as Partial<FormData>} />);
+    expect(screen.getByText('III MARINE INFORMATION GROUP')).toBeInTheDocument();
+    expect(screen.getByText('III MARINE EXPEDITIONARY FORCE FMF')).toBeInTheDocument();
+  });
+});
