@@ -648,6 +648,13 @@ export async function generateCounseling(formData: FormData): Promise<Uint8Array
         },
       ]),
     );
+  } else {
+    // Handoff N-01 (22 Oct 26 retest): leaving the heading out made the
+    // record read VI then VIII. One line keeps the numbering whole and
+    // says why the section is empty.
+    // section() waits for a block to keep the bar with; there is none here.
+    s.section('SECTION VII. NOT USED ON AN INITIAL SESSION (NAVMC 2795 para 2001.2.b)');
+    s.flushSection(0);
   }
 
   // Section VIII. Targets, five rows always.

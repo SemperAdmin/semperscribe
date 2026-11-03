@@ -508,10 +508,15 @@ describe('an initial session on the record and the screens (handoff D-01 to D-03
     expect(text).toMatch(/4\.\s*DATE OF ICS\s*22 Oct 26/);
   });
 
-  it('D-02: the ICS PDF carries no Section VII; a follow-on PDF does', async () => {
+  it('D-02 and N-01: the ICS PDF has no target review, and Section VII says why; a follow-on PDF reviews', async () => {
     const ics = await pdfText();
-    expect(ics).not.toMatch(/SECTION VII\./);
-    expect(ics).toMatch(/SECTION VIII\./);
+    expect(ics).not.toMatch(/REVIEW OF TARGETS FROM LAST SESSION/);
+    expect(ics).toMatch(/SECTION VII\. NOT USED ON AN INITIAL SESSION/);
+    // The numbering reads VI, VII, VIII with no gap.
+    expect(ics.indexOf('SECTION VI.')).toBeLessThan(ics.indexOf('SECTION VII.'));
+    expect(ics.indexOf('SECTION VII.')).toBeLessThan(ics.indexOf('SECTION VIII.'));
+    const follow0 = await pdfText({ counselingOccasion: 'follow-on' });
+    expect(follow0).not.toMatch(/NOT USED ON AN INITIAL SESSION/);
     const follow = await pdfText({ counselingOccasion: 'follow-on', counselingPriorTargets: [{ text: 'To pass the PFT', status: 'met' }] });
     expect(follow).toMatch(/SECTION VII\. REVIEW OF TARGETS FROM LAST SESSION/);
     expect(follow).toMatch(/To pass the PFT/);
