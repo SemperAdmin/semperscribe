@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { supportsUnitSubName } from '@/lib/naval-format-utils';
-import { sendLetterheadReport, type LetterheadReportInput } from '@/lib/letterhead-report';
+import { sendLetterheadReport, letterheadReportMessage, type LetterheadReportInput, type LetterheadReportResult } from '@/lib/letterhead-report';
 import { useToast } from '@/hooks/use-toast';
 
 interface UnitInfoSectionProps {
@@ -77,13 +77,13 @@ export function UnitInfoSection({
     : [];
 
   const reportLetterhead = async (input: LetterheadReportInput) => {
-    const copied = await sendLetterheadReport(input);
-    toast({
-      title: copied ? 'Correction details copied' : 'Copy failed',
-      description: copied
-        ? 'Paste them into the feedback form that just opened, then type the correct letterhead.'
-        : 'The feedback form opened. Include your RUC, MCC, and the correct letterhead lines.',
-    });
+    let result: LetterheadReportResult;
+    try {
+      result = await sendLetterheadReport(input);
+    } catch {
+      result = { copied: false, opened: false };
+    }
+    toast(letterheadReportMessage(result));
   };
 
   // Optional letterhead sub-name line (Line 2) applies to the standard

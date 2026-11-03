@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { buildLetterheadReport } from '@/lib/letterhead-report';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { buildLetterheadReport, sendLetterheadReport, letterheadReportMessage } from '@/lib/letterhead-report';
+import * as urlState from '@/lib/url-state';
 
 describe('buildLetterheadReport', () => {
   it('leads with RUC and MCC and lists the lines as they print', () => {
@@ -19,5 +20,32 @@ describe('buildLetterheadReport', () => {
     const text = buildLetterheadReport({ lines: [] });
     expect(text).toContain('RUC: (ENTER RUC)  MCC: (ENTER MCC)');
     expect(text).toContain('(UNIT NOT FOUND IN DIRECTORY)');
+  });
+});
+
+describe('sendLetterheadReport', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('reports a blocked tab', async () => {
+    vi.spyOn(urlState, 'copyToClipboard').mockResolvedValue(true);
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    expect(await sendLetterheadReport({ lines: [] })).toEqual({ copied: true, opened: false });
+  });
+
+  it('reports an opened tab and cuts its opener', async () => {
+    vi.spyOn(urlState, 'copyToClipboard').mockResolvedValue(false);
+    const tab = { opener: window } as unknown as Window;
+    vi.spyOn(window, 'open').mockReturnValue(tab);
+    expect(await sendLetterheadReport({ lines: [] })).toEqual({ copied: false, opened: true });
+    expect(tab.opener).toBeNull();
+  });
+});
+
+describe('letterheadReportMessage', () => {
+  it('names the blocked form and points to Send Feedback', () => {
+    expect(letterheadReportMessage({ copied: true, opened: true }).description).toContain('just opened');
+    expect(letterheadReportMessage({ copied: true, opened: false }).description).toContain('blocked the feedback form');
+    expect(letterheadReportMessage({ copied: false, opened: true }).title).toBe('Copy failed');
+    expect(letterheadReportMessage({ copied: false, opened: false }).description).toContain('Send Feedback');
   });
 });
