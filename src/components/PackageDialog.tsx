@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { SavedLetter } from '@/types';
 import { PackageMember, ComputedSequence, PackageIssue, totalPages, fitsOnSignaturePage } from '@/lib/package-assembly';
 import type { SamePageFit } from '@/hooks/usePackageAssembly';
+import { savedLetterTitle } from '@/lib/draft-title';
 
 interface PackageDialogProps {
   open: boolean;
@@ -84,7 +85,7 @@ export function PackageDialog({
             <SelectContent>
               {available.map((l) => (
                 <SelectItem key={l.id} value={l.id} className="text-xs">
-                  {(l.name || l.subj || 'Untitled')} - {l.documentType}
+                  {savedLetterTitle(l)} - {l.documentType}
                 </SelectItem>
               ))}
             </SelectContent>

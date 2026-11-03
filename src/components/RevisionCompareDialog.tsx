@@ -23,6 +23,7 @@ import { GitCompare, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SavedLetter } from '@/types';
 import { diffRevisions, summarizeDiff, FieldDiff } from '@/lib/revision-diff';
+import { savedLetterTitle } from '@/lib/draft-title';
 
 interface RevisionCompareDialogProps {
   open: boolean;
@@ -41,7 +42,7 @@ function stamp(letter: SavedLetter): string {
 }
 
 function label(letter: SavedLetter): string {
-  return `${letter.name || letter.subj || 'Untitled'} - ${stamp(letter)}`;
+  return `${savedLetterTitle(letter)} - ${stamp(letter)}`;
 }
 
 function DiffRow({ field }: { field: FieldDiff }) {

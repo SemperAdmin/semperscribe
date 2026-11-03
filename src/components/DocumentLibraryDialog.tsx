@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FolderOpen, Search, Pencil, Copy, Trash2, Check, X, Save } from 'lucide-react';
 import { SavedLetter } from '@/types';
+import { savedLetterTitle } from '@/lib/draft-title';
 
 type SortMode = 'recent' | 'alpha';
 
@@ -38,7 +39,7 @@ interface DocumentLibraryDialogProps {
 }
 
 function displayName(letter: SavedLetter): string {
-  return letter.name || letter.subj || 'Untitled';
+  return savedLetterTitle(letter);
 }
 
 function displayStamp(letter: SavedLetter): string {

@@ -500,6 +500,28 @@ export function counselingMarineDisplayName(formData: FormData): string {
   return [rank, name].filter(Boolean).join(' ');
 }
 
+const OCCASION_SHORT: Readonly<Record<string, string>> = {
+  initial: 'ICS', 'follow-on': 'Follow-on', 'thirty-day': '30-day', 'event-related': 'Event',
+};
+
+/**
+ * Library title for a counseling draft (handoff N-04): grade, last name,
+ * occasion and session date, "LCpl CARPENTER ICS 3 Nov 26". A worksheet
+ * has no subject, so without this every draft saved as "Untitled". Empty
+ * until the Marine has a last name.
+ */
+export function counselingDraftTitle(formData: FormData): string {
+  const last = counselingField(formData, 'counselingMarineLastName').trim();
+  if (!last) return '';
+  const occasion = counselingField(formData, 'counselingOccasion').trim();
+  return [
+    rankAbbreviation(counselingField(formData, 'counselingMarineGrade')),
+    last,
+    OCCASION_SHORT[occasion] ?? (occasion ? 'Counseling' : ''),
+    counselingField(formData, 'date').trim(),
+  ].filter(Boolean).join(' ');
+}
+
 export function counselingSeniorDisplayName(formData: FormData): string {
   const rank = rankAbbreviation(counselingField(formData, 'counselingSeniorGrade'));
   const last = counselingField(formData, 'counselingSeniorLastName').trim();
