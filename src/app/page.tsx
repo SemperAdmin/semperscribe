@@ -511,7 +511,7 @@ function NavalLetterGeneratorInner() {
       ...(prev.sig ? {} : { sig: defaults.sig }),
       ...(prev.from ? {} : { from: defaults.from }),
       ...(prev.originatorCode ? {} : { originatorCode: defaults.originatorCode }),
-      ...(prev.line1 ? {} : { line1: defaults.line1, line1b: defaults.line1b, line2: defaults.line2, line3: defaults.line3 }),
+      ...(prev.line1 ? {} : { line1: defaults.line1, line1b: defaults.line1b, line2: defaults.line2, line3: defaults.line3, headingLines: defaults.headingLines }),
       // Formatting defaults always track the profile
       headerType: defaults.headerType,
       bodyFont: defaults.bodyFont,
@@ -919,6 +919,7 @@ function NavalLetterGeneratorInner() {
       line1b: previous.line1 ? (previous.line1b ?? '') : defaults.line1b,
       line2: previous.line1 ? (previous.line2 ?? '') : defaults.line2,
       line3: previous.line1 ? (previous.line3 ?? '') : defaults.line3,
+      headingLines: previous.line1 ? previous.headingLines : defaults.headingLines,
       ssic: '', originatorCode: defaults.originatorCode, date: getTodaysDate(),
       from: defaults.from, to: '', subj: '', sig: defaults.sig, delegationText: '',
       startingPageNumber: 1,
@@ -1395,7 +1396,7 @@ function NavalLetterGeneratorInner() {
       void loadUnits().then(() => {
         const unit = resolveUnit(p.ruc);
         if (!unit.line1) return;
-        setFormData(prev => ({ ...prev, line1: unit.line1, line2: unit.line2, line3: unit.line3 }));
+        setFormData(prev => ({ ...prev, line1: unit.line1, line1b: '', line2: unit.line2, line3: unit.line3, headingLines: unit.headingLines }));
       });
       toast({
         title: 'Drafting for EDMS',

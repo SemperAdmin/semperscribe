@@ -80,8 +80,14 @@ export function resolveUnit(ruc: string) {
   // before reporting loaded, so profile-gated callers see real data.
   const unit = getLoadedUnits().find(u => u.ruc === ruc);
   if (!unit) return { line1: '', line2: '', line3: '' };
+  // A unit with spelled-out letterhead lines prints those instead of the
+  // abbreviated unitName, the same as picking it in UnitInfoSection.
+  const headingLines = unit.letterhead?.length
+    ? unit.letterhead.map(l => l.toUpperCase())
+    : undefined;
   return {
-    line1: unit.unitName.toUpperCase(),
+    line1: (headingLines?.[0] ?? unit.unitName).toUpperCase(),
+    headingLines,
     line2: unit.streetAddress.toUpperCase(),
     line3: `${unit.cityState} ${unit.zip}`.toUpperCase(),
   };
@@ -141,8 +147,9 @@ export function useUserProfile() {
             line1b: profile.manualUnitSubName.trim().toUpperCase(),
             line2: profile.manualUnitLine2.trim().toUpperCase(),
             line3: profile.manualUnitLine3.trim().toUpperCase(),
+            headingLines: undefined as string[] | undefined,
           }
-        : { line1: '', line1b: '', line2: '', line3: '' };
+        : { line1: '', line1b: '', line2: '', line3: '', headingLines: undefined as string[] | undefined };
     return {
       sig: profile.fullName,
       originatorCode: profile.officeCode,
