@@ -5,6 +5,16 @@ All notable changes to Semper Scribe are recorded here. The format follows
 semantic versioning. A version bump in `package.json` on `main` creates the
 matching GitHub release with this file's section as the notes.
 
+## [Unreleased]
+
+### Added
+
+- TLA Packet, a new document type under Forms for a Temporary Lodging Allowance claim (DoD FMR Vol 7A Ch 68; FPM Vol 1 para 0703; MARADMIN 373/20). The drafter enters the Marine, the situation, who is in the lodging, the locality rates and the lodging periods. The app computes each day from Table 68-11, including the kitchen reduction, extra room charges and the Service member couple rate, and prints a request and computation sheet, a housing search statement, only the certifications the situation calls for, and a routing checklist. Rule checks (60-day and 10-day limits, 15-day increments, receipts, the GTCC split, housing log gaps) sit on screen and in Proofread with their authority, and none blocks an export. The packet supports the command's NAVMC 11116 and does not replace it; the TLA Authority's written guidance governs local procedure, and the disbursing or finance office's computation governs the amount. Rates are typed in, never stored.
+
+### Changed
+
+- The boxed form drawing moved out of the Counseling Worksheet generator into `src/services/pdf/boxedFormSheet.ts`, so both documents draw with the same parts. The worksheet prints as before.
+
 ## [0.13.20] - 2026-10-23
 
 ### Fixed

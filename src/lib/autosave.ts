@@ -31,6 +31,7 @@ import {
 } from '@/lib/document-library';
 import { FormData, ParagraphData } from '@/types';
 import { randomId } from '@/lib/random-id';
+import { tlaDraftTitle } from '@/lib/tla';
 
 /** The pre-session key. Migrated to `workingCopy:legacy` on first read. */
 export const LEGACY_WORKING_COPY_KEY = 'workingCopy';
@@ -363,6 +364,8 @@ export async function clearWorkingCopy(sessionId: string = getAutosaveSessionId(
 export function isRecoverable(copy: WorkingCopy | null): copy is WorkingCopy {
   if (!copy) return false;
   if (!copy.formData?.documentType) return false;
+  // A TLA Packet has no subject, body or parties: its Marine and dates are its content.
+  if (copy.formData.documentType === 'tla-packet') return Boolean(tlaDraftTitle(copy.formData));
   const hasSubject = Boolean((copy.formData.subj ?? '').trim());
   const hasBody = (copy.paragraphs ?? []).some((p) => p.content.trim());
   const hasParties = Boolean((copy.formData.from ?? '').trim() || (copy.formData.to ?? '').trim());

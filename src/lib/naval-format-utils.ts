@@ -5,6 +5,7 @@
 
 import { FormData, ParagraphData } from '@/types';
 import { parseIsoLocalDate } from './date-utils';
+import { tlaPeriods } from './tla';
 import { useVolumeStore } from '@/store/volumeStore';
 
 /**
@@ -410,6 +411,13 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
     const name = sanitize(formData.counselingMarineLastName ?? '') || 'Marine';
     const date = sanitize(formData.date ?? '');
     return `Counseling - ${name}${date ? ` - ${date}` : ''}.${extension}`;
+  }
+
+  // TLA Packet. The Marine and the first TLA day identify the claim.
+  if (formData.documentType === 'tla-packet') {
+    const name = sanitize(formData.tlaMarineLastName ?? '') || 'Marine';
+    const firstDay = sanitize(tlaPeriods(formData).map((p) => p.startDate).filter(Boolean).sort()[0] ?? '');
+    return `TLA Packet - ${name}${firstDay ? ` - ${firstDay}` : ''}.${extension}`;
   }
 
   // AMHS

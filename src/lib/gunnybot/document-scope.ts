@@ -21,12 +21,17 @@
  * the panel, the review section and the unit tests.
  */
 
-const WORKSHEET_TYPES = new Set(['counseling']);
+/** Types whose fields never pass through context-builder.ts, by the name the notes use. */
+const WORKSHEET_NAMES: Record<string, string> = {
+  counseling: 'Counseling Worksheet',
+  'tla-packet': 'TLA Packet',
+};
 
 /** The line under the panel's title. Says what leaves the browser from here. */
 export function panelScopeNote(documentType: string | undefined): string {
-  if (documentType !== undefined && WORKSHEET_TYPES.has(documentType)) {
-    return 'The Counseling Worksheet is not sent. Only the text you type in the box below leaves the browser, after the SSN and EDIPI scan.';
+  const worksheet = documentType === undefined ? undefined : WORKSHEET_NAMES[documentType];
+  if (worksheet) {
+    return `The ${worksheet} is not sent. Only the text you type in the box below leaves the browser, after the SSN and EDIPI scan.`;
   }
   return 'The open document is not sent from this panel. Only the text you type in the box below leaves the browser, after the SSN and EDIPI scan.';
 }
@@ -36,8 +41,9 @@ export function panelScopeNote(documentType: string | undefined): string {
  * the review is available. Shown in place of the Run button.
  */
 export function reviewUnavailableReason(documentType: string | undefined): string | null {
-  if (documentType !== undefined && WORKSHEET_TYPES.has(documentType)) {
-    return 'GunnyBot review reads letter paragraphs. A Counseling Worksheet has none, and none of its fields are sent. Nothing leaves the browser from this checklist.';
+  const worksheet = documentType === undefined ? undefined : WORKSHEET_NAMES[documentType];
+  if (worksheet) {
+    return `GunnyBot review reads letter paragraphs. A ${worksheet} has none, and none of its fields are sent. Nothing leaves the browser from this checklist.`;
   }
   return null;
 }
