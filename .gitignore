@@ -65,6 +65,10 @@ CLAUDE.md
 _scratch/
 _to_delete/
 
+# Local host build output (staged export and the compiled binary)
+/host/webroot/
+/host/*.exe
+
 # Test artifacts
 test-results/
 playwright-report/
