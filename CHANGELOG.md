@@ -7,10 +7,14 @@ matching GitHub release with this file's section as the notes.
 
 ## [Unreleased]
 
+### Changed
+
+- TLA Packet: the request now states facts only. The per diem rates, the computed ceiling, M&IE and TLA, the first and last day checks, the written guidance field and the mention of a local form are gone, and each lodging period names its own location. The packet is the request, and finance sets the per diem from the location and dates and computes the amount.
+
 ### Added
 
-- TLA Packet, a new document type under Forms for a Temporary Lodging Allowance claim (DoD FMR Vol 7A Ch 68; FPM Vol 1 para 0703; MARADMIN 373/20). The drafter enters the Marine, the situation, who is in the lodging, the locality rates and the lodging periods. The app computes each day from Table 68-11, including the kitchen reduction, extra room charges and the Service member couple rate, and prints a request and computation sheet, a housing search statement, only the certifications the situation calls for, and a routing checklist. Rule checks (60-day and 10-day limits, 15-day increments, receipts, the GTCC split, housing log gaps) sit on screen and in Proofread with their authority, and none blocks an export. The packet supports the command's NAVMC 11116 and does not replace it; the TLA Authority's written guidance governs local procedure, and the disbursing or finance office's computation governs the amount. Rates are typed in, never stored.
-- Five TLA Packet templates in the template picker: arrival with family, an additional period for late household goods, departure with early housing termination, an advance before arrival, and a Marine ordered TAD while in TLA. Each holds sample data and illustrative rates, and each total is worked by hand in the tests.
+- TLA Packet, a new document type under Forms for a Temporary Lodging Allowance request (DoD FMR Vol 7A Ch 68; FPM Vol 1 para 0703; MARADMIN 373/20). The drafter enters the Marine, the situation, who is in the lodging, where they lodged, what it cost and the GTCC split. It prints the request, a housing search statement, only the certifications the situation calls for, and a routing checklist. Rule checks (60-day and 10-day limits, 15-day increments, receipts, the GTCC split, housing log gaps) sit on screen and in Proofread with their authority, and none blocks an export. It supports the command's NAVMC 11116 and does not replace it.
+- Five TLA Packet templates in the template picker: arrival with family, an additional period for late household goods, departure with early housing termination, an advance before arrival, and a Marine ordered TAD while in TLA. Each holds sample data, and the tests hold each lodging total to one worked by hand.
 
 ### Fixed
 

@@ -9,7 +9,7 @@
     },
     "package": {
       "title": "TLA, Advance Before Arrival",
-      "description": "A Marine without dependents requests an advance before arriving, with the flight date and lodging rate the commander needs. No receipts yet, and no housing statement prints. Sample data - replace before use, and enter the current DTMO locality rates.",
+      "description": "A Marine without dependents requests an advance before arriving, with the flight date and lodging cost the commander needs. No receipts yet, and no housing statement prints. Sample data - replace before use.",
       "subject": "",
       "documentType": "tla-packet",
       "tags": [
@@ -35,22 +35,19 @@
       "tlaUnit": "Sample Battalion",
       "tlaPds": "Sample Installation, Japan",
       "tlaOrdersReference": "PCS order of 1 Sep 26",
-      "tlaAuthorityGuidance": "Enter the local TLA order",
       "tlaHousingOfficial": "Installation Housing Office",
       "tlaAuthorizingOfficial": "Enter name and billet",
       "tlaReportDate": "2026-11-01",
       "tlaRequestKind": "advance",
       "tlaSituation": "arrival",
-      "tlaLodgingNote": "Sample Lodge. Flight arrives 1 Nov 26. No kitchen.",
       "tlaPeriods": [
         {
           "startDate": "2026-11-01",
           "endDate": "2026-11-05",
+          "lodgingName": "Sample Lodge, no kitchen",
           "memberOccupying": true,
           "dependents12Plus": "",
           "dependentsUnder12": "",
-          "perDiemLodging": "200",
-          "perDiemMie": "100",
           "dailyLodgingCost": "120",
           "dailyFees": "",
           "lodgingKind": "commercial",

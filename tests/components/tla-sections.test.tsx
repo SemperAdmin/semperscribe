@@ -1,5 +1,5 @@
 /**
- * TLA Packet editor: every input writes to formData, the computation
+ * TLA Packet editor: every input writes to formData, the lodging claimed
  * reads back as the user types, and the rule checks sit on screen.
  */
 import React, { useState } from 'react';
@@ -32,8 +32,6 @@ function addFiveDayPeriod() {
   fireEvent.click(screen.getByRole('button', { name: /Add lodging period/ }));
   type('Period 1, first day', '2026-11-01');
   type('Period 1, last day', '2026-11-05');
-  type('Period 1, locality lodging rate', '200');
-  type('Period 1, locality M&IE rate', '100');
   type('Period 1, daily lodging cost', '150');
 }
 
@@ -44,20 +42,39 @@ describe('TlaSections', () => {
     expect(stored().tlaMarineLastName).toBe('Rivera');
   });
 
-  it('adds a period with the Marine in the lodging and computes it as the user types', () => {
+  it('adds a period with the Marine in the lodging and totals the lodging as the user types', () => {
     render(<Harness />);
     addFiveDayPeriod();
     expect(stored().tlaPeriods[0].memberOccupying).toBe(true);
-    expect(screen.getByTestId('tla-total')).toHaveTextContent('$1,075.00');
+    expect(screen.getByTestId('tla-total')).toHaveTextContent('$750.00');
     expect(screen.getByTestId('tla-total')).toHaveTextContent('5 days');
   });
 
-  it('starts a further period from the one before it, so rates need not be retyped', () => {
+  it('never asks for a rate, a ceiling or a local form', () => {
+    render(<Harness initial={{ tlaRequestKind: 'additional' }} />);
+    addFiveDayPeriod();
+    expect(screen.queryByLabelText(/rate/i)).toBeNull();
+    expect(screen.queryByLabelText(/per diem/i)).toBeNull();
+    expect(screen.queryByLabelText(/written guidance/i)).toBeNull();
+  });
+
+  it('says finance sets the per diem and computes the amount', () => {
+    render(<Harness />);
+    expect(screen.getByText(/computes the amount/i)).toBeInTheDocument();
+  });
+
+  it('records where each period was lodged', () => {
+    render(<Harness />);
+    addFiveDayPeriod();
+    type('Period 1, lodging name and location', 'Example Inn, Chatan');
+    expect(stored().tlaPeriods[0].lodgingName).toBe('Example Inn, Chatan');
+  });
+
+  it('starts a further period from the one before it, so lodging need not be retyped', () => {
     render(<Harness />);
     addFiveDayPeriod();
     fireEvent.click(screen.getByRole('button', { name: /Add lodging period/ }));
     const [first, second] = stored().tlaPeriods;
-    expect(second.perDiemLodging).toBe(first.perDiemLodging);
     expect(second.dailyLodgingCost).toBe(first.dailyLodgingCost);
     expect(second.startDate).toBe('');
     expect(second.endDate).toBe('');
@@ -70,12 +87,12 @@ describe('TlaSections', () => {
     expect(stored().tlaPeriods).toEqual([]);
   });
 
-  it('counts dependents into the percentages', () => {
+  it('records dependents without changing the lodging claimed', () => {
     render(<Harness />);
     addFiveDayPeriod();
     type('Period 1, dependents 12 or older', '1');
-    // 100 percent M&IE for two persons: 150 lodging + 100 M&IE, five days.
-    expect(screen.getByTestId('tla-total')).toHaveTextContent('$1,250.00');
+    expect(stored().tlaPeriods[0].dependents12Plus).toBe('1');
+    expect(screen.getByTestId('tla-total')).toHaveTextContent('$750.00');
   });
 
   it('shows a rule check with its authority when the facts call for it', () => {

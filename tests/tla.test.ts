@@ -1,11 +1,13 @@
 /**
- * TLA Packet rules: DoD FMR Vol 7A Ch 68 section 4 (conditions) and
- * section 6 with Table 68-11 (computation).
+ * TLA Packet rules: what a proper request must state (DoD FMR Vol 7A Ch 68
+ * section 4; FPM Vol 1 para 0703; MARADMIN 373/20). The packet states facts.
+ * Finance sets the per diem from the location and computes the amount.
  */
 import { describe, it, expect } from 'vitest';
 import type { FormData } from '@/types';
+import { DOCUMENT_TYPES } from '@/lib/schemas';
 import {
-  computeTla, emptyTlaPeriod, tlaAdvisories, tlaDraftTitle, tlaPercentages, type TlaPeriod,
+  emptyTlaPeriod, summarizeTla, tlaAdvisories, tlaDraftTitle, type TlaPeriod,
 } from '@/lib/tla';
 
 function period(p: Partial<TlaPeriod> = {}): TlaPeriod {
@@ -14,8 +16,6 @@ function period(p: Partial<TlaPeriod> = {}): TlaPeriod {
     startDate: '2026-11-01',
     endDate: '2026-11-05',
     memberOccupying: true,
-    perDiemLodging: '200',
-    perDiemMie: '100',
     dailyLodgingCost: '150',
     ...p,
   };
@@ -29,159 +29,87 @@ function ids(formData: FormData): string[] {
   return tlaAdvisories(formData).map((a) => a.id);
 }
 
-describe('Table 68-11 percentages', () => {
-  const pct = (member: boolean, older: number, younger: number, couple = false) =>
-    tlaPercentages({ member, dependents12Plus: older, dependentsUnder12: younger, memberCoupleTogether: couple });
-
-  it('gives one person 100 percent lodging and 65 percent M&IE', () => {
-    expect(pct(true, 0, 0)).toEqual({ lodging: 100, mie: 65 });
-    expect(pct(false, 1, 0)).toEqual({ lodging: 100, mie: 65 });
+describe('no rates and no computed TLA', () => {
+  it('stores no per diem field on a period', () => {
+    expect(Object.keys(emptyTlaPeriod()).join()).not.toMatch(/perDiem|rate/i);
   });
 
-  it('gives the member and one dependent, or two dependents, 100 percent together', () => {
-    expect(pct(true, 1, 0)).toEqual({ lodging: 100, mie: 100 });
-    expect(pct(false, 2, 0)).toEqual({ lodging: 100, mie: 100 });
+  it('has no rate field in the schema', () => {
+    const periods = DOCUMENT_TYPES['tla-packet'].schema.shape.tlaPeriods;
+    expect(JSON.stringify(periods.def ?? periods)).not.toMatch(/perDiem/);
   });
 
-  it('adds 35 percent for each further dependent 12 or older and 25 for each under 12', () => {
-    // Marine, spouse, one teen, two children: 100 + 35 + 25 + 25.
-    expect(pct(true, 2, 2)).toEqual({ lodging: 185, mie: 185 });
-  });
-
-  it('takes the oldest dependent into the first two persons when there is no spouse', () => {
-    // Marine, one teen, one child: the teen is in the 100, the child adds 25.
-    expect(pct(true, 1, 1)).toEqual({ lodging: 125, mie: 125 });
-    // Two children only: 100 together.
-    expect(pct(false, 0, 2)).toEqual({ lodging: 100, mie: 100 });
-  });
-
-  it('gives a Service member couple lodging together 65 percent each', () => {
-    expect(pct(true, 0, 0, true)).toEqual({ lodging: 65, mie: 65 });
-  });
-
-  it('ignores the couple rate once a dependent is in the lodging', () => {
-    expect(pct(true, 1, 0, true)).toEqual({ lodging: 100, mie: 100 });
-  });
-
-  it('pays nothing when nobody eligible occupies the lodging', () => {
-    expect(pct(false, 0, 0)).toEqual({ lodging: 0, mie: 0 });
+  it('counts a period with dates and a lodging cost, with no rate anywhere', () => {
+    const result = summarizeTla(form({ tlaPeriods: [period()] }));
+    expect(result.incompletePeriods).toEqual([]);
+    expect(result.totalDays).toBe(5);
+    expect(result.lodgingTotal).toBe(750);
   });
 });
 
-describe('computeTla', () => {
-  it('pays the lesser of actual lodging and the ceiling, plus M&IE, for every day', () => {
-    const result = computeTla(form({ tlaPeriods: [period({ dailyLodgingCost: '250' })] }));
-    expect(result.lines).toHaveLength(1);
-    const line = result.lines[0];
-    expect(line.days).toBe(5);
-    expect(line.lodgingCeiling).toBe(200);
-    expect(line.lodgingPayable).toBe(200);
-    expect(line.mie).toBe(65);
-    expect(line.daily).toBe(265);
-    expect(result.total).toBe(1325);
-    expect(result.totalDays).toBe(5);
+describe('summarizeTla', () => {
+  it('states the lodging paid each day, with tax and GTCC fees in it', () => {
+    const { lines, lodgingTotal } = summarizeTla(form({ tlaPeriods: [period({ dailyLodgingCost: '150', dailyFees: '12.50' })] }));
+    expect(lines[0].dailyLodging).toBe(162.5);
+    expect(lines[0].days).toBe(5);
+    expect(lodgingTotal).toBe(812.5);
   });
 
-  it('counts tax and GTCC currency fees as lodging cost', () => {
-    const result = computeTla(form({ tlaPeriods: [period({ dailyLodgingCost: '150', dailyFees: '12.50' })] }));
-    expect(result.lines[0].lodgingActual).toBe(162.5);
-    expect(result.lines[0].lodgingPayable).toBe(162.5);
+  it('adds one extra room charge once, not per day', () => {
+    const { lodgingTotal } = summarizeTla(form({ tlaPeriods: [period({ extraRoomCharge: '100' })] }));
+    expect(lodgingTotal).toBe(850);
   });
 
-  it('halves M&IE with a kitchen, except on the first and last day of TLA', () => {
-    const result = computeTla(form({ tlaPeriods: [period({ kitchen: true })] }));
-    expect(result.lines.map((l) => [l.startDate, l.endDate, l.days, l.mie])).toEqual([
-      ['2026-11-01', '2026-11-01', 1, 65],
-      ['2026-11-02', '2026-11-04', 3, 32.5],
-      ['2026-11-05', '2026-11-05', 1, 65],
-    ]);
+  it('claims no lodging on an M&IE-only period', () => {
+    const { lines, lodgingTotal, totalDays } = summarizeTla(form({ tlaPeriods: [period({ coverage: 'mie-only' })] }));
+    expect(lines[0].lodgingTotal).toBe(0);
+    expect(lodgingTotal).toBe(0);
+    expect(totalDays).toBe(5);
   });
 
-  it('halves every day of a claim that holds neither the first nor the last day', () => {
-    const result = computeTla(form({
-      tlaClaimHasFirstDay: false, tlaClaimHasLastDay: false, tlaPeriods: [period({ kitchen: true })],
-    }));
-    expect(result.lines).toHaveLength(1);
-    expect(result.lines[0].mie).toBe(32.5);
+  it('carries the facts finance needs on each line', () => {
+    const { lines } = summarizeTla(form({ tlaPeriods: [period({
+      lodgingName: 'Example Inn', lodgingKind: 'government', kitchen: true, dependents12Plus: '1', dependentsUnder12: '2',
+    })] }));
+    expect(lines[0]).toMatchObject({
+      period: 1, lodgingName: 'Example Inn', lodgingKind: 'government', kitchen: true,
+      occupants: 'Marine, 1 dep 12+, 2 under 12',
+    });
   });
 
-  it('keeps sub-cent amounts instead of rounding the daily rate', () => {
-    const result = computeTla(form({
-      tlaClaimHasFirstDay: false, tlaClaimHasLastDay: false,
-      tlaPeriods: [period({ perDiemMie: '87', kitchen: true, startDate: '2026-11-01', endDate: '2026-11-01' })],
-    }));
-    expect(result.lines[0].mie).toBe(28.275);
-  });
-
-  it('pays M&IE only with no lodging when staying with friends or relatives, unreduced', () => {
-    const result = computeTla(form({ tlaPeriods: [period({ coverage: 'mie-only', kitchen: true, dailyLodgingCost: '150' })] }));
-    expect(result.lines).toHaveLength(1);
-    expect(result.lines[0].lodgingPayable).toBe(0);
-    expect(result.lines[0].mie).toBe(65);
-  });
-
-  it('pays lodging only when meals are paid elsewhere', () => {
-    const result = computeTla(form({ tlaPeriods: [period({ coverage: 'lodging-only' })] }));
-    expect(result.lines[0].lodgingPayable).toBe(150);
-    expect(result.lines[0].mie).toBe(0);
-  });
-
-  it('raises the commercial ceiling to 1.5 times for an extra room charge, on that day only', () => {
-    const result = computeTla(form({
-      tlaPeriods: [period({ dailyLodgingCost: '180', extraRoomCharge: '180', startDate: '2026-11-01', endDate: '2026-11-02' })],
-    }));
-    expect(result.lines.map((l) => [l.days, l.lodgingCeiling, l.lodgingPayable])).toEqual([
-      [1, 300, 300],
-      [1, 200, 180],
-    ]);
-  });
-
-  it('adds an extra room charge on top of the ceiling for Government lodging', () => {
-    const result = computeTla(form({
-      tlaPeriods: [period({
-        lodgingKind: 'government', dailyLodgingCost: '250', extraRoomCharge: '75', startDate: '2026-11-01', endDate: '2026-11-01',
-      })],
-    }));
-    expect(result.lines[0].lodgingCeiling).toBe(200);
-    expect(result.lines[0].lodgingPayable).toBe(275);
-  });
-
-  it('applies the couple rate from the claim to a member-only period', () => {
-    const result = computeTla(form({ tlaMemberCoupleTogether: true, tlaPeriods: [period({ dailyLodgingCost: '250' })] }));
-    expect(result.lines[0].lodgingPayable).toBe(130);
-    expect(result.lines[0].mie).toBe(65);
+  it('says who is in the lodging when the Marine is not', () => {
+    const { lines } = summarizeTla(form({ tlaPeriods: [period({ memberOccupying: false, dependents12Plus: '1' })] }));
+    expect(lines[0].occupants).toBe('1 dep 12+');
   });
 
   it('reads money typed with a dollar sign and commas', () => {
-    const result = computeTla(form({ tlaPeriods: [period({ perDiemLodging: '$1,200.00', dailyLodgingCost: '$1,000.50' })] }));
-    expect(result.lines[0].lodgingPayable).toBe(1000.5);
+    expect(summarizeTla(form({ tlaPeriods: [period({ dailyLodgingCost: '$1,000.50', endDate: '2026-11-01' })] })).lodgingTotal).toBe(1000.5);
   });
 
-  it('leaves a period with unusable dates out of the total and names it', () => {
-    const result = computeTla(form({ tlaPeriods: [period(), period({ startDate: '2026-11-10', endDate: '2026-11-08' })] }));
+  it('leaves a period with unusable dates out and names it', () => {
+    const result = summarizeTla(form({ tlaPeriods: [period(), period({ startDate: '2026-11-10', endDate: '2026-11-08' })] }));
     expect(result.totalDays).toBe(5);
     expect(result.incompletePeriods).toEqual([2]);
   });
 
-  it('leaves a period with no per diem rate out of the total and names it', () => {
-    const result = computeTla(form({ tlaPeriods: [period({ perDiemLodging: '', perDiemMie: '' })] }));
-    expect(result.lines).toEqual([]);
-    expect(result.incompletePeriods).toEqual([1]);
-  });
-
-  it('returns an empty computation for a new packet', () => {
-    const result = computeTla(form({}));
-    expect(result).toMatchObject({ lines: [], total: 0, totalDays: 0, incompletePeriods: [] });
+  it('returns an empty summary for a new packet', () => {
+    expect(summarizeTla(form({}))).toMatchObject({ lines: [], lodgingTotal: 0, totalDays: 0, incompletePeriods: [] });
   });
 });
 
 describe('tlaAdvisories', () => {
+  it('asks for the situation once lodging is entered', () => {
+    expect(ids(form({ tlaPeriods: [period()] }))).toContain('situation-missing');
+    expect(ids(form({ tlaSituation: 'arrival', tlaPeriods: [period()] }))).not.toContain('situation-missing');
+  });
+
+  it('asks for the lodging cost when lodging is claimed without one', () => {
+    expect(ids(form({ tlaPeriods: [period({ dailyLodgingCost: '' })] }))).toContain('lodging-cost-missing');
+    expect(ids(form({ tlaPeriods: [period({ dailyLodgingCost: '', coverage: 'mie-only' })] }))).not.toContain('lodging-cost-missing');
+  });
+
   it('warns past 60 arrival days unless the request is for an additional period', () => {
-    const fields = {
-      tlaSituation: 'arrival',
-      tlaPriorDays: '58',
-      tlaPeriods: [period()],
-    };
+    const fields = { tlaSituation: 'arrival', tlaPriorDays: '58', tlaPeriods: [period()] };
     expect(ids(form(fields))).toContain('arrival-over-60');
     expect(ids(form({ ...fields, tlaRequestKind: 'additional', tlaAdditionalReason: 'hhg' }))).not.toContain('arrival-over-60');
   });
@@ -228,7 +156,7 @@ describe('tlaAdvisories', () => {
     expect(ids(form({ ...base, tlaHhgDeliveryDate: '2026-11-06' }))).not.toContain('hhg-delivered');
   });
 
-  it('warns past 15 days in one computation and asks for a split at 30', () => {
+  it('warns past 15 days in one claim and asks for a split at 30', () => {
     const at = (end: string) => ids(form({ tlaPeriods: [period({ startDate: '2026-11-01', endDate: end })] }));
     expect(at('2026-11-15')).not.toContain('computation-period');
     expect(at('2026-11-16')).toContain('computation-period');
@@ -255,12 +183,6 @@ describe('tlaAdvisories', () => {
     expect(ids(form(base))).toContain('gtcc-split-missing');
     expect(ids(form({ ...base, tlaGtccSplit: '0' }))).not.toContain('gtcc-split-missing');
     expect(ids(form({ tlaRequestKind: 'advance', ...base }))).not.toContain('gtcc-split-missing');
-  });
-
-  it('warns when the split is more than the computed TLA', () => {
-    const base = { tlaPeriods: [period({ startDate: '2026-11-01', endDate: '2026-11-01' })] };
-    expect(ids(form({ ...base, tlaGtccSplit: '500' }))).toContain('gtcc-split-over-total');
-    expect(ids(form({ ...base, tlaGtccSplit: '215' }))).not.toContain('gtcc-split-over-total');
   });
 
   it('asks for a comment when TLA overlaps a housing allowance or Government quarters', () => {
@@ -298,7 +220,7 @@ describe('tlaAdvisories', () => {
     for (const a of all) expect(a.citation.trim()).not.toBe('');
   });
 
-  it('stays quiet about a new blank packet except what starts the request', () => {
+  it('stays quiet about a new blank packet', () => {
     expect(ids(form({}))).toEqual([]);
   });
 });

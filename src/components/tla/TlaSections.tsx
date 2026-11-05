@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * TLA Packet: the claim on screen, in the order the claim is built. Every
- * input writes to formData directly, as the Counseling Worksheet does, so
- * the computation and the rule checks read back while the user types.
+ * TLA Packet: the request on screen, in the order it is built. Every input
+ * writes to formData directly, as the Counseling Worksheet does, so the
+ * lodging claimed and the rule checks read back while the user types. It
+ * takes facts only: finance sets the per diem and computes the amount.
  * Nothing here blocks an export: the TLA Authority and the disbursing or
  * finance office decide the claim (src/lib/tla.ts).
  */
@@ -21,7 +22,7 @@ import { FIELD_ATTRIBUTE } from '@/lib/field-focus';
 import type { FormData } from '@/types';
 import {
   TLA_ADDITIONAL_REASONS, TLA_EARLY_TERMINATION_REASONS, TLA_REQUEST_KINDS, TLA_SITUATIONS,
-  computeTla, emptyTlaPeriod, tlaAdvisories, tlaField, tlaFlag, tlaHousingLog, tlaMoneyText, tlaPeriods, tlaRateText, tlaRequestKind,
+  emptyTlaPeriod, summarizeTla, tlaAdvisories, tlaField, tlaFlag, tlaHousingLog, tlaMoneyText, tlaPeriods, tlaRequestKind,
   type TlaCoverage, type TlaHousingEntry, type TlaLodgingKind, type TlaPeriod,
 } from '@/lib/tla';
 
@@ -49,19 +50,18 @@ export function TlaSections({ formData, setFormData }: TlaSectionsProps) {
   const periods = tlaPeriods(formData);
   const log = tlaHousingLog(formData);
   const kind = tlaRequestKind(formData);
-  const computed = computeTla(formData);
+  const summary = summarizeTla(formData);
   const advisories = tlaAdvisories(formData);
 
   const setPeriods = (next: TlaPeriod[]) => set('tlaPeriods', next);
   const patchPeriod = (index: number, patch: Partial<TlaPeriod>) =>
     setPeriods(periods.map((p, i) => (i === index ? { ...p, ...patch } : p)));
   const addPeriod = () => {
-    // A further period usually differs in its dates or occupants, not its rates.
+    // A further period usually differs in its dates or occupants, not its lodging.
     const previous = periods[periods.length - 1];
     setPeriods([...periods, previous ? { ...previous, startDate: '', endDate: '', extraRoomCharge: '' } : emptyTlaPeriod()]);
   };
   const setLog = (next: TlaHousingEntry[]) => set('tlaHousingLog', next);
-  const hasKitchen = periods.some((p) => p.kitchen);
 
   return (
     <div className="space-y-6">
@@ -69,7 +69,7 @@ export function TlaSections({ formData, setFormData }: TlaSectionsProps) {
         <CardHeader>
           <CardTitle>What this packet does</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Support to the NAVMC 11116, which the command submits for payment. The TLA Authority&apos;s written guidance governs local procedure, and the disbursing or finance office decides the amount.
+            The request behind the NAVMC 11116, which the command submits for payment. Enter the facts. Finance sets the per diem from the location and dates, and computes the amount.
           </p>
         </CardHeader>
         {advisories.length > 0 && (
@@ -128,10 +128,7 @@ export function TlaSections({ formData, setFormData }: TlaSectionsProps) {
           placeholder="Pick the situation"
         />
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <TextField name="tlaAuthorityGuidance" label="TLA Authority written guidance" value={get('tlaAuthorityGuidance')} onChange={(v) => set('tlaAuthorityGuidance', v)} placeholder="Local order or message" />
-          <TextField name="tlaPriorDays" label="TLA days already authorized" value={get('tlaPriorDays')} onChange={(v) => set('tlaPriorDays', v.replace(/\D/g, ''))} />
-        </div>
+        <TextField name="tlaPriorDays" label="TLA days already authorized" value={get('tlaPriorDays')} onChange={(v) => set('tlaPriorDays', v.replace(/\D/g, ''))} />
 
         {kind === 'additional' && (
           <div className="space-y-4 rounded-md border border-border p-3">
@@ -145,6 +142,7 @@ export function TlaSections({ formData, setFormData }: TlaSectionsProps) {
             />
             <AreaField name="tlaAdditionalNarrative" label="What happened" value={get('tlaAdditionalNarrative')} onChange={(v) => set('tlaAdditionalNarrative', v)} />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <TextField name="tlaDailyTla" label="TLA received or expected, per day, if known" value={get('tlaDailyTla')} onChange={(v) => set('tlaDailyTla', v)} />
               <TextField name="tlaDailyHousingAllowance" label="Housing allowance, per day" value={get('tlaDailyHousingAllowance')} onChange={(v) => set('tlaDailyHousingAllowance', v)} />
               <TextField name="tlaDailyFamilySeparationHousing" label="Family Separation Housing, per day" value={get('tlaDailyFamilySeparationHousing')} onChange={(v) => set('tlaDailyFamilySeparationHousing', v)} />
             </div>
@@ -152,8 +150,7 @@ export function TlaSections({ formData, setFormData }: TlaSectionsProps) {
         )}
       </Step>
 
-      <Step title="3. Lodging and computation">
-        <TextField name="tlaLodgingNote" label="Lodging name and location" value={get('tlaLodgingNote')} onChange={(v) => set('tlaLodgingNote', v)} />
+      <Step title="3. Lodging">
         <CheckField name="tlaMemberCoupleTogether" label="Married to a Service member, lodging together, no dependents (65 percent each)" checked={flag('tlaMemberCoupleTogether')} onChange={(v) => set('tlaMemberCoupleTogether', v)} />
 
         {periods.map((p, index) => (
@@ -164,44 +161,8 @@ export function TlaSections({ formData, setFormData }: TlaSectionsProps) {
           <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Add lodging period
         </Button>
 
-        {hasKitchen && (
-          <div className="space-y-2 rounded-md border border-border p-3">
-            <p className="text-sm text-muted-foreground">M&amp;IE is not halved on the first and last day of TLA. Clear these on a claim that does not hold those days.</p>
-            <CheckField name="tlaClaimHasFirstDay" label="This claim holds the first day of TLA" checked={(formData as Record<string, unknown>).tlaClaimHasFirstDay !== false} onChange={(v) => set('tlaClaimHasFirstDay', v)} />
-            <CheckField name="tlaClaimHasLastDay" label="This claim holds the last day of TLA" checked={(formData as Record<string, unknown>).tlaClaimHasLastDay !== false} onChange={(v) => set('tlaClaimHasLastDay', v)} />
-          </div>
-        )}
-
-        {computed.lines.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="p-1 font-medium">Period</th>
-                  <th className="p-1 font-medium">Days</th>
-                  <th className="p-1 font-medium">Lodging</th>
-                  <th className="p-1 font-medium">M&amp;IE</th>
-                  <th className="p-1 font-medium">Daily</th>
-                  <th className="p-1 font-medium">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {computed.lines.map((l) => (
-                  <tr key={`${l.period}-${l.startDate}`} className="border-b border-border">
-                    <td className="p-1">{l.startDate === l.endDate ? l.startDate : `${l.startDate} to ${l.endDate}`}</td>
-                    <td className="p-1">{l.days}</td>
-                    <td className="p-1">{tlaRateText(l.lodgingPayable)}</td>
-                    <td className="p-1">{tlaRateText(l.mie)}</td>
-                    <td className="p-1">{tlaRateText(l.daily)}</td>
-                    <td className="p-1">{tlaRateText(l.total)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
         <p data-testid="tla-total" className="text-sm font-semibold">
-          Computed TLA: {tlaMoneyText(computed.total)} for {computed.totalDays} {computed.totalDays === 1 ? 'day' : 'days'}
+          Lodging claimed: {tlaMoneyText(summary.lodgingTotal)} for {summary.totalDays} {summary.totalDays === 1 ? 'day' : 'days'}
         </p>
       </Step>
 
@@ -294,8 +255,7 @@ function PeriodCard({ index, period, onChange, onRemove }: { index: number; peri
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {text('startDate', 'first day', 'date')}
         {text('endDate', 'last day', 'date')}
-        {text('perDiemLodging', 'locality lodging rate')}
-        {text('perDiemMie', 'locality M&IE rate')}
+        <div className="md:col-span-2">{text('lodgingName', 'lodging name and location')}</div>
         {text('dailyLodgingCost', 'daily lodging cost')}
         {text('dailyFees', 'daily tax and GTCC fees')}
         {text('dependents12Plus', 'dependents 12 or older')}
