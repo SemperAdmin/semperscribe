@@ -10,7 +10,7 @@ matching GitHub release with this file's section as the notes.
 ### Security
 
 - CI now builds, vets and vulnerability-scans the Go host in `host/`, for Linux and Windows, and CodeQL and Dependabot cover it. Until now no check looked at it.
-- The Go host moves to Go 1.26.10 and `golang.org/x/net` 0.55.0. The first `govulncheck` run found 26 reachable standard library vulnerabilities on Go 1.24.
+- The Go host moves to Go 1.26.10, `golang.org/x/net` 0.55.0 and `golang.org/x/text` 0.39.0. The first `govulncheck` runs found 26 reachable standard library vulnerabilities on Go 1.24 and one reachable `x/text` vulnerability in the Windows build.
 - The production `npm audit` gate fails on moderate advisories, not only high.
 - `minimatch` under `@typescript-eslint/typescript-estree` is overridden for GHSA-g3hv-75wg-m249. Dev tooling only.
 
