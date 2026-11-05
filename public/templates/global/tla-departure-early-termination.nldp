@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "packageId": "nldp_1788000000103_tla_departure_early_termination",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-11-04T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "TLA, Departure With Early Housing Termination",
+      "description": "Before PCS departure: the shipment date forced the Marine and spouse out of housing 14 days before leaving, so the early termination certificate prints. Shows the departing finance office routing. Sample data - replace before use, and enter the current DTMO locality rates.",
+      "subject": "",
+      "documentType": "tla-packet",
+      "tags": [
+        "template",
+        "tla",
+        "departure",
+        "certificate"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "tla-packet",
+      "tlaMarineLastName": "Sample",
+      "tlaMarineFirstName": "Jordan",
+      "tlaMarineMiddleInitial": "A",
+      "tlaMarineGrade": "SSgt",
+      "tlaMarineEdipi": "",
+      "tlaUnit": "Sample Battalion",
+      "tlaPds": "Sample Installation, Japan",
+      "tlaOrdersReference": "PCS order of 1 Mar 27",
+      "tlaAuthorityGuidance": "Enter the local TLA order",
+      "tlaHousingOfficial": "Installation Housing Office",
+      "tlaAuthorizingOfficial": "Enter name and billet",
+      "tlaDepartureDate": "2027-06-20",
+      "tlaRequestKind": "settlement",
+      "tlaSituation": "departure",
+      "tlaLodgingNote": "Installation temporary lodging facility",
+      "tlaPeriods": [
+        {
+          "startDate": "2027-06-06",
+          "endDate": "2027-06-19",
+          "memberOccupying": true,
+          "dependents12Plus": "1",
+          "dependentsUnder12": "",
+          "perDiemLodging": "200",
+          "perDiemMie": "100",
+          "dailyLodgingCost": "170",
+          "dailyFees": "",
+          "lodgingKind": "government",
+          "kitchen": false,
+          "coverage": "lodging-and-mie",
+          "extraRoomCharge": ""
+        }
+      ],
+      "tlaGtccSplit": "0",
+      "tlaHousingLog": [],
+      "tlaCertEarlyTermination": true,
+      "tlaEarlyTerminationReason": "hhg-shipment",
+      "tlaHousingRelinquishedDate": "2027-06-06",
+      "tlaEarlyTerminationNote": "Transportation Officer set the household goods pickup for 4 and 5 Jun 27."
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}

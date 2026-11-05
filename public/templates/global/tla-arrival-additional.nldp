@@ -1,0 +1,88 @@
+{
+  "metadata": {
+    "packageId": "nldp_1788000000102_tla_arrival_additional",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-11-04T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "TLA, Additional Period (Household Goods)",
+      "description": "Past the first 60 days: household goods have not arrived, so the Marine requests 15 more days in lodging with a kitchen. A middle claim, so M&IE is halved on every day. Sample data - replace before use, and enter the current DTMO locality rates.",
+      "subject": "",
+      "documentType": "tla-packet",
+      "tags": [
+        "template",
+        "tla",
+        "arrival",
+        "additional"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "tla-packet",
+      "tlaMarineLastName": "Sample",
+      "tlaMarineFirstName": "Jordan",
+      "tlaMarineMiddleInitial": "A",
+      "tlaMarineGrade": "SSgt",
+      "tlaMarineEdipi": "",
+      "tlaUnit": "Sample Battalion",
+      "tlaPds": "Sample Installation, Japan",
+      "tlaOrdersReference": "PCS order of 1 Sep 26",
+      "tlaAuthorityGuidance": "Enter the local TLA order",
+      "tlaHousingOfficial": "Installation Housing Office",
+      "tlaAuthorizingOfficial": "Enter name and billet",
+      "tlaReportDate": "2026-11-01",
+      "tlaHhgDeliveryDate": "2027-01-20",
+      "tlaRequestKind": "additional",
+      "tlaSituation": "arrival",
+      "tlaPriorDays": "60",
+      "tlaAdditionalReason": "hhg",
+      "tlaAdditionalNarrative": "Lease signed on 20 Dec 26. The household goods shipment is delayed at port, and the carrier estimates delivery on 20 Jan 27.",
+      "tlaDailyHousingAllowance": "95.50",
+      "tlaDailyFamilySeparationHousing": "0",
+      "tlaLodgingNote": "Sample Suites, kitchen in each unit",
+      "tlaClaimHasFirstDay": false,
+      "tlaClaimHasLastDay": false,
+      "tlaPeriods": [
+        {
+          "startDate": "2026-12-31",
+          "endDate": "2027-01-14",
+          "memberOccupying": true,
+          "dependents12Plus": "1",
+          "dependentsUnder12": "2",
+          "perDiemLodging": "200",
+          "perDiemMie": "100",
+          "dailyLodgingCost": "180",
+          "dailyFees": "",
+          "lodgingKind": "commercial",
+          "kitchen": true,
+          "coverage": "lodging-and-mie",
+          "extraRoomCharge": ""
+        }
+      ],
+      "tlaGtccSplit": "3000",
+      "tlaHousingLog": [
+        {
+          "date": "2026-12-20",
+          "action": "Signed the lease with housing office approval."
+        },
+        {
+          "date": "2027-01-04",
+          "action": "Reported to the housing office. Carrier confirmed the delay in writing."
+        }
+      ]
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}
