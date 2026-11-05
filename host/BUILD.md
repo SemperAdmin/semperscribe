@@ -170,6 +170,8 @@ from cloud.gov." No cloud-hosted backend reaches this gateway.
 
 ## 6. Build
 
+Build with Go 1.26.10 or newer. Older Go releases carry standard library vulnerabilities this code can reach, which the `Go host` CI job fails on.
+
 ```bat
 :: 1. Static export with no basePath.
 set DEPLOY_TARGET=cloudgov

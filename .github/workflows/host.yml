@@ -73,7 +73,9 @@ jobs:
       - name: Scan, Linux
         run: "$(go env GOPATH)/bin/govulncheck ./..."
 
+      # Runs even if the Linux scan fails, so one run reports both.
       - name: Scan, Windows
+        if: ${{ !cancelled() }}
         env:
           GOOS: windows
           GOARCH: amd64
