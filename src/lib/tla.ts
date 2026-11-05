@@ -433,7 +433,7 @@ export function tlaAdvisories(formData: FormData): TlaAdvisory[] {
 
   // --- the housing search
   const log = tlaHousingLog(formData);
-  if (LOG_SITUATIONS.has(situation) && days > 0 && log.length === 0) {
+  if (LOG_SITUATIONS.has(situation) && kind !== 'advance' && days > 0 && log.length === 0) {
     add('housing-log-empty', 'Log registering with the housing official. Progress is reported at intervals of 15 days or fewer.', `${FMR} para 4.2.3.2`);
   }
   const logDays = log.map((e) => dayNumber(e.date)).filter((d): d is number => d !== null).sort((a, b) => a - b);

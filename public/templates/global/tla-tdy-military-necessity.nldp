@@ -1,0 +1,100 @@
+{
+  "metadata": {
+    "packageId": "nldp_1788000000105_tla_tdy_military_necessity",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-11-04T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "TLA, Marine Ordered TAD While in TLA",
+      "description": "A Marine without dependents is ordered TAD and has to keep the lodging: M&IE stops for the TAD days, lodging continues, and the military necessity certificate prints. Sample data - replace before use, and enter the current DTMO locality rates.",
+      "subject": "",
+      "documentType": "tla-packet",
+      "tags": [
+        "template",
+        "tla",
+        "arrival",
+        "certificate"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "tla-packet",
+      "tlaMarineLastName": "Sample",
+      "tlaMarineFirstName": "Jordan",
+      "tlaMarineMiddleInitial": "A",
+      "tlaMarineGrade": "SSgt",
+      "tlaMarineEdipi": "",
+      "tlaUnit": "Sample Battalion",
+      "tlaPds": "Sample Installation, Japan",
+      "tlaOrdersReference": "PCS order of 1 Sep 26",
+      "tlaAuthorityGuidance": "Enter the local TLA order",
+      "tlaHousingOfficial": "Installation Housing Office",
+      "tlaAuthorizingOfficial": "Enter name and billet",
+      "tlaReportDate": "2026-11-01",
+      "tlaRequestKind": "settlement",
+      "tlaSituation": "arrival",
+      "tlaPriorDays": "0",
+      "tlaLodgingNote": "Sample Hotel, near the installation",
+      "tlaClaimHasFirstDay": true,
+      "tlaClaimHasLastDay": false,
+      "tlaPeriods": [
+        {
+          "startDate": "2026-11-01",
+          "endDate": "2026-11-05",
+          "memberOccupying": true,
+          "dependents12Plus": "",
+          "dependentsUnder12": "",
+          "perDiemLodging": "200",
+          "perDiemMie": "100",
+          "dailyLodgingCost": "130",
+          "dailyFees": "",
+          "lodgingKind": "commercial",
+          "kitchen": false,
+          "coverage": "lodging-and-mie",
+          "extraRoomCharge": ""
+        },
+        {
+          "startDate": "2026-11-06",
+          "endDate": "2026-11-15",
+          "memberOccupying": true,
+          "dependents12Plus": "",
+          "dependentsUnder12": "",
+          "perDiemLodging": "200",
+          "perDiemMie": "100",
+          "dailyLodgingCost": "130",
+          "dailyFees": "",
+          "lodgingKind": "commercial",
+          "kitchen": false,
+          "coverage": "lodging-only",
+          "extraRoomCharge": ""
+        }
+      ],
+      "tlaGtccSplit": "2000",
+      "tlaHousingLog": [
+        {
+          "date": "2026-11-02",
+          "action": "Registered with the housing office."
+        },
+        {
+          "date": "2026-11-16",
+          "action": "Returned from TAD and resumed the search. The absence excused the search while away."
+        }
+      ],
+      "tlaCertMilitaryNecessity": true,
+      "tlaMilitaryNecessityNote": "Ordered TAD from 6 to 15 Nov 26. The lodging was kept because no other was assured on return."
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}

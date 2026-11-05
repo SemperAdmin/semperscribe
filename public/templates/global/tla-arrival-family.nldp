@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "packageId": "nldp_1788000000101_tla_arrival_family",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-11-04T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "TLA, Arrival With Family",
+      "description": "First claim after reporting: a Marine, spouse and two children in a hotel. Reporting day is lodging only because meals are on the travel claim, then 14 days at the family rate. Sample data - replace before use, and enter the current DTMO locality rates.",
+      "subject": "",
+      "documentType": "tla-packet",
+      "tags": [
+        "template",
+        "tla",
+        "arrival"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "tla-packet",
+      "tlaMarineLastName": "Sample",
+      "tlaMarineFirstName": "Jordan",
+      "tlaMarineMiddleInitial": "A",
+      "tlaMarineGrade": "SSgt",
+      "tlaMarineEdipi": "",
+      "tlaUnit": "Sample Battalion",
+      "tlaPds": "Sample Installation, Japan",
+      "tlaOrdersReference": "PCS order of 1 Sep 26",
+      "tlaAuthorityGuidance": "Enter the local TLA order",
+      "tlaHousingOfficial": "Installation Housing Office",
+      "tlaAuthorizingOfficial": "Enter name and billet",
+      "tlaReportDate": "2026-11-01",
+      "tlaRequestKind": "settlement",
+      "tlaSituation": "arrival",
+      "tlaPriorDays": "0",
+      "tlaLodgingNote": "Sample Hotel, near the installation",
+      "tlaClaimHasFirstDay": true,
+      "tlaClaimHasLastDay": false,
+      "tlaPeriods": [
+        {
+          "startDate": "2026-11-01",
+          "endDate": "2026-11-01",
+          "memberOccupying": true,
+          "dependents12Plus": "1",
+          "dependentsUnder12": "2",
+          "perDiemLodging": "200",
+          "perDiemMie": "100",
+          "dailyLodgingCost": "250",
+          "dailyFees": "10",
+          "lodgingKind": "commercial",
+          "kitchen": false,
+          "coverage": "lodging-only",
+          "extraRoomCharge": ""
+        },
+        {
+          "startDate": "2026-11-02",
+          "endDate": "2026-11-15",
+          "memberOccupying": true,
+          "dependents12Plus": "1",
+          "dependentsUnder12": "2",
+          "perDiemLodging": "200",
+          "perDiemMie": "100",
+          "dailyLodgingCost": "250",
+          "dailyFees": "10",
+          "lodgingKind": "commercial",
+          "kitchen": false,
+          "coverage": "lodging-and-mie",
+          "extraRoomCharge": ""
+        }
+      ],
+      "tlaGtccSplit": "4000",
+      "tlaHousingLog": [
+        {
+          "date": "2026-11-02",
+          "action": "Registered with the housing office and received the TLA brief."
+        },
+        {
+          "date": "2026-11-09",
+          "action": "Viewed three off-base units with the housing office list. None suitable for the family."
+        },
+        {
+          "date": "2026-11-15",
+          "action": "Reported progress. On the wait list for Government quarters."
+        }
+      ]
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}

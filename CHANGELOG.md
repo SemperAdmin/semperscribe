@@ -10,6 +10,11 @@ matching GitHub release with this file's section as the notes.
 ### Added
 
 - TLA Packet, a new document type under Forms for a Temporary Lodging Allowance claim (DoD FMR Vol 7A Ch 68; FPM Vol 1 para 0703; MARADMIN 373/20). The drafter enters the Marine, the situation, who is in the lodging, the locality rates and the lodging periods. The app computes each day from Table 68-11, including the kitchen reduction, extra room charges and the Service member couple rate, and prints a request and computation sheet, a housing search statement, only the certifications the situation calls for, and a routing checklist. Rule checks (60-day and 10-day limits, 15-day increments, receipts, the GTCC split, housing log gaps) sit on screen and in Proofread with their authority, and none blocks an export. The packet supports the command's NAVMC 11116 and does not replace it; the TLA Authority's written guidance governs local procedure, and the disbursing or finance office's computation governs the amount. Rates are typed in, never stored.
+- Five TLA Packet templates in the template picker: arrival with family, an additional period for late household goods, departure with early housing termination, an advance before arrival, and a Marine ordered TAD while in TLA. Each holds sample data and illustrative rates, and each total is worked by hand in the tests.
+
+### Fixed
+
+- TLA Packet: an advance no longer asks for a housing log before the Marine has arrived.
 
 ### Changed
 
