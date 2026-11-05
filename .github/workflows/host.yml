@@ -1,0 +1,80 @@
+# Build, vet and vulnerability scan for the Go host in host/.
+#
+# WHY THIS EXISTS. The other workflows run Node only, so a green PR said nothing
+# about host/: a dependency bump there could break the build and still pass.
+#
+# The weekly run catches an advisory published after the last host change.
+# Windows is checked too because the proxy code sits behind a windows build tag,
+# so a Linux-only run would never see it or what it reaches.
+name: Go host
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'host/**'
+      - '.github/workflows/host.yml'
+  pull_request:
+    paths:
+      - 'host/**'
+      - '.github/workflows/host.yml'
+  schedule:
+    - cron: '0 13 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: host
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: host/go.mod
+          cache-dependency-path: host/go.sum
+
+      # main.go embeds webroot, the staged site export, which is not committed.
+      - name: Stage a placeholder webroot
+        run: |
+          mkdir -p webroot
+          echo '<!doctype html>' > webroot/index.html
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+
+      - name: Build and vet, Linux
+        run: |
+          go build ./...
+          go vet ./...
+
+      - name: Build and vet, Windows
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: '0'
+        run: |
+          go build ./...
+          go vet ./...
+
+      # setup-go sets GOTOOLCHAIN=local, and this release needs a newer Go than
+      # the host does. Only the tool is built with it; the scan uses the host's.
+      - name: Install govulncheck
+        env:
+          GOTOOLCHAIN: auto
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+
+      # BLOCKING. Fails only on a vulnerability the code can actually reach.
+      - name: Scan, Linux
+        run: "$(go env GOPATH)/bin/govulncheck ./..."
+
+      - name: Scan, Windows
+        env:
+          GOOS: windows
+          GOARCH: amd64
+        run: "$(go env GOPATH)/bin/govulncheck ./..."

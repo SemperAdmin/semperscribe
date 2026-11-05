@@ -1,0 +1,7 @@
+# Every text file is LF, in the repository and in every checkout, on every OS.
+#
+# Without this, core.autocrlf=true on Windows checks text out as CRLF. Tests
+# that compare exact content then fail on Windows and pass on Linux: the
+# published templates are held byte for byte to the code, and the vendored PDF
+# worker to the installed package. Git detects binary files itself.
+* text=auto eol=lf

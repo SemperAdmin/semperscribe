@@ -30,10 +30,21 @@ jobs:
         include:
           - language: javascript-typescript
             build-mode: none
+          # The Go host. Built by hand below: main.go embeds a webroot that
+          # is not committed, so autobuild cannot compile it.
+          - language: go
+            build-mode: manual
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: host/go.mod
+          cache-dependency-path: host/go.sum
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
@@ -41,6 +52,15 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Build the Go host
+        if: matrix.language == 'go'
+        working-directory: host
+        run: |
+          mkdir -p webroot
+          echo '<!doctype html>' > webroot/index.html
+          go build ./...
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./...
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1

@@ -53,12 +53,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # BLOCKING. High and critical advisories in the PRODUCTION tree fail
+      # BLOCKING. Moderate and higher advisories in the PRODUCTION tree fail
       # the run. devDependencies are excluded: they never ship. No
       # allowlist - if an advisory has no fix, replace the dependency or
       # discuss before adding an exception here.
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --omit=dev --audit-level=moderate
 
       # BLOCKING, and the reason this workflow exists in its current form.
       # `next build` typechecks, but only on main, and only at deploy time.

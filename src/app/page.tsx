@@ -5,7 +5,7 @@ import { ParagraphData, SavedLetter, ValidationState, FormData, ReportData, Same
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { EXAMPLE_DOCUMENT_URL } from '@/components/layout/LandingPage';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
-import { getLoadedUnits, loadUnits } from '@/lib/reference-data';
+import { loadUnits } from '@/lib/reference-data';
 import { resolveUnit, findUnit } from '@/hooks/useUserProfile';
 import { getTodaysDate } from '@/lib/date-utils';
 import { getMCOParagraphs, getMCBulParagraphs, getSecnavInstructionParagraphs, getSecnavNoticeParagraphs, getMOAParagraphs, getStaffingPaperParagraphs, getInformationPaperParagraphs, getExportFilename } from '@/lib/naval-format-utils';
