@@ -469,6 +469,11 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                     onClick={() => handleSelect('dd368')}
                     label="Conditional Release (DD 368)"
                   />
+                  <DocumentTypeButton
+                    active={documentType === 'tla-packet'}
+                    onClick={() => handleSelect('tla-packet')}
+                    label="TLA Packet"
+                  />
                 </div>
               </AccordionContent>
             </AccordionItem>

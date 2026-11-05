@@ -68,7 +68,7 @@ export interface SectionDefinition {
   className?: string; // Optional override for the grid layout (e.g. "grid-cols-1")
 }
 
-export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'dd368' | 'counseling' | 'amhs' | 'coordination-page' | 'volume';
+export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'dd368' | 'counseling' | 'tla-packet' | 'amhs' | 'coordination-page' | 'volume';
 export type ExportFormat = 'pdf' | 'docx' | 'amhs-text';
 export type DocumentCategory =
   | 'standard-letter'
@@ -3551,6 +3551,107 @@ export const CounselingDefinition: DocumentTypeDefinition = {
   ],
 };
 
+const tlaText = () => z.string().optional();
+const tlaFlag = () => z.boolean().optional();
+
+export const TlaPacketSchema = z.object({
+  documentType: z.literal('tla-packet'),
+  tlaMarineLastName: tlaText(),
+  tlaMarineFirstName: tlaText(),
+  tlaMarineMiddleInitial: tlaText(),
+  tlaMarineGrade: tlaText(),
+  tlaMarineEdipi: tlaText(),
+  tlaUnit: tlaText(),
+  tlaPds: tlaText(),
+  tlaOrdersReference: tlaText(),
+  tlaReportDate: tlaText(),
+  tlaDepartureDate: tlaText(),
+  tlaHhgDeliveryDate: tlaText(),
+  tlaRequestKind: tlaText(),
+  tlaSituation: tlaText(),
+  tlaAuthorityGuidance: tlaText(),
+  tlaPriorDays: tlaText(),
+  tlaAdditionalReason: tlaText(),
+  tlaAdditionalNarrative: tlaText(),
+  tlaDailyHousingAllowance: tlaText(),
+  tlaDailyFamilySeparationHousing: tlaText(),
+  tlaLodgingNote: tlaText(),
+  tlaMemberCoupleTogether: tlaFlag(),
+  tlaClaimHasFirstDay: tlaFlag(),
+  tlaClaimHasLastDay: tlaFlag(),
+  tlaPeriods: z.array(z.object({
+    startDate: tlaText(),
+    endDate: tlaText(),
+    memberOccupying: tlaFlag(),
+    dependents12Plus: tlaText(),
+    dependentsUnder12: tlaText(),
+    perDiemLodging: tlaText(),
+    perDiemMie: tlaText(),
+    dailyLodgingCost: tlaText(),
+    dailyFees: tlaText(),
+    lodgingKind: z.enum(['commercial', 'government']).optional(),
+    kitchen: tlaFlag(),
+    coverage: z.enum(['lodging-and-mie', 'lodging-only', 'mie-only']).optional(),
+    extraRoomCharge: tlaText(),
+  })).optional(),
+  tlaGtccSplit: tlaText(),
+  tlaHousingOverlap: tlaFlag(),
+  tlaOverlapComment: tlaText(),
+  tlaReceiptsAttached: tlaFlag(),
+  tlaHousingOfficial: tlaText(),
+  tlaHousingLog: z.array(z.object({ date: tlaText(), action: tlaText() })).optional(),
+  tlaCertMilitaryNecessity: tlaFlag(),
+  tlaMilitaryNecessityNote: tlaText(),
+  tlaCertGovQuarters: tlaFlag(),
+  tlaGovQuartersNote: tlaText(),
+  tlaCertNearestLodging: tlaFlag(),
+  tlaNearestLodgingNote: tlaText(),
+  tlaCertBeforeOrders: tlaFlag(),
+  tlaOrdersAdvisedDate: tlaText(),
+  tlaBeforeOrdersNote: tlaText(),
+  tlaCertEarlyTermination: tlaFlag(),
+  tlaEarlyTerminationReason: tlaText(),
+  tlaHousingRelinquishedDate: tlaText(),
+  tlaEarlyTerminationNote: tlaText(),
+  tlaAuthorizingOfficial: tlaText(),
+});
+
+export const TlaPacketDefinition: DocumentTypeDefinition = {
+  id: 'tla-packet',
+  name: 'TLA Packet',
+  description:
+    'Temporary Lodging Allowance claim support under DoD FMR Vol 7A Ch 68: request and computation sheet, housing search statement, the certifications the situation calls for, and a routing checklist for the NAVMC 11116.',
+  icon: '🏨',
+  schema: TlaPacketSchema,
+  features: {
+    ...STANDARD_LETTER_FEATURES,
+    showHeaderSettings: false,
+    showUnitInfo: false,
+    showVia: false,
+    showReferences: false,
+    showEnclosures: false,
+    showParagraphs: false,
+    showClosingBlock: false,
+    showSignature: false,
+    // The packet carries its own PRIVACY SENSITIVE marking and draws it
+    // on every page, the same way the Counseling Worksheet does.
+    showClassification: false,
+    category: 'forms',
+    pdfPipeline: 'tla-packet',
+    exportFormats: ['pdf'],
+  },
+  sections: [
+    {
+      id: 'tla-marine',
+      title: 'The Marine and the order',
+      fields: [
+        { name: 'tlaMarineLastName', label: 'Last name', type: 'text' },
+        { name: 'tlaPds', label: 'OCONUS PDS', type: 'text' },
+      ],
+    },
+  ],
+};
+
 export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   basic: BasicLetterDefinition,
   'multiple-address': MultipleAddressLetterDefinition,
@@ -3567,6 +3668,7 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   navmc10132: Navmc10132Definition,
   dd368: Dd368Definition,
   counseling: CounselingDefinition,
+  'tla-packet': TlaPacketDefinition,
   mfr: MFRDefinition,
   'from-to-memo': FromToMemoDefinition,
   'letterhead-memo': LetterheadMemoDefinition,

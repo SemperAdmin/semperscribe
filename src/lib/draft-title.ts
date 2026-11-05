@@ -1,5 +1,6 @@
 import type { FormData, SavedLetter } from '@/types';
 import { counselingDraftTitle } from './counseling';
+import { tlaDraftTitle } from './tla';
 
 /**
  * The title a document gets when it is saved without one: its subject,
@@ -8,6 +9,7 @@ import { counselingDraftTitle } from './counseling';
  */
 export function defaultDraftTitle(formData: Partial<FormData>): string {
   if (formData.documentType === 'counseling') return counselingDraftTitle(formData as FormData);
+  if (formData.documentType === 'tla-packet') return tlaDraftTitle(formData as FormData);
   return (formData.subj ?? '').trim();
 }
 

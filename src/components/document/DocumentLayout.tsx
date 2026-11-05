@@ -14,6 +14,7 @@ import { Page11RemarksSection } from '@/components/letter/Page11RemarksSection';
 import { Navmc10922FormSections } from '@/components/letter/Navmc10922Sections';
 import { Navmc10132FormSections } from '@/components/letter/Navmc10132Sections';
 import { CounselingSections } from '@/components/counseling/CounselingSections';
+import { TlaSections } from '@/components/tla/TlaSections';
 import { getClassification } from '@/lib/classification';
 import { ClosingBlockSection } from '@/components/letter/ClosingBlockSection';
 import { MultipleToSection } from '@/components/letter/MultipleToSection';
@@ -292,6 +293,10 @@ export function DocumentLayout({
             /* Counseling Worksheet: the seven-step guided session, every
                input bound to formData (docs/COUNSELING_FORM_PLAN.md section 7). */
             <CounselingSections key={formKey} formData={formData} setFormData={setFormData} />
+          ) : formData.documentType === 'tla-packet' ? (
+            /* TLA Packet: the claim in the order it is built, every input
+               bound to formData (src/lib/tla.ts holds the rules). */
+            <TlaSections key={formKey} formData={formData} setFormData={setFormData} />
           ) : (
             /* Dynamic Header Form based on Document Type */
             <div className="bg-card p-6 rounded-lg shadow-sm border border-border mb-6">

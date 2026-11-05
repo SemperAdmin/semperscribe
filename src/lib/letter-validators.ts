@@ -16,6 +16,7 @@ import { runNavmc10922Validators } from '@/lib/navmc10922-validators';
 import { runNavmc10132Validators } from '@/lib/navmc10132-validators';
 import { runDd368Validators } from '@/lib/dd368-validators';
 import { runCounselingValidators } from '@/lib/counseling';
+import { runTlaValidators } from '@/lib/tla';
 import { validatePage11Flow } from '@/lib/page11-flow';
 import { validateNavmc10274Fit } from '@/lib/navmc10274-fit';
 import { validateSamePageComposite } from '@/lib/same-page-composite';
@@ -1126,6 +1127,9 @@ export function runLetterValidators(
     // no-op for every other documentType (docs/COUNSELING_FORM_PLAN.md
     // section 5).
     ...runCounselingValidators(formData),
+    // TLA Packet: rule checks only, every one a warning, a no-op for
+    // every other documentType (src/lib/tla.ts).
+    ...runTlaValidators(formData),
     // Page 11: an entry which flows past the form's two columns gets a
     // continuation page in the redraw and a note here (page11-flow.ts).
     ...validatePage11Flow(formData),

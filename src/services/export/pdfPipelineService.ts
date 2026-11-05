@@ -197,6 +197,13 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
     const bytes = await generateCounseling(ctx.formData);
     return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
   },
+  // TLA Packet: the app's own layout. No official TLA blank exists; payment
+  // runs on the command's NAVMC 11116.
+  'tla-packet': async (ctx) => {
+    const { generateTlaPacket } = await import('@/services/pdf/tlaPacketGenerator');
+    const bytes = await generateTlaPacket(ctx.formData);
+    return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+  },
   // NAVMC 10132 fills the official AcroForm blank, or writes into the loaded
   // signed file. The live preview consumes this map on a timer, so under
   // `mode: 'preview'` a failure degrades to the placeholder notice page
