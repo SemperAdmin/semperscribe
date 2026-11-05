@@ -562,35 +562,35 @@
   {
     "id": "tla-arrival-family",
     "title": "TLA, Arrival With Family",
-    "description": "First claim after reporting: a Marine, spouse and two children in a hotel. Reporting day is lodging only because meals are on the travel claim, then 14 days at the family rate. Sample data - replace before use, and enter the current DTMO locality rates.",
+    "description": "First claim after reporting: a Marine, spouse and two children in a hotel. Reporting day claims lodging only because meals are on the travel claim, then 14 days of lodging and M&IE. Sample data - replace before use.",
     "documentType": "tla-packet",
     "url": "/templates/global/tla-arrival-family.nldp"
   },
   {
     "id": "tla-arrival-additional",
     "title": "TLA, Additional Period (Household Goods)",
-    "description": "Past the first 60 days: household goods have not arrived, so the Marine requests 15 more days in lodging with a kitchen. A middle claim, so M&IE is halved on every day. Sample data - replace before use, and enter the current DTMO locality rates.",
+    "description": "Past the first 60 days: household goods have not arrived, so the Marine requests 15 more days in lodging with a kitchen, with the justification finance and the authorizing official need. Sample data - replace before use.",
     "documentType": "tla-packet",
     "url": "/templates/global/tla-arrival-additional.nldp"
   },
   {
     "id": "tla-departure-early-termination",
     "title": "TLA, Departure With Early Housing Termination",
-    "description": "Before PCS departure: the shipment date forced the Marine and spouse out of housing 14 days before leaving, so the early termination certificate prints. Shows the departing finance office routing. Sample data - replace before use, and enter the current DTMO locality rates.",
+    "description": "Before PCS departure: the shipment date forced the Marine and spouse out of housing 14 days before leaving, so the early termination certificate prints. Shows the departing finance office routing. Sample data - replace before use.",
     "documentType": "tla-packet",
     "url": "/templates/global/tla-departure-early-termination.nldp"
   },
   {
     "id": "tla-advance-arrival",
     "title": "TLA, Advance Before Arrival",
-    "description": "A Marine without dependents requests an advance before arriving, with the flight date and lodging rate the commander needs. No receipts yet, and no housing statement prints. Sample data - replace before use, and enter the current DTMO locality rates.",
+    "description": "A Marine without dependents requests an advance before arriving, with the flight date and lodging cost the commander needs. No receipts yet, and no housing statement prints. Sample data - replace before use.",
     "documentType": "tla-packet",
     "url": "/templates/global/tla-advance-arrival.nldp"
   },
   {
     "id": "tla-tdy-military-necessity",
     "title": "TLA, Marine Ordered TAD While in TLA",
-    "description": "A Marine without dependents is ordered TAD and has to keep the lodging: M&IE stops for the TAD days, lodging continues, and the military necessity certificate prints. Sample data - replace before use, and enter the current DTMO locality rates.",
+    "description": "A Marine without dependents is ordered TAD and has to keep the lodging: the TAD days claim lodging only, and the military necessity certificate prints. Sample data - replace before use.",
     "documentType": "tla-packet",
     "url": "/templates/global/tla-tdy-military-necessity.nldp"
   },

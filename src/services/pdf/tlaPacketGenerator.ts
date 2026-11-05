@@ -1,11 +1,11 @@
 /**
- * TLA Packet: the printed claim support.
+ * TLA Packet: the printed request.
  *
- * No official TLA blank exists in the policy set. Payment runs on the
- * command's NAVMC 11116, and each TLA Authority may have its own request
- * form, so this is drawn as the app's own boxed form and says it is
- * neither: a request and computation sheet, the housing search statement,
- * only the certificates the situation calls for, and a routing checklist.
+ * No official TLA blank exists in the policy set, and payment runs on the
+ * command's NAVMC 11116, so this is drawn as the app's own boxed form: the
+ * request with its lodging facts, the housing search statement, only the
+ * certificates the situation calls for, and a routing checklist. It states
+ * facts and prints no rate: finance sets the per diem and computes the amount.
  *
  * `tlaPacketModel` holds every printed value, so tests check content
  * without parsing the drawing.
@@ -16,7 +16,7 @@ import { parseAndFormatDate } from '@/lib/date-utils';
 import { sanitizeForTimesRoman } from '@/lib/navmc10274-layout';
 import {
   TLA_ADDITIONAL_REASONS, TLA_EARLY_TERMINATION_REASONS, TLA_REQUEST_KINDS, TLA_SITUATIONS,
-  computeTla, parseTlaMoney, tlaField, tlaFlag, tlaHousingLog, tlaMoneyText, tlaRateText, tlaRequestKind,
+  parseTlaMoney, summarizeTla, tlaField, tlaFlag, tlaHousingLog, tlaMoneyText, tlaRequestKind,
   type TlaLine, type TlaRequestKind,
 } from '@/lib/tla';
 import { INK, MARGIN, PAGE_H, PAGE_W, SMALL, Sheet, WIDTH, type Cell, type Fonts, type FormCheck } from '@/services/pdf/boxedFormSheet';
@@ -78,13 +78,11 @@ export interface TlaPacketModel {
   departureDate: string;
   hhgDate: string;
   priorDays: string;
-  guidance: string;
-  lodging: string;
   kind: TlaRequestKind;
   kindChecks: FormCheck[];
   situationChecks: FormCheck[];
   lines: TlaPrintedLine[];
-  totalText: string;
+  lodgingTotalText: string;
   totalDays: number;
   incompletePeriods: number[];
   gtccText: string;
@@ -101,14 +99,14 @@ export interface TlaPacketModel {
   certificates: TlaCertificate[];
   checklist: string[];
   handling: string;
-  computationNote: string;
+  lodgingNote: string;
 }
 
 const HOUSING_STATEMENT =
   'I understand that I must aggressively seek permanent housing, or await Government quarters when assigned them, and report my progress to the official above at the intervals the TLA Authority sets, 15 days or fewer. I will move as soon as practical. The payment depends on the expenses I incur, and I will keep itemized lodging receipts. No lodging is paid while staying with friends or relatives. TLA is not for personal inconvenience or enrichment, and it ends the day before I could reasonably occupy permanent housing.';
 
-const COMPUTATION_NOTE =
-  `Each day: lesser of actual lodging and the ceiling (locality lodging rate x Table 68-11 percentage), plus M&IE (locality M&IE rate x percentage). Lodging includes tax, VAT relief certificate cost and GTCC currency fees (${FMR} para 6.2). Daily rates are not rounded. Support to the claim only: the disbursing or finance office's computation governs. Confirm current percentages on the DTMO website (Table 68-11 note 1).`;
+const LODGING_NOTE =
+  `Lodging actually paid, including tax, VAT relief certificate cost and GTCC currency fees (${FMR} para 6.2.2). Finance sets the locality per diem from the location and dates, and computes the ceiling, M&IE and amount payable.`;
 
 function certificates(formData: FormData): TlaCertificate[] {
   const get = (name: string) => clean(tlaField(formData, name).trim());
@@ -172,14 +170,14 @@ function certificates(formData: FormData): TlaCertificate[] {
 function checklist(kind: TlaRequestKind, situation: string): string[] {
   const out: string[] = [];
   if (kind === 'advance') {
-    out.push('Give the commander at the OCONUS duty station, before arrival or departure: the actual flight date, the lodging rate with kitchen availability, and who the allowance covers (FPM Vol 1 para 070303).');
+    out.push('Give the commander at the OCONUS duty station, before arrival or departure: the actual flight date, the lodging cost with kitchen availability, and who the allowance covers (FPM Vol 1 para 070303).');
     out.push('Bring the disbursing or finance office the paid lodging receipts after the advance, so it can be reconciled to the actual settlement (FPM Vol 1 para 070303).');
   } else {
     out.push(`Itemized lodging receipts for every day claimed, or invoices or vendor statements (${FMR} para 6.2.3.2.1). Keep copies.`);
     out.push('GTCC split amount stated on this request, even if zero (MARADMIN 373/20 para 3.g).');
   }
   out.push('PCS order or other order supporting the claim, with any required annotation.');
-  out.push('The local TLA request form and anything else the TLA Authority\'s written guidance requires. That guidance governs local procedure.');
+  out.push('Anything further the TLA Authority\'s written guidance requires.');
   out.push('Command submits the supporting documents to the disbursing or finance office; payment is directed on a NAVMC 11116 (FPM Vol 1 para 020101, 070301.G). This packet does not replace that form.');
   if (situation === 'departure' || situation === 'delayed-departure') {
     out.push('Departure claim: the commanding officer at the old duty station certifies the credit, and the NAVMC 11116 is cross-forwarded to the departing disbursing or finance office (FPM Vol 1 para 070301.B, 070301.G).');
@@ -193,22 +191,22 @@ export function tlaPacketModel(formData: FormData): TlaPacketModel {
   const get = (name: string) => clean(tlaField(formData, name).trim());
   const kind = tlaRequestKind(formData);
   const situation = tlaField(formData, 'tlaSituation');
-  const computed = computeTla(formData);
-  const lines = computed.lines.map((line) => ({
+  const summary = summarizeTla(formData);
+  const lines = summary.lines.map((line) => ({
     ...line,
+    lodgingName: clean(line.lodgingName.trim()),
     dateText: line.startDate === line.endDate ? dateText(line.startDate) : `${dateText(line.startDate)} - ${dateText(line.endDate)}`,
   }));
 
   const splitEntry = moneyEntry(tlaField(formData, 'tlaGtccSplit'));
-  const last = computed.lines[computed.lines.length - 1];
-  // The daily figures the TLA Authority weighs (para 4.3.2.3): the rate most
-  // days are paid at, not a first or last day at unreduced M&IE.
-  const typical = computed.lines.reduce<TlaLine | undefined>((best, line) => (!best || line.days > best.days ? line : best), undefined);
+  const last = summary.lines[summary.lines.length - 1];
+  // The daily expense the TLA Authority weighs (para 4.3.2.3): what most days cost.
+  const typical = summary.lines.reduce<TlaLine | undefined>((best, line) => (!best || line.days > best.days ? line : best), undefined);
   const reason =TLA_ADDITIONAL_REASONS.find((r) => r.value === tlaField(formData, 'tlaAdditionalReason'));
 
   return {
     title: 'TEMPORARY LODGING ALLOWANCE (TLA) REQUEST',
-    subtitle: 'Support to the NAVMC 11116 under DoD FMR Vol 7A Ch 68 and FPM Vol 1 para 0703. Not an official form.',
+    subtitle: 'Request supporting the NAVMC 11116 under DoD FMR Vol 7A Ch 68 and FPM Vol 1 para 0703. Not an official form.',
     name: [get('tlaMarineLastName'), [get('tlaMarineFirstName'), get('tlaMarineMiddleInitial')].filter(Boolean).join(' ')].filter(Boolean).join(', '),
     grade: get('tlaMarineGrade'),
     edipi: get('tlaMarineEdipi'),
@@ -219,15 +217,13 @@ export function tlaPacketModel(formData: FormData): TlaPacketModel {
     departureDate: dateText(tlaField(formData, 'tlaDepartureDate')),
     hhgDate: dateText(tlaField(formData, 'tlaHhgDeliveryDate')),
     priorDays: get('tlaPriorDays'),
-    guidance: get('tlaAuthorityGuidance'),
-    lodging: get('tlaLodgingNote'),
     kind,
     kindChecks: TLA_REQUEST_KINDS.map((k) => ({ label: k.label, on: kind === k.value })),
     situationChecks: TLA_SITUATIONS.map((s) => ({ label: s.label, on: situation === s.value })),
     lines,
-    totalText: tlaMoneyText(computed.total),
-    totalDays: computed.totalDays,
-    incompletePeriods: computed.incompletePeriods,
+    lodgingTotalText: tlaMoneyText(summary.lodgingTotal),
+    totalDays: summary.totalDays,
+    incompletePeriods: summary.incompletePeriods,
     gtccText: splitEntry,
     gtccNote: parseTlaMoney(tlaField(formData, 'tlaGtccSplit')) === 0
       ? 'Zero split: the Marine pays the GTCC bill on receipt of any balance.'
@@ -238,13 +234,13 @@ export function tlaPacketModel(formData: FormData): TlaPacketModel {
           reason: reason?.label ?? '',
           citation: reason?.citation ?? `${FMR} para 4.3.2`,
           narrative: get('tlaAdditionalNarrative'),
-          dailyTla: typical ? tlaRateText(typical.daily) : '',
-          dailyLodging: typical ? tlaRateText(typical.lodgingActual) : '',
+          dailyTla: moneyEntry(tlaField(formData, 'tlaDailyTla')),
+          dailyLodging: typical ? tlaMoneyText(typical.dailyLodging) : '',
           housingAllowance: moneyEntry(tlaField(formData, 'tlaDailyHousingAllowance')),
           familySeparationHousing: moneyEntry(tlaField(formData, 'tlaDailyFamilySeparationHousing')),
         }
       : null,
-    tlaBegan: computed.lines.length ? dateText(computed.lines[0].startDate) : '',
+    tlaBegan: summary.lines.length ? dateText(summary.lines[0].startDate) : '',
     tlaEnded: last ? dateText(last.endDate) : '',
     housingOfficial: get('tlaHousingOfficial'),
     housingLog: tlaHousingLog(formData)
@@ -256,7 +252,7 @@ export function tlaPacketModel(formData: FormData): TlaPacketModel {
     certificates: certificates(formData),
     checklist: checklist(kind, situation),
     handling: 'Contains personal and financial information. Handle under the Privacy Act and share only with the officials who process this claim.',
-    computationNote: COMPUTATION_NOTE,
+    lodgingNote: LODGING_NOTE,
   };
 }
 
@@ -306,59 +302,54 @@ function drawRequest(s: Sheet, fonts: Fonts, m: TlaPacketModel) {
     { w: 150, label: '10. TYPE', checks: m.kindChecks },
     { w: WIDTH - 150, label: '11. SITUATION', checks: m.situationChecks },
   ]);
-  s.row([
-    { w: 300, label: '12. TLA AUTHORITY WRITTEN GUIDANCE', value: m.guidance },
-    { w: WIDTH - 300, label: '13. TLA DAYS ALREADY AUTHORIZED', value: m.priorDays },
-  ]);
-  s.row([{ w: WIDTH, label: '14. LODGING NAME AND LOCATION', value: m.lodging }]);
+  s.row([{ w: WIDTH, label: '12. TLA DAYS ALREADY AUTHORIZED', value: m.priorDays }]);
 
   if (m.additional) {
     s.section('SECTION II-A. ADDITIONAL PERIOD');
-    s.row([{ w: WIDTH, label: `15. REASON (${m.additional.citation})`, value: [m.additional.reason, m.additional.narrative].filter(Boolean).join('\n'), minLines: 2 }]);
+    s.row([{ w: WIDTH, label: `13. REASON (${m.additional.citation})`, value: [m.additional.reason, m.additional.narrative].filter(Boolean).join('\n'), minLines: 2 }]);
     const col = WIDTH / 4;
     s.row([
-      { w: col, label: '16. DAILY TLA', value: m.additional.dailyTla },
-      { w: col, label: '17. DAILY LODGING EXPENSE', value: m.additional.dailyLodging },
-      { w: col, label: '18. DAILY HOUSING ALLOWANCE', value: m.additional.housingAllowance },
-      { w: col, label: '19. DAILY FAMILY SEP. HOUSING', value: m.additional.familySeparationHousing },
+      { w: col, label: '14. DAILY TLA, IF KNOWN', value: m.additional.dailyTla },
+      { w: col, label: '15. DAILY LODGING EXPENSE', value: m.additional.dailyLodging },
+      { w: col, label: '16. DAILY HOUSING ALLOWANCE', value: m.additional.housingAllowance },
+      { w: col, label: '17. DAILY FAMILY SEP. HOUSING', value: m.additional.familySeparationHousing },
     ]);
   }
 
-  s.section('SECTION III. COMPUTATION');
-  const cols = [98, 30, 68, 44, 50, 50, 50, 46, 50, 54];
+  s.section('SECTION III. LODGING');
+  const cols = [88, 28, 124, 72, 58, 40, 44, 40, 46];
   const small = (w: number, value: string, bold = false): Cell => ({ w, value, size: TABLE_SIZE, bold });
-  const header = ['DATES', 'DAYS', 'OCCUPANTS', 'LODG / M&IE %', 'CEILING', 'ACTUAL', 'LODGING', 'M&IE', 'DAILY', 'TOTAL'];
+  const header = ['DATES', 'DAYS', 'LODGING NAME AND LOCATION', 'OCCUPANTS', 'TYPE', 'KITCHEN', 'PER DAY', 'EXTRA', 'TOTAL'];
   const rows: Cell[][] = m.lines.map((l) => [
     small(cols[0], [l.dateText, ...l.notes].join('\n')),
     small(cols[1], String(l.days)),
-    small(cols[2], l.occupants),
-    small(cols[3], `${l.lodgingPct} / ${l.miePct}`),
-    small(cols[4], tlaRateText(l.lodgingCeiling)),
-    small(cols[5], tlaRateText(l.lodgingActual)),
-    small(cols[6], tlaRateText(l.lodgingPayable)),
-    small(cols[7], tlaRateText(l.mie)),
-    small(cols[8], tlaRateText(l.daily)),
-    small(cols[9], tlaRateText(l.total)),
+    small(cols[2], l.lodgingName),
+    small(cols[3], l.occupants),
+    small(cols[4], l.lodgingKind === 'government' ? 'Government' : 'Commercial'),
+    small(cols[5], l.kitchen ? 'Yes' : 'No'),
+    small(cols[6], tlaMoneyText(l.dailyLodging)),
+    small(cols[7], l.extraRoomCharge ? tlaMoneyText(l.extraRoomCharge) : ''),
+    small(cols[8], tlaMoneyText(l.lodgingTotal)),
   ]);
   if (rows.length === 0) rows.push(cols.map((w) => small(w, '')));
   rows.push([
     small(cols[0], 'TOTAL', true),
     small(cols[1], String(m.totalDays), true),
-    small(cols.slice(2, 9).reduce((a, b) => a + b, 0), m.incompletePeriods.length ? `Period ${m.incompletePeriods.join(', ')} left out: dates or locality rate missing.` : ''),
-    small(cols[9], m.totalText, true),
+    small(cols.slice(2, 8).reduce((a, b) => a + b, 0), m.incompletePeriods.length ? `Period ${m.incompletePeriods.join(', ')} left out: dates missing.` : ''),
+    small(cols[8], m.lodgingTotalText, true),
   ]);
-  s.table(header.map((label, i) => small(cols[i], label, true)), rows, m.computationNote);
+  s.table(header.map((label, i) => small(cols[i], label, true)), rows, m.lodgingNote);
 
   s.section('SECTION IV. GTCC AND HOUSING ALLOWANCE');
   s.row([
-    { w: 130, label: '20. SPLIT TO GTCC', value: m.gtccText },
+    { w: 130, label: '18. SPLIT TO GTCC', value: m.gtccText },
     { w: WIDTH - 130, label: 'NOTE', value: m.gtccNote, size: SMALL },
   ]);
-  s.row([{ w: WIDTH, label: '21. OVERLAP WITH OHA, BAH OR GOVERNMENT QUARTERS', value: m.overlap }]);
+  s.row([{ w: WIDTH, label: '19. OVERLAP WITH OHA, BAH OR GOVERNMENT QUARTERS', value: m.overlap }]);
 
   s.section('SECTION V. SIGNATURES');
-  signatureRow(s, '22. MARINE CLAIMING TLA', m.marineSignature);
-  signatureRow(s, '23. TLA AUTHORITY\'S AUTHORIZING OFFICIAL', m.authorizingOfficial);
+  signatureRow(s, '20. MARINE CLAIMING TLA', m.marineSignature);
+  signatureRow(s, '21. TLA AUTHORITY\'S AUTHORIZING OFFICIAL', m.authorizingOfficial);
 }
 
 function drawHousing(s: Sheet, fonts: Fonts, m: TlaPacketModel) {

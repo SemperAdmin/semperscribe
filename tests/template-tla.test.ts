@@ -1,14 +1,14 @@
 // @vitest-environment node
 /**
  * The TLA Packet templates: each parses against the schema, lands under
- * the TLA type, computes to a total worked by hand from Table 68-11, and
+ * the TLA type, totals the lodging worked by hand, holds no rate, and
  * leaves open only what the drafter must still do.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { TlaPacketSchema } from '@/lib/schemas';
-import { computeTla, emptyTlaPeriod, tlaAdvisories } from '@/lib/tla';
+import { emptyTlaPeriod, summarizeTla, tlaAdvisories } from '@/lib/tla';
 import { generateTlaPacket, tlaPacketModel } from '@/services/pdf/tlaPacketGenerator';
 import type { FormData } from '@/types';
 
@@ -16,38 +16,42 @@ const GLOBAL_DIR = join(__dirname, '..', 'public', 'templates', 'global');
 type IndexEntry = { id: string; title: string; description: string; documentType?: string; url: string };
 const index: IndexEntry[] = JSON.parse(readFileSync(join(GLOBAL_DIR, 'index.json'), 'utf-8'));
 
-/** Worked by hand: id, days, total, and the checks left open. */
+/** Worked by hand: id, days, lodging total, and the checks left open. */
 const SAMPLES: [string, number, number, string[]][] = [
-  // Marine, spouse, two children: 150 percent. Reporting day lodging only, $260.
-  // Then 14 days at $260 lodging + $150 M&IE = $410.
-  ['tla-arrival-family', 15, 260 + 14 * 410, ['receipts']],
-  // Same family, kitchen, a middle claim: $180 lodging + $75 M&IE, 15 days.
-  ['tla-arrival-additional', 15, 15 * 255, ['receipts']],
-  // Marine and spouse: 100 percent. $170 lodging + $100 M&IE, 14 days.
-  ['tla-departure-early-termination', 14, 14 * 270, ['receipts']],
-  // Marine alone: $120 lodging + $65 M&IE, 5 days. No receipts yet.
-  ['tla-advance-arrival', 5, 5 * 185, []],
-  // Marine alone: 5 days at $130 + $65, then 10 days TAD at lodging only.
-  ['tla-tdy-military-necessity', 15, 5 * 195 + 10 * 130, ['receipts']],
+  // $250 + $10 tax, 15 days. The reporting day still claims lodging.
+  ['tla-arrival-family', 15, 15 * 260, ['receipts']],
+  // $180, 15 days.
+  ['tla-arrival-additional', 15, 15 * 180, ['receipts']],
+  // $170, 14 days.
+  ['tla-departure-early-termination', 14, 14 * 170, ['receipts']],
+  // $120, 5 days. No receipts yet.
+  ['tla-advance-arrival', 5, 5 * 120, []],
+  // $130, 15 days, TAD days included.
+  ['tla-tdy-military-necessity', 15, 15 * 130, ['receipts']],
 ];
 
-function load(id: string): FormData {
+function raw(id: string): string {
   const entry = index.find((e) => e.id === id);
   expect(entry, `${id} is missing from index.json`).toBeDefined();
-  expect(entry!.documentType).toBe('tla-packet');
-  const nldp = JSON.parse(readFileSync(join(GLOBAL_DIR, entry!.url.replace('/templates/global/', '')), 'utf-8'));
+  return readFileSync(join(GLOBAL_DIR, entry!.url.replace('/templates/global/', '')), 'utf-8');
+}
+
+function load(id: string): FormData {
+  const entry = index.find((e) => e.id === id)!;
+  expect(entry.documentType).toBe('tla-packet');
+  const nldp = JSON.parse(raw(id));
   expect(nldp.metadata.package.documentType).toBe('tla-packet');
   return nldp.data.formData as FormData;
 }
 
 describe('TLA Packet templates', () => {
-  it.each(SAMPLES)('%s parses and computes to the hand-worked total', (id, days, total) => {
+  it.each(SAMPLES)('%s parses and totals the lodging worked by hand', (id, days, total) => {
     const fd = load(id);
     expect(TlaPacketSchema.safeParse(fd).success).toBe(true);
-    const computed = computeTla(fd);
-    expect(computed.incompletePeriods).toEqual([]);
-    expect(computed.totalDays).toBe(days);
-    expect(computed.total).toBe(total);
+    const summary = summarizeTla(fd);
+    expect(summary.incompletePeriods).toEqual([]);
+    expect(summary.totalDays).toBe(days);
+    expect(summary.lodgingTotal).toBe(total);
   });
 
   it.each(SAMPLES)('%s leaves open only what the drafter must still do', (id, _days, _total, open) => {
@@ -60,11 +64,20 @@ describe('TLA Packet templates', () => {
     expect(index.find((e) => e.id === id)!.description).toMatch(/Sample data/);
   });
 
-  it('carries no personal identifier and no real rate claim', () => {
+  it.each(SAMPLES)('%s holds no rate, percentage or dropped field', (id) => {
+    expect(raw(id)).not.toMatch(/perDiem|tlaAuthorityGuidance|tlaLodgingNote|tlaClaimHas/);
+    expect(index.find((e) => e.id === id)!.description).not.toMatch(/DTMO|rate/i);
+  });
+
+  it('carries no personal identifier', () => {
     for (const [id] of SAMPLES) {
-      const fd = load(id) as unknown as Record<string, unknown>;
-      expect(fd.tlaMarineEdipi ?? '').toBe('');
-      expect(index.find((e) => e.id === id)!.description).toMatch(/current DTMO/);
+      expect((load(id) as unknown as Record<string, unknown>).tlaMarineEdipi ?? '').toBe('');
+    }
+  });
+
+  it('names the lodging on every period', () => {
+    for (const [id] of SAMPLES) {
+      for (const line of summarizeTla(load(id)).lines) expect(line.lodgingName.trim()).not.toBe('');
     }
   });
 
@@ -89,7 +102,7 @@ describe('an advance and the housing log', () => {
   it('does not ask for a housing log before the Marine has arrived', () => {
     const fd = {
       documentType: 'tla-packet', tlaRequestKind: 'advance', tlaSituation: 'arrival',
-      tlaPeriods: [{ ...emptyTlaPeriod(), startDate: '2026-11-01', endDate: '2026-11-02', perDiemLodging: '200', perDiemMie: '100' }],
+      tlaPeriods: [{ ...emptyTlaPeriod(), startDate: '2026-11-01', endDate: '2026-11-02', dailyLodgingCost: '100' }],
     } as unknown as FormData;
     expect(tlaAdvisories(fd).map((a) => a.id)).not.toContain('housing-log-empty');
   });

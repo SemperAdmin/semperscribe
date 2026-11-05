@@ -25,8 +25,6 @@ function period(p: Partial<TlaPeriod> = {}): TlaPeriod {
     startDate: '2026-11-01',
     endDate: '2026-11-05',
     memberOccupying: true,
-    perDiemLodging: '200',
-    perDiemMie: '100',
     dailyLodgingCost: '150',
     ...p,
   };
@@ -59,12 +57,20 @@ describe('tlaPacketModel', () => {
     expect(subtitle).toMatch(/Not an official form/i);
   });
 
-  it('carries the computed lines and total into the request sheet', () => {
+  it('prints the lodging actually paid, and says finance computes the amount', () => {
     const model = tlaPacketModel(form());
     expect(model.lines).toHaveLength(1);
-    expect(model.lines[0].daily).toBe(215);
-    expect(model.totalText).toBe('$1,075.00');
+    expect(model.lines[0].dailyLodging).toBe(150);
+    expect(model.lodgingTotalText).toBe('$750.00');
     expect(model.totalDays).toBe(5);
+    expect(model.lodgingNote).toMatch(/finance/i);
+    expect(model.lodgingNote).toMatch(/per diem/i);
+  });
+
+  it('prints no rate, ceiling, percentage or computed TLA anywhere', () => {
+    const printed = JSON.stringify(tlaPacketModel(form({ tlaRequestKind: 'additional', tlaAdditionalReason: 'hhg' })));
+    expect(printed).not.toMatch(/lodgingCeiling|lodgingPct|miePct|totalText|perDiem/);
+    expect(printed).not.toMatch(/Table 68-11/);
   });
 
   it('prints an entered zero GTCC split as zero with the duty it carries', () => {
@@ -91,19 +97,20 @@ describe('tlaPacketModel', () => {
     expect(tlaPacketModel(form()).additional).toBeNull();
     const model = tlaPacketModel(form({
       tlaRequestKind: 'additional', tlaAdditionalReason: 'hhg', tlaAdditionalNarrative: 'Shipment delayed at port.',
-      tlaDailyHousingAllowance: '95.50',
+      tlaDailyTla: '215', tlaDailyHousingAllowance: '95.50',
     }));
     expect(model.additional?.reason).toMatch(/household goods/i);
     expect(model.additional?.narrative).toBe('Shipment delayed at port.');
     expect(model.additional?.housingAllowance).toBe('$95.50');
-    // The daily TLA comes from the computation, not from a second entry.
     expect(model.additional?.dailyTla).toBe('$215.00');
   });
 
-  it('shows the daily TLA most days are paid at, not an unreduced last day', () => {
-    const model = tlaPacketModel(form({ tlaRequestKind: 'additional', tlaPeriods: [period({ kitchen: true })] }));
-    // First and last day: 150 + 65. The three days between: 150 + 32.50.
-    expect(model.additional?.dailyTla).toBe('$182.50');
+  it('shows the lodging expense most days carry on an additional request', () => {
+    const model = tlaPacketModel(form({
+      tlaRequestKind: 'additional',
+      tlaPeriods: [period({ endDate: '2026-11-01', dailyLodgingCost: '300' }), period({ startDate: '2026-11-02', endDate: '2026-11-10', dailyLodgingCost: '180' })],
+    }));
+    expect(model.additional?.dailyLodging).toBe('$180.00');
   });
 
   it('routes a departure claim to the departing disbursing or finance office', () => {
@@ -119,13 +126,12 @@ describe('tlaPacketModel', () => {
     expect(tlaPacketModel(form()).checklist.join(' ')).toMatch(/Itemized lodging receipts for every/i);
   });
 
-  it('prints dates the way the rest of the app does', () => {
-    expect(tlaPacketModel(form()).lines[0].dateText).toBe('1 Nov 26 - 5 Nov 26');
+  it('is the request itself, so it never sends the drafter to a local form', () => {
+    expect(tlaPacketModel(form()).checklist.join(' ')).not.toMatch(/local TLA request form/i);
   });
 
-  it('names the local guidance and says it governs local procedure', () => {
-    const model = tlaPacketModel(form({ tlaAuthorityGuidance: 'Base Order 7220.1' }));
-    expect(model.guidance).toBe('Base Order 7220.1');
+  it('prints dates the way the rest of the app does', () => {
+    expect(tlaPacketModel(form()).lines[0].dateText).toBe('1 Nov 26 - 5 Nov 26');
   });
 });
 
@@ -135,7 +141,7 @@ describe('generateTlaPacket', () => {
   });
 
   it('keeps a full additional-period request on one sheet, with no page left holding only a note', async () => {
-    const family = { dependents12Plus: '2', dependentsUnder12: '2', kitchen: true };
+    const family = { dependents12Plus: '2', dependentsUnder12: '2', kitchen: true, lodgingName: 'Example Suites, Chatan' };
     const count = await pages(form({
       tlaRequestKind: 'additional',
       tlaAdditionalReason: 'hhg',
@@ -166,7 +172,10 @@ describe('generateTlaPacket', () => {
   });
 
   it('survives text the standard font cannot encode', async () => {
-    expect(await pages(form({ tlaMarineLastName: 'Núñez 日本', tlaLodgingNote: 'Hotel “Okinawa” — 沖縄' }))).toBeGreaterThan(0);
+    expect(await pages(form({
+      tlaMarineLastName: 'Núñez 日本',
+      tlaPeriods: [period({ lodgingName: 'Hotel “Okinawa” — 沖縄' })],
+    }))).toBeGreaterThan(0);
   });
 
   it('runs through the app pipeline to a PDF blob', async () => {
@@ -187,8 +196,10 @@ describe('the document type in the app', () => {
   });
 
   it('accepts its own fields through the schema, keeping the periods', () => {
-    const parsed = DOCUMENT_TYPES['tla-packet'].schema.parse(form());
-    expect((parsed as Record<string, unknown>).tlaPeriods).toHaveLength(1);
+    const parsed = DOCUMENT_TYPES['tla-packet'].schema.parse(form({ tlaPeriods: [period({ lodgingName: 'Example Inn' })] }));
+    const periods = (parsed as unknown as { tlaPeriods: TlaPeriod[] }).tlaPeriods;
+    expect(periods).toHaveLength(1);
+    expect(periods[0].lodgingName).toBe('Example Inn');
   });
 
   it('is offered in the Forms group of the sidebar', () => {

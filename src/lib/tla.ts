@@ -1,20 +1,20 @@
 /**
- * TLA Packet: the rules behind the Temporary Lodging Allowance claim.
+ * TLA Packet: what a proper Temporary Lodging Allowance request must state.
  *
- * AUTHORITIES. DoD FMR Vol 7A Ch 68 sets the entitlement and the
- * computation (section 4 conditions, section 6 and Table 68-11). JTR no
- * longer holds TLA and points there. FPM Vol 1 para 0703 is the Marine
- * Corps claim process, MARADMIN 373/20 the GTCC split. The FPM is marked
- * DoD Community Only and this repository is public: cite it by paragraph
- * and paraphrase it, never quote it, and leave its transaction codes out.
+ * AUTHORITIES. DoD FMR Vol 7A Ch 68 sets the entitlement and its conditions
+ * (section 4). JTR no longer holds TLA and points there. FPM Vol 1 para 0703
+ * is the Marine Corps claim process, MARADMIN 373/20 the GTCC split. The FPM
+ * is marked DoD Community Only and this repository is public: cite it by
+ * paragraph and paraphrase it, never quote it, and leave its transaction
+ * codes out.
  *
- * WHAT THIS IS NOT. Payment runs on the command's NAVMC 11116, and the
- * disbursing or finance office's computation governs. The TLA Authority's
- * written guidance sets local procedure, so nothing here blocks an export:
+ * FACTS ONLY, NO RATES. The per diem follows from the location and dates, and
+ * the disbursing or finance office holds the rates and computes the amount
+ * (owner decision, 4 Nov 26). So this module takes no rate, computes no
+ * ceiling, M&IE or TLA, and adds up only the lodging the Marine actually paid.
+ *
+ * Payment runs on the command's NAVMC 11116. Nothing here blocks an export:
  * the checks are advisories with their authority beside them.
- *
- * Rates are typed in, never stored. Per diem changes, and DTMO publishes
- * the current percentages (Table 68-11 note 1).
  */
 import type { FormData } from '@/types';
 import type { ValidationIssue } from '@/lib/letter-validators';
@@ -65,12 +65,11 @@ export const TLA_EARLY_TERMINATION_REASONS: readonly { value: string; label: str
 export interface TlaPeriod {
   startDate: string;
   endDate: string;
+  /** Where the Marine lodged. The location can change which per diem finance applies. */
+  lodgingName: string;
   memberOccupying: boolean;
   dependents12Plus: string;
   dependentsUnder12: string;
-  /** The locality per diem, split as DTMO publishes it. */
-  perDiemLodging: string;
-  perDiemMie: string;
   dailyLodgingCost: string;
   /** Lodging tax, VAT relief certificate cost and GTCC currency fees, per day. */
   dailyFees: string;
@@ -90,11 +89,10 @@ export function emptyTlaPeriod(): TlaPeriod {
   return {
     startDate: '',
     endDate: '',
+    lodgingName: '',
     memberOccupying: true,
     dependents12Plus: '',
     dependentsUnder12: '',
-    perDiemLodging: '',
-    perDiemMie: '',
     dailyLodgingCost: '',
     dailyFees: '',
     lodgingKind: 'commercial',
@@ -154,194 +152,92 @@ function dayNumber(iso: string): number | null {
   return Math.round(ms / DAY_MS);
 }
 
-function isoFromDay(day: number): string {
-  return new Date(day * DAY_MS).toISOString().slice(0, 10);
-}
-
-/** Clears binary noise only. The FMR computes "without rounding". */
+/** Clears binary noise from a sum of typed amounts. */
 function exact(n: number): number {
-  return Math.round(n * 1_000_000) / 1_000_000;
+  return Math.round(n * 100) / 100;
 }
 
-/** Whole dollars and cents, for totals. */
 export function tlaMoneyText(n: number): string {
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-/** A daily rate: at least two decimals, more only when the rate has them. */
-export function tlaRateText(n: number): string {
-  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`;
-}
+// --- the facts, added up ---
 
-// --- Table 68-11 ---
-
-export interface TlaOccupants {
-  member: boolean;
-  dependents12Plus: number;
-  dependentsUnder12: number;
-  /** Two Service members married to each other, lodging together. */
-  memberCoupleTogether?: boolean;
-}
-
-/**
- * Table 68-11 and para 6.2.3.1.7. One person: 100 lodging, 65 M&IE. The
- * first two persons share 100. Each further dependent adds 35, or 25
- * under age 12. Without a spouse the oldest dependent is in the first
- * two, so dependents 12 and older are consumed first.
- */
-export function tlaPercentages(o: TlaOccupants): { lodging: number; mie: number } {
-  const persons = (o.member ? 1 : 0) + o.dependents12Plus + o.dependentsUnder12;
-  if (persons === 0) return { lodging: 0, mie: 0 };
-  if (persons === 1) {
-    return o.member && o.memberCoupleTogether ? { lodging: 65, mie: 65 } : { lodging: 100, mie: 65 };
-  }
-  const inFirstTwo = o.member ? 1 : 2;
-  const olderInFirstTwo = Math.min(inFirstTwo, o.dependents12Plus);
-  const youngerInFirstTwo = inFirstTwo - olderInFirstTwo;
-  const pct = 100 + (o.dependents12Plus - olderInFirstTwo) * 35 + (o.dependentsUnder12 - youngerInFirstTwo) * 25;
-  return { lodging: pct, mie: pct };
-}
-
-// --- the computation ---
-
-/** One run of days at one daily rate (FPM Vol 1 para 070301.G: one entry per rate). */
+/** One lodging period as the request states it. */
 export interface TlaLine {
   /** 1-based period this line came from. */
   period: number;
   startDate: string;
   endDate: string;
   days: number;
+  lodgingName: string;
+  lodgingKind: TlaLodgingKind;
+  kitchen: boolean;
   occupants: string;
-  lodgingPct: number;
-  miePct: number;
-  lodgingCeiling: number;
-  lodgingActual: number;
-  lodgingPayable: number;
-  mie: number;
-  daily: number;
-  total: number;
+  /** Lodging, tax and fees paid per day. Zero when no lodging is claimed. */
+  dailyLodging: number;
+  extraRoomCharge: number;
+  lodgingTotal: number;
   notes: string[];
 }
 
-export interface TlaComputation {
+export interface TlaSummary {
   lines: TlaLine[];
-  total: number;
+  lodgingTotal: number;
   totalDays: number;
-  /** 1-based periods left out because dates or rates are missing. */
+  /** 1-based periods left out because their dates are missing or reversed. */
   incompletePeriods: number[];
 }
 
-function occupantsText(o: TlaOccupants): string {
+function occupantsText(p: TlaPeriod): string {
   const parts: string[] = [];
-  if (o.member) parts.push('Marine');
-  if (o.dependents12Plus) parts.push(`${o.dependents12Plus} dep 12+`);
-  if (o.dependentsUnder12) parts.push(`${o.dependentsUnder12} under 12`);
+  if (p.memberOccupying) parts.push('Marine');
+  const older = count(p.dependents12Plus);
+  const younger = count(p.dependentsUnder12);
+  if (older) parts.push(`${older} dep 12+`);
+  if (younger) parts.push(`${younger} under 12`);
   return parts.join(', ') || 'None';
 }
 
-export function computeTla(formData: FormData): TlaComputation {
-  const periods = tlaPeriods(formData);
+export function summarizeTla(formData: FormData): TlaSummary {
   const incompletePeriods: number[] = [];
-  const usable: { p: TlaPeriod; index: number; first: number; last: number }[] = [];
+  const lines: TlaLine[] = [];
 
-  periods.forEach((p, index) => {
+  tlaPeriods(formData).forEach((p, index) => {
     const first = dayNumber(p.startDate);
     const last = dayNumber(p.endDate);
-    const rates = parseTlaMoney(p.perDiemLodging) !== null || parseTlaMoney(p.perDiemMie) !== null;
-    if (first === null || last === null || last < first || !rates) {
+    if (first === null || last === null || last < first) {
       incompletePeriods.push(index + 1);
       return;
     }
-    usable.push({ p, index, first, last });
+    const days = last - first + 1;
+    const claimsLodging = p.coverage !== 'mie-only';
+    const dailyLodging = claimsLodging
+      ? exact((parseTlaMoney(p.dailyLodgingCost) ?? 0) + (parseTlaMoney(p.dailyFees) ?? 0))
+      : 0;
+    const extraRoomCharge = claimsLodging ? parseTlaMoney(p.extraRoomCharge) ?? 0 : 0;
+    const notes: string[] = [];
+    if (p.coverage === 'lodging-only') notes.push('Lodging only');
+    if (p.coverage === 'mie-only') notes.push('M&IE only');
+    lines.push({
+      period: index + 1,
+      startDate: p.startDate,
+      endDate: p.endDate,
+      days,
+      lodgingName: p.lodgingName,
+      lodgingKind: p.lodgingKind,
+      kitchen: p.kitchen,
+      occupants: occupantsText(p),
+      dailyLodging,
+      extraRoomCharge,
+      lodgingTotal: exact(dailyLodging * days + extraRoomCharge),
+      notes,
+    });
   });
-
-  const claimFirst = usable.length ? Math.min(...usable.map((u) => u.first)) : 0;
-  const claimLast = usable.length ? Math.max(...usable.map((u) => u.last)) : 0;
-  // A claim holds the first and last day of TLA unless the user says it
-  // is a middle claim. Para 6.3.4.1 keeps full M&IE on those two days.
-  const hasFirst = (formData as Record<string, unknown>).tlaClaimHasFirstDay !== false;
-  const hasLast = (formData as Record<string, unknown>).tlaClaimHasLastDay !== false;
-  const couple = tlaFlag(formData, 'tlaMemberCoupleTogether');
-
-  const lines: TlaLine[] = [];
-  for (const { p, index, first, last } of usable) {
-    const occupants: TlaOccupants = {
-      member: p.memberOccupying,
-      dependents12Plus: count(p.dependents12Plus),
-      dependentsUnder12: count(p.dependentsUnder12),
-      memberCoupleTogether: couple,
-    };
-    const pct = tlaPercentages(occupants);
-    const perDiemLodging = parseTlaMoney(p.perDiemLodging) ?? 0;
-    const perDiemMie = parseTlaMoney(p.perDiemMie) ?? 0;
-    const cost = (parseTlaMoney(p.dailyLodgingCost) ?? 0) + (parseTlaMoney(p.dailyFees) ?? 0);
-    const extra = parseTlaMoney(p.extraRoomCharge) ?? 0;
-    const paysLodging = p.coverage !== 'mie-only';
-    const paysMie = p.coverage !== 'lodging-only';
-
-    for (let day = first; day <= last; day++) {
-      const isExtraDay = extra > 0 && day === first;
-      const commercialExtra = isExtraDay && p.lodgingKind === 'commercial';
-      const lodgingPct = commercialExtra ? pct.lodging * 1.5 : pct.lodging;
-      const lodgingCeiling = exact((perDiemLodging * lodgingPct) / 100);
-      // Para 6.1.2: a commercial extra charge is tested against 1.5 times
-      // the ceiling. Para 6.3.1: under Government jurisdiction it is added
-      // to the day's TLA, on top of the standard computation.
-      const lodgingActual = exact(commercialExtra ? cost + extra : cost);
-      let lodgingPayable = paysLodging ? Math.min(lodgingActual, lodgingCeiling) : 0;
-      if (isExtraDay && !commercialExtra && paysLodging) lodgingPayable += extra;
-      lodgingPayable = exact(lodgingPayable);
-
-      const firstOrLast = (hasFirst && day === claimFirst) || (hasLast && day === claimLast);
-      // Para 6.3.4.1: the kitchen halves M&IE, except the first and last
-      // day and except when a friend or relative provides the lodging.
-      const halved = p.kitchen && paysLodging && !firstOrLast;
-      const fullMie = (perDiemMie * pct.mie) / 100;
-      const mie = paysMie ? exact(halved ? fullMie / 2 : fullMie) : 0;
-      const daily = exact(lodgingPayable + mie);
-
-      const notes: string[] = [];
-      if (halved && paysMie) notes.push('M&IE halved, kitchen');
-      if (isExtraDay) notes.push(commercialExtra ? 'Extra room charge, 1.5 ceiling' : 'Extra room charge added');
-      if (!paysLodging) notes.push('M&IE only');
-      if (!paysMie) notes.push('Lodging only');
-
-      const prior = lines[lines.length - 1];
-      const same = prior
-        && prior.period === index + 1
-        && prior.daily === daily
-        && prior.lodgingPayable === lodgingPayable
-        && prior.mie === mie
-        && prior.lodgingCeiling === lodgingCeiling
-        && prior.notes.join() === notes.join();
-      if (same) {
-        prior.endDate = isoFromDay(day);
-        prior.days += 1;
-        prior.total = exact(prior.total + daily);
-      } else {
-        lines.push({
-          period: index + 1,
-          startDate: isoFromDay(day),
-          endDate: isoFromDay(day),
-          days: 1,
-          occupants: occupantsText(occupants),
-          lodgingPct,
-          miePct: paysMie ? pct.mie : 0,
-          lodgingCeiling,
-          lodgingActual: paysLodging ? lodgingActual : 0,
-          lodgingPayable,
-          mie,
-          daily,
-          total: daily,
-          notes,
-        });
-      }
-    }
-  }
 
   return {
     lines,
-    total: exact(lines.reduce((sum, l) => sum + l.total, 0)),
+    lodgingTotal: exact(lines.reduce((sum, l) => sum + l.lodgingTotal, 0)),
     totalDays: lines.reduce((sum, l) => sum + l.days, 0),
     incompletePeriods,
   };
@@ -367,13 +263,19 @@ export function tlaAdvisories(formData: FormData): TlaAdvisory[] {
 
   const situation = tlaField(formData, 'tlaSituation');
   const kind = tlaRequestKind(formData);
-  const computed = computeTla(formData);
+  const summary = summarizeTla(formData);
   const periods = tlaPeriods(formData);
-  const days = computed.totalDays;
+  const days = summary.totalDays;
   const prior = count(tlaField(formData, 'tlaPriorDays'));
 
-  if (computed.incompletePeriods.length) {
-    add('period-incomplete', `Period ${computed.incompletePeriods.join(', ')} is left out of the total until it has valid dates and a locality rate.`, `${FMR} para 6.2.3`);
+  if (summary.incompletePeriods.length) {
+    add('period-incomplete', `Period ${summary.incompletePeriods.join(', ')} is left out of the totals until it has valid dates.`, `${FMR} para 4.2.3.3`);
+  }
+  if (days > 0 && !situation) {
+    add('situation-missing', 'Pick the situation. It decides which limits and conditions apply.', `${FMR} para 4.3.1`, 'tlaSituation');
+  }
+  if (summary.lines.some((l) => periods[l.period - 1].coverage !== 'mie-only' && parseTlaMoney(periods[l.period - 1].dailyLodgingCost) === null)) {
+    add('lodging-cost-missing', 'Enter the daily lodging cost for each period that claims lodging.', `${FMR} para 6.2.3.2`);
   }
 
   // --- periods and limits
@@ -393,8 +295,8 @@ export function tlaAdvisories(formData: FormData): TlaAdvisory[] {
     add('advance-over-15', 'An advance may not exceed 15 days of TLA.', 'FPM Vol 1 para 070303');
   }
 
-  const firstDay = computed.lines.length ? Math.min(...computed.lines.map((l) => dayNumber(l.startDate)!)) : null;
-  const lastDay = computed.lines.length ? Math.max(...computed.lines.map((l) => dayNumber(l.endDate)!)) : null;
+  const firstDay = summary.lines.length ? Math.min(...summary.lines.map((l) => dayNumber(l.startDate)!)) : null;
+  const lastDay = summary.lines.length ? Math.max(...summary.lines.map((l) => dayNumber(l.endDate)!)) : null;
 
   const departure = dayNumber(tlaField(formData, 'tlaDepartureDate'));
   if (situation === 'departure' && departure !== null && firstDay !== null && departure - firstDay > 10 && !tlaFlag(formData, 'tlaCertEarlyTermination')) {
@@ -407,24 +309,18 @@ export function tlaAdvisories(formData: FormData): TlaAdvisory[] {
   }
 
   if (days >= 30) {
-    add('computation-too-long', `This computation holds ${days} days. TLA is computed in 15-day increments, and only a final period under 30 days may be one payment. Split this claim.`, `${FMR} para 6.2.1`);
+    add('computation-too-long', `This claim holds ${days} days. TLA is computed in 15-day increments, and only a final period under 30 days may be one payment. Split this claim.`, `${FMR} para 6.2.1`);
   } else if (days > 15) {
-    add('computation-period', `This computation holds ${days} days. TLA is computed in 15-day increments; a final period of 16 to 29 days may be one payment.`, `${FMR} para 6.2.1`);
+    add('computation-period', `This claim holds ${days} days. TLA is computed in 15-day increments; a final period of 16 to 29 days may be one payment.`, `${FMR} para 6.2.1`);
   }
 
   // --- what the claim must carry
-  const claimsLodging = computed.lines.some((l) => l.lodgingPayable > 0);
-  if (kind !== 'advance' && claimsLodging && !tlaFlag(formData, 'tlaReceiptsAttached')) {
+  if (kind !== 'advance' && summary.lodgingTotal > 0 && !tlaFlag(formData, 'tlaReceiptsAttached')) {
     add('receipts', 'Itemized lodging receipts, invoices or vendor statements are required to verify lodging.', `${FMR} para 4.2.3.7, 6.2.3.2.1`, 'tlaReceiptsAttached');
   }
 
-  const split = tlaField(formData, 'tlaGtccSplit').trim();
-  const splitAmount = parseTlaMoney(split);
-  if (kind !== 'advance' && computed.total > 0 && splitAmount === null) {
+  if (kind !== 'advance' && days > 0 && parseTlaMoney(tlaField(formData, 'tlaGtccSplit')) === null) {
     add('gtcc-split-missing', 'Enter the amount to split to the GTCC, even if it is zero. With no amount, finance reviews the card balance and splits that instead.', 'MARADMIN 373/20 para 3.g, 3.h', 'tlaGtccSplit');
-  }
-  if (splitAmount !== null && computed.total > 0 && splitAmount > computed.total) {
-    add('gtcc-split-over-total', `The split is more than the ${tlaMoneyText(computed.total)} computed. No more than the TLA credit goes to the card.`, 'FPM Vol 1 para 070301.H', 'tlaGtccSplit');
   }
 
   if (tlaFlag(formData, 'tlaHousingOverlap') && !tlaField(formData, 'tlaOverlapComment').trim()) {
@@ -446,7 +342,7 @@ export function tlaAdvisories(formData: FormData): TlaAdvisory[] {
     const first = dayNumber(p.startDate);
     const last = dayNumber(p.endDate);
     if ((parseTlaMoney(p.extraRoomCharge) ?? 0) > 0 && first !== null && last !== null && last > first) {
-      add('extra-charge-period', `Period ${i + 1} has an extra room charge across more than one day. It counts on the first day only, so give that day its own period.`, `${FMR} para 6.1.2`);
+      add('extra-charge-period', `Period ${i + 1} has an extra room charge across more than one day. Give that day its own period so finance can see which day it was.`, `${FMR} para 6.1.2`);
     }
   });
   const spans = periods
