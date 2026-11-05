@@ -5,7 +5,6 @@ import { Navmc11811Data } from '@/types/navmc';
 import { mergeAdminSubsections } from '@/lib/naval-format-utils';
 import type { Navmc10132ExportReport } from '@/lib/navmc10132-export';
 
-import { refLetterAt, startingEnclosureNumberFor, startingRefLetterFor } from '@/lib/reference-letters';
 import { aaFieldValues } from '@/lib/navmc10274-layout';
 // Generators are imported dynamically inside each pipeline so the PDF
 // engines (@react-pdf/renderer, pdf-lib, the seal data) stay out of the

@@ -39,6 +39,20 @@ updates:
       - dependency-name: "*"
         update-types: [version-update:semver-major]
 
+  # The Go host. Dependabot opened only security PRs here until this entry.
+  - package-ecosystem: gomod
+    directory: /host
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

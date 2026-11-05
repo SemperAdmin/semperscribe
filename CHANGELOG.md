@@ -7,6 +7,17 @@ matching GitHub release with this file's section as the notes.
 
 ## [Unreleased]
 
+### Security
+
+- CI now builds, vets and vulnerability-scans the Go host in `host/`, for Linux and Windows, and CodeQL and Dependabot cover it. Until now no check looked at it.
+- The Go host moves to Go 1.26.10, `golang.org/x/net` 0.55.0 and `golang.org/x/text` 0.39.0. The first `govulncheck` runs found 26 reachable standard library vulnerabilities on Go 1.24 and one reachable `x/text` vulnerability in the Windows build.
+- The production `npm audit` gate fails on moderate advisories, not only high.
+- `minimatch` under `@typescript-eslint/typescript-estree` is overridden for GHSA-g3hv-75wg-m249. Dev tooling only.
+
+### Fixed
+
+- `.gitattributes` keeps text files LF in every checkout. Windows checkouts converted them to CRLF and failed the template and PDF worker tests that compare exact content.
+
 ### Changed
 
 - TLA Packet: the request now states facts only. The per diem rates, the computed ceiling, M&IE and TLA, the first and last day checks, the written guidance field and the mention of a local form are gone, and each lodging period names its own location. The packet is the request, and finance sets the per diem from the location and dates and computes the amount.
