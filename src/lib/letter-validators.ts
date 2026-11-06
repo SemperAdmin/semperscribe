@@ -14,6 +14,7 @@ import { validateAcronyms, ACRONYM_STOPLIST, expansionIndexFor } from '@/lib/acr
 import type { DictionaryEntry } from '@/lib/military-dictionary';
 import { runNavmc10922Validators } from '@/lib/navmc10922-validators';
 import { runNavmc10132Validators } from '@/lib/navmc10132-validators';
+import { runNavmc11106Validators } from '@/lib/navmc11106-validators';
 import { runDd368Validators } from '@/lib/dd368-validators';
 import { runCounselingValidators } from '@/lib/counseling';
 import { runTlaValidators } from '@/lib/tla';
@@ -1121,6 +1122,9 @@ export function runLetterValidators(
     // NAVMC 10132 unit punishment book rules - likewise a no-op for every
     // other documentType (docs/NAVMC_10132_SPEC.md section 6).
     ...runNavmc10132Validators(formData),
+    // NAVMC 11106 COLA application rules, a no-op for every other
+    // documentType (docs/NAVMC_11106_SPEC.md section 10).
+    ...runNavmc11106Validators(formData),
     // DD Form 368 rules, a no-op for every other documentType.
     ...runDd368Validators(formData),
     // Counseling Worksheet: suggestions only, every one a warning, a
