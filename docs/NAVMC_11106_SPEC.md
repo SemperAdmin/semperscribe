@@ -318,20 +318,22 @@ Names in generated lines use the row's name as entered.
 | `core-fields` | block | Name, grade, or duty station missing, or EDIPI not 10 digits | Form Part B |
 | `row-incomplete` | fail | A counted row lacks a name, relationship, or date. The spouse row's relationship defaults to SPOUSE, so it is exempt | Form Part C |
 | `basis-missing` | fail | A filled row has no sponsorship basis | MCO Ch 6 par 5 |
-| `sponsored-date-missing` | fail | A dated basis has no `sponsoredOn` | Section 3.3 |
+| `sponsored-date-missing` | fail | A dated basis has no `sponsoredOn` | MCO 1300.8 Ch 6 par 4-6 |
 | `not-sponsored-excluded` | warn | A `not-sponsored` row exists; it will not print | Ch 68 3.6 |
 | `reduced-rate` | warn | `not-sponsored` row exists and quarters are available; reduced rate only | Table 68-4 rule 13 |
 | `active-duty-spouse-excluded` | warn | `active-duty-spouse` row exists; see the joint-household rule | Table 68-5 |
 | `barracks-no-form` | warn | Box 1, quarters available, mess is available; this is barracks COLA and needs no application | PRIUM 80102 par 3; Table 68-4 rule 11 |
 | `dep-only-no-location` | fail | Box 3 with no C8 location | PRIUM 80102 Note 2 |
 | `member-dep-with-location` | warn | Box 2 with a C8 location; dependents elsewhere usually mean box 3 | PRIUM 80102 par 3.a(1)(c) |
+| `designated-place-box-2` | warn | Box 2 with a counted `designated-place` row; dependents paid at their own location usually mean a dependents-only application | PRIUM 80102 par 3.a(1)(c); Ch 68 par 2.2.2 |
 | `c10-before-travel` | warn | C10 is after C9 on an `installation-approval` row | JTR 050803 |
-| `effective-date-differs` | warn | D3 differs from the suggestion | Section 9.1 |
+| `effective-date-differs` | warn | D3 differs from the suggestion | Ch 68 par 2.1.5, 2.3.4, 3.2.1, 3.3 |
 | `effective-date-future` | warn | D3 is in the future; TTC 014 will reject it | PRIUM 80102 par 12.h |
 | `mess-ignored-with-deps` | warn | Box 2 with D2B set; mess availability does not affect with-dependent COLA | Ch 68 3.3 |
 | `impractical-needs-statement` | warn | D2B set to Impractical; Remarks should carry the mission or operational basis | Table 68-4 rule 3, note 1 |
 | `remarks-too-long` | fail | User text plus generated lines exceed 720 | Form field |
-| `field-too-long` | fail | Name over 25 or relationship over 20 on a row | Form field |
+| `field-too-long` | fail | A printed entry is over its limit: B1 70, B2 20, B5 130, C8 70, CO name 65, and on each counted row name 25 and relationship 20. One helper, `navmc11106FieldProblems`, serves this rule and the export | Form field |
+| `field-unprintable` | fail | A printed entry (Remarks included) has a character outside Windows-1252, which the form font cannot print. Newlines are allowed in Remarks and B5 | NAVMC 11106 form font |
 
 Only `core-fields` blocks export. The severity contract is the one in `letter-validators.ts`.
 
@@ -353,6 +355,13 @@ and MCAAT applied it in 2025 (AskMCAAT 21-25).
   addition, tested on its own. The module's stated purpose is reuse by later forms.
 - A failed fill throws on export. The live preview runs on a timer, so it degrades to a notice page
   as the 10132's does.
+- The export pre-checks printable text and limits with `navmc11106FieldProblems`. A character the form
+  font cannot print (for example NGUYỄN, ŁUKASZ, 沖縄市) would otherwise throw an encoder error inside
+  the fill, so the export refuses, names the block, and asks for the Latin spelling. Nothing is
+  substituted or transliterated. MUÑOZ and O’BRIEN print.
+- Enclosure rows and `signatureFields` survive a document-type switch while this form's editors are
+  hidden. Both passes are skipped for `navmc11106` only, in export and in the live preview, so no
+  counseling PDF or stray signature field rides onto the form.
 - Filename: `NAVMC 11106 - <name>.pdf`.
 
 ## 12. Registration points

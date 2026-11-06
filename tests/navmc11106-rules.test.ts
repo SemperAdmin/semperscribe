@@ -6,6 +6,7 @@ import {
   combinedRemarks,
   countedDependents,
   generatedRemarks,
+  navmc11106FieldProblems,
   navmc11106Values,
   partAValue,
   suggestedEffectiveDate,
@@ -176,5 +177,85 @@ describe('field values', () => {
   it('caps Remarks at the form limit so the fill cannot fail on length', () => {
     const values = navmc11106Values(form({ navmc11106Remarks: 'X'.repeat(900) }));
     expect(values[`${P}RemrkD3[0]`]).toHaveLength(720);
+  });
+});
+
+describe('navmc11106FieldProblems', () => {
+  const problems = (over: Record<string, unknown> = {}) => navmc11106FieldProblems(form(over));
+
+  it('finds nothing in an ordinary form', () => {
+    expect(problems({ nameOfMarine: 'MUÑOZ, JOSE', dutyStation: 'CAMP FOSTER, OKINAWA, JAPAN' })).toEqual([]);
+  });
+
+  it('accepts what Windows-1252 prints, including curly quotes and accents', () => {
+    expect(problems({ nameOfMarine: 'O’BRIEN, SEÁN', navmc11106Remarks: 'LINE ONE\nLINE TWO “QUOTED” – DASH' })).toEqual([]);
+  });
+
+  it.each([
+    ['NGUYỄN, AN', 'B1 Name', 'Ễ'],
+    ['ŁUKASZ, K', 'B1 Name', 'Ł'],
+    ['沖縄市', 'B1 Name', '沖'],
+  ])('flags %s as unprintable', (name, block, ch) => {
+    const found = problems({ nameOfMarine: name });
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ block, problem: 'unprintable' });
+    expect(found[0].detail).toContain(ch);
+  });
+
+  it('flags a limit overrun with the block named', () => {
+    expect(problems({ grade: 'G'.repeat(21) })[0]).toMatchObject({ block: 'B2 Grade', problem: 'too-long' });
+    expect(problems({ nameOfMarine: 'N'.repeat(71) })[0]).toMatchObject({ block: 'B1 Name', problem: 'too-long' });
+    expect(problems({ dutyStation: 'D'.repeat(131) })[0]).toMatchObject({ block: 'B5 Duty Station', problem: 'too-long' });
+    expect(problems({ dependentLocation: 'L'.repeat(71) })[0]).toMatchObject({ block: "C8 Dependent's Location", problem: 'too-long' });
+    expect(problems({ coNameGradeActivity: 'C'.repeat(66) })[0]).toMatchObject({ block: 'CO Name, Grade, Activity', problem: 'too-long' });
+  });
+
+  it('checks counted spouse and dependent rows, and ignores uncounted ones', () => {
+    const counted = child({ name: 'N'.repeat(26), relationship: 'R'.repeat(21) });
+    const found = problems({ navmc11106Dependents: [counted] });
+    expect(found.map((f) => f.block)).toEqual(['C2A Name', 'C2B Relationship']);
+    const spouse = row({ name: 'ŁUKASZ', eventDate: '2019-05-04', sponsorshipBasis: 'installation-approval', sponsoredOn: '2026-04-01' });
+    expect(problems({ navmc11106Spouse: spouse })[0]).toMatchObject({ block: 'C1A Name', problem: 'unprintable' });
+    const uncounted = child({ name: 'ŁUKASZ', sponsorshipBasis: 'not-sponsored' });
+    expect(problems({ navmc11106Dependents: [uncounted] })).toEqual([]);
+  });
+
+  it('checks the printed Remarks for unprintable text only', () => {
+    expect(problems({ navmc11106Remarks: 'SEE 沖縄' })[0]).toMatchObject({ block: 'Remarks', problem: 'unprintable' });
+    expect(problems({ navmc11106Remarks: 'X'.repeat(800) })).toEqual([]);
+  });
+
+  it('agrees with pdf-lib about which characters Windows-1252 can print', async () => {
+    const { PDFDocument, StandardFonts } = await import('pdf-lib');
+    const font = await (await PDFDocument.create()).embedFont(StandardFonts.Helvetica);
+    const disagreements: string[] = [];
+    for (let cp = 0x00; cp < 0x3000; cp += 1) {
+      if (cp === 0x0a || cp === 0x0d) continue;
+      const ch = String.fromCodePoint(cp);
+      let encodable = true;
+      try { font.encodeText(ch); } catch { encodable = false; }
+      const flagged = problems({ nameOfMarine: ch }).length > 0;
+      if (flagged === encodable) disagreements.push(`U+${cp.toString(16)}`);
+    }
+    expect(disagreements).toEqual([]);
+  });
+
+  it('really lets pdf-lib fill the names it accepts and throw on those it flags', async () => {
+    const { PDFDocument } = await import('pdf-lib');
+    const fill = async (text: string) => {
+      const pdf = await PDFDocument.create();
+      const page = pdf.addPage();
+      const tf = pdf.getForm().createTextField('t');
+      tf.enableMultiline();
+      tf.addToPage(page, { x: 10, y: 10, width: 200, height: 60 });
+      tf.setText(text);
+      pdf.getForm().updateFieldAppearances();
+    };
+    for (const ok of ['MUÑOZ, JOSE', 'O’BRIEN, SEÁN', 'LINE ONE\nLINE TWO']) {
+      await expect(fill(ok)).resolves.toBeUndefined();
+    }
+    for (const bad of ['NGUYỄN', 'ŁUKASZ', '沖縄市']) {
+      await expect(fill(bad)).rejects.toThrow(/WinAnsi/);
+    }
   });
 });

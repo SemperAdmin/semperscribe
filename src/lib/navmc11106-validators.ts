@@ -12,15 +12,14 @@ import {
   countedDependents,
   countedSpouse,
   dependentRows,
+  NAVMC_11106_LIMITS,
   effectiveSponsoredOn,
+  navmc11106FieldProblems,
   partAValue,
   rowHasContent,
   spouseRow,
   suggestedEffectiveDate,
 } from '@/lib/navmc11106-rules';
-
-const NAME_LIMIT = 25;
-const RELATIONSHIP_LIMIT = 20;
 
 const issue = (
   slug: string,
@@ -66,7 +65,7 @@ export function runNavmc11106Validators(data: FormData, now: Date = new Date()):
     out.push(issue('basis-missing', 'fail', 'A dependent has no sponsorship basis', 'MCO 1300.8 Ch 6 par 5', 'Choose how each dependent came to be command sponsored, or mark the row as not sponsored.'));
   }
   if (counted.some((r) => r.sponsorshipBasis !== '' && NAVMC_11106_BASIS_INFO[r.sponsorshipBasis].dated && !effectiveSponsoredOn(r))) {
-    out.push(issue('sponsored-date-missing', 'fail', 'A sponsorship date is missing', 'docs/NAVMC_11106_SPEC.md section 3.3', 'The basis chosen for this dependent needs a date.'));
+    out.push(issue('sponsored-date-missing', 'fail', 'A sponsorship date is missing', 'MCO 1300.8 Ch 6 par 4-6', 'The basis chosen for this dependent needs a date.'));
   }
 
   const hasNotSponsored = allFilled.some((r) => r.sponsorshipBasis === 'not-sponsored');
@@ -91,6 +90,10 @@ export function runNavmc11106Validators(data: FormData, now: Date = new Date()):
     out.push(issue('member-dep-with-location', 'warn', 'Dependents listed at another location', 'PRIUM 80102 par 3.a(1)(c)', 'Dependents away from the PDS usually mean a dependents-only application.'));
   }
 
+  if (part === 'both' && counted.some((r) => r.sponsorshipBasis === 'designated-place')) {
+    out.push(issue('designated-place-box-2', 'warn', 'Dependents paid at their own location usually mean a dependents-only application', 'PRIUM 80102 par 3.a(1)(c); FMR Vol 7A Ch 68 par 2.2.2', 'A designated-place dependent is paid at the dependent location. Check whether this is a dependents-only application.'));
+  }
+
   const arrived = str(data, 'dependentsArrived');
   if (arrived && counted.some((r) => r.sponsorshipBasis === 'installation-approval' && r.sponsoredOn > arrived)) {
     out.push(issue('c10-before-travel', 'warn', 'Sponsorship approved after dependents arrived', 'JTR par 050803', 'Sponsorship is generally required before Government-funded dependent travel starts.'));
@@ -99,7 +102,7 @@ export function runNavmc11106Validators(data: FormData, now: Date = new Date()):
   const effective = str(data, 'effectiveDate');
   const suggested = suggestedEffectiveDate(data);
   if (effective && suggested && effective !== suggested) {
-    out.push(issue('effective-date-differs', 'warn', 'Effective date differs from the computed date', 'FMR Vol 7A Ch 68 par 2.1.5, 3.2.1, 3.3', `The rules suggest ${suggested}. The commander decides.`));
+    out.push(issue('effective-date-differs', 'warn', 'Effective date differs from the computed date', 'FMR Vol 7A Ch 68 par 2.1.5, 2.3.4, 3.2.1, 3.3', `The rules suggest ${suggested}. The commander decides.`));
   }
   if (effective && effective > localIso(now)) {
     out.push(issue('effective-date-future', 'warn', 'Effective date is in the future', 'PRIUM 80102 par 12.h', 'TTC 014 rejects a future effective date.'));
@@ -115,8 +118,13 @@ export function runNavmc11106Validators(data: FormData, now: Date = new Date()):
   if (combinedRemarks(data).length > NAVMC_11106_REMARKS_LIMIT) {
     out.push(issue('remarks-too-long', 'fail', 'Remarks exceed the form limit', 'NAVMC 11106 Remarks', `Remarks, including generated lines, must fit in ${NAVMC_11106_REMARKS_LIMIT} characters. The export cuts anything longer.`));
   }
-  if (allFilled.some((r) => r.name.length > NAME_LIMIT || r.relationship.length > RELATIONSHIP_LIMIT)) {
-    out.push(issue('field-too-long', 'fail', 'A dependent entry is too long for the form', 'NAVMC 11106 Part C', `Names are limited to ${NAME_LIMIT} characters and relationships to ${RELATIONSHIP_LIMIT}.`));
+  const fieldProblems = navmc11106FieldProblems(data);
+  if (fieldProblems.some((p) => p.problem === 'too-long')) {
+    out.push(issue('field-too-long', 'fail', 'An entry is too long for the form', 'NAVMC 11106 Part B and C', `Limits: name ${NAVMC_11106_LIMITS.name}, grade ${NAVMC_11106_LIMITS.grade}, duty station ${NAVMC_11106_LIMITS.dutyStation}, C8 location ${NAVMC_11106_LIMITS.dependentLocation}, CO line ${NAVMC_11106_LIMITS.coNameGradeActivity}, row names ${NAVMC_11106_LIMITS.rowName}, row relationships ${NAVMC_11106_LIMITS.rowRelationship}. Too long: ${fieldProblems.filter((p) => p.problem === 'too-long').map((p) => p.block).join(', ')}.`));
+  }
+  const unprintable = fieldProblems.filter((p) => p.problem === 'unprintable');
+  if (unprintable.length > 0) {
+    out.push(issue('field-unprintable', 'fail', 'An entry has a character the form cannot print', 'NAVMC 11106 form font', `${unprintable.map((p) => `${p.block} ${p.detail}`).join('; ')}. Enter the Latin spelling.`));
   }
   return out;
 }

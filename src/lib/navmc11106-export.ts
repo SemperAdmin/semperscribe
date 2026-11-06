@@ -6,11 +6,26 @@
 import type { FormData } from '@/types';
 import { fillAcroFormWithReport, type AcroFormFieldMeta } from '@/lib/acroform-fill';
 import { loadAssetBytes } from '@/lib/assets';
-import { navmc11106Values } from '@/lib/navmc11106-rules';
+import { navmc11106FieldProblems, navmc11106Values } from '@/lib/navmc11106-rules';
 import { officialFormAsset } from '@/lib/xfa-form-fill';
 import fieldMap from '../../tools/aa-forms/navmc11106-map.json';
 
+/** Plain words for the first thing the form cannot take, ahead of the fill. */
+function describeFieldProblems(formData: FormData): string | null {
+  const problems = navmc11106FieldProblems(formData);
+  if (problems.length === 0) return null;
+  const lines = problems.map((p) =>
+    p.problem === 'unprintable'
+      ? `Block ${p.block}: ${p.detail} ${p.detail.includes(' ') ? 'are not characters' : 'is not a character'} the form can print. Enter the Latin spelling.`
+      : `Block ${p.block}: ${p.detail} Shorten it.`);
+  return `NAVMC 11106 cannot be exported. ${lines.join(' ')}`;
+}
+
 export async function exportNavmc11106Form(formData: FormData): Promise<Blob> {
+  // The form font cannot print every Unicode character and the fill would
+  // throw an encoder error. Refuse in plain words; never transliterate a name.
+  const refusal = describeFieldProblems(formData);
+  if (refusal) throw new Error(refusal);
   const asset = officialFormAsset('navmc11106');
   if (!asset) throw new Error('No official blank registered for NAVMC 11106.');
   const base = await loadAssetBytes(asset);

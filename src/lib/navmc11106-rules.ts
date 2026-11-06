@@ -221,3 +221,73 @@ export function navmc11106Values(data: FormData): Record<string, string> {
   }
   return values;
 }
+
+export const NAVMC_11106_LIMITS = {
+  name: 70,
+  grade: 20,
+  dutyStation: 130,
+  dependentLocation: 70,
+  coNameGradeActivity: 65,
+  rowName: 25,
+  rowRelationship: 20,
+} as const;
+
+export interface Navmc11106FieldProblem {
+  block: string;
+  problem: 'too-long' | 'unprintable';
+  detail: string;
+}
+
+/**
+ * The form prints in a standard font encoded as Windows-1252. These are the
+ * 0x80-0x9F characters it carries beyond Latin-1; the test proves the whole
+ * set against pdf-lib so the two cannot drift apart.
+ */
+const WIN1252_EXTRAS = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ';
+
+function unprintableChars(text: string, multiline: boolean): string[] {
+  const found: string[] = [];
+  for (const ch of text) {
+    const cp = ch.codePointAt(0) ?? 0;
+    const ok =
+      (cp >= 0x20 && cp <= 0x7e) ||
+      (cp >= 0xa0 && cp <= 0xff) ||
+      WIN1252_EXTRAS.includes(ch) ||
+      (multiline && (ch === '\n' || ch === '\r'));
+    if (!ok && !found.includes(ch)) found.push(ch);
+  }
+  return found;
+}
+
+/**
+ * Every text value the form prints, checked against its block limit and the
+ * form font. Nothing is substituted: a Marine's name is a record, so the
+ * export refuses and the drafter enters the Latin spelling.
+ */
+export function navmc11106FieldProblems(data: FormData): Navmc11106FieldProblem[] {
+  const out: Navmc11106FieldProblem[] = [];
+  const check = (block: string, text: string, limit: number | null, multiline = false) => {
+    if (limit !== null && text.length > limit) {
+      out.push({ block, problem: 'too-long', detail: `${text.length} characters entered, ${limit} fit.` });
+    }
+    const bad = unprintableChars(text, multiline);
+    if (bad.length > 0) out.push({ block, problem: 'unprintable', detail: bad.map((c) => `"${c}"`).join(' ') });
+  };
+
+  check('B1 Name', str(data, 'nameOfMarine'), NAVMC_11106_LIMITS.name);
+  check('B2 Grade', str(data, 'grade'), NAVMC_11106_LIMITS.grade);
+  check('B5 Duty Station', str(data, 'dutyStation'), NAVMC_11106_LIMITS.dutyStation, true);
+  check("C8 Dependent's Location", str(data, 'dependentLocation'), NAVMC_11106_LIMITS.dependentLocation);
+  check('CO Name, Grade, Activity', str(data, 'coNameGradeActivity'), NAVMC_11106_LIMITS.coNameGradeActivity);
+
+  const rowChecks = (n: number, row: Navmc11106Dependent) => {
+    check(`C${n}A Name`, row.name, NAVMC_11106_LIMITS.rowName);
+    check(`C${n}B Relationship`, row.relationship, NAVMC_11106_LIMITS.rowRelationship);
+  };
+  const spouse = countedSpouse(data);
+  if (spouse) rowChecks(1, spouse);
+  countedChildren(data).forEach((row, i) => rowChecks(i + 2, row));
+
+  check('Remarks', combinedRemarks(data), null, true);
+  return out;
+}

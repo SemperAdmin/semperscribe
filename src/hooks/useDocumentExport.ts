@@ -220,13 +220,14 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
             description: describePlacement(endorsed.placement),
           });
         } else {
-          blob = await applySignatureFields(
-            secnavCountedBlob ?? await generatePdfForDocType({
-              formData, vias, references, enclosures, copyTos, paragraphs, distList,
-              mode: 'export',
-              onNavmc10132Report: (report) => { navmc10132Report = report; },
-            })
-          );
+          const rendered = secnavCountedBlob ?? await generatePdfForDocType({
+            formData, vias, references, enclosures, copyTos, paragraphs, distList,
+            mode: 'export',
+            onNavmc10132Report: (report) => { navmc10132Report = report; },
+          });
+          // A type switch keeps formData.signatureFields while the NAVMC 11106's
+          // editors are hidden. Its signature blocks are the form's own.
+          blob = formData.documentType === 'navmc11106' ? rendered : await applySignatureFields(rendered);
         }
       } else {
         // E.5 in Word. Written from scratch, the two halves go into one
@@ -262,7 +263,7 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
       // ENC: merge bound enclosure files into the export (PDF only; the
       // panel states DOCX exports exclude them). Numbers derive from
       // row position - computeMergeItems is the single source.
-      if (format === 'pdf' && enclosureRows && enclosureFiles) {
+      if (format === 'pdf' && formData.documentType !== 'navmc11106' && enclosureRows && enclosureFiles) {
         const { mergeAttachmentsIntoPdf, computeMergeItems } = await import('@/lib/enclosure-attachments');
         const startingNumber = parseInt(formData.startingEnclosureNumber || '1', 10);
         const items = computeMergeItems(enclosureRows, enclosureFiles, startingNumber);
@@ -337,7 +338,7 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
       toast?.({
         title: `${format.toUpperCase()} export failed`,
         description:
-          formData.documentType === 'navmc10132' && error instanceof Error && error.message
+          (formData.documentType === 'navmc10132' || formData.documentType === 'navmc11106') && error instanceof Error && error.message
             ? `Nothing was downloaded. ${error.message}`
             : 'The document did not render. The browser console carries the detail.',
       });

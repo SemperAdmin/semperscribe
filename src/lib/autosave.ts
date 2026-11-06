@@ -32,6 +32,7 @@ import {
 import { FormData, ParagraphData } from '@/types';
 import { randomId } from '@/lib/random-id';
 import { tlaDraftTitle } from '@/lib/tla';
+import { dependentRows, rowHasContent, spouseRow } from '@/lib/navmc11106-rules';
 
 /** The pre-session key. Migrated to `workingCopy:legacy` on first read. */
 export const LEGACY_WORKING_COPY_KEY = 'workingCopy';
@@ -366,6 +367,15 @@ export function isRecoverable(copy: WorkingCopy | null): copy is WorkingCopy {
   if (!copy.formData?.documentType) return false;
   // A TLA Packet has no subject, body or parties: its Marine and dates are its content.
   if (copy.formData.documentType === 'tla-packet') return Boolean(tlaDraftTitle(copy.formData));
+  // A NAVMC 11106 has no subject or body either: the Marine and the dependent rows are its content.
+  if (copy.formData.documentType === 'navmc11106') {
+    const { nameOfMarine, edipi } = copy.formData;
+    return Boolean(
+      String(nameOfMarine ?? '').trim()
+      || String(edipi ?? '').trim()
+      || [spouseRow(copy.formData), ...dependentRows(copy.formData)].some(rowHasContent),
+    );
+  }
   const hasSubject = Boolean((copy.formData.subj ?? '').trim());
   const hasBody = (copy.paragraphs ?? []).some((p) => p.content.trim());
   const hasParties = Boolean((copy.formData.from ?? '').trim() || (copy.formData.to ?? '').trim());

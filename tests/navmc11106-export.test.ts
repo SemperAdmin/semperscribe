@@ -49,6 +49,25 @@ describe('exportNavmc11106Form', () => {
   });
 });
 
+describe('exportNavmc11106Form pre-check', () => {
+  it('names the block and the character when the form cannot print a name', async () => {
+    await expect(exportNavmc11106Form(form({ nameOfMarine: 'NGUYỄN, AN' }))).rejects.toThrow(
+      /NAVMC 11106 cannot be exported\. Block B1 Name: "Ễ" is not a character the form can print\. Enter the Latin spelling\./,
+    );
+  });
+
+  it('names the block when an entry is too long', async () => {
+    await expect(exportNavmc11106Form(form({ grade: 'G'.repeat(21) }))).rejects.toThrow(/Block B2 Grade: .*21 characters entered, 20 fit/);
+  });
+
+  it('still fills accented names, curly quotes, and a newline in Remarks', async () => {
+    const blob = await exportNavmc11106Form(form({ nameOfMarine: 'MUÑOZ, O’BRIEN', navmc11106Remarks: 'LINE ONE\nLINE TWO' }));
+    const f = (await PDFDocument.load(await blobBytes(blob))).getForm();
+    expect(f.getTextField(`${P}NameApplc[0]`).getText()).toBe('MUÑOZ, O’BRIEN');
+    expect(f.getTextField(`${P}RemrkD3[0]`).getText()).toContain('LINE TWO');
+  });
+});
+
 describe('NAVMC 11106 registration', () => {
   it('is a form on the AcroForm pipeline with PDF export only', () => {
     const def = DOCUMENT_TYPES.navmc11106;

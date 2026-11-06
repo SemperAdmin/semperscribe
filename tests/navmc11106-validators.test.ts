@@ -105,3 +105,45 @@ describe('navmc11106 validators', () => {
     expect(sev(form({ navmc11106Dependents: [child({ relationship: 'R'.repeat(21) })] }), 'navmc11106-field-too-long')).toBe('fail');
   });
 });
+
+describe('navmc11106 final-review additions', () => {
+  const find = (data: FormData, id: string) => runNavmc11106Validators(data, NOW).find((i) => i.id === id);
+
+  it('fails a character the form font cannot print, citing the form font', () => {
+    const issue = find(form({ nameOfMarine: 'NGUYỄN, AN' }), 'navmc11106-field-unprintable');
+    expect(issue?.severity).toBe('fail');
+    expect(issue?.citation).toBe('NAVMC 11106 form font');
+    expect(ids(form({ nameOfMarine: 'MUÑOZ, JOSE' }))).not.toContain('navmc11106-field-unprintable');
+    expect(ids(form({ navmc11106Remarks: 'SEE 沖縄' }))).toContain('navmc11106-field-unprintable');
+  });
+
+  it('fails an over-long Part B, C8, or CO field with the same rule', () => {
+    for (const over of [{ nameOfMarine: 'N'.repeat(71) }, { grade: 'G'.repeat(21) }, { dutyStation: 'D'.repeat(131) },
+      { dependentLocation: 'L'.repeat(71) }, { coNameGradeActivity: 'C'.repeat(66) }]) {
+      expect(sev(form(over), 'navmc11106-field-too-long')).toBe('fail');
+    }
+    expect(ids(form({ nameOfMarine: 'N'.repeat(70), grade: 'G'.repeat(20) }))).not.toContain('navmc11106-field-too-long');
+  });
+
+  it('warns when box 2 carries a designated-place dependent', () => {
+    const designated = form({ navmc11106Dependents: [child({ sponsorshipBasis: 'designated-place', sponsoredOn: '' })] });
+    const issue = find(designated, 'navmc11106-designated-place-box-2');
+    expect(issue?.severity).toBe('warn');
+    expect(issue?.rule).toBe('Dependents paid at their own location usually mean a dependents-only application');
+    expect(issue?.citation).toBe('PRIUM 80102 par 3.a(1)(c); FMR Vol 7A Ch 68 par 2.2.2');
+  });
+
+  it('does not warn on designated-place for other Part A values or bases', () => {
+    const dep = form({ dependentsOnly: true, dependentLocation: 'X', navmc11106Dependents: [child({ sponsorshipBasis: 'designated-place', sponsoredOn: '' })] });
+    expect(ids(dep)).not.toContain('navmc11106-designated-place-box-2');
+    expect(ids(form())).not.toContain('navmc11106-designated-place-box-2');
+    expect(ids(form({ navmc11106Dependents: [child()] }))).not.toContain('navmc11106-designated-place-box-2');
+  });
+
+  it('cites the corrected paragraphs', () => {
+    expect(find(form({ navmc11106Dependents: [child({ sponsoredOn: '' })] }), 'navmc11106-sponsored-date-missing')?.citation)
+      .toBe('MCO 1300.8 Ch 6 par 4-6');
+    expect(find(form({ dateOfArrival: '2026-06-01', effectiveDate: '2026-06-02' }), 'navmc11106-effective-date-differs')?.citation)
+      .toBe('FMR Vol 7A Ch 68 par 2.1.5, 2.3.4, 3.2.1, 3.3');
+  });
+});
