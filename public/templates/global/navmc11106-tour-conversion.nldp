@@ -1,0 +1,53 @@
+{
+  "metadata": {
+    "packageId": "navmc11106-tour-conversion",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-11-06T00:00:00.000Z",
+    "author": {
+      "name": "SemperScribe"
+    },
+    "package": {
+      "title": "NAVMC 11106 - CMC Tour Conversion",
+      "description": "Unaccompanied tour converted to accompanied. C10 is the date CMC approved the conversion. Sample data - replace before use.",
+      "subject": "",
+      "documentType": "navmc11106"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "navmc11106",
+      "nameOfMarine": "MARINE, ALONZO DEAN",
+      "grade": "SGT",
+      "dateOfRank": "2024-08-01",
+      "edipi": "1234567890",
+      "dutyStation": "HQ BN 3D MARDIV\nCAMP COURTNEY OKINAWA JP",
+      "ordersEffectiveDate": "2025-12-01",
+      "dateOfArrival": "2026-01-10",
+      "maltPlusOnReportingDay": false,
+      "navmc11106Spouse": {
+        "name": "TONYA CAROL MARINE",
+        "relationship": "SPOUSE",
+        "eventDate": "2023-06-15",
+        "sponsorshipBasis": "cmc-conversion",
+        "sponsoredOn": "2026-07-15"
+      },
+      "navmc11106Dependents": [],
+      "dependentsOnly": false,
+      "dependentLocation": "",
+      "dependentsArrived": "2026-08-20",
+      "memberSignedDate": "2026-08-25",
+      "conusColaDependents": false,
+      "conusColaZip": "",
+      "d1Quarters": "n",
+      "d1Assignment": "no",
+      "d1ToWhom": "",
+      "d2Mess": "y",
+      "d2Who": "memdep",
+      "d2b": "",
+      "effectiveDate": "2026-08-20",
+      "navmc11106Remarks": "",
+      "coDate": "2026-08-26",
+      "coNameGradeActivity": "STEWART, THOMAS J LTCOL HQ BN 3D MARDIV"
+    }
+  }
+}

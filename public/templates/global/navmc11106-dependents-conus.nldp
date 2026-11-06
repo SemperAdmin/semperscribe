@@ -1,0 +1,61 @@
+{
+  "metadata": {
+    "packageId": "navmc11106-dependents-conus",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-11-06T00:00:00.000Z",
+    "author": {
+      "name": "SemperScribe"
+    },
+    "package": {
+      "title": "NAVMC 11106 - Dependents in CONUS, CONUS COLA",
+      "description": "Member overseas with dependents at a CONUS location paying CONUS COLA above $0. The ZIP prints in Remarks and Part D is not required. PRIUM does not state how to complete C10 here, so this is a reading. Sample data - replace before use.",
+      "subject": "",
+      "documentType": "navmc11106"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "navmc11106",
+      "nameOfMarine": "MARINE, ALONZO DEAN",
+      "grade": "SGT",
+      "dateOfRank": "2024-08-01",
+      "edipi": "1234567890",
+      "dutyStation": "HQ BN 3D MARDIV\nCAMP COURTNEY OKINAWA JP",
+      "ordersEffectiveDate": "2026-02-01",
+      "dateOfArrival": "2026-03-15",
+      "maltPlusOnReportingDay": false,
+      "navmc11106Spouse": {
+        "name": "TONYA CAROL MARINE",
+        "relationship": "SPOUSE",
+        "eventDate": "2023-06-15",
+        "sponsorshipBasis": "designated-place",
+        "sponsoredOn": ""
+      },
+      "navmc11106Dependents": [
+        {
+          "name": "JUSTIN DAVID MARINE",
+          "relationship": "SON",
+          "eventDate": "2024-09-03",
+          "sponsorshipBasis": "designated-place",
+          "sponsoredOn": ""
+        }
+      ],
+      "dependentsOnly": true,
+      "dependentLocation": "",
+      "dependentsArrived": "",
+      "memberSignedDate": "2026-03-25",
+      "conusColaDependents": true,
+      "conusColaZip": "92055",
+      "d1Quarters": "",
+      "d1Assignment": "",
+      "d1ToWhom": "",
+      "d2Mess": "",
+      "d2Who": "",
+      "d2b": "",
+      "effectiveDate": "",
+      "navmc11106Remarks": "",
+      "coDate": "",
+      "coNameGradeActivity": ""
+    }
+  }
+}
