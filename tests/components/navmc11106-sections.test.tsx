@@ -49,6 +49,13 @@ describe('NAVMC 11106 Part A', () => {
     expect(selectedBox()).toContain('For Member Only');
     expect(screen.getByText(/will not print or count/)).toBeTruthy();
   });
+  it('clears a mistaken spouse row, returning to Member Only and clearing the option', () => {
+    render(<Harness initial={{ navmc11106Spouse: { ...child, name: 'S' }, dependentsOnly: true }} />);
+    expect(selectedBox()).toContain("For Member's Dependents Only");
+    fireEvent.click(screen.getByRole('button', { name: 'Remove spouse' }));
+    expect(selectedBox()).toContain('For Member Only');
+    expect(screen.queryByRole('checkbox', { name: /Dependents only/ })).toBeNull();
+  });
 });
 
 describe('NAVMC 11106 Part C and Part D', () => {

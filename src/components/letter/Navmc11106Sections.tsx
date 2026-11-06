@@ -215,6 +215,9 @@ function DependentsSection({ formData, setFormData }: StateProps) {
   const updateSpouse = (patch: Partial<Navmc11106Dependent>) =>
     setFormData((prev) => withDependentsOnlyReset({ ...prev, navmc11106Spouse: { ...spouseRow(prev), ...patch } }));
 
+  const removeSpouse = () =>
+    setFormData((prev) => withDependentsOnlyReset({ ...prev, navmc11106Spouse: { ...NAVMC_11106_EMPTY_DEPENDENT } }));
+
   return (
     <SectionCard icon={<Users className="mr-2 h-5 w-5" />} title="Part C — Dependents COLA Is Claimed For">
       <div className="text-xs text-muted-foreground mb-4 space-y-1">
@@ -236,7 +239,7 @@ function DependentsSection({ formData, setFormData }: StateProps) {
         {c10 && <p className="font-medium">Block 10 will print {c10}.</p>}
       </div>
       <div className="space-y-4">
-        <RowEditor row={spouseRow(formData)} label="Spouse" isSpouse onChange={updateSpouse} />
+        <RowEditor row={spouseRow(formData)} label="Spouse" isSpouse onChange={updateSpouse} onRemove={removeSpouse} />
         {rows.slice(0, visible).map((row, i) => (
           <RowEditor
             key={i}
