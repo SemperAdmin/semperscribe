@@ -1,7 +1,7 @@
 # NAVMC 11106 (REV. 1-89) (EF) - Application for Cost-of-Living Allowances
 
 Completion specification derived from the official form and its governing policy.
-Status - design approved by Stephen 2026-11-05. No code has been written.
+Status - built 2026-11-05 per `docs/NAVMC_11106_BUILD_PLAN.md`. Adobe Reader and CAC signing await the owner's check.
 Scope - OCONUS COLA, plus the one CONUS COLA case a Marine stationed overseas can reach.
 
 **Citation convention.** `Ch 68` is DoD FMR Vol 7A Chapter 68 (January 2025, the current
@@ -79,6 +79,10 @@ applies and whether the row prints.
 | `designated-place` | None. Unaccompanied, paid by the dependent's location | Yes | Ch 68 2.2.2, Table 68-1 |
 | `not-sponsored` | None. Not claimable | **No** | Ch 68 3.6, 2.1.6.4 |
 | `active-duty-spouse` | None. An active-duty spouse is not a dependent | **No** | Ch 68 2.2.1, Table 68-5 |
+
+The spouse row does not offer `birth` or `adoption-placement`, because `birth` takes its date from
+the row's event date, which on that row is the marriage date. Dependent rows do not offer
+`active-duty-spouse` or `dual-mil-separation`.
 
 Limits the `birth` hint states:
 - Applies during an accompanied tour, or to a child born to a female Marine on an unaccompanied or
@@ -312,7 +316,7 @@ Names in generated lines use the row's name as entered.
 | ID | Severity | Condition | Citation |
 |---|---|---|---|
 | `core-fields` | block | Name, grade, or duty station missing, or EDIPI not 10 digits | Form Part B |
-| `row-incomplete` | fail | A counted row lacks a name, relationship, or date | Form Part C |
+| `row-incomplete` | fail | A counted row lacks a name, relationship, or date. The spouse row's relationship defaults to SPOUSE, so it is exempt | Form Part C |
 | `basis-missing` | fail | A filled row has no sponsorship basis | MCO Ch 6 par 5 |
 | `sponsored-date-missing` | fail | A dated basis has no `sponsoredOn` | Section 3.3 |
 | `not-sponsored-excluded` | warn | A `not-sponsored` row exists; it will not print | Ch 68 3.6 |
