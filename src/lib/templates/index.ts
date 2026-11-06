@@ -62,6 +62,7 @@ export const DOCUMENT_TEMPLATES: Record<string, DocumentTemplate> = {
   'page11': { ...BasicLetterTemplate, id: 'page11-default', typeId: 'page11', name: 'Page 11' }, // Placeholder
   'navmc10922': { ...BasicLetterTemplate, id: 'navmc10922-default', typeId: 'navmc10922', name: 'NAVMC 10922 (Dependency Application)' }, // Placeholder
   'navmc10132': { ...BasicLetterTemplate, id: 'navmc10132-default', typeId: 'navmc10132', name: 'NAVMC 10132 (Unit Punishment Book)' }, // Placeholder
+  'navmc11106': { ...BasicLetterTemplate, id: 'navmc11106-default', typeId: 'navmc11106', name: 'NAVMC 11106 (Cost-of-Living Allowances)' }, // Placeholder
   'amhs': { ...BasicLetterTemplate, id: 'amhs-default', typeId: 'amhs', name: 'AMHS Message' }, // Placeholder
 
   // DLA Correspondence

@@ -11,6 +11,7 @@ import {
   NAVMC_10132_VICTIM_RACE,
   NAVMC_10132_VICTIM_ETHNICITY,
   NAVMC_10132_STAGE_VALUES,
+  NAVMC_11106_SPONSORSHIP_BASES,
 } from '@/types/navmc';
 
 // --- UI Schema Definitions ---
@@ -68,7 +69,7 @@ export interface SectionDefinition {
   className?: string; // Optional override for the grid layout (e.g. "grid-cols-1")
 }
 
-export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'dd368' | 'counseling' | 'tla-packet' | 'amhs' | 'coordination-page' | 'volume';
+export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'navmc11106' | 'dd368' | 'counseling' | 'tla-packet' | 'amhs' | 'coordination-page' | 'volume';
 export type ExportFormat = 'pdf' | 'docx' | 'amhs-text';
 export type DocumentCategory =
   | 'standard-letter'
@@ -1824,6 +1825,97 @@ export const Navmc10132Definition: DocumentTypeDefinition = {
   ],
 };
 
+// 7c. NAVMC 11106 (Application for Cost-of-Living Allowances)
+// Rule source: docs/NAVMC_11106_SPEC.md. Zod stays permissive; the rules live
+// in navmc11106-validators.ts. Only keys no custom component writes appear in
+// `sections`, because RHF clobbers external writes on its next sync.
+const Navmc11106DependentRow = z.object({
+  name: z.string().optional(),
+  relationship: z.string().optional(),
+  eventDate: z.string().optional(),
+  sponsorshipBasis: z.union([z.literal(''), z.enum(NAVMC_11106_SPONSORSHIP_BASES)]).optional(),
+  sponsoredOn: z.string().optional(),
+});
+
+export const Navmc11106Schema = z.object({
+  documentType: z.literal('navmc11106'),
+  nameOfMarine: z.string().optional(),
+  grade: z.string().optional(),
+  edipi: z.string().optional(),
+  dateOfRank: z.string().optional(),
+  dutyStation: z.string().optional(),
+  ordersEffectiveDate: z.string().optional(),
+  dateOfArrival: z.string().optional(),
+  maltPlusOnReportingDay: z.boolean().optional(),
+  navmc11106Spouse: Navmc11106DependentRow.optional(),
+  navmc11106Dependents: z.array(Navmc11106DependentRow).max(6).optional(),
+  dependentsOnly: z.boolean().optional(),
+  dependentLocation: z.string().optional(),
+  dependentsArrived: z.string().optional(),
+  memberSignedDate: z.string().optional(),
+  conusColaDependents: z.boolean().optional(),
+  conusColaZip: z.string().optional(),
+  d1Quarters: z.string().optional(),
+  d1Assignment: z.string().optional(),
+  d1ToWhom: z.string().optional(),
+  d2Mess: z.string().optional(),
+  d2Who: z.string().optional(),
+  d2b: z.string().optional(),
+  effectiveDate: z.string().optional(),
+  navmc11106Remarks: z.string().optional(),
+  coDate: z.string().optional(),
+  coNameGradeActivity: z.string().optional(),
+});
+
+export const Navmc11106Definition: DocumentTypeDefinition = {
+  id: 'navmc11106',
+  name: 'NAVMC 11106 (Application for Cost-of-Living Allowances)',
+  description:
+    'Application for OCONUS COLA per MCTFS PRIUM par 80102 and DoD FMR Vol 7A Ch 68.',
+  icon: '🌏',
+  schema: Navmc11106Schema,
+  features: {
+    ...STANDARD_LETTER_FEATURES,
+    showHeaderSettings: false,
+    showUnitInfo: false,
+    showVia: false,
+    showReferences: false,
+    showEnclosures: false,
+    showParagraphs: false,
+    showClosingBlock: false,
+    showClassification: false,
+    // The form carries its own two signature fields.
+    showSignature: false,
+    category: 'forms',
+    pdfPipeline: 'navmc11106',
+    exportFormats: ['pdf'],
+  },
+  sections: [
+    {
+      id: 'member',
+      title: 'Part B — Member Data',
+      fields: [
+        { name: 'nameOfMarine', label: 'Name (Last, First, MI)', type: 'text', required: true, maxLength: 70, placeholder: 'MARINE, ALONZO D', className: 'md:col-span-1' },
+        { name: 'grade', label: 'Grade', type: 'text', required: true, maxLength: 20, placeholder: 'SGT', className: 'md:col-span-1' },
+        { name: 'dateOfRank', label: 'Date of Rank', type: 'date-picker', className: 'md:col-span-1' },
+        { name: 'edipi', label: 'EDIPI', type: 'text', required: true, maxLength: 10, digitsOnly: true, inputMode: 'numeric', placeholder: '1234567890', className: 'md:col-span-1' },
+        { name: 'dutyStation', label: 'Current Permanent Duty Station (City, Province, Country)', type: 'text', required: true, maxLength: 130, placeholder: 'CAMP FOSTER, OKINAWA, JAPAN', className: 'md:col-span-2' },
+        { name: 'ordersEffectiveDate', label: 'Effective Date of Orders', type: 'date-picker', className: 'md:col-span-1' },
+        { name: 'dateOfArrival', label: 'Date of Arrival', type: 'date-picker', description: 'COLA starts the day the Marine reports to the new PDS (FMR Vol 7A Ch 68 par 3.2.1).', className: 'md:col-span-1' },
+      ],
+    },
+    {
+      id: 'dependent-dates',
+      title: 'Part C — Location and Dates',
+      fields: [
+        { name: 'dependentLocation', label: "8. Dependent's Location if Other Than Sponsor's", type: 'text', maxLength: 70, className: 'md:col-span-2' },
+        { name: 'dependentsArrived', label: '9. Date Dependents Arrive at Permanent Station', type: 'date-picker', description: 'The date the most recent dependent arrived. Leave empty for a child born at the PDS.', className: 'md:col-span-1' },
+        { name: 'memberSignedDate', label: "Date of Member's Signature", type: 'date-picker', className: 'md:col-span-1' },
+      ],
+    },
+  ],
+};
+
 // 8. AMHS Message
 export const AMHSSchema = z.object({
   documentType: z.literal('amhs'),
@@ -3251,6 +3343,7 @@ export const DocumentSchema = z.union([
   Page11Schema,
   Navmc10922Schema,
   Navmc10132Schema,
+  Navmc11106Schema,
   AMHSSchema,
   MFRSchema,
   FromToMemoSchema,
@@ -3662,6 +3755,7 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   page11: Page11Definition,
   navmc10922: Navmc10922Definition,
   navmc10132: Navmc10132Definition,
+  navmc11106: Navmc11106Definition,
   dd368: Dd368Definition,
   counseling: CounselingDefinition,
   'tla-packet': TlaPacketDefinition,

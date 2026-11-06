@@ -143,14 +143,14 @@ async function generateCoordinationPagePdf(ctx: PdfBuildContext): Promise<Blob> 
  * saying the official form had been filled, and the companion writing it to
  * disk as the record.
  */
-async function generateNavmc10132Placeholder(): Promise<Blob> {
+async function generateFillPlaceholder(formLabel: string): Promise<Blob> {
   const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
   const doc = await PDFDocument.create();
   const page = doc.addPage([612, 792]);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const body = await doc.embedFont(StandardFonts.Helvetica);
   const lines: [string, typeof bold, number][] = [
-    ['NAVMC 10132 (Unit Punishment Book)', bold, 16],
+    [formLabel, bold, 16],
     ['', body, 12],
     ['The official blank could not be filled.', body, 12],
     ['', body, 12],
@@ -217,7 +217,19 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
     } catch (error) {
       if (ctx.mode !== 'preview') throw error;
       console.error('NAVMC 10132 AcroForm fill failed, previewing the notice page instead:', error);
-      return generateNavmc10132Placeholder();
+      return generateFillPlaceholder('NAVMC 10132 (Unit Punishment Book)');
+    }
+  },
+  // NAVMC 11106 fills the normalized AcroForm blank. Same failure contract as
+  // the 10132: the preview degrades to the notice page, an export gets the error.
+  navmc11106: async (ctx) => {
+    const { exportNavmc11106Form } = await import('@/lib/navmc11106-export');
+    try {
+      return await exportNavmc11106Form(ctx.formData);
+    } catch (error) {
+      if (ctx.mode !== 'preview') throw error;
+      console.error('NAVMC 11106 AcroForm fill failed, previewing the notice page instead:', error);
+      return generateFillPlaceholder('NAVMC 11106 (Cost-of-Living Allowances)');
     }
   },
   amhs: async () => new Blob([], { type: 'text/plain' }), // AMHS doesn't use PDF

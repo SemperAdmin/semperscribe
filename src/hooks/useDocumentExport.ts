@@ -322,6 +322,16 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
           });
         }
       }
+      if (format === 'pdf' && formData.documentType === 'navmc11106') {
+        toast?.({
+          title: 'Official Form Exported',
+          description:
+            'This is the NAVMC 11106 in plain fillable format, with EDIPI in block 4. It contains '
+            + 'Privacy Act information, so handle the file accordingly. A commander completes Part D, '
+            + 'and both signature blocks are open for a CAC signature. After approval, upload it to the '
+            + 'OMPF Field Folder and keep a local copy (MARADMIN 015/20 par 4.b.3).',
+        });
+      }
     } catch (error) {
       console.error(`Error generating ${format.toUpperCase()}:`, error);
       toast?.({

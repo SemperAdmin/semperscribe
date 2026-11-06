@@ -696,7 +696,7 @@ export function HeaderActions({
                   PDF with Signature Fields
                 </DropdownMenuItem>
               )}
-              {documentType !== 'page11' && documentType !== 'navmc10922' && documentType !== 'navmc10132' && (
+              {documentType !== 'page11' && documentType !== 'navmc10922' && documentType !== 'navmc10132' && documentType !== 'navmc11106' && (
                 <DropdownMenuItem onClick={onExportDocx} disabled={isGenerating} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
                   <FileText className="w-4 h-4 mr-2" />
                   Word Document (.docx)
