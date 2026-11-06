@@ -178,12 +178,14 @@ export function detectMergeFields(
 
 /**
  * Blanks the Page 11 library templates leave for the drafter: any
- * [BRACKETED] text, and the parenthetical blanks (Date), (Name),
- * (List ...) and (___). Parentheticals that are wording, such as (OMPF)
- * or (0.25), are not blanks, and neither are the (to) / (not to) choices
- * the Marine marks when signing.
+ * [BRACKETED] text, the parenthetical blanks (Date), (Name), (List ...),
+ * (insert ...) and (___), and the underscore date line some entries open
+ * with ("__________: In accordance with ..."). Parentheticals that are
+ * wording, such as (OMPF) or (0.25), are not blanks, and neither are the
+ * (to) / (not to) choices the Marine marks when signing or the
+ * underscore signature lines, which no colon follows.
  */
-const PLACEHOLDER_RE = /\[[^\]\n]{1,80}\]|\((?:Date|Name|[Ll]ist\b[^)\n]{0,70}|_+)\)/g;
+const PLACEHOLDER_RE = /^_{3,}(?=:)|\[[^\]\n]{1,80}\]|\((?:Date|Name|[Ll]ist\b[^)\n]{0,70}|[Ii]nsert\b[^)\n]{0,70}|_+)\)/g;
 
 /** The Page 11 text fields a template blank can sit in, in reading order. */
 const PLACEHOLDER_FIELDS = ['remarksLeft', 'remarksRight'] as const;
@@ -212,7 +214,10 @@ export function findTemplatePlaceholders(formData: FormData): TemplatePlaceholde
     const value = (formData as Record<string, unknown>)[field];
     const text = typeof value === 'string' ? value : '';
     for (const m of text.matchAll(PLACEHOLDER_RE)) {
-      const base = m[0].slice(1, -1).toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'BLANK';
+      // The opening underscore line is the entry's date, as "(Date)" is.
+      const base = /^_+$/.test(m[0])
+        ? 'DATE'
+        : m[0].slice(1, -1).toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'BLANK';
       const n = (counts.get(base) ?? 0) + 1;
       counts.set(base, n);
       const index = m.index ?? 0;

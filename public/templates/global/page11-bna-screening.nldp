@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "packageId": "page11_bna_screening",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-11-06T00:00:00.000Z",
+    "author": {
+      "name": "System Template"
+    },
+    "package": {
+      "title": "Basic Needs Allowance (BNA) Screening",
+      "description": "Notification that the Marine was screened for Basic Needs Allowance per DODI 1341.15 and the current MARADMIN: no guarantee of payment, application through the chain of command, the 180-day application windows, and a referral to the installation Personal Financial Manager.",
+      "documentType": "page11"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "page11",
+      "name": "",
+      "edipi": "",
+      "date": "",
+      "remarksLeft": "__________: In accordance with DODI 1341.15 and  MARADMIN (insert latest MARADMIN number), I have received notification that I have been screened for  Basic Needs Allowance (BNA).\n\n1.  Based on precursory screening you may qualify for BNA.  The BNA program provides a monthly allowance to Marines whose Gross Household Income (GHI) and household size places them below 200 percent of the Federal poverty guidelines for their geographical location.\n\n    a.  This notification does not guarantee certification or payment of BNA if you apply.\n\n    b.  In order to receive BNA, submission of a BNA application through your chain of command with all substantiating documentation is required to validate eligibility and possible entitlement.\n\n    c.  Application and receipt of BNA is voluntary.  Receipt of BNA may affect participation in other Federal assistance programs that are based on household income.\n\n    d.  If you are currently assigned to a permanent duty station (PDS), your application must be submitted within 180 days of the date of signing this document.\n\n    e.  If you are in the accession pipeline you are eligible to apply once you have arrived at your first permanent duty station (PDS).  Applications must be submitted within 180 days of arrival at your first PDS.\n\n    f.  Failure to apply within the prescribed time limits results in ineligibility for BNA.\n\n2.  You are encouraged to contact your local installation Personal Financial Manager at your current location for more information about available financial management and assistance programs for which you may qualify.\n\n___________________\nSNM",
+      "remarksRight": ""
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}

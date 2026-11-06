@@ -44,6 +44,15 @@ describe('wrapParagraph', () => {
     for (const line of lines) expect(measureTimes(line)).toBeLessThanOrEqual(120);
     expect(lines.join(' ')).toBe(text);
   });
+
+  it('keeps a wrapped subparagraph\'s indent on its first line and runs the rest to the margin', () => {
+    const sub = '    a.  This notification does not guarantee certification or payment of BNA if you apply.';
+    const lines = wrapParagraph(sub, measureTimes, 260);
+    expect(lines.length).toBe(2);
+    expect(lines[0].startsWith('    a.  This')).toBe(true);
+    expect(lines[1]).toBe('BNA if you apply.');
+    for (const line of lines) expect(measureTimes(line)).toBeLessThanOrEqual(260);
+  });
 });
 
 describe('flowPage11', () => {

@@ -462,6 +462,13 @@
     "url": "/templates/global/page11-redesignation-firstsgt.nldp"
   },
   {
+    "id": "page11-bna-screening",
+    "title": "Page 11 - Basic Needs Allowance (BNA) Screening",
+    "description": "Notification of Basic Needs Allowance screening per DODI 1341.15 and the current MARADMIN, with the 180-day application windows.",
+    "documentType": "page11",
+    "url": "/templates/global/page11-bna-screening.nldp"
+  },
+  {
     "id": "navmc10922-marriage",
     "title": "NAVMC 10922 - Marriage (No Priors)",
     "description": "GAIN of spouse by US ceremonial marriage. Pre-filled with sample data - replace before use.",
