@@ -73,7 +73,12 @@
  *    dead. `tests/navmc10132-acroform.test.ts` asserts the observable
  *    contract instead: the value lands AND the flag comes back.
  *
- * A fourth, smaller thing worth knowing: filling a form invalidates any
+ * 4. A RADIO GROUP IS WRITTEN AT THE DICTIONARY LEVEL, BECAUSE pdf-lib's OWN
+ *    select() REDRAWS IT. See the branch in the write loop. A form whose
+ *    widgets lack an /Off appearance gets regenerated regardless, so that
+ *    must be fixed in the bundled blank (tools/aa-forms/normalize_11106.py).
+ *
+ * A fifth, smaller thing worth knowing: filling a form invalidates any
  * Adobe usage-rights (UR3) signature at `/Root /Perms`, because that
  * signature covers the exact original bytes. An invalidated signature reads
  * to most PDF readers as tampering, whereas simply having no signature reads
@@ -88,6 +93,7 @@ import {
   PDFTextField,
   PDFDropdown,
   PDFCheckBox,
+  PDFRadioGroup,
   PDFSignature,
   PDFName,
   PDFString,
@@ -267,6 +273,23 @@ export async function fillAcroFormWithReport(
       } else if (field instanceof PDFCheckBox) {
         if (value === true || value === 'Yes' || value === '/Yes') field.check();
         else field.uncheck();
+        report.written.push(name);
+      } else if (field instanceof PDFRadioGroup) {
+        // Written directly, NOT with field.select(). select() marks the group
+        // dirty, and updateFieldAppearances() then replaces the form's own
+        // appearance streams with pdf-lib's round dots. Measured on NAVMC
+        // 11106, whose X marks came back as circles. The blank must carry an
+        // /Off state on each widget, or pdf-lib regenerates the group anyway.
+        const exportValue = String(value);
+        if (!field.getOptions().includes(exportValue)) {
+          report.errors.push([name, `"${exportValue}" is not an export value`]);
+          continue;
+        }
+        const on = PDFName.of(exportValue);
+        field.acroField.dict.set(PDFName.of('V'), on);
+        for (const widget of field.acroField.getWidgets()) {
+          widget.setAppearanceState(widget.getOnValue() === on ? on : PDFName.of('Off'));
+        }
         report.written.push(name);
       } else {
         report.skipped.push([name, field.constructor.name]);
