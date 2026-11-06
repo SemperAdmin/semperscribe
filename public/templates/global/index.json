@@ -539,6 +539,97 @@
     "url": "/templates/global/navmc10132-appeal-filed.nldp"
   },
   {
+    "id": "navmc11106-member-only",
+    "title": "NAVMC 11106 - Member Only, No Dependents",
+    "description": "No dependents listed, so Part A is For Member Only. The effective date is the arrival date. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-member-only.nldp"
+  },
+  {
+    "id": "navmc11106-member-only-malt-plus",
+    "title": "NAVMC 11106 - Member Only, MALT Plus on Reporting Day",
+    "description": "For Member Only with MALT Plus authorized on the reporting day, so the effective date is the day after arrival. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-member-only-malt-plus.nldp"
+  },
+  {
+    "id": "navmc11106-accompanied-approved",
+    "title": "NAVMC 11106 - Accompanied Tour, Installation Approved",
+    "description": "Spouse and child approved by the gaining installation. C10 is the approval date, and the effective date is the later of C9 and C10. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-accompanied-approved.nldp"
+  },
+  {
+    "id": "navmc11106-birth",
+    "title": "NAVMC 11106 - Child Born During the Tour",
+    "description": "C10 and the effective date are the date of birth, and the spouse's earlier sponsorship date moves to Remarks. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-birth.nldp"
+  },
+  {
+    "id": "navmc11106-adoption",
+    "title": "NAVMC 11106 - Adoption Placement",
+    "description": "C10 is the date the child was placed in the home, not the date of birth. Pre-adoptive placement counts. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-adoption.nldp"
+  },
+  {
+    "id": "navmc11106-tour-conversion",
+    "title": "NAVMC 11106 - CMC Tour Conversion",
+    "description": "Unaccompanied tour converted to accompanied. C10 is the date CMC approved the conversion. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-tour-conversion.nldp"
+  },
+  {
+    "id": "navmc11106-command-award",
+    "title": "NAVMC 11106 - Marriage During the Tour, Command Award",
+    "description": "A spouse acquired during the tour, sponsored by the command with no tour conversion. Needs at least 12 months left on the tour. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-command-award.nldp"
+  },
+  {
+    "id": "navmc11106-spouse-separated",
+    "title": "NAVMC 11106 - Spouse Separated From Service Overseas",
+    "description": "C10 is the day after separation. The spouse did not travel to CONUS at Government expense and is already at the PDS, so C9 stays blank. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-spouse-separated.nldp"
+  },
+  {
+    "id": "navmc11106-sponsorship-not-required",
+    "title": "NAVMC 11106 - Sponsorship Not Required (Exception)",
+    "description": "Marriage to a Service member on the PCS effective date. C10 stays blank, and the basis prints in Remarks. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-sponsorship-not-required.nldp"
+  },
+  {
+    "id": "navmc11106-dependents-only-dual-cola",
+    "title": "NAVMC 11106 - Dependents Only, Dual COLA",
+    "description": "Dependents at an OCONUS location away from the PDS, with C8 filled and C10 blank. The Marine's own COLA goes on a separate member-only form. PRIUM does not state how to complete C10 here or whether two forms are expected, so this is a reading. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-dependents-only-dual-cola.nldp"
+  },
+  {
+    "id": "navmc11106-dependents-conus",
+    "title": "NAVMC 11106 - Dependents in CONUS, CONUS COLA",
+    "description": "Member overseas with dependents at a CONUS location paying CONUS COLA above $0. The ZIP prints in Remarks and Part D is not required. PRIUM does not state how to complete C10 here, so this is a reading. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-dependents-conus.nldp"
+  },
+  {
+    "id": "navmc11106-not-sponsored",
+    "title": "NAVMC 11106 - Dependents Not Command Sponsored",
+    "description": "The rows stay on screen but do not print, so Part A is For Member Only. Shows the reduced-rate warning that applies when quarters are available. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-not-sponsored.nldp"
+  },
+  {
+    "id": "navmc11106-active-duty-spouse",
+    "title": "NAVMC 11106 - Active-Duty Spouse",
+    "description": "An active-duty spouse is not a dependent, so the row does not print and Part A is For Member Only. Shows the joint-household warning. Sample data - replace before use.",
+    "documentType": "navmc11106",
+    "url": "/templates/global/navmc11106-active-duty-spouse.nldp"
+  },
+  {
     "id": "dd368-sample",
     "title": "Conditional Release (DD 368), sample",
     "description": "DD Form 368 with Section I filled for a Marine sergeant requesting release to the Navy Reserve. Sample data - replace before use.",

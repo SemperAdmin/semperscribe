@@ -1,0 +1,61 @@
+{
+  "metadata": {
+    "packageId": "navmc11106-dependents-only-dual-cola",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-11-06T00:00:00.000Z",
+    "author": {
+      "name": "SemperScribe"
+    },
+    "package": {
+      "title": "NAVMC 11106 - Dependents Only, Dual COLA",
+      "description": "Dependents at an OCONUS location away from the PDS, with C8 filled and C10 blank. The Marine's own COLA goes on a separate member-only form. PRIUM does not state how to complete C10 here or whether two forms are expected, so this is a reading. Sample data - replace before use.",
+      "subject": "",
+      "documentType": "navmc11106"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "navmc11106",
+      "nameOfMarine": "MARINE, ALONZO DEAN",
+      "grade": "SGT",
+      "dateOfRank": "2024-08-01",
+      "edipi": "1234567890",
+      "dutyStation": "HQ BN 3D MARDIV\nCAMP COURTNEY OKINAWA JP",
+      "ordersEffectiveDate": "2026-02-01",
+      "dateOfArrival": "2026-03-15",
+      "maltPlusOnReportingDay": false,
+      "navmc11106Spouse": {
+        "name": "TONYA CAROL MARINE",
+        "relationship": "SPOUSE",
+        "eventDate": "2023-06-15",
+        "sponsorshipBasis": "designated-place",
+        "sponsoredOn": ""
+      },
+      "navmc11106Dependents": [
+        {
+          "name": "JUSTIN DAVID MARINE",
+          "relationship": "SON",
+          "eventDate": "2024-09-03",
+          "sponsorshipBasis": "designated-place",
+          "sponsoredOn": ""
+        }
+      ],
+      "dependentsOnly": true,
+      "dependentLocation": "HONOLULU HI",
+      "dependentsArrived": "2026-03-20",
+      "memberSignedDate": "2026-03-25",
+      "conusColaDependents": false,
+      "conusColaZip": "",
+      "d1Quarters": "n",
+      "d1Assignment": "no",
+      "d1ToWhom": "",
+      "d2Mess": "n",
+      "d2Who": "",
+      "d2b": "",
+      "effectiveDate": "2026-03-20",
+      "navmc11106Remarks": "",
+      "coDate": "2026-03-26",
+      "coNameGradeActivity": "STEWART, THOMAS J LTCOL HQ BN 3D MARDIV"
+    }
+  }
+}

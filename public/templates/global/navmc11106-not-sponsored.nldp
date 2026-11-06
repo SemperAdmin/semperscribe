@@ -1,0 +1,61 @@
+{
+  "metadata": {
+    "packageId": "navmc11106-not-sponsored",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-11-06T00:00:00.000Z",
+    "author": {
+      "name": "SemperScribe"
+    },
+    "package": {
+      "title": "NAVMC 11106 - Dependents Not Command Sponsored",
+      "description": "The rows stay on screen but do not print, so Part A is For Member Only. Shows the reduced-rate warning that applies when quarters are available. Sample data - replace before use.",
+      "subject": "",
+      "documentType": "navmc11106"
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "navmc11106",
+      "nameOfMarine": "MARINE, ALONZO DEAN",
+      "grade": "SGT",
+      "dateOfRank": "2024-08-01",
+      "edipi": "1234567890",
+      "dutyStation": "HQ BN 3D MARDIV\nCAMP COURTNEY OKINAWA JP",
+      "ordersEffectiveDate": "2026-02-01",
+      "dateOfArrival": "2026-03-15",
+      "maltPlusOnReportingDay": false,
+      "navmc11106Spouse": {
+        "name": "TONYA CAROL MARINE",
+        "relationship": "SPOUSE",
+        "eventDate": "2023-06-15",
+        "sponsorshipBasis": "not-sponsored",
+        "sponsoredOn": ""
+      },
+      "navmc11106Dependents": [
+        {
+          "name": "JUSTIN DAVID MARINE",
+          "relationship": "SON",
+          "eventDate": "2024-09-03",
+          "sponsorshipBasis": "not-sponsored",
+          "sponsoredOn": ""
+        }
+      ],
+      "dependentsOnly": false,
+      "dependentLocation": "",
+      "dependentsArrived": "",
+      "memberSignedDate": "2026-03-20",
+      "conusColaDependents": false,
+      "conusColaZip": "",
+      "d1Quarters": "y",
+      "d1Assignment": "no",
+      "d1ToWhom": "",
+      "d2Mess": "n",
+      "d2Who": "",
+      "d2b": "",
+      "effectiveDate": "2026-03-15",
+      "navmc11106Remarks": "",
+      "coDate": "2026-03-23",
+      "coNameGradeActivity": "STEWART, THOMAS J LTCOL HQ BN 3D MARDIV"
+    }
+  }
+}
