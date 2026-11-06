@@ -77,9 +77,12 @@ export function wrapParagraph(paragraph: string, measure: Measure, maxWidth: num
   const tokens = paragraph.split(/(\s+)/).filter((t) => t.length > 0);
   const lines: string[] = [];
   let line = '';
-  for (const token of tokens) {
+  for (const [i, token] of tokens.entries()) {
     if (/^\s+$/.test(token)) {
-      if (line) line += token;
+      // A paragraph's own leading whitespace is its indent (a lettered
+      // subparagraph under "1."): the first line keeps it, the
+      // continuation lines run to the margin, as on the typed form.
+      if (line || i === 0) line += token;
       continue;
     }
     const probe = line + token;
