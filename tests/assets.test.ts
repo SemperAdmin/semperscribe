@@ -90,7 +90,7 @@ describe('asset seam', () => {
   });
 
   it('official form blanks resolve to real files under public/forms', () => {
-    for (const type of ['aa-form', 'page11', 'navmc10922', 'navmc10132']) {
+    for (const type of ['aa-form', 'page11', 'navmc10922', 'navmc10132', 'navmc11106']) {
       const asset = officialFormAsset(type);
       expect(asset).toMatch(/^forms\/.*\.pdf$/);
       expect(() => readFileSync(path.join(process.cwd(), 'public', asset!))).not.toThrow();
