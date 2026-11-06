@@ -98,6 +98,8 @@ export function useLivePreview(
   // box ready). Annotation-only (S1), so layout and pagination are
   // untouched.
   const applySignatureFields = useCallback(async (blob: Blob): Promise<Blob> => {
+    // Left over from a type switch; the NAVMC 11106 has no signature-field editor.
+    if (formData.documentType === 'navmc11106') return blob;
     const fields = (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
     if (fields.length === 0) return blob;
     const { addMultipleSignatureFields } = await import('@/lib/pdf-signature-field');
@@ -106,7 +108,7 @@ export function useLivePreview(
       signerName: f.signerName, reason: f.reason, contactInfo: f.contactInfo,
     })));
     return new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
-  }, [formData.signatureFields]);
+  }, [formData.signatureFields, formData.documentType]);
 
   // Manual Preview Generation
   const updatePreview = useCallback(async () => {
@@ -153,7 +155,7 @@ export function useLivePreview(
       // ENC: merge bound enclosure files behind the letter - the SAME
       // order and options as export (signature fields first, merge
       // after), so the preview IS the export.
-      if (enclosureRows && enclosureFiles) {
+      if (formData.documentType !== 'navmc11106' && enclosureRows && enclosureFiles) {
         const { mergeAttachmentsIntoPdf, computeMergeItems } = await import('@/lib/enclosure-attachments');
         const startingNumber = parseInt(formData.startingEnclosureNumber || '1', 10);
         const items = computeMergeItems(enclosureRows, enclosureFiles, startingNumber);

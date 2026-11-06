@@ -270,16 +270,17 @@ export async function fillXfaDatasets(baseBytes: ArrayBuffer | Uint8Array, datas
 
 /**
  * The bundled blank for a document type, as a path relative to public/.
- * NAVMC 10132 is a plain AcroForm, not XFA. It is registered here because
- * this is the one place that maps a document type to its bundled blank,
- * but it fills through navmc10132-export.ts, never through
- * exportOfficialForm below.
+ * NAVMC 10132 and 11106 are plain AcroForms, not XFA. They are registered
+ * here because this is the one place that maps a document type to its
+ * bundled blank, but they fill through their own export modules, never
+ * through exportOfficialForm below.
  */
 export function officialFormAsset(documentType: string): string | null {
   return documentType === 'aa-form' ? 'forms/navmc-10274-blank.pdf'
     : documentType === 'page11' ? 'forms/navmc-118-11-blank.pdf'
     : documentType === 'navmc10922' ? 'forms/navmc-10922-blank.pdf'
     : documentType === 'navmc10132' ? 'forms/navmc-10132-blank.pdf'
+    : documentType === 'navmc11106' ? 'forms/navmc-11106-blank.pdf'
     : null;
 }
 

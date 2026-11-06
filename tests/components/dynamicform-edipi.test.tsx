@@ -17,6 +17,7 @@ const EDIPI_FIELDS: Array<[string, string]> = [
   ['navmc10922', 'edipi'],
   ['navmc10922', 'spouseEdipi'],
   ['navmc10132', 'accusedEdipi'],
+  ['navmc11106', 'edipi'],
   ['dd368', 'dd368Edipi'],
 ];
 

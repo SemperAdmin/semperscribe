@@ -13,6 +13,7 @@ import { ClassificationSection } from '@/components/letter/ClassificationSection
 import { Page11RemarksSection } from '@/components/letter/Page11RemarksSection';
 import { Navmc10922FormSections } from '@/components/letter/Navmc10922Sections';
 import { Navmc10132FormSections } from '@/components/letter/Navmc10132Sections';
+import { Navmc11106FormSections } from '@/components/letter/Navmc11106Sections';
 import { CounselingSections } from '@/components/counseling/CounselingSections';
 import { TlaSections } from '@/components/tla/TlaSections';
 import { getClassification } from '@/lib/classification';
@@ -273,6 +274,13 @@ export function DocumentLayout({
               keeps the single schema-driven form. */}
           {formData.documentType === 'navmc10922' ? (
             <Navmc10922FormSections
+              formData={formData}
+              setFormData={setFormData}
+              onDynamicSync={handleDynamicFormSubmit}
+              formKey={formKey}
+            />
+          ) : formData.documentType === 'navmc11106' ? (
+            <Navmc11106FormSections
               formData={formData}
               setFormData={setFormData}
               onDynamicSync={handleDynamicFormSubmit}

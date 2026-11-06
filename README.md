@@ -102,12 +102,13 @@ A professional-grade, local-first web application for creating, formatting, and 
 </details>
 
 <details>
-<summary><strong>Forms</strong> (2)</summary>
+<summary><strong>Forms</strong> (3)</summary>
 
 | Type | Description |
 |------|-------------|
 | **AA Form (NAVMC 10274)** | Administrative Action form for personnel requests |
 | **Page 11 (NAVMC 118-11)** | Administrative Remarks for service record entries |
+| **COLA Application (NAVMC 11106)** | Cost-of-Living Allowance application, filled onto the official form |
 
 </details>
 

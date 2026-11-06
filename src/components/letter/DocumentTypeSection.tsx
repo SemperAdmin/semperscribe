@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
-import { FileText, FileSignature, ClipboardList, ScrollText, AlertCircle, Building2, Type, FileCheck, MessageSquare, Users, Notebook, Handshake, Lightbulb, Flag, Briefcase, Landmark, Scale } from 'lucide-react';
+import { FileText, FileSignature, ClipboardList, ScrollText, AlertCircle, Building2, Type, FileCheck, MessageSquare, Users, Notebook, Handshake, Lightbulb, Flag, Briefcase, Landmark, Scale, Coins } from 'lucide-react';
 
 interface DocumentTypeSectionProps {
   formData: FormData;
@@ -553,6 +553,16 @@ export function DocumentTypeSection({
                 }))
               }
             />
+
+            <DocumentTypeCard
+              type="navmc11106"
+              icon={<Coins className="w-10 h-10" />}
+              title="NAVMC 11106"
+              description="Application for overseas Cost-of-Living Allowance per MCTFS PRIUM par 80102 and DoD FMR Vol 7A Ch 68."
+              note="&rarr; For OCONUS COLA"
+              isActive={formData.documentType === 'navmc11106'}
+              onClick={() => setFormData(prev => ({ ...prev, documentType: 'navmc11106' }))}
+            />
           </div>
         </div>
 
@@ -576,7 +586,7 @@ export function DocumentTypeSection({
       </section>
 
       {/* Header Type & Body Font - Only for Letters */}
-      {formData.documentType !== 'aa-form' && formData.documentType !== 'page11' && formData.documentType !== 'navmc10922' && formData.documentType !== 'navmc10132' && formData.documentType !== 'amhs' && (
+      {formData.documentType !== 'aa-form' && formData.documentType !== 'page11' && formData.documentType !== 'navmc10922' && formData.documentType !== 'navmc10132' && formData.documentType !== 'navmc11106' && formData.documentType !== 'amhs' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 border-t border-border/50">
           <Card className="border-border shadow-sm bg-card/50">
             <CardHeader className="pb-2">

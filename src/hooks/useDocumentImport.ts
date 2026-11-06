@@ -72,6 +72,7 @@ export const STRUCTURED_FORMS: Record<string, string> = {
   navmc10132:
     'Unit Punishment Book, including its offenses, punishments, suspensions, victims and any vacation records',
   navmc10922: 'Dependency Application (NAVMC 10922)',
+  navmc11106: 'Cost-of-Living Allowance application (NAVMC 11106)',
   'aa-form': 'Administrative Action form (NAVMC 10274)',
   page11: 'Page 11 entry (NAVMC 118(11))',
 };

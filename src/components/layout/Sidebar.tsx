@@ -465,6 +465,11 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                     label="Unit Punishment Book (NAVMC 10132)"
                   />
                   <DocumentTypeButton
+                    active={documentType === 'navmc11106'}
+                    onClick={() => handleSelect('navmc11106')}
+                    label="COLA Application (NAVMC 11106)"
+                  />
+                  <DocumentTypeButton
                     active={documentType === 'dd368'}
                     onClick={() => handleSelect('dd368')}
                     label="Conditional Release (DD 368)"

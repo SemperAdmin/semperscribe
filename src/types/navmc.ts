@@ -991,3 +991,39 @@ export function createEmptyNavmc10132Data(): Navmc10132Data {
     victims: Array.from({ length: 5 }, () => ({ ...NAVMC_10132_EMPTY_VICTIM })),
   };
 }
+
+// --- NAVMC 11106 (REV. 1-89) Application for Cost-of-Living Allowances ---
+// Rule source: docs/NAVMC_11106_SPEC.md. Field map:
+// tools/aa-forms/navmc11106-map.json.
+
+export const NAVMC_11106_SPONSORSHIP_BASES = [
+  'installation-approval',
+  'cmc-conversion',
+  'command-award',
+  'birth',
+  'adoption-placement',
+  'dual-mil-separation',
+  'not-required',
+  'designated-place',
+  'not-sponsored',
+  'active-duty-spouse',
+] as const;
+export type Navmc11106SponsorshipBasis = (typeof NAVMC_11106_SPONSORSHIP_BASES)[number];
+
+export interface Navmc11106Dependent {
+  name: string;
+  relationship: string;
+  /** ISO. Date of marriage on the spouse row, date of birth otherwise. */
+  eventDate: string;
+  sponsorshipBasis: '' | Navmc11106SponsorshipBasis;
+  /** ISO. Empty for bases that carry no date. Not printed by row. */
+  sponsoredOn: string;
+}
+
+export const NAVMC_11106_EMPTY_DEPENDENT: Navmc11106Dependent = {
+  name: '',
+  relationship: '',
+  eventDate: '',
+  sponsorshipBasis: '',
+  sponsoredOn: '',
+};

@@ -1,0 +1,301 @@
+{
+  "form": "NAVMC 11106 (REV. 1-89) (EF)",
+  "container": "AcroForm",
+  "sourceSha256": "8d2bfef56dbc0a1ad75337968724b0a3ea4d92a19faad8875307c27ca13b2485",
+  "fieldCount": 45,
+  "fields": [
+    {
+      "name": "topmostSubform[0].Page1[0].DateApplcEffct[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateArrvl[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateCmndOffcr[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateDepArrv[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateDepBrth2[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateDepBrth3[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateDepBrth4[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateDepBrth5[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateDepBrth6[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateDepBrth7[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateDepComnd[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateMarr[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateMemSigntr[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateOrdrs[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DateRnk[0]",
+      "type": "/Tx",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DepLoc[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 70
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].DutyStatn[0]",
+      "type": "/Tx",
+      "flags": [
+        "multiline"
+      ],
+      "maxLength": 130
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].GrdApplc[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 20
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].NameApplc[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 70
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].NameComndOffcr[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 65
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].NameDep2[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 25
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].NameDep3[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 25
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].NameDep4[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 25
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].NameDep5[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 25
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].NameDep6[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 25
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].NameDep7[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 25
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].NameSps1[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 25
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RadA1[0]",
+      "type": "/Btn",
+      "flags": [
+        "radio"
+      ],
+      "exportValues": [
+        "both",
+        "dep",
+        "mem"
+      ]
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RadD1AssnNot[0]",
+      "type": "/Btn",
+      "flags": [
+        "radio"
+      ],
+      "exportValues": [
+        "Yes",
+        "no"
+      ]
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RadD1AvailNot[0]",
+      "type": "/Btn",
+      "flags": [
+        "radio"
+      ],
+      "exportValues": [
+        "n",
+        "y"
+      ]
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RadD1ToMemDep[0]",
+      "type": "/Btn",
+      "flags": [
+        "radio"
+      ],
+      "exportValues": [
+        "dep",
+        "mem"
+      ]
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RadD2AvailNot[0]",
+      "type": "/Btn",
+      "flags": [
+        "radio"
+      ],
+      "exportValues": [
+        "n",
+        "y"
+      ]
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RadD2B1[0]",
+      "type": "/Btn",
+      "flags": [
+        "radio"
+      ],
+      "exportValues": [
+        "n",
+        "y"
+      ]
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RadD2Mem[0]",
+      "type": "/Btn",
+      "flags": [
+        "radio"
+      ],
+      "exportValues": [
+        "mem",
+        "memdep"
+      ]
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RelatnshpDep2[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 20
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RelatnshpDep3[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 20
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RelatnshpDep4[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 20
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RelatnshpDep5[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 20
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RelatnshpDep6[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 20
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RelatnshpDep7[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 20
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RelatnshpSps1[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 20
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].RemrkD3[0]",
+      "type": "/Tx",
+      "flags": [
+        "multiline"
+      ],
+      "maxLength": 720
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].SigCO[0]",
+      "type": "/Sig",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].SigMem[0]",
+      "type": "/Sig",
+      "flags": []
+    },
+    {
+      "name": "topmostSubform[0].Page1[0].SocSecNoApplc[0]",
+      "type": "/Tx",
+      "flags": [],
+      "maxLength": 11
+    }
+  ]
+}
