@@ -38,6 +38,17 @@ describe('unit letterhead overrides', () => {
     expect(r.line3).toBe('PENSACOLA FLORIDA 32508-5009');
   });
 
+  it('2d Intel Bn (RUC 20362) prints the spelled-out name and its MIG II MEF parent', () => {
+    const lines = ['2D INTELLIGENCE BATTALION', 'II MARINE EXPEDITIONARY FORCE INFORMATION GROUP'];
+    const unit = UNITS.find(u => u.ruc === '20362');
+    expect(unit?.unitName).toBe('2D INTEL BN MIG II MEF');
+    expect(unit?.letterhead).toEqual(lines);
+    const r = resolveUnit('20362');
+    expect(r.headingLines).toEqual(lines);
+    expect(r.line2).toBe('PSC BOX 20139');
+    expect(r.line3).toBe('CAMP LEJEUNE NC 28542-0139');
+  });
+
   it('a shared RUC resolves to the MCC the user picked, and falls back to RUC only without one', () => {
     expect(findUnit('06015', 'G91')?.unitName).toBe('MATSG-23 TRNG COM NAS PENSACOLA FL');
     expect(findUnit('06015', 'G77')?.unitName).toBe('CNATT NAS PENSACOLA FL');

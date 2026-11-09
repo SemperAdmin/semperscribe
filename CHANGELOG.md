@@ -16,6 +16,7 @@ matching GitHub release with this file's section as the notes.
 
 ### Fixed
 
+- 2d Intelligence Battalion (RUC 20362) letterheads now print "2D INTELLIGENCE BATTALION" and "II MARINE EXPEDITIONARY FORCE INFORMATION GROUP" over PSC BOX 20139, CAMP LEJEUNE NC 28542-0139. They printed the abbreviated "2D INTEL BN MIG II MEF". Unit search still matches the abbreviation.
 - `.gitattributes` keeps text files LF in every checkout. Windows checkouts converted them to CRLF and failed the template and PDF worker tests that compare exact content.
 
 ### Changed
