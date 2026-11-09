@@ -153,7 +153,7 @@ export const UNITS: Unit[] = [
     {"ruc": "27110", "mcc": "15J", "uic": "M27110", "unitName": "2D CRR 2D MLG", "streetAddress": "PSC BOX 20128", "cityState": "CAMP LEJEUNE NC", "zip": "28542-0128"},
     {"ruc": "27161", "mcc": "15M", "uic": "M27160", "unitName": "2D DEN BN 2D MLG", "streetAddress": "PSC BOX 20130", "cityState": "CAMP LEJEUNE NC", "zip": "28542-0129"},
     {"ruc": "27437", "mcc": "15G", "uic": "M27437", "unitName": "2D DSB CLR 2 2D MLG", "streetAddress": "PSC BOX 20143", "cityState": "CAMP LEJEUNE NC", "zip": "28542-0130"},
-    {"ruc": "20362", "mcc": "115", "uic": "M20362", "unitName": "2D INTEL BN MIG II MEF", "streetAddress": "PSC BOX 20139", "cityState": "CAMP LEJEUNE NC", "zip": "28542-0139"},
+    {"ruc": "20362", "mcc": "115", "uic": "M20362", "unitName": "2D INTEL BN MIG II MEF", "letterhead": ["2D INTELLIGENCE BATTALION", "II MARINE EXPEDITIONARY FORCE INFORMATION GROUP"], "streetAddress": "PSC BOX 20139", "cityState": "CAMP LEJEUNE NC", "zip": "28542-0139"},
     {"ruc": "00920", "mcc": "1PR", "uic": "M00920", "unitName": "2D LAAD BN MACG-28 2D MAW", "streetAddress": "PSC BOX 8074", "cityState": "CHERRY POINT NC", "zip": "28533-0074"},
     {"ruc": "12190", "mcc": "1GS", "uic": "M12190", "unitName": "2D LAR BN 2D MARDIV", "streetAddress": "PSC BOX 20090", "cityState": "CAMP LEJEUNE NC", "zip": "28542-0090"},
     {"ruc": "27121", "mcc": "15H", "uic": "M27121", "unitName": "2D MAINT BN 2D CRR 2D MLG", "streetAddress": "PSC BOX 20127", "cityState": "CAMP LEJEUNE NC", "zip": "28542-0127"},
