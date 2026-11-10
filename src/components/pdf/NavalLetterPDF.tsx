@@ -51,7 +51,7 @@ const CONTINUATION_SPACER_DIRECTIVE =
   CONTINUATION_DIRECTIVE_STACK_TOP - PDF_MARGINS.top + 3 * LINE_HEIGHT_12PT_COURIER;
 import { getPDFSealDataUrl } from '@/lib/pdf-seal';
 import { parseAndFormatDate, formatBusinessDate } from '@/lib/date-utils';
-import { splitSubject, formatCancellationDate, getDirectiveDesignation, buildDirectiveTitle, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose, getSignatureBlankLines, resolveDistributionStatement, supportsUnitSubName } from '@/lib/naval-format-utils';
+import { splitSubject, formatCancellationDate, getDirectiveDesignation, getDirectiveTitleLine, getViaSpacing as sharedGetViaSpacing, getComplimentaryClose, getSignatureBlankLines, resolveDistributionStatement, supportsUnitSubName } from '@/lib/naval-format-utils';
 import { parseFormattedText } from '@/lib/pdf-text-parser';
 import { relativeIndentEngine, fixedLadderEngine, isCorrespondenceType, isDirectiveType } from '@/lib/indent-engine';
 import { getClassification, bannerText, needsCuiBlock, cuiBlockLines, portionPrefix, paragraphLevel } from '@/lib/classification';
@@ -1239,7 +1239,7 @@ export function NavalLetterPDF({
         {isDirective && (formData.directiveTitle || formData.ssic) && (
           <View style={{ marginBottom: PDF_SPACING.sectionGap }}>
             <Text style={[styles.addressLine, { textDecoration: 'underline' }]}>
-              {(formData.directiveTitle || buildDirectiveTitle(formData)).toUpperCase()}
+              {getDirectiveTitleLine(formData).toUpperCase()}
             </Text>
           </View>
         )}
@@ -2282,7 +2282,7 @@ export function NavalLetterPDF({
           {/* Top-right: Directive designation and date */}
           <View style={{ alignItems: 'flex-end', marginBottom: PDF_SPACING.emptyLine }}>
             <Text style={{ fontFamily: fontFamily, fontSize: PDF_FONT_SIZES.body }}>
-              {(formData.directiveTitle || buildDirectiveTitle(formData)).toUpperCase()}
+              {getDirectiveTitleLine(formData).toUpperCase()}
             </Text>
             <Text style={{ fontFamily: fontFamily, fontSize: PDF_FONT_SIZES.body }}>
               {formattedDate}

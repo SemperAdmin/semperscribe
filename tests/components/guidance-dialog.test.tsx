@@ -40,3 +40,33 @@ describe('GuidanceDialog', () => {
     expect(heading()).toHaveTextContent(GUIDANCE[0].label);
   });
 });
+
+/**
+ * Host report 2026-11-10: opening the guide on a type with no entry
+ * (Volume, SECNAV Instruction and Notice, I-Type, Change Transmittal)
+ * showed whichever entry was viewed last. guidance-data.ts promised a
+ * generic note for those types and the dialog never built one.
+ */
+describe('GuidanceDialog on a type with no entry', () => {
+  it('names the active type instead of keeping the last entry viewed', () => {
+    const { rerender } = render(<GuidanceDialog open onOpenChange={vi.fn()} documentType="mfr" />);
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(endorsement.label) }));
+    rerender(<GuidanceDialog open={false} onOpenChange={vi.fn()} documentType="dd368" />);
+    rerender(<GuidanceDialog open onOpenChange={vi.fn()} documentType="dd368" />);
+    expect(heading()).toHaveTextContent('Conditional Release (DD 368)');
+    expect(screen.getByText(/no guide entry/i)).toBeInTheDocument();
+  });
+
+  it('switches away from the note when the user picks an entry', () => {
+    render(<GuidanceDialog open onOpenChange={vi.fn()} documentType="dd368" />);
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(mfr.label) }));
+    expect(heading()).toHaveTextContent(mfr.label);
+  });
+
+  it.each(['change-transmittal', 'secnav-instruction', 'secnav-notice', 'volume', 'i-type'])(
+    'has a written entry for %s',
+    (type) => {
+      expect(GUIDANCE.find((g) => g.type === type)).toBeDefined();
+    },
+  );
+});

@@ -430,6 +430,11 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                     onClick={() => handleSelect('secnav-notice')}
                     label="SECNAV Notice"
                   />
+                  <DocumentTypeButton
+                    active={documentType === 'change-transmittal'}
+                    onClick={() => handleSelect('change-transmittal')}
+                    label="Change Transmittal"
+                  />
                 </div>
               </AccordionContent>
             </AccordionItem>

@@ -192,11 +192,41 @@ export function formatDirectiveSSIC(
 }
 
 /**
+ * A change transmittal is identified by the directive it changes and
+ * its change number ("MCO 1500.61 Ch 2"), the form the shipped template
+ * and the export filename already use. Both emitters built it from the
+ * SSIC alone, so the parent directive and the change number never
+ * reached the page (host report 2026-11-10). Returns '' for every other
+ * type, and for a transmittal with no parent directive yet, so the
+ * caller keeps its SSIC designation until one is entered.
+ */
+export function changeTransmittalDesignation(formData: FormData): string {
+  if (formData.documentType !== 'change-transmittal') return '';
+  const parent = String(formData.parentDirectiveTitle ?? '').trim();
+  if (!parent) return '';
+  const n = Number(String(formData.changeNumber ?? '').trim());
+  return Number.isInteger(n) && n >= 1 ? `${parent} Ch ${n}` : parent;
+}
+
+/**
+ * The underlined designation line. A change transmittal always prints
+ * its own identity: the form has no Directive Title field, so a stored
+ * `directiveTitle` (the shipped template carries one) could never be
+ * corrected and would contradict the ID block. Other directives keep a
+ * typed directive title over the built one.
+ */
+export function getDirectiveTitleLine(formData: FormData): string {
+  return changeTransmittalDesignation(formData) || formData.directiveTitle || buildDirectiveTitle(formData);
+}
+
+/**
  * Builds the full directive title line (e.g., "MCO 5216.3K w/ ch 1").
  * The SSIC field now contains the full identifier, so this just combines
  * the order prefix with the SSIC value.
  */
 export function buildDirectiveTitle(formData: FormData): string {
+  const transmittal = changeTransmittalDesignation(formData);
+  if (transmittal) return transmittal;
   const ssic = formData.ssic || '';
   if (!ssic) return '';
   // P4.3 — SECNAV designation lines spell the type out (SECNAV
@@ -363,7 +393,9 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
 
   // Change Transmittal
   if (formData.documentType === 'change-transmittal') {
-    const parent = sanitize(formData.parentDirectiveTitle ?? '') || 'Directive';
+    // The point belongs to the directive number (MCO 1500.61), and
+    // sanitize() strips it, which named the file "MCO 150061 Ch 2".
+    const parent = (String(formData.parentDirectiveTitle ?? '')).replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim() || 'Directive';
     const chNum = formData.changeNumber || 1;
     return `${parent} Ch ${chNum} - ${subject}.${extension}`;
   }
@@ -766,6 +798,8 @@ export function getSignatureBlankLines(documentType: string): number {
  * (no point number). The SSIC field is used as entered.
  */
 export function getDirectiveDesignation(formData: FormData): string {
+  const transmittal = changeTransmittalDesignation(formData);
+  if (transmittal) return transmittal;
   // Bulletins ALWAYS designate MCBul — orderPrefix is an MCO-side
   // field and lingers in form state after switching types (user
   // screenshot 2026-06-10: bulletin rendering "MCO 1000").

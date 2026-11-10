@@ -33,7 +33,6 @@ export const I_TYPE_OPTIONS = {
     { value: 'Portfolio Acquisition Executive-Mission Systems', label: 'Portfolio Acquisition Executive-Mission Systems' },
     { value: 'Program Executive Officer Digital and Enterprise Services', label: 'Program Executive Officer Digital and Enterprise Services' },
     { value: 'Program Executive Officer Land Systems', label: 'Program Executive Officer Land Systems' },
-    { value: 'Xxxxx', label: 'Xxxxx' },
   ],
 
   services: [
@@ -48,7 +47,6 @@ export const I_TYPE_OPTIONS = {
     { value: '', label: 'Select Address' },
     { value: '2200 Lester Street, Quantico, VA 22134-5050', label: '2200 Lester Street, Quantico, VA 22134-5050' },
     { value: '1325 10th Street SE, Bldg 196, Suite 400, Washington, DC 20374-5147', label: '1325 10th Street SE, Bldg 196, Suite 400, Washington, DC 20374-5147' },
-    { value: '## Street Address, City, State #####-####', label: '## Street Address, City, State #####-####' },
   ],
 
   categories: [
@@ -61,7 +59,6 @@ export const I_TYPE_OPTIONS = {
     { value: 'International Agreements (IA)', label: 'International Agreements (IA)' },
     { value: 'software documentation', label: 'software documentation' },
     { value: 'vulnerability information', label: 'vulnerability information' },
-    { value: 'XXXXX', label: 'XXXXX' },
   ],
 
   timeCompliance: [
@@ -74,7 +71,6 @@ export const I_TYPE_OPTIONS = {
     { value: '', label: 'Select Signing Authority' },
     { value: 'Program Manager', label: 'Program Manager' },
     { value: 'Product Manager', label: 'Product Manager' },
-    { value: 'Xxxxx Xxxxx', label: 'Xxxxx Xxxxx' },
   ],
 
   controllingOffices: [
@@ -91,7 +87,6 @@ export const I_TYPE_OPTIONS = {
     { value: 'Tactical Communications & Electromagnetic Warfare Systems', label: 'Tactical Communications & Electromagnetic Warfare Systems' },
     { value: 'Training Systems', label: 'Training Systems' },
     { value: 'Wargaming', label: 'Wargaming' },
-    { value: 'Xxxxx Xxxxx', label: 'Xxxxx Xxxxx' },
   ],
 
   cuiCategories: [
@@ -116,7 +111,6 @@ export const I_TYPE_OPTIONS = {
     { value: 'NOFORN', label: 'NOFORN' },
     { value: 'RELIDO', label: 'RELIDO' },
     { value: 'REL TO USA, LIST', label: 'REL TO USA, LIST' },
-    { value: 'Xxxxx', label: 'Xxxxx' },
   ],
 
   supersedureNotice: [
