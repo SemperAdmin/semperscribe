@@ -2,8 +2,8 @@
 
 Auditor-facing privacy posture statement. Complements the user-facing Privacy and Security Notice at `src/app/privacy/page.tsx` (rendered at the `/privacy` route).
 
-- Last reviewed: 2026-10-22
-- Document version: 2.2
+- Last reviewed: 2026-11-10
+- Document version: 2.3
 - User-facing notice: https://semperadmin.github.io/semperscribe/privacy
 
 Version 2.0 corrects a material misstatement. Version 1.0 claimed zero outbound
@@ -20,6 +20,10 @@ not reach.
 Version 2.2 (counseling handoff of 2026-10-22, D-10) states what GunnyBot does
 with the open document, and with a Counseling Worksheet in particular, in
 section 2.
+
+Version 2.3 (2026-11-10) brings three statements outside section 7 in line
+with it. The control table, the Privacy Act statement, and the deletion right
+still said `localStorage` alone after version 2.1 corrected section 7.
 
 ## 1. Statement of Facts
 
@@ -55,7 +59,7 @@ The privacy posture is enforced by architecture, not by policy alone.
 | No third-party CDN at runtime | Fonts via `next/font/google` build-time self-host, Font Awesome removed | commit `01463dd`, deletion of `dod-seal-base64.tsx` |
 | No analytics or tracking | StatsDisplay deleted in P1-2 | commit `354c2a4` |
 | No external image fetches | placehold.co fetch replaced with local DOD seal | commit `02949fc` |
-| Local-only persistence | Browser `localStorage` only, scoped to same-origin | `useUserProfile.ts`, `storage-utils.ts` |
+| Local-only persistence | Browser storage only (IndexedDB, `localStorage`, `sessionStorage`), scoped to same-origin, plus an optional user-chosen backup folder (section 7) | `document-library.ts`, `useUserProfile.ts`, `storage-utils.ts`, `auto-backup.ts` |
 | Production console stripped | Diagnostic logs removed from production bundle | `next.config.ts` `compiler.removeConsole` |
 
 One code path in the active source contacts a third-party host at runtime, and only on explicit user action: `streamChat` in `lib/gunnybot/client.ts`. It is the sole `fetch` call in the GunnyBot subsystem, which makes it the single enforcement point for every egress control described here. No other runtime third-party contact exists.
@@ -81,7 +85,7 @@ The Privacy Act of 1974 (5 USC 552a) applies to a "system of records," defined i
 SemperScribe does not maintain a system of records.
 
 - The application has no database, no backend, no persistent storage beyond the user's own browser.
-- Browser `localStorage` is not a Federal record system. It is user-controlled local storage, equivalent to a temp file on the user's workstation.
+- Browser storage (section 7) is not a Federal record system. It is user-controlled local storage, equivalent to a temp file on the user's workstation.
 - No retrieval mechanism by individual identifier exists or could exist absent a backend.
 
 Accordingly, the Privacy Act's substantive requirements (notice, accuracy, security, accounting, redress) do not directly bind the application as operated.
@@ -145,7 +149,7 @@ Users of the application have full control over the data they enter.
 
 - Access. The user enters and views their own data in their own browser.
 - Correction. The user edits their own data in their own browser.
-- Deletion. The user clears their own `localStorage` via browser controls or the Settings dialog.
+- Deletion. The user clears their own browser storage via browser controls or Settings, Data, "Delete all local data". Files in the backup folder and exported files stay on the user's disk until the user deletes them (section 7).
 - Portability. Users can export their drafts as NLDP files for sharing or backup.
 - No appeal mechanism is required because no maintainer-side processing occurs.
 

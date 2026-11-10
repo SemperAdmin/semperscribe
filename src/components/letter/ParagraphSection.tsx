@@ -2,7 +2,7 @@
 /**
  * Paragraph Section Component
  * Manages the body paragraphs with multi-level indentation, voice input, and validation
- * Modernized UI based on Marine Corps Directives Formatter
+ * Modernized UI carried over from Semper Scribe's earlier directives formatter
  */
 
 import { ParagraphData, AdminSubsections } from '@/types';

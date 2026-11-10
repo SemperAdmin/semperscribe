@@ -17,6 +17,7 @@ import {
   Undo2,
   Wand2,
 } from 'lucide-react';
+import { DOCUMENT_TYPES } from '@/lib/schemas';
 
 interface LandingPageProps {
   /** Starts a document of the given type (same path as the sidebar). */
@@ -30,6 +31,14 @@ interface LandingPageProps {
 
 /** D.8: the one example package shipped with the app. */
 export const EXAMPLE_DOCUMENT_URL = '/examples/sample-training-schedule.nldp';
+
+/**
+ * Counted from the registry so the landing copy cannot drift from the
+ * sidebar. The hard-coded "26" fell behind as types were added. The
+ * same-page endorsement is a placement of the endorsement type, not a
+ * type of its own, so it is not counted.
+ */
+export const DOCUMENT_TYPE_COUNT = Object.keys(DOCUMENT_TYPES).length;
 
 const QUICK_STARTS = [
   { type: 'basic', icon: FileText, name: 'Standard Naval Letter', blurb: 'The workhorse of official correspondence' },
@@ -62,7 +71,7 @@ const FEATURES = [
   {
     icon: MonitorDown,
     title: 'Installs and works offline',
-    body: 'Install as a desktop app and keep working with zero connectivity - author, validate, and export in disconnected spaces. Nothing ever leaves your machine.',
+    body: 'Install as a desktop app and keep working with zero connectivity - author, validate, and export in disconnected spaces. Nothing leaves your machine unless you turn on the GunnyBot assistant.',
   },
   {
     icon: Wand2,
@@ -72,7 +81,7 @@ const FEATURES = [
 ];
 
 const WORKFLOW = [
-  { step: '1', title: 'Pick a type', body: '26 document types from the sidebar - letters, directives, staffing papers, forms, messages.' },
+  { step: '1', title: 'Pick a type', body: `${DOCUMENT_TYPE_COUNT} document types from the sidebar - letters, directives, staffing papers, forms, counseling worksheets, technical publications, messages.` },
   { step: '2', title: 'Fill guided sections', body: 'Unit lookup, profile auto-fill, reference suggestions, clause inserts.' },
   { step: '3', title: 'Validate live', body: 'The preview and compliance banner update as you type. Fix issues before anyone kicks it back.' },
   { step: '4', title: 'Export or share', body: 'Formatted PDF or DOCX, merged enclosures, batch runs, or an encrypted share link.' },
@@ -102,7 +111,7 @@ export function LandingPage({ onSelectType, onLoadExample }: LandingPageProps) {
                 false once GunnyBot has a key, since it sends typed text to
                 api.genai.mil. The chip states the default and names the
                 opt-in path; GunnyBot warns in its own panel before use. */}
-            {['26 document types', 'SECNAV M-5216.5 aligned', 'Live compliance checks', 'On-device, AI assistant opt-in'].map((chip) => (
+            {[`${DOCUMENT_TYPE_COUNT} document types`, 'SECNAV M-5216.5 aligned', 'Live compliance checks', 'On-device, AI assistant opt-in'].map((chip) => (
               <span
                 key={chip}
                 className="rounded-full border border-secondary-foreground/20 bg-secondary-foreground/10 px-3 py-1 text-xs font-medium text-secondary-foreground/90"
@@ -213,7 +222,7 @@ export function LandingPage({ onSelectType, onLoadExample }: LandingPageProps) {
           <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" /> Letters, endorsements, memorandums</span>
           <span className="flex items-center gap-1.5"><Landmark className="h-3.5 w-3.5" /> Directives (MCO, MCBul, SECNAV)</span>
           <span className="flex items-center gap-1.5"><Layers className="h-3.5 w-3.5" /> Staffing and decision papers</span>
-          <span className="flex items-center gap-1.5"><Paperclip className="h-3.5 w-3.5" /> Forms (NAVMC 10274, Page 11)</span>
+          <span className="flex items-center gap-1.5"><Paperclip className="h-3.5 w-3.5" /> Forms (NAVMC 10274, 10922, 10132, 11106, Page 11, DD 368)</span>
           <span className="flex items-center gap-1.5"><Radio className="h-3.5 w-3.5" /> AMHS messages</span>
           <span className="flex items-center gap-1.5"><FileUp className="h-3.5 w-3.5" /> Word/PDF import</span>
           <span className="flex items-center gap-1.5"><Undo2 className="h-3.5 w-3.5" /> Full undo history</span>
