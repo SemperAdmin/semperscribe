@@ -23,7 +23,7 @@ A professional-grade, local-first web application for creating, formatting, and 
 
 ## Highlights
 
-- 📄 **27 document types** across 9 categories — from Basic Letters to Marine Corps Orders, AMHS messages, NJP forms, and technical publications
+- 📄 **32 document types** across 10 sidebar groups — from Basic Letters to Marine Corps Orders, AMHS messages, NJP forms, counseling worksheets, and technical publications
 - 📥 **Word/PDF import** — upload an existing `.docx` or PDF (even a badly formatted one), review the extracted fields, and export it compliant
 - 👀 **Live PDF preview** as you type, with a compliance-issue banner
 - 📦 **Export anywhere** — PDF, DOCX, AMHS plain text, batch mail-merge ZIPs, shareable links
@@ -39,7 +39,7 @@ A professional-grade, local-first web application for creating, formatting, and 
 |------|-------------|
 | **Basic Letter** | Standard format for routine correspondence and official communications |
 | **Multiple-Address Letter** | Letter addressed to two or more commands/activities |
-| **Endorsement** | Forwards correspondence on a new page with automatic routing |
+| **Endorsement** | Forwards correspondence on a new page with automatic routing, or on the same page below the basic letter's signature when it fits (Same-Page Endorsement, SECNAV M-5216.5 Figure 9-1) |
 
 </details>
 
@@ -89,7 +89,7 @@ A professional-grade, local-first web application for creating, formatting, and 
 </details>
 
 <details>
-<summary><strong>Directives</strong> (5)</summary>
+<summary><strong>Directives</strong> (6)</summary>
 
 | Type | Description |
 |------|-------------|
@@ -98,17 +98,31 @@ A professional-grade, local-first web application for creating, formatting, and 
 | **Change Transmittal** | Transmits amendments (page replacements) to an existing order per MCO 5215.1K |
 | **SECNAV Instruction** | Secretary of the Navy permanent directives per SECNAV M-5215.1 |
 | **SECNAV Notice** | Secretary of the Navy directives of a temporary nature |
+| **Volume** | Paginated, multi-chapter policy volume with chapter tree, appendices, and figures |
 
 </details>
 
 <details>
-<summary><strong>Forms</strong> (3)</summary>
+<summary><strong>Forms</strong> (7)</summary>
 
 | Type | Description |
 |------|-------------|
 | **AA Form (NAVMC 10274)** | Administrative Action form for personnel requests |
 | **Page 11 (NAVMC 118-11)** | Administrative Remarks for service record entries |
 | **COLA Application (NAVMC 11106)** | Cost-of-Living Allowance application, filled onto the official form |
+| **Dependency Application (NAVMC 10922)** | Dependency application for BAH and travel/transportation entitlements per MCO 1751.3 W/CH-1 |
+| **Unit Punishment Book (NAVMC 10132)** | Nonjudicial punishment record under Article 15, UCMJ, per MCO 5800.16 Vol 14, with the NJP package documents generated from its data |
+| **Conditional Release (DD 368)** | Request for Conditional Release from one Service or component to enter another |
+| **TLA Packet** | Temporary Lodging Allowance request: the facts finance needs, the housing search statement, certifications, and a routing checklist |
+
+</details>
+
+<details>
+<summary><strong>Counseling Worksheets</strong> (1)</summary>
+
+| Type | Description |
+|------|-------------|
+| **Counseling Worksheet** | Guided counseling session under MCO 1500.61 and NAVMC 2795, with targets for the coming period and a record for two signers |
 
 </details>
 
@@ -167,11 +181,13 @@ A professional-grade, local-first web application for creating, formatting, and 
 - **Auto-Fill** — Profile fields automatically populate new documents
 - **Formatting Defaults** — Header type (USMC/DON/DLA), body font, header color, AMHS classification and precedence
 - **Appearance** — Light, dark, and system theme support
+- **Data** — Auto backup of every library save to a folder you pick (Chrome and Edge)
+- **Assistant** — Optional GunnyBot provider and key, off by default
 
 ### 🗂️ Templates & Drafts
 
 - **Template Browser** — Pre-built global and unit-specific document templates
-- **Draft Saving** — Auto-save to browser localStorage with load/manage from the File menu
+- **Document Library** — Every save goes to an on-device IndexedDB library (search, rename, duplicate, no cap), opened from the File menu, with crash recovery and revision compare
 
 ### 📡 AMHS Message Features
 
@@ -239,7 +255,7 @@ client configuration, and the full security posture are in
 src/
 ├── app/                        # Next.js App Router pages
 │   ├── page.tsx                # Main application entry point
-│   └── dynamic-forms/          # Dynamic form route
+│   └── dynamic-forms/          # Developer demo of the schema-driven form
 ├── components/
 │   ├── ui/                     # Base UI library (shadcn/ui + Radix)
 │   ├── layout/                 # App shell, sidebar, header, preview, theme
@@ -248,7 +264,13 @@ src/
 │   ├── import/                 # Word/PDF import review modal
 │   ├── amhs/                   # AMHS editor, preview, POC manager
 │   ├── pdf/                    # PDF rendering components
-│   ├── wizard/                 # Multi-step document type wizard
+│   ├── counseling/             # Counseling Worksheet sections
+│   ├── gunnybot/               # Opt-in GunnyBot assistant panel and settings
+│   ├── itype/                  # I-Type publication editor and preview
+│   ├── review/                 # Review comments panel
+│   ├── signature/              # Guided signing ceremony
+│   ├── tla/                    # TLA Packet sections
+│   ├── volume/                 # Volume chapter tree, appendices, figures
 │   ├── SettingsDialog.tsx      # User profile and app settings
 │   ├── BatchGenerateModal.tsx  # Mail merge / batch generation
 │   └── ProofreadModal.tsx      # Proofreading checklist
@@ -284,7 +306,7 @@ src/
 - **GunnyBot Is the One Egress Path** — The optional GunnyBot assistant stays off until you supply a personal provider API key. When you use it, the text you submit goes directly from your browser to the provider you chose (Google Gemini or GenAI.mil) under your key. A pre-send scan prompts on SSN and EDIPI patterns. See [`SECURITY.md`](SECURITY.md) for the full data-flow statement.
 - **Pre-Export Scan** — Before any PDF, DOCX, official-form, or batch ZIP download, the document is scanned for SSN and EDIPI patterns and PHI keyword clusters. A hit prompts for acknowledgement. It does not certify a document free of CUI, PII, or classified material.
 - **No Backend** — Static site deployment. No server-side code, no database, no API calls.
-- **Local Storage Only** — Drafts and user profiles are stored in browser localStorage.
+- **Browser Storage Only** — Drafts are stored in the browser's IndexedDB document library and the user profile in localStorage, on this device only.
 - **Verification Required** — While Semper Scribe automates formatting, the final content is the responsibility of the originator. Always verify references and administrative details against current directives.
 
 ## Compliance Posture
@@ -329,7 +351,7 @@ Vulnerabilities should be reported through GitHub's Private Vulnerability Report
 | **DOCX** | docx (generation), mammoth (import) |
 | **Theming** | next-themes (light/dark/system) |
 | **Compression** | lz-string |
-| **Testing** | Vitest, Testing Library |
+| **Testing** | Vitest, Testing Library, Playwright |
 
 ## Contributing
 

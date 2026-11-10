@@ -235,5 +235,8 @@ export const NLDP_CONSTANTS = {
   MIME_TYPE: 'application/json',
   MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
   SUPPORTED_VERSIONS: ['1.0', '1.1', '1.2'],
-  CREATOR_APP: 'Marine Corps Directives Formatter'
+  // Written into metadata.createdBy on export. Packages from older builds
+  // carry 'Marine Corps Directives Formatter', the app's earlier name, and
+  // still import: nothing reads this field to accept or refuse a file.
+  CREATOR_APP: 'Semper Scribe'
 } as const;

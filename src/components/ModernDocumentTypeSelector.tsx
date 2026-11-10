@@ -1,6 +1,6 @@
 /**
  * Modern Document Type Selector Component
- * Demonstrates improved UI/UX patterns for the Marine Corps Directives Formatter
+ * Demonstrates improved UI/UX patterns for Semper Scribe
  */
 
 import React from 'react';

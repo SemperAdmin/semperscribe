@@ -120,7 +120,7 @@ NLDP files use `.nldp` extension with this structure:
   "metadata": {
     "createdAt": "2024-08-30T12:00:00.000Z",
     "formatVersion": "1.0",
-    "createdBy": "Marine Corps Directives Formatter",
+    "createdBy": "Semper Scribe",
     "author": { ... },
     "package": { ... }
   },

@@ -15,5 +15,8 @@ describe('landing page egress claim', () => {
     const { container } = render(<LandingPage onSelectType={vi.fn()} />);
     expect(screen.getByText('On-device, AI assistant opt-in')).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/100% on-device|no server/i);
+    // The offline card said "Nothing ever leaves your machine" with the
+    // same flaw. It now names the opt-in assistant as the exception.
+    expect(container.textContent).not.toMatch(/nothing ever leaves/i);
   });
 });
