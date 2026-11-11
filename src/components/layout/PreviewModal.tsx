@@ -130,7 +130,7 @@ export function PreviewModal({
             // PDF Preview
             <div className="h-full bg-muted/40 relative">
               {emptyStateFields && emptyStateFields.length > 0 ? (
-                <PreviewEmptyState fields={emptyStateFields} />
+                <PreviewEmptyState fields={emptyStateFields} documentType={documentType} />
               ) : (
                 // The last preview stays mounted while the next one is
                 // generated, under the spinner, rather than being swapped

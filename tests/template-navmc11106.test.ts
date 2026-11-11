@@ -34,9 +34,9 @@ const GLOBAL_DIR = join(here, '..', 'public', 'templates', 'global');
 type IndexEntry = { id: string; title: string; description: string; documentType?: string; url: string };
 const index: IndexEntry[] = JSON.parse(readFileSync(join(GLOBAL_DIR, 'index.json'), 'utf-8'));
 
-const SPOUSE = 'TONYA CAROL MARINE';
-const SON = 'JUSTIN DAVID MARINE';
-const DAUGHTER = 'EMMA RUTH MARINE';
+const SPOUSE = 'SPOUSE B SAMPLE';
+const SON = 'CHILD C SAMPLE';
+const DAUGHTER = 'CHILD D SAMPLE';
 
 interface Sample {
   id: string;

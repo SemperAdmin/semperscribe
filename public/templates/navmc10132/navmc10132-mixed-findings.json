@@ -16,15 +16,15 @@
   "data": {
     "formData": {
       "documentType": "navmc10132",
-      "unit": "CO C, 2D BN, 4TH MARINES, 1ST MARDIV",
-      "accusedName": "OKAFOR, CHIDI B",
+      "unit": "CO C, TRAINING DEMO BATTALION",
+      "accusedName": "SAMPLE, ACCUSED B",
       "accusedRankGrade": "Cpl, E4",
       "accusedEdipi": "2000300004",
       "accusedPayGrade": "E4",
       "offenses": [
         {
           "articleLabel": "Art. 86  Absence without leave",
-          "summary": "UA from 0730 to 1600, 3 Aug 26, MCB Camp Pendleton.",
+          "summary": "UA from 0730 to 1600, 3 Aug 26, SAMPLE INSTALLATION.",
           "finding": "Guilty"
         },
         {
@@ -66,7 +66,7 @@
       "punishmentsConcurrent": false,
       "punishmentOverflowToItem21": false,
       "suspension": "NONE",
-      "njpAuthorityName": "BRENNAN, SIOBHAN T",
+      "njpAuthorityName": "COMMANDER, SAMPLE A",
       "njpAuthorityGrade": "1stLt, O2",
       "njpAuthorityEdipi": "2000300005",
       "njpAuthorityPayGrade": "O2",
