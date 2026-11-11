@@ -56,6 +56,11 @@ export interface FieldDefinition {
   // CAPS. Required on any field the schema validates as all-caps, or
   // selecting a suggestion writes a value that fails validation.
   preserveCase?: boolean;
+  // Select only. Renders a text input whose options are offered as
+  // suggestions (a <datalist>), so the drafter picks a listed value or
+  // types one the list lacks. For lists that can never be complete,
+  // such as the I-Type entities and controlling offices.
+  allowCustom?: boolean;
   
   // Dynamic behavior
   condition?: (formData: any) => boolean; 
@@ -3002,6 +3007,12 @@ export const ChangeTransmittalDefinition: DocumentTypeDefinition = {
     ...STANDARD_LETTER_FEATURES,
     showVia: false,
     isDirective: true,
+    // Both emitters print the distribution statement, PCN and Copy to,
+    // and the Reports Required block, for every Marine Corps directive.
+    // With these off the form hid what the transmittal printed (owner
+    // request 2026-11-11), so the type shows them as MCO and MCBul do.
+    showDistribution: true,
+    showReports: true,
     category: 'directives',
   },
   sections: [
