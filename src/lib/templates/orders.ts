@@ -445,7 +445,7 @@ export const ChangeTransmittalTemplate: DocumentTemplate = {
     parentDirectiveTitle: 'MCO 1000.1',
     changeNumber: 1,
     orderPrefix: 'MCO',
-    directiveTitle: 'MCO 1000.1 Ch 1',
+    directiveTitle: 'MCO 1000.1 W/CH-1',
 
     distribution: {
       type: 'pcn-with-copy',

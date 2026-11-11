@@ -2971,7 +2971,7 @@ export const ChangeTransmittalSchema = BasicLetterSchema.extend({
   ssic: ssicFieldDirective(),
   // The parent directive being changed
   parentDirectiveTitle: z.string().min(1, "Parent directive title is required (e.g., MCO 5215.1K)"),
-  // Change number (Ch 1, Ch 2, etc.)
+  // Change number, printed W/CH-1, W/CH-2, etc.
   changeNumber: typedWholeNumber(
     z.number({ error: "Change number is required" }).int("Change number is a whole number").min(1, "Change number starts at 1"),
   ),
@@ -3036,7 +3036,7 @@ export const ChangeTransmittalDefinition: DocumentTypeDefinition = {
           placeholder: '1',
           required: true,
           className: 'md:col-span-1',
-          description: 'Sequential change number (Ch 1, Ch 2, etc.)'
+          description: 'Sequential change number, printed W/CH-1, W/CH-2, etc.'
         },
         // FOUO Designation retired from the form 2026-08-16. DoDI
         // 5200.48 (6 March 2020) cancelled DoDM 5200.01 Vol 4 and ended

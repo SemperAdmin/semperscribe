@@ -193,8 +193,8 @@ export function formatDirectiveSSIC(
 
 /**
  * A change transmittal is identified by the directive it changes and
- * its change number ("MCO 1500.61 Ch 2"), the form the shipped template
- * and the export filename already use. Both emitters built it from the
+ * its change number, written W/CH-n (owner ruling 2026-11-11), for
+ * example "MCO 1500.61 W/CH-2". Both emitters built it from the
  * SSIC alone, so the parent directive and the change number never
  * reached the page (host report 2026-11-10). Returns '' for every other
  * type, and for a transmittal with no parent directive yet, so the
@@ -205,7 +205,7 @@ export function changeTransmittalDesignation(formData: FormData): string {
   const parent = String(formData.parentDirectiveTitle ?? '').trim();
   if (!parent) return '';
   const n = Number(String(formData.changeNumber ?? '').trim());
-  return Number.isInteger(n) && n >= 1 ? `${parent} Ch ${n}` : parent;
+  return Number.isInteger(n) && n >= 1 ? `${parent} W/CH-${n}` : parent;
 }
 
 /**
@@ -397,7 +397,8 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
     // sanitize() strips it, which named the file "MCO 150061 Ch 2".
     const parent = (String(formData.parentDirectiveTitle ?? '')).replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim() || 'Directive';
     const chNum = formData.changeNumber || 1;
-    return `${parent} Ch ${chNum} - ${subject}.${extension}`;
+    // W/CH-n as on the page, with a hyphen for the slash a filename cannot carry.
+    return `${parent} W-CH-${chNum} - ${subject}.${extension}`;
   }
 
   // Endorsement

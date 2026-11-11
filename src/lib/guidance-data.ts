@@ -155,7 +155,7 @@ export const GUIDANCE: GuidanceEntry[] = [
   {
     type: 'change-transmittal',
     label: 'Change Transmittal',
-    what: 'Transmits page changes to an existing Marine Corps Order: replacement or added pages, issued under the parent order\'s identity and a change number (for example MCO 1000.1 Ch 1).',
+    what: 'Transmits page changes to an existing Marine Corps Order: replacement or added pages, issued under the parent order\'s identity and a change number (for example MCO 1000.1 W/CH-1).',
     whenToUse: [
       'Amending part of an order while most of its pages stay current',
       'Inserting replacement or added pages (such as 4a and 4b) into the basic order',
@@ -164,7 +164,7 @@ export const GUIDANCE: GuidanceEntry[] = [
       'A change touching half or more of the order\'s pages - revise the order',
       'An order already carrying nine changes - revise it',
     ],
-    example: 'Parent MCO 1000.1, Change 1: new page inserts to the basic order',
+    example: 'MCO 1000.1 W/CH-1: new page inserts to the basic order',
     citation: 'MCO 5215.1K',
   },
   {
