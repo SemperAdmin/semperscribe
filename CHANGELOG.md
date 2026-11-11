@@ -16,6 +16,11 @@ matching GitHub release with this file's section as the notes.
 
 ### Fixed
 
+- Change Transmittal: the Change Number field refused every entry with "expected number, received string", because the number box hands the form text. It now accepts the number typed. MCO Chapter Number had the same fault and is fixed with it.
+- Change Transmittal: the PDF and Word exports built the identification block and the designation line from the SSIC alone, so the parent directive and the change number never printed and an SSIC of "1500" printed "MCO 1500" twice. Both lines now read the parent directive and the change, for example "MCO 1500.61 Ch 2", and a directive title stored by the template no longer overrides them. The export filename keeps the point in the parent directive number.
+- Change Transmittal now has a button in the sidebar's Directives group. It could be opened only from the command palette. A test now requires a sidebar button for every document type.
+- Correspondence Guide: opening it on a type with no entry showed the last entry viewed. Such a type now shows a note naming it. New entries cover Change Transmittal, SECNAV Instruction, SECNAV Notice, Volume and I-Type.
+- I-Type: the Entity, Address, Category, Signing Authority, Controlling Office and Control lists offered fill-in placeholders ("Xxxxx", "## Street Address") which printed as typed. They are removed.
 - 2d Intelligence Battalion (RUC 20362) letterheads now print "2D INTELLIGENCE BATTALION" and "II MARINE EXPEDITIONARY FORCE INFORMATION GROUP" over PSC BOX 20139, CAMP LEJEUNE NC 28542-0139. They printed the abbreviated "2D INTEL BN MIG II MEF". Unit search still matches the abbreviation.
 - The landing page said "26 document types". It now counts the types from the document registry (32 today), so the count stays in step with the sidebar. The coverage strip lists every form, and the offline card no longer says nothing ever leaves the machine, since the opt-in GunnyBot assistant does send text.
 - Exported data packages (.nldp) record "Semper Scribe" as the creating app, not the earlier name "Marine Corps Directives Formatter". Packages carrying the old name still import.

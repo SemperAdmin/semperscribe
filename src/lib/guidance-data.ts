@@ -3,8 +3,9 @@
  *
  * What each document type is, when to use it, when not to, and an
  * example subject. Grounded in SECNAV M-5216.5 (DON Correspondence
- * Manual), MCO 5216.20B, and MCO 5215.1K. Types without an entry fall
- * back to a generic note in the dialog.
+ * Manual), MCO 5216.20B, MCO 5215.1K, and for SECNAV directives SECNAV
+ * M-5215.1 (rules as recorded in docs/POLICY_COMPLIANCE_AUDIT.md). Types
+ * without an entry fall back to a note naming the type (GuidanceDialog).
  */
 
 export interface GuidanceEntry {
@@ -152,6 +153,65 @@ export const GUIDANCE: GuidanceEntry[] = [
     citation: 'MCO 5215.1K',
   },
   {
+    type: 'change-transmittal',
+    label: 'Change Transmittal',
+    what: 'Transmits page changes to an existing Marine Corps Order: replacement or added pages, issued under the parent order\'s identity and a change number (for example MCO 1000.1 Ch 1).',
+    whenToUse: [
+      'Amending part of an order while most of its pages stay current',
+      'Inserting replacement or added pages (such as 4a and 4b) into the basic order',
+    ],
+    whenNotToUse: [
+      'A change touching half or more of the order\'s pages - revise the order',
+      'An order already carrying nine changes - revise it',
+    ],
+    example: 'Parent MCO 1000.1, Change 1: new page inserts to the basic order',
+    citation: 'MCO 5215.1K',
+  },
+  {
+    type: 'secnav-instruction',
+    label: 'SECNAV Instruction',
+    what: 'A Secretary of the Navy directive with continuing effect, designated SECNAVINST with the SSIC and a consecutive number. It opens with Purpose, then Cancellation when it supersedes another directive.',
+    whenToUse: [
+      'Department of the Navy policy, responsibilities, or procedures meant to stay in force until cancelled',
+    ],
+    whenNotToUse: [
+      'Direction of a temporary nature - use a SECNAV Notice',
+      'Marine Corps policy issued by the Commandant - use a Marine Corps Order',
+      'Text running past five pages including the signature block - move detail into enclosures',
+      'A change touching more than 25 percent of an instruction\'s pages - issue a revision',
+    ],
+    example: 'DEPARTMENT OF THE NAVY RECORDS MANAGEMENT PROGRAM',
+    citation: 'SECNAV M-5215.1',
+  },
+  {
+    type: 'secnav-notice',
+    label: 'SECNAV Notice',
+    what: 'A Secretary of the Navy directive of temporary nature. It carries no consecutive number and is cited by SSIC and date. Without a cancellation paragraph it cancels itself after one year, shown as a "Canc:" date in the upper right.',
+    whenToUse: [
+      'One-time or time-limited direction across the Department of the Navy',
+    ],
+    whenNotToUse: [
+      'Policy meant to last - use a SECNAV Instruction',
+      'Marine Corps direction of a temporary nature - use a Marine Corps Bulletin',
+    ],
+    example: 'FISCAL YEAR 2027 DIRECTIVES REVIEW',
+    citation: 'SECNAV M-5215.1',
+  },
+  {
+    type: 'volume',
+    label: 'Volume',
+    what: 'One volume of a policy manual issued in volumes: chapters, sections and numbered paragraphs, chapter-page numbering (1-1, 1-2), appendices, and figures. The layout follows the published volumes of MCO 5800.16, the Legal Support and Administration Manual, which has no separate style guide.',
+    whenToUse: [
+      'Drafting or revising a volume of a manual issued in volumes, such as MCO 5800.16',
+    ],
+    whenNotToUse: [
+      'A single order or bulletin - use the Marine Corps Order or Bulletin type',
+      'Changing a few pages of an existing order - use a Change Transmittal',
+    ],
+    example: 'LEGAL SUPPORT AND ADMINISTRATION MANUAL',
+    citation: 'MCO 5800.16 (published volumes)',
+  },
+  {
     type: 'position-paper',
     label: 'Position Paper',
     what: 'A staffing paper arguing a command position on an issue for a decision-maker.',
@@ -204,6 +264,20 @@ export const GUIDANCE: GuidanceEntry[] = [
     ],
     example: 'Response to congressional inquiry on behalf of the Commandant',
     citation: 'SECNAV M-5216.5, Ch. 12',
+  },
+  {
+    type: 'i-type',
+    label: 'I-Type Publication',
+    what: 'The cover and administrative pages of a Marine Corps technical publication (TM, SL-3, SL-4, LI, MI, SI, TI): short title, publication type, issuing entity, End Items table, distribution, destruction and supersedure notices, and Appendix A.',
+    whenToUse: [
+      'Issuing or updating the front matter of a technical manual, stocklist, or lubrication, modification, supply or technical instruction',
+    ],
+    whenNotToUse: [
+      'Policy or direction to commands - use a Marine Corps Order or Bulletin',
+      'Correspondence about a publication - use a naval letter',
+    ],
+    example: 'TECHNICAL MANUAL for the end items listed on the cover',
+    citation: 'I-Type instruction sheet',
   },
   {
     type: 'amhs',

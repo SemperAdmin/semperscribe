@@ -172,6 +172,21 @@ const ssicFieldOptional = () => z.string().optional().superRefine((val, ctx) => 
 // Must start with an optional classification prefix (C/S), then 4-5 digit SSIC,
 // optional R (reserve), optional .# (point number), optional revision letter,
 // optional "w/ ch #" (change indicator)
+/**
+ * A whole number typed into a DynamicForm `type: 'number'` field.
+ * <input type="number"> hands react-hook-form a string, and the schema
+ * used to demand a number, so every entry failed with "expected number,
+ * received string" (host report 2026-11-10, Change Number). Saved
+ * packages and templates store the number itself, so both forms are
+ * accepted. An empty box reads as no entry.
+ */
+const typedWholeNumber = (schema: z.ZodNumber) =>
+  z.preprocess((v) => {
+    if (typeof v !== 'string') return v;
+    const t = v.trim();
+    return t === '' ? undefined : Number(t);
+  }, schema);
+
 const ssicFieldDirective = () => z.string().superRefine((val, ctx) => {
   if (!val) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "SSIC is required" });
@@ -522,7 +537,7 @@ export const MCOSchema = BasicLetterSchema.extend({
   fouoDesignation: z.enum(['', 'full', 'partial']).optional(),
   // 4-digit paragraph numbering per MCO 5215.1K para 34
   fourDigitNumbering: z.boolean().optional(),
-  chapterNumber: z.number().min(1).max(9).optional(),
+  chapterNumber: typedWholeNumber(z.number().int().min(1).max(9)).optional(),
   // Structural pages per MCO 5215.1K para 48
   showStructuralPages: z.boolean().optional(),
   showLocatorSheet: z.boolean().optional(),
@@ -2957,7 +2972,9 @@ export const ChangeTransmittalSchema = BasicLetterSchema.extend({
   // The parent directive being changed
   parentDirectiveTitle: z.string().min(1, "Parent directive title is required (e.g., MCO 5215.1K)"),
   // Change number (Ch 1, Ch 2, etc.)
-  changeNumber: z.number().min(1, "Change number is required"),
+  changeNumber: typedWholeNumber(
+    z.number({ error: "Change number is required" }).int("Change number is a whole number").min(1, "Change number starts at 1"),
+  ),
   // FOUO designation
   fouoDesignation: z.enum(['', 'full', 'partial']).optional(),
   // Distribution statement
