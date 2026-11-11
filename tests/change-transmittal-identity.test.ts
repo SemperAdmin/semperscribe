@@ -9,8 +9,8 @@
  *    designation line from the SSIC alone. The Parent Directive and the
  *    Change Number never reached the page, so an SSIC of "1500" printed
  *    "MCO 1500" twice and named no change. The transmittal now designates
- *    itself as the parent directive plus "Ch n", the form the shipped
- *    template and the export filename already use.
+ *    itself as the parent directive plus "W/CH-n" (owner ruling
+ *    2026-11-11, for example "MCO 1500.61 W/CH-2").
  */
 import { describe, it, expect } from 'vitest';
 import { ChangeTransmittalSchema, MCODefinition } from '@/lib/schemas';
@@ -68,15 +68,15 @@ describe('change transmittal designation', () => {
     ({ ...base, changeNumber: '2', ...over }) as unknown as FormData;
 
   it('designates the parent directive and the change number in the ID block', () => {
-    expect(getDirectiveDesignation(ct())).toBe('MCO 1500.61 Ch 2');
+    expect(getDirectiveDesignation(ct())).toBe('MCO 1500.61 W/CH-2');
   });
 
   it('prints the same identity on the designation line', () => {
-    expect(buildDirectiveTitle(ct())).toBe('MCO 1500.61 Ch 2');
+    expect(buildDirectiveTitle(ct())).toBe('MCO 1500.61 W/CH-2');
   });
 
   it('accepts a numeric change number from a saved package', () => {
-    expect(getDirectiveDesignation(ct({ changeNumber: 1 }))).toBe('MCO 1500.61 Ch 1');
+    expect(getDirectiveDesignation(ct({ changeNumber: 1 }))).toBe('MCO 1500.61 W/CH-1');
   });
 
   it('falls back to the SSIC designation until a parent directive is entered', () => {
@@ -93,8 +93,8 @@ describe('change transmittal designation', () => {
 describe('designation line with a stored directive title', () => {
   it('ignores a template directiveTitle the transmittal form cannot edit', async () => {
     const { getDirectiveTitleLine } = await import('@/lib/naval-format-utils');
-    const fd = { ...base, changeNumber: 2, directiveTitle: 'MCO 1000.1 Ch 1' } as unknown as FormData;
-    expect(getDirectiveTitleLine(fd)).toBe('MCO 1500.61 Ch 2');
+    const fd = { ...base, changeNumber: 2, directiveTitle: 'MCO 1000.1 W/CH-1' } as unknown as FormData;
+    expect(getDirectiveTitleLine(fd)).toBe('MCO 1500.61 W/CH-2');
   });
 
   it('keeps an order\'s own directive title', async () => {
@@ -105,9 +105,9 @@ describe('designation line with a stored directive title', () => {
 });
 
 describe('change transmittal export filename', () => {
-  it('keeps the point in the parent directive number', async () => {
+  it('keeps the point and writes the change without a slash', async () => {
     const { getExportFilename } = await import('@/lib/naval-format-utils');
     const fd = { ...base, changeNumber: '2' } as unknown as FormData;
-    expect(getExportFilename(fd, 'pdf')).toBe('MCO 1500.61 Ch 2 - MARINE CORPS TRAINING.pdf');
+    expect(getExportFilename(fd, 'pdf')).toBe('MCO 1500.61 W-CH-2 - MARINE CORPS TRAINING.pdf');
   });
 });
