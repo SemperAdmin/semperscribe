@@ -12,11 +12,11 @@ export const AAFormTemplate: DocumentTemplate = {
     
     // AA Form Specifics
     actionNo: '001-26',
-    orgStation: '1st Battalion, 5th Marines\n Marine Corps Base Camp Pendleton\nCamp Pendleton, CA 92055',
+    orgStation: 'Training Demo Command\nSample Installation\nSample City, ST 00000-0000',
 
     // Standard Fields
-    from: 'Cpl John A. Smith, 1234567890/0311, USMC',
-    to: 'Commanding Officer, 1st Battalion, 5th Marines',
+    from: 'Cpl Marine A. Sample, 1234567890/0311, USMC',
+    to: 'Commanding Officer, Training Demo Command',
     subj: 'REQUEST FOR SPECIAL LIBERTY',
     date: '10 Feb 26',
 
@@ -36,7 +36,7 @@ export const AAFormTemplate: DocumentTemplate = {
     ],
 
     // Footer
-    sig: 'J. A. SMITH',
+    sig: 'M. A. SAMPLE',
 
     // Arrays
     vias: [

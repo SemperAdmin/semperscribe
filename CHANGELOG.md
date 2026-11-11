@@ -16,6 +16,10 @@ matching GitHub release with this file's section as the notes.
 
 ### Fixed
 
+- Correspondence Guide: every form now has an entry - AA Form, Page 11, NAVMC 10922, NAVMC 10132, NAVMC 11106, DD 368, TLA Packet and Counseling Worksheet. A form showed no guidance of its own.
+- The empty preview names the document type ("your Conditional Release (DD 368) appears here") instead of calling every type a letter, and asks for a paragraph and a signature name only on types that have them. Page 11, the NAVMC forms and DD 368 have neither.
+- Template samples on the personal forms read as samples. The NAVMC 10922 and 11106 templates carried realistic names, a real battalion, its RUC and a street address, and the NAVMC 10132, DD 368 and AA Form samples paired realistic names with real battalions and installations. They now use "SAMPLE, MARINE A", "TRAINING DEMO COMMAND" and "SAMPLE INSTALLATION", and the 10922 and 11106 name and unit placeholders show the format instead of a person. A test holds the personal-form templates to sample values.
+- Page 11: both remarks columns carry Insert template and Clear column. Only the right column did, so an entry could not be inserted into the left column, where a page's first entry goes.
 - Change Transmittal now shows the Distribution and Reports Required sections, as Marine Corps Orders and Bulletins do. The form hid both while the PDF and Word exports printed them, so the transmittal printed a distribution the drafter could not edit.
 - Change Transmittal, SECNAV Instruction and SECNAV Notice no longer offer the letter-style Distribution and Copy To in the closing block. Both exports skip those fields for every directive, so whatever was typed there never printed. The directive Distribution section is the one that prints.
 - I-Type: the Entity, Address, Category, Signing Authority, Controlling Office and Control fields take a typed value. They suggest the listed values and keep any other value as typed, so an entity or office the list lacks can be entered.

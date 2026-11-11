@@ -19,11 +19,11 @@
       "reason": "start",
       "dateOfApplication": "2026-07-01",
       "lifeEventDate": "2026-06-20",
-      "nameOfMarine": "MARINE, ALONZO DEAN",
+      "nameOfMarine": "SAMPLE, MARINE A",
       "edipi": "1234567890",
       "grade": "SGT",
       "typeOfService": "usmc",
-      "organizationStation": "1ST BN 6TH MARINES 2D MARDIV\nCAMP LEJEUNE NC 28547",
+      "organizationStation": "TRAINING DEMO COMMAND\nSAMPLE INSTALLATION ST 00000",
       "unitRuc": "12160",
       "ecc": "2027-06-13",
       "dateEnlistmentOrAd": "2024-06-13",
@@ -31,8 +31,8 @@
       "futureAddressEta": "",
       "dependents": [
         {
-          "name": "TONYA CAROL MARINE",
-          "address": "123 FOURTH ST JACKSONVILLE NC 28540",
+          "name": "SPOUSE B SAMPLE",
+          "address": "123 SAMPLE ST SAMPLE CITY ST 00000",
           "relationship": "SPOUSE",
           "dateOfBirth": "1997-07-07",
           "allowanceClaimedFrom": "2026-06-20"
@@ -81,7 +81,7 @@
       },
       "marriageDate": "2026-06-20",
       "marriagePlace": "ONSLOW, NC",
-      "marriageSpouseName": "TONYA CAROL GRAY",
+      "marriageSpouseName": "SPOUSE B MAIDEN",
       "memberPrevMarried": "yes",
       "memberPrevMarriedTimes": "1",
       "spousePrevMarried": "no",
@@ -89,7 +89,7 @@
       "dissolutions": [
         {
           "formerMarriageOf": "self",
-          "spouseName": "JOHNSON, MELISSA ANN",
+          "spouseName": "FORMER, SPOUSE G",
           "dateOfDissolution": "2019-03-15",
           "placeOfDissolution": "WASHOE COUNTY, NV",
           "reason": "divorce"
@@ -131,7 +131,7 @@
       "swornDay": "1",
       "swornMonth": "July",
       "swornYear2Digit": "26",
-      "attestingOfficerName": "STEWART, THOMAS J",
+      "attestingOfficerName": "OFFICER, SAMPLE H",
       "reasonMode": "auto"
     }
   }

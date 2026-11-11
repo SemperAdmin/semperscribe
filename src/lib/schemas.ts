@@ -1221,7 +1221,7 @@ export const Navmc10922Definition: DocumentTypeDefinition = {
           label: 'Name of Marine (Last, First, Middle)',
           type: 'text',
           required: true,
-          placeholder: 'MARINE, ALONZO DEAN',
+          placeholder: 'LAST, FIRST MIDDLE',
           className: 'md:col-span-1',
         },
         { name: 'edipi', label: 'EDIPI', type: 'text', maxLength: 10, digitsOnly: true, inputMode: 'numeric', required: true, placeholder: '1234567890', className: 'md:col-span-1' },
@@ -1915,7 +1915,7 @@ export const Navmc11106Definition: DocumentTypeDefinition = {
       id: 'member',
       title: 'Part B — Member Data',
       fields: [
-        { name: 'nameOfMarine', label: 'Name (Last, First, MI)', type: 'text', required: true, maxLength: 70, placeholder: 'MARINE, ALONZO D', className: 'md:col-span-1' },
+        { name: 'nameOfMarine', label: 'Name (Last, First, MI)', type: 'text', required: true, maxLength: 70, placeholder: 'LAST, FIRST MI', className: 'md:col-span-1' },
         { name: 'grade', label: 'Grade', type: 'text', required: true, maxLength: 20, placeholder: 'SGT', className: 'md:col-span-1' },
         { name: 'dateOfRank', label: 'Date of Rank', type: 'date-picker', className: 'md:col-span-1' },
         { name: 'edipi', label: 'EDIPI', type: 'text', required: true, maxLength: 10, digitsOnly: true, inputMode: 'numeric', placeholder: '1234567890', className: 'md:col-span-1' },

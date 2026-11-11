@@ -266,6 +266,116 @@ export const GUIDANCE: GuidanceEntry[] = [
     citation: 'SECNAV M-5216.5, Ch. 12',
   },
   {
+    type: 'aa-form',
+    label: 'AA Form (NAVMC 10274)',
+    what: 'The Administrative Action form: a Marine\'s personnel request routed through the chain of command for a decision, with each level\'s recommendation.',
+    whenToUse: [
+      'A personnel request needing a command or headquarters decision, such as an extension on station, a tour curtailment, or a BAH or PCS travel matter',
+      'Requests the shipped AA templates cover - open Browse Templates to start from one',
+    ],
+    whenNotToUse: [
+      'A service record entry - use Page 11',
+      'Correspondence between commands - use a naval letter',
+    ],
+    example: 'REQUEST FOR 12-MONTH EXTENSION ON STATION',
+    citation: 'NAVMC 10274',
+  },
+  {
+    type: 'page11',
+    label: 'Page 11 (NAVMC 118(11))',
+    what: 'Administrative Remarks: entries in one Marine\'s service record. Entries fill the left column, then the right, then continuation pages. The name and DoD ID on the page say whose record it is.',
+    whenToUse: [
+      'Recording an entry an order or MARADMIN requires in the service record, such as an accommodation decision under MARADMIN 192/26',
+    ],
+    whenNotToUse: [
+      'A request needing a decision - use the AA Form',
+      'A leader\'s record of a counseling session - use the Counseling Worksheet',
+    ],
+    example: 'The entry text, for example a shaving accommodation entry',
+    citation: 'NAVMC 118(11)',
+  },
+  {
+    type: 'navmc10922',
+    label: 'Dependency Application (NAVMC 10922)',
+    what: 'Adds or removes a dependent in the Marine Corps pay system for BAH and travel and transportation entitlements, with the documents viewed and the attesting officer\'s certification.',
+    whenToUse: [
+      'Gaining a dependent by marriage, birth, adoption, or a stepchild',
+      'Losing a dependent, for example by divorce',
+    ],
+    whenNotToUse: [
+      'Overseas cost-of-living allowance - use NAVMC 11106',
+    ],
+    example: 'Marriage, with the marriage certificate viewed',
+    citation: 'MCO 1751.3 W/CH-1',
+  },
+  {
+    type: 'navmc10132',
+    label: 'Unit Punishment Book (NAVMC 10132)',
+    what: 'The record of nonjudicial punishment under Article 15, UCMJ: rights advisement, offenses and findings, punishment, suspension and vacation, appeal, and the unit diary entry. The NJP package documents are generated from its data.',
+    whenToUse: [
+      'Recording an NJP from rights advisement through appeal and the unit diary entry',
+    ],
+    whenNotToUse: [
+      'Corrective action when no NJP is held - use counseling or a Page 11 entry as your order directs',
+    ],
+    example: 'UA from 0600, 10 Aug 26 to 1900, 12 Aug 26',
+    citation: 'MCO 5800.16 Vol 14; MARADMIN 427/23',
+  },
+  {
+    type: 'navmc11106',
+    label: 'COLA Application (NAVMC 11106)',
+    what: 'Application for overseas Cost-of-Living Allowance, filled onto the official form. Part D and both signature blocks stay open for the commander.',
+    whenToUse: [
+      'Starting or changing OCONUS COLA, for the member alone or with dependents',
+    ],
+    whenNotToUse: [
+      'Adding or removing a dependent - use NAVMC 10922',
+      'Temporary lodging on arrival or departure - use the TLA Packet',
+    ],
+    example: 'Member with dependents, installation approved',
+    citation: 'MCTFS PRIUM par 80102; DoD FMR Vol 7A Ch 68',
+  },
+  {
+    type: 'dd368',
+    label: 'Conditional Release (DD 368)',
+    what: 'A member of one Service or component asks to be released to enter another. The member and recruiter, the authorizing official, and the enlisting or appointing official each complete a section.',
+    whenToUse: [
+      'A member asks to leave the current Service or component to join another',
+    ],
+    whenNotToUse: [
+      'A request handled inside the Marine Corps - use the AA Form',
+    ],
+    example: 'Release from the Marine Corps Reserve to enlist in the Navy',
+    citation: 'DD Form 368',
+  },
+  {
+    type: 'tla-packet',
+    label: 'TLA Packet',
+    what: 'A Temporary Lodging Allowance request: the facts finance needs to compute the claim, the housing search statement, the certifications the situation calls for, and a routing checklist. Finance sets the rates and computes the amount.',
+    whenToUse: [
+      'Requesting TLA for lodging while arriving at or departing an overseas station',
+    ],
+    whenNotToUse: [
+      'Ongoing overseas cost of living - use NAVMC 11106',
+      'In place of the command\'s NAVMC 11116 - the packet supports it',
+    ],
+    example: 'Arrival, Marine and spouse, 10 days of lodging',
+    citation: 'DoD FMR Vol 7A Ch 68; FPM Vol 1 para 0703',
+  },
+  {
+    type: 'counseling',
+    label: 'Counseling Worksheet',
+    what: 'A guided counseling session recorded for the senior and the Marine counseled: the occasion and timing, the six functional areas, targets for the coming period, and a record for two signers.',
+    whenToUse: [
+      'Preparing and recording a counseling session the order calls for',
+    ],
+    whenNotToUse: [
+      'An entry in the service record - use Page 11',
+    ],
+    example: 'Initial counseling on joining the unit',
+    citation: 'MCO 1500.61; NAVMC 2795',
+  },
+  {
     type: 'i-type',
     label: 'I-Type Publication',
     what: 'The cover and administrative pages of a Marine Corps technical publication (TM, SL-3, SL-4, LI, MI, SI, TI): short title, publication type, issuing entity, End Items table, distribution, destruction and supersedure notices, and Appendix A.',

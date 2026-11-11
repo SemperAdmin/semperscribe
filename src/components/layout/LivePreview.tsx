@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Check, FileText, Download, Printer, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { RequiredFieldStatus } from '@/lib/required-fields';
+import { previewEmptyStateCopy, type RequiredFieldStatus } from '@/lib/required-fields';
 
 import { PageCountIndicator } from './PageCountIndicator';
 import { XfaFormPreview } from './XfaFormPreview';
@@ -52,12 +52,13 @@ interface LivePreviewProps {
  * The field list comes from the document-type definition, so it names
  * the same requirements the compliance banner enforces.
  */
-export function PreviewEmptyState({ fields }: { fields: RequiredFieldStatus[] }) {
+export function PreviewEmptyState({ fields, documentType }: { fields: RequiredFieldStatus[]; documentType?: string }) {
+  const copy = previewEmptyStateCopy(documentType ?? '');
   return (
     <div className="absolute inset-0 flex items-center justify-center p-6">
       <div className="max-w-sm text-center">
         <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
-        <p className="text-sm font-medium text-foreground">Fill the header and your letter appears here.</p>
+        <p className="text-sm font-medium text-foreground">{copy.headline}</p>
         {/* D.8: text-muted-foreground measures 4.41:1 against the
             preview's muted ground at 12 px, under the 4.5:1 AA floor
             (measured by the axe pass). Foreground clears it. */}
@@ -75,9 +76,7 @@ export function PreviewEmptyState({ fields }: { fields: RequiredFieldStatus[] })
             </li>
           ))}
         </ul>
-        <p className="mt-3 text-xs text-foreground">
-          Then write at least one paragraph and type the signature name in the closing block.
-        </p>
+        {copy.followUp && <p className="mt-3 text-xs text-foreground">{copy.followUp}</p>}
       </div>
     </div>
   );
@@ -172,7 +171,7 @@ export function LivePreview({ className, previewUrl, previewBlob, previewKind = 
         {/* D.8: the untouched document never shows a spinner or a blank
             page - it says what it is waiting for. */}
         {emptyStateFields && emptyStateFields.length > 0 ? (
-          <PreviewEmptyState fields={emptyStateFields} />
+          <PreviewEmptyState fields={emptyStateFields} documentType={documentType} />
         ) : (
           // The last preview stays mounted while the next one is
           // generated, under the spinner, rather than being swapped out
