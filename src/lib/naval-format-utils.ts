@@ -360,6 +360,12 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
   const sanitize = (str: string) => (str || '').replace(/[^a-zA-Z0-9\-_ ]/g, '').trim();
   const ssic = sanitize(formData.ssic) || 'Draft';
   const subject = sanitize(formData.subj) || 'Letter';
+  // A directive's SSIC carries its point and revision ("5215.1K"), and
+  // sanitize() strips the point, which named orders "MCO 521510K".
+  // Filesystems on every platform this app targets accept the point,
+  // as the Volume branch below already relies on.
+  const keepDots = (str: string) => (str || '').replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim();
+  const directiveSsic = keepDots(formData.ssic) || 'Draft';
 
   // Volume documents don't live in the letter formData - the Volume editor
   // keeps its own VolumeDoc in useVolumeStore (same pattern the PDF/DOCX
@@ -373,29 +379,38 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
   // kept - unlike the generic `sanitize` above, filesystems on every
   // platform this app targets allow periods in filenames.
   if (formData.documentType === 'volume') {
-    const sanitizeKeepDots = (str: string) => (str || '').replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim();
     const { order, volume } = useVolumeStore.getState().doc;
-    const designator = sanitizeKeepDots(order.designator) || 'MCO';
-    const title = sanitizeKeepDots(volume.title) || 'Volume';
+    const designator = keepDots(order.designator) || 'MCO';
+    const title = keepDots(volume.title) || 'Volume';
     return `${designator} V${volume.number} - ${title}.${extension}`;
   }
 
   // Order / Directive
   if (formData.documentType === 'mco') {
     const prefix = sanitize(formData.orderPrefix ?? '') || 'MCO';
-    return `${prefix} ${ssic} - ${subject}.${extension}`;
+    return `${prefix} ${directiveSsic} - ${subject}.${extension}`;
   }
 
   // Bulletin
   if (formData.documentType === 'bulletin') {
-    return `MCBul ${ssic} - ${subject}.${extension}`;
+    return `MCBul ${directiveSsic} - ${subject}.${extension}`;
+  }
+
+  // SECNAV directives fell through to the letter name ("Letter 52151F").
+  // They take the abbreviation the identification block prints
+  // (getDirectiveDesignation).
+  if (formData.documentType === 'secnav-instruction') {
+    return `SECNAVINST ${directiveSsic} - ${subject}.${extension}`;
+  }
+  if (formData.documentType === 'secnav-notice') {
+    return `SECNAVNOTE ${directiveSsic} - ${subject}.${extension}`;
   }
 
   // Change Transmittal
   if (formData.documentType === 'change-transmittal') {
     // The point belongs to the directive number (MCO 1500.61), and
     // sanitize() strips it, which named the file "MCO 150061 Ch 2".
-    const parent = (String(formData.parentDirectiveTitle ?? '')).replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim() || 'Directive';
+    const parent = keepDots(String(formData.parentDirectiveTitle ?? '')) || 'Directive';
     const chNum = formData.changeNumber || 1;
     // W/CH-n as on the page, with a hyphen for the slash a filename cannot carry.
     return `${parent} W-CH-${chNum} - ${subject}.${extension}`;

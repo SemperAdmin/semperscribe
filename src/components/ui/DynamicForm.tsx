@@ -228,6 +228,9 @@ export function DynamicForm({
   lockedFields,
   lockedBadge,
 }: DynamicFormProps) {
+  // Prefix for the suggestion lists of allowCustom selects.
+  const formId = React.useId();
+  const suggestListId = (name: string) => `${formId}-${name}-options`;
   // Calculate allowed top-level keys based on document definitions
   const allowedTopLevelKeys = React.useMemo(() => {
     const keys = new Set<string>(['documentType']);
@@ -424,6 +427,16 @@ export function DynamicForm({
                 <AutoSuggestInput placeholder={field.placeholder} preserveCase={field.preserveCase} {...formField} />
               ) : field.type === 'number' ? (
                  <Input type="number" placeholder={field.placeholder} {...formField} value={formField.value ?? ''} />
+              ) : field.type === 'select' && field.allowCustom ? (
+                // A select that also takes typed values: the options are
+                // offered as suggestions and any other value is kept as
+                // typed (owner request 2026-11-11, I-Type lists).
+                <Input
+                  list={suggestListId(field.name)}
+                  placeholder={field.placeholder || 'Pick or type a value'}
+                  {...formField}
+                  value={formField.value ?? ''}
+                />
               ) : field.type === 'select' ? (
                 <Select onValueChange={formField.onChange} defaultValue={formField.value}>
                   <FormControl>
@@ -443,6 +456,13 @@ export function DynamicForm({
                 <Input placeholder={field.placeholder} {...formField} value={formField.value ?? ''} />
               )}
             </FormControl>
+            )}
+            {field.type === 'select' && field.allowCustom && (
+              <datalist id={suggestListId(field.name)}>
+                {field.options?.filter((opt) => opt.value !== '').map((opt) => (
+                  <option key={opt.value} value={opt.value} />
+                ))}
+              </datalist>
             )}
             {field.description && <FormDescription>{field.description}</FormDescription>}
             <FormMessage />

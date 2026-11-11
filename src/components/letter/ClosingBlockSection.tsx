@@ -2,6 +2,7 @@
 import React from 'react';
 import { useSyncedState } from '@/hooks/useSyncedState';
 import { FormData } from '@/types';
+import { DOCUMENT_TYPES } from '@/lib/schemas';
 import { autoUppercase } from '@/lib/string-utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -34,7 +35,11 @@ export function ClosingBlockSection({
   const [showDelegation, setShowDelegation] = useSyncedState(formData.delegationText, text => Boolean(text));
   const isAAForm = formData.documentType === 'aa-form';
   const isMfr = formData.documentType === 'mfr';
-  const isDirective = formData.documentType === 'mco' || formData.documentType === 'bulletin';
+  // From the registry, not a list of type ids: the list named only MCO
+  // and MCBul, so Change Transmittal and the SECNAV directives offered a
+  // letter-style Distribution and Copy To that both emitters skip for
+  // every directive (they print the directive Distribution section).
+  const isDirective = Boolean(DOCUMENT_TYPES[formData.documentType ?? '']?.features.isDirective);
 
   const getShowDistributionOption = () => {
       if (formData.documentType === 'multiple-address') {

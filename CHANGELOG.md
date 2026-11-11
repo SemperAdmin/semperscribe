@@ -16,6 +16,10 @@ matching GitHub release with this file's section as the notes.
 
 ### Fixed
 
+- Change Transmittal now shows the Distribution and Reports Required sections, as Marine Corps Orders and Bulletins do. The form hid both while the PDF and Word exports printed them, so the transmittal printed a distribution the drafter could not edit.
+- Change Transmittal, SECNAV Instruction and SECNAV Notice no longer offer the letter-style Distribution and Copy To in the closing block. Both exports skip those fields for every directive, so whatever was typed there never printed. The directive Distribution section is the one that prints.
+- I-Type: the Entity, Address, Category, Signing Authority, Controlling Office and Control fields take a typed value. They suggest the listed values and keep any other value as typed, so an entity or office the list lacks can be entered.
+- Export filenames for orders, bulletins and SECNAV directives keep the point in the SSIC ("MCO 5215.1K", not "MCO 521510K"). SECNAV instructions and notices are named by their designation ("SECNAVINST 5216.5F - ...") instead of "Letter 52165F - ...".
 - Change Transmittal: the Change Number field refused every entry with "expected number, received string", because the number box hands the form text. It now accepts the number typed. MCO Chapter Number had the same fault and is fixed with it.
 - Change Transmittal: the PDF and Word exports built the identification block and the designation line from the SSIC alone, so the parent directive and the change number never printed and an SSIC of "1500" printed "MCO 1500" twice. Both lines now read the parent directive and the change, written "W/CH-n", for example "MCO 1500.61 W/CH-2" (the export filename uses "W-CH-2", since a filename cannot carry the slash), and a directive title stored by the template no longer overrides them. The export filename keeps the point in the parent directive number.
 - Change Transmittal now has a button in the sidebar's Directives group. It could be opened only from the command palette. A test now requires a sidebar button for every document type.
