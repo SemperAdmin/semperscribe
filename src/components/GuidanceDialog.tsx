@@ -36,7 +36,7 @@ export function GuidanceDialog({ open, onOpenChange, documentType }: GuidanceDia
     `${open}:${documentType ?? ''}`,
     (_, prev) => {
       if (open && documentType) {
-        const match = GUIDANCE.find((g) => g.type === documentType);
+        const match = GUIDANCE.find((g) => g.type === documentType) ?? noEntryNote(documentType);
         if (match) return match;
       }
       return prev ?? GUIDANCE[0];
@@ -78,10 +78,13 @@ export function GuidanceDialog({ open, onOpenChange, documentType }: GuidanceDia
             <div className="space-y-4 pr-3">
               <div>
                 <h3 className="text-base font-semibold text-foreground">{selected.label}</h3>
-                <Badge variant="outline" className="text-[10px] mt-1">{selected.citation}</Badge>
+                {selected.citation && (
+                  <Badge variant="outline" className="text-[10px] mt-1">{selected.citation}</Badge>
+                )}
               </div>
               <p className="text-sm text-foreground">{selected.what}</p>
 
+              {selected.whenToUse.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">When to use</h4>
                 <ul className="space-y-1">
@@ -93,7 +96,9 @@ export function GuidanceDialog({ open, onOpenChange, documentType }: GuidanceDia
                   ))}
                 </ul>
               </div>
+              )}
 
+              {selected.whenNotToUse.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">When not to use</h4>
                 <ul className="space-y-1">
@@ -105,7 +110,9 @@ export function GuidanceDialog({ open, onOpenChange, documentType }: GuidanceDia
                   ))}
                 </ul>
               </div>
+              )}
 
+              {selected.example && (
               <div>
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Example subject</h4>
                 <p className="text-sm text-muted-foreground italic">{selected.example}</p>

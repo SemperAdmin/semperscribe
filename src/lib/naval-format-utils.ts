@@ -192,11 +192,41 @@ export function formatDirectiveSSIC(
 }
 
 /**
+ * A change transmittal is identified by the directive it changes and
+ * its change number, written W/CH-n (owner ruling 2026-11-11), for
+ * example "MCO 1500.61 W/CH-2". Both emitters built it from the
+ * SSIC alone, so the parent directive and the change number never
+ * reached the page (host report 2026-11-10). Returns '' for every other
+ * type, and for a transmittal with no parent directive yet, so the
+ * caller keeps its SSIC designation until one is entered.
+ */
+export function changeTransmittalDesignation(formData: FormData): string {
+  if (formData.documentType !== 'change-transmittal') return '';
+  const parent = String(formData.parentDirectiveTitle ?? '').trim();
+  if (!parent) return '';
+  const n = Number(String(formData.changeNumber ?? '').trim());
+  return Number.isInteger(n) && n >= 1 ? `${parent} W/CH-${n}` : parent;
+}
+
+/**
+ * The underlined designation line. A change transmittal always prints
+ * its own identity: the form has no Directive Title field, so a stored
+ * `directiveTitle` (the shipped template carries one) could never be
+ * corrected and would contradict the ID block. Other directives keep a
+ * typed directive title over the built one.
+ */
+export function getDirectiveTitleLine(formData: FormData): string {
+  return changeTransmittalDesignation(formData) || formData.directiveTitle || buildDirectiveTitle(formData);
+}
+
+/**
  * Builds the full directive title line (e.g., "MCO 5216.3K w/ ch 1").
  * The SSIC field now contains the full identifier, so this just combines
  * the order prefix with the SSIC value.
  */
 export function buildDirectiveTitle(formData: FormData): string {
+  const transmittal = changeTransmittalDesignation(formData);
+  if (transmittal) return transmittal;
   const ssic = formData.ssic || '';
   if (!ssic) return '';
   // P4.3 — SECNAV designation lines spell the type out (SECNAV
@@ -330,6 +360,12 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
   const sanitize = (str: string) => (str || '').replace(/[^a-zA-Z0-9\-_ ]/g, '').trim();
   const ssic = sanitize(formData.ssic) || 'Draft';
   const subject = sanitize(formData.subj) || 'Letter';
+  // A directive's SSIC carries its point and revision ("5215.1K"), and
+  // sanitize() strips the point, which named orders "MCO 521510K".
+  // Filesystems on every platform this app targets accept the point,
+  // as the Volume branch below already relies on.
+  const keepDots = (str: string) => (str || '').replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim();
+  const directiveSsic = keepDots(formData.ssic) || 'Draft';
 
   // Volume documents don't live in the letter formData - the Volume editor
   // keeps its own VolumeDoc in useVolumeStore (same pattern the PDF/DOCX
@@ -343,29 +379,41 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
   // kept - unlike the generic `sanitize` above, filesystems on every
   // platform this app targets allow periods in filenames.
   if (formData.documentType === 'volume') {
-    const sanitizeKeepDots = (str: string) => (str || '').replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim();
     const { order, volume } = useVolumeStore.getState().doc;
-    const designator = sanitizeKeepDots(order.designator) || 'MCO';
-    const title = sanitizeKeepDots(volume.title) || 'Volume';
+    const designator = keepDots(order.designator) || 'MCO';
+    const title = keepDots(volume.title) || 'Volume';
     return `${designator} V${volume.number} - ${title}.${extension}`;
   }
 
   // Order / Directive
   if (formData.documentType === 'mco') {
     const prefix = sanitize(formData.orderPrefix ?? '') || 'MCO';
-    return `${prefix} ${ssic} - ${subject}.${extension}`;
+    return `${prefix} ${directiveSsic} - ${subject}.${extension}`;
   }
 
   // Bulletin
   if (formData.documentType === 'bulletin') {
-    return `MCBul ${ssic} - ${subject}.${extension}`;
+    return `MCBul ${directiveSsic} - ${subject}.${extension}`;
+  }
+
+  // SECNAV directives fell through to the letter name ("Letter 52151F").
+  // They take the abbreviation the identification block prints
+  // (getDirectiveDesignation).
+  if (formData.documentType === 'secnav-instruction') {
+    return `SECNAVINST ${directiveSsic} - ${subject}.${extension}`;
+  }
+  if (formData.documentType === 'secnav-notice') {
+    return `SECNAVNOTE ${directiveSsic} - ${subject}.${extension}`;
   }
 
   // Change Transmittal
   if (formData.documentType === 'change-transmittal') {
-    const parent = sanitize(formData.parentDirectiveTitle ?? '') || 'Directive';
+    // The point belongs to the directive number (MCO 1500.61), and
+    // sanitize() strips it, which named the file "MCO 150061 Ch 2".
+    const parent = keepDots(String(formData.parentDirectiveTitle ?? '')) || 'Directive';
     const chNum = formData.changeNumber || 1;
-    return `${parent} Ch ${chNum} - ${subject}.${extension}`;
+    // W/CH-n as on the page, with a hyphen for the slash a filename cannot carry.
+    return `${parent} W-CH-${chNum} - ${subject}.${extension}`;
   }
 
   // Endorsement
@@ -766,6 +814,8 @@ export function getSignatureBlankLines(documentType: string): number {
  * (no point number). The SSIC field is used as entered.
  */
 export function getDirectiveDesignation(formData: FormData): string {
+  const transmittal = changeTransmittalDesignation(formData);
+  if (transmittal) return transmittal;
   // Bulletins ALWAYS designate MCBul — orderPrefix is an MCO-side
   // field and lingers in form state after switching types (user
   // screenshot 2026-06-10: bulletin rendering "MCO 1000").

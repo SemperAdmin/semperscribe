@@ -37,7 +37,7 @@ import {
   getRefSpacing, 
   getEnclSpacing, 
   getCopyToSpacing, 
-  getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, buildDirectiveTitle, resolveDistributionStatement, supportsUnitSubName } from './naval-format-utils';
+  getComplimentaryClose, getSignatureBlankLines, getDirectiveDesignation, getDirectiveTitleLine, resolveDistributionStatement, supportsUnitSubName } from './naval-format-utils';
 import { createFormattedParagraph } from "./paragraph-formatter";
 import { refLetterAt, startingRefLetterFor, startingEnclosureNumberFor } from "./reference-letters";
 import { isSamePageBlockRender, isSamePageEndorsement, omitsIdentification, endorsementLineText } from "./same-page-endorsement";
@@ -834,7 +834,7 @@ async function buildDocxParts(
   if (isDirective && (formData.directiveTitle || formData.ssic)) {
     directiveTitleParagraphs.push(new Paragraph({
       children: [new TextRun({
-        text: (formData.directiveTitle || buildDirectiveTitle(formData)).toUpperCase(),
+        text: getDirectiveTitleLine(formData).toUpperCase(),
         font,
         size: FONT_SIZE_BODY,
         underline: { type: UnderlineType.SINGLE }
@@ -2590,7 +2590,7 @@ async function buildDocxParts(
     const solid = { style: BorderStyle.SINGLE, size: 4, color: "000000" };
 
     if (formData.showLocatorSheet) {
-      const designation = (formData.directiveTitle || buildDirectiveTitle(formData)).toUpperCase();
+      const designation = getDirectiveTitleLine(formData).toUpperCase();
       structuralSections.push(structuralSection(locatorNum, [
         new Paragraph({ children: [new TextRun({ text: designation, font, size: FONT_SIZE_BODY })], alignment: AlignmentType.RIGHT, spacing: { after: 0 } }),
         new Paragraph({ children: [new TextRun({ text: formattedDate || '', font, size: FONT_SIZE_BODY })], alignment: AlignmentType.RIGHT, spacing: { after: 240 } }),

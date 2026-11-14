@@ -56,6 +56,11 @@ export interface FieldDefinition {
   // CAPS. Required on any field the schema validates as all-caps, or
   // selecting a suggestion writes a value that fails validation.
   preserveCase?: boolean;
+  // Select only. Renders a text input whose options are offered as
+  // suggestions (a <datalist>), so the drafter picks a listed value or
+  // types one the list lacks. For lists that can never be complete,
+  // such as the I-Type entities and controlling offices.
+  allowCustom?: boolean;
   
   // Dynamic behavior
   condition?: (formData: any) => boolean; 
@@ -172,6 +177,21 @@ const ssicFieldOptional = () => z.string().optional().superRefine((val, ctx) => 
 // Must start with an optional classification prefix (C/S), then 4-5 digit SSIC,
 // optional R (reserve), optional .# (point number), optional revision letter,
 // optional "w/ ch #" (change indicator)
+/**
+ * A whole number typed into a DynamicForm `type: 'number'` field.
+ * <input type="number"> hands react-hook-form a string, and the schema
+ * used to demand a number, so every entry failed with "expected number,
+ * received string" (host report 2026-11-10, Change Number). Saved
+ * packages and templates store the number itself, so both forms are
+ * accepted. An empty box reads as no entry.
+ */
+const typedWholeNumber = (schema: z.ZodNumber) =>
+  z.preprocess((v) => {
+    if (typeof v !== 'string') return v;
+    const t = v.trim();
+    return t === '' ? undefined : Number(t);
+  }, schema);
+
 const ssicFieldDirective = () => z.string().superRefine((val, ctx) => {
   if (!val) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "SSIC is required" });
@@ -522,7 +542,7 @@ export const MCOSchema = BasicLetterSchema.extend({
   fouoDesignation: z.enum(['', 'full', 'partial']).optional(),
   // 4-digit paragraph numbering per MCO 5215.1K para 34
   fourDigitNumbering: z.boolean().optional(),
-  chapterNumber: z.number().min(1).max(9).optional(),
+  chapterNumber: typedWholeNumber(z.number().int().min(1).max(9)).optional(),
   // Structural pages per MCO 5215.1K para 48
   showStructuralPages: z.boolean().optional(),
   showLocatorSheet: z.boolean().optional(),
@@ -1201,7 +1221,7 @@ export const Navmc10922Definition: DocumentTypeDefinition = {
           label: 'Name of Marine (Last, First, Middle)',
           type: 'text',
           required: true,
-          placeholder: 'MARINE, ALONZO DEAN',
+          placeholder: 'LAST, FIRST MIDDLE',
           className: 'md:col-span-1',
         },
         { name: 'edipi', label: 'EDIPI', type: 'text', maxLength: 10, digitsOnly: true, inputMode: 'numeric', required: true, placeholder: '1234567890', className: 'md:col-span-1' },
@@ -1895,7 +1915,7 @@ export const Navmc11106Definition: DocumentTypeDefinition = {
       id: 'member',
       title: 'Part B — Member Data',
       fields: [
-        { name: 'nameOfMarine', label: 'Name (Last, First, MI)', type: 'text', required: true, maxLength: 70, placeholder: 'MARINE, ALONZO D', className: 'md:col-span-1' },
+        { name: 'nameOfMarine', label: 'Name (Last, First, MI)', type: 'text', required: true, maxLength: 70, placeholder: 'LAST, FIRST MI', className: 'md:col-span-1' },
         { name: 'grade', label: 'Grade', type: 'text', required: true, maxLength: 20, placeholder: 'SGT', className: 'md:col-span-1' },
         { name: 'dateOfRank', label: 'Date of Rank', type: 'date-picker', className: 'md:col-span-1' },
         { name: 'edipi', label: 'EDIPI', type: 'text', required: true, maxLength: 10, digitsOnly: true, inputMode: 'numeric', placeholder: '1234567890', className: 'md:col-span-1' },
@@ -2956,8 +2976,10 @@ export const ChangeTransmittalSchema = BasicLetterSchema.extend({
   ssic: ssicFieldDirective(),
   // The parent directive being changed
   parentDirectiveTitle: z.string().min(1, "Parent directive title is required (e.g., MCO 5215.1K)"),
-  // Change number (Ch 1, Ch 2, etc.)
-  changeNumber: z.number().min(1, "Change number is required"),
+  // Change number, printed W/CH-1, W/CH-2, etc.
+  changeNumber: typedWholeNumber(
+    z.number({ error: "Change number is required" }).int("Change number is a whole number").min(1, "Change number starts at 1"),
+  ),
   // FOUO designation
   fouoDesignation: z.enum(['', 'full', 'partial']).optional(),
   // Distribution statement
@@ -2985,6 +3007,12 @@ export const ChangeTransmittalDefinition: DocumentTypeDefinition = {
     ...STANDARD_LETTER_FEATURES,
     showVia: false,
     isDirective: true,
+    // Both emitters print the distribution statement, PCN and Copy to,
+    // and the Reports Required block, for every Marine Corps directive.
+    // With these off the form hid what the transmittal printed (owner
+    // request 2026-11-11), so the type shows them as MCO and MCBul do.
+    showDistribution: true,
+    showReports: true,
     category: 'directives',
   },
   sections: [
@@ -3019,7 +3047,7 @@ export const ChangeTransmittalDefinition: DocumentTypeDefinition = {
           placeholder: '1',
           required: true,
           className: 'md:col-span-1',
-          description: 'Sequential change number (Ch 1, Ch 2, etc.)'
+          description: 'Sequential change number, printed W/CH-1, W/CH-2, etc.'
         },
         // FOUO Designation retired from the form 2026-08-16. DoDI
         // 5200.48 (6 March 2020) cancelled DoDM 5200.01 Vol 4 and ended

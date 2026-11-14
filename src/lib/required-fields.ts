@@ -75,3 +75,25 @@ export function isDocumentUnstarted(
   if (typedField) return false;
   return !(paragraphs ?? []).some((p) => (p.content ?? '').trim() !== '');
 }
+
+/**
+ * What the empty preview says for a document type (host report
+ * 2026-11-11). The copy was letter copy for every type: "your letter
+ * appears here", then a paragraph and a signature name in the closing
+ * block. Forms have neither, and none of them is a letter. The headline
+ * names the type, and the follow-up asks only for the parts the type's
+ * own definition shows.
+ */
+export function previewEmptyStateCopy(documentType: string): { headline: string; followUp: string | null } {
+  const definition = DOCUMENT_TYPES[documentType];
+  const name = definition?.name ?? 'document';
+  const headline = `Fill the required fields and your ${name} appears here.`;
+  const features = definition?.features;
+  if (!features?.showParagraphs) return { headline, followUp: null };
+  return {
+    headline,
+    followUp: features.showClosingBlock
+      ? 'Then write at least one paragraph and type the signature name in the closing block.'
+      : 'Then write at least one paragraph.',
+  };
+}

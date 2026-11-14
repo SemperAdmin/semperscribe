@@ -16,8 +16,8 @@
   "data": {
     "formData": {
       "documentType": "navmc10132",
-      "unit": "1ST BN, 8TH MARINES, 2D MARDIV",
-      "accusedName": "THOMPSON, JAMAL R",
+      "unit": "TRAINING DEMO BATTALION",
+      "accusedName": "SAMPLE, ACCUSED D",
       "accusedRankGrade": "Cpl, E4",
       "accusedEdipi": "4000500006",
       "accusedPayGrade": "E4",
@@ -66,7 +66,7 @@
       "punishmentsConcurrent": false,
       "punishmentOverflowToItem21": false,
       "suspension": "NONE",
-      "njpAuthorityName": "CARDENAS, ELENA V",
+      "njpAuthorityName": "COMMANDER, SAMPLE B",
       "njpAuthorityGrade": "LtCol, O5",
       "njpAuthorityEdipi": "4000500007",
       "njpAuthorityPayGrade": "O5",
@@ -85,11 +85,11 @@
         {
           "date": "2026-08-14",
           "kind": "appeal-denied",
-          "detail": "punishment as adjudged is affirmed by LtCol CARDENAS"
+          "detail": "punishment as adjudged is affirmed by LtCol COMMANDER"
         }
       ],
       "remarksFreeText": "",
-      "remarksComposed": "2026-08-14 ITEM 14: Appeal denied, punishment as adjudged is affirmed by LtCol CARDENAS.",
+      "remarksComposed": "2026-08-14 ITEM 14: Appeal denied, punishment as adjudged is affirmed by LtCol COMMANDER.",
       "victims": [
         {
           "status": "",

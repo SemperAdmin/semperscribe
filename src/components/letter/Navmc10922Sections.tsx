@@ -365,7 +365,7 @@ function UnitStationSection({ formData, setFormData }: {
             rows={3}
             value={(formData.organizationStation as string) ?? ''}
             onChange={(e) => setFormData((prev) => ({ ...prev, organizationStation: e.target.value }))}
-            placeholder={'1/6 2D MARDIV\nPSC BOX 20098\nCAMP LEJEUNE NC 28542-0098'}
+            placeholder={'UNIT\nPSC BOX 00000\nINSTALLATION ST 00000-0000'}
           />
           <div className="flex items-end gap-3">
             <div className="space-y-1 w-40">
@@ -973,7 +973,7 @@ function SwornDateSection({ formData, setFormData }: {
             id="n10922-attesting"
             value={(formData.attestingOfficerName as string) ?? ''}
             onChange={(e) => setFormData((prev) => ({ ...prev, attestingOfficerName: e.target.value }))}
-            placeholder="STEWART, THOMAS J"
+            placeholder="LAST, FIRST MI"
           />
           <p className="text-[11px] text-muted-foreground">
             Administrative personnel with by-direction authority. Self attestation is prohibited

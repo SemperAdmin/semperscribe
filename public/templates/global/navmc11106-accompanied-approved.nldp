@@ -16,16 +16,16 @@
   "data": {
     "formData": {
       "documentType": "navmc11106",
-      "nameOfMarine": "MARINE, ALONZO DEAN",
+      "nameOfMarine": "SAMPLE, MARINE A",
       "grade": "SGT",
       "dateOfRank": "2024-08-01",
       "edipi": "1234567890",
-      "dutyStation": "HQ BN 3D MARDIV\nCAMP COURTNEY OKINAWA JP",
+      "dutyStation": "TRAINING DEMO COMMAND\nSAMPLE INSTALLATION OKINAWA JP",
       "ordersEffectiveDate": "2026-02-01",
       "dateOfArrival": "2026-03-15",
       "maltPlusOnReportingDay": false,
       "navmc11106Spouse": {
-        "name": "TONYA CAROL MARINE",
+        "name": "SPOUSE B SAMPLE",
         "relationship": "SPOUSE",
         "eventDate": "2023-06-15",
         "sponsorshipBasis": "installation-approval",
@@ -33,7 +33,7 @@
       },
       "navmc11106Dependents": [
         {
-          "name": "JUSTIN DAVID MARINE",
+          "name": "CHILD C SAMPLE",
           "relationship": "SON",
           "eventDate": "2024-09-03",
           "sponsorshipBasis": "installation-approval",
@@ -55,7 +55,7 @@
       "effectiveDate": "2026-04-05",
       "navmc11106Remarks": "",
       "coDate": "2026-04-09",
-      "coNameGradeActivity": "STEWART, THOMAS J LTCOL HQ BN 3D MARDIV"
+      "coNameGradeActivity": "OFFICER, SAMPLE H LTCOL TRAINING DEMO COMMAND"
     }
   }
 }

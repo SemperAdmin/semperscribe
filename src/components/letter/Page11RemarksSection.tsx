@@ -12,6 +12,11 @@
  *
  * Stephen's rulings (2026-07-17): entry text only; button lives on the
  * column; no fill-order lock (either column stays freely editable).
+ *
+ * Owner request 2026-11-11: both columns carry the insert. Only the
+ * right one did, so an entry could not be dropped into the left column,
+ * where a page's first entry goes. The picker writes into the column
+ * whose button opened it.
  */
 
 import React, { useState } from 'react';
@@ -32,6 +37,9 @@ interface Page11RemarksSectionProps {
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
 }
 
+type RemarksColumn = 'remarksLeft' | 'remarksRight';
+const COLUMN_WORD: Record<RemarksColumn, string> = { remarksLeft: 'left', remarksRight: 'right' };
+
 interface TemplateEntry {
   id: string;
   title: string;
@@ -45,10 +53,10 @@ export function Page11RemarksSection({ formData, setFormData }: Page11RemarksSec
   const [pickerOpen, setPickerOpen] = useState(false);
   const [entries, setEntries] = useState<TemplateEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [target, setTarget] = useState<RemarksColumn>('remarksRight');
 
   const left = (formData.remarksLeft as string) ?? '';
   const right = (formData.remarksRight as string) ?? '';
-  const rightEmpty = right.trim() === '';
 
   // Page 11 templates come from the same index the Templates browser
   // reads - one source, so a new entry file shows up in both. Loaded
@@ -66,26 +74,57 @@ export function Page11RemarksSection({ formData, setFormData }: Page11RemarksSec
       .finally(() => setLoading(false));
   };
 
-  const openPicker = () => {
+  const openPicker = (column: RemarksColumn) => {
+    setTarget(column);
     setPickerOpen(true);
     if (entries.length === 0 && !loading) loadEntries();
   };
 
-  const insertIntoRight = async (entry: TemplateEntry) => {
+  const insertEntry = async (entry: TemplateEntry) => {
     try {
       const res = await fetch(`${getBasePath()}${entry.url}`);
       if (!res.ok) throw new Error(String(res.status));
       const nldp = await res.json();
       // Entry text lives in the LEFT column of every template (entries
-      // flow left first); it lands in THIS document's right column.
+      // flow left first); it lands in whichever column opened the picker.
       const text: string = nldp?.data?.formData?.remarksLeft ?? '';
       if (!text.trim()) throw new Error('empty template');
-      setFormData((prev) => ({ ...prev, remarksRight: text }));
+      setFormData((prev) => ({ ...prev, [target]: text }));
       setPickerOpen(false);
-      toast({ title: 'Entry Added', description: `"${entry.title}" inserted into the right column.` });
+      toast({ title: 'Entry Added', description: `"${entry.title}" inserted into the ${COLUMN_WORD[target]} column.` });
     } catch {
       toast({ title: 'Insert Failed', description: `Could not load "${entry.title}".`, variant: 'destructive' });
     }
+  };
+
+  // Insert while the column is empty, Clear once it holds text.
+  const columnActions = (column: RemarksColumn, value: string) => {
+    const word = COLUMN_WORD[column];
+    return value.trim() === '' ? (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 text-xs"
+        aria-label={`Insert template into the ${word} column`}
+        onClick={() => openPicker(column)}
+      >
+        <FilePlus2 className="w-3.5 h-3.5 mr-1.5" />
+        Insert template
+      </Button>
+    ) : (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 text-xs text-destructive hover:text-destructive"
+        aria-label={`Clear the ${word} column`}
+        onClick={() => setFormData((prev) => ({ ...prev, [column]: '' }))}
+      >
+        <X className="w-3.5 h-3.5 mr-1.5" />
+        Clear column
+      </Button>
+    );
   };
 
   return (
@@ -98,7 +137,10 @@ export function Page11RemarksSection({ formData, setFormData }: Page11RemarksSec
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
         <div className="space-y-2">
-          <Label htmlFor="remarks-left" className="text-sm font-medium">Left Column Content</Label>
+          <div className="flex items-center justify-between gap-2 min-h-[28px]">
+            <Label htmlFor="remarks-left" className="text-sm font-medium">Left Column Content</Label>
+            {columnActions('remarksLeft', left)}
+          </div>
           <Textarea
             id="remarks-left"
             value={left}
@@ -112,29 +154,7 @@ export function Page11RemarksSection({ formData, setFormData }: Page11RemarksSec
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2 min-h-[28px]">
             <Label htmlFor="remarks-right" className="text-sm font-medium">Right Column Content</Label>
-            {rightEmpty ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={openPicker}
-              >
-                <FilePlus2 className="w-3.5 h-3.5 mr-1.5" />
-                Insert template
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-destructive hover:text-destructive"
-                onClick={() => setFormData((prev) => ({ ...prev, remarksRight: '' }))}
-              >
-                <X className="w-3.5 h-3.5 mr-1.5" />
-                Clear column
-              </Button>
-            )}
+            {columnActions('remarksRight', right)}
           </div>
           <Textarea
             id="remarks-right"
@@ -153,7 +173,7 @@ export function Page11RemarksSection({ formData, setFormData }: Page11RemarksSec
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent className="sm:max-w-[560px] max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Insert Entry Into Right Column</DialogTitle>
+            <DialogTitle>Insert Entry Into {target === 'remarksLeft' ? 'Left' : 'Right'} Column</DialogTitle>
             <DialogDescription>
               Adds the entry text only. The Marine&apos;s name and DoD ID on this page stay as they are.
             </DialogDescription>
@@ -167,7 +187,7 @@ export function Page11RemarksSection({ formData, setFormData }: Page11RemarksSec
               <button
                 key={entry.id}
                 type="button"
-                onClick={() => void insertIntoRight(entry)}
+                onClick={() => void insertEntry(entry)}
                 className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-colors"
               >
                 <div className="font-medium text-sm text-foreground">{entry.title}</div>

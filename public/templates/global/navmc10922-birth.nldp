@@ -19,11 +19,11 @@
       "reason": "gain",
       "dateOfApplication": "2026-07-01",
       "lifeEventDate": "2026-06-08",
-      "nameOfMarine": "MARINE, ALONZO DEAN",
+      "nameOfMarine": "SAMPLE, MARINE A",
       "edipi": "1234567890",
       "grade": "SGT",
       "typeOfService": "usmc",
-      "organizationStation": "1ST BN 6TH MARINES 2D MARDIV\nCAMP LEJEUNE NC 28547",
+      "organizationStation": "TRAINING DEMO COMMAND\nSAMPLE INSTALLATION ST 00000",
       "unitRuc": "12160",
       "ecc": "2027-06-13",
       "dateEnlistmentOrAd": "2024-06-13",
@@ -31,15 +31,15 @@
       "futureAddressEta": "",
       "dependents": [
         {
-          "name": "TONYA CAROL MARINE",
-          "address": "123 FOURTH ST JACKSONVILLE NC 28540",
+          "name": "SPOUSE B SAMPLE",
+          "address": "123 SAMPLE ST SAMPLE CITY ST 00000",
           "relationship": "SPOUSE",
           "dateOfBirth": "1997-07-07",
           "allowanceClaimedFrom": "2024-06-15",
           "previouslyApproved": true
         },
         {
-          "name": "JUSTIN DAVID MARINE",
+          "name": "CHILD C SAMPLE",
           "address": "SAME AS ABOVE",
           "relationship": "SON",
           "dateOfBirth": "2026-06-08",
@@ -82,7 +82,7 @@
       },
       "marriageDate": "2024-06-15",
       "marriagePlace": "ONSLOW, NC",
-      "marriageSpouseName": "TONYA CAROL GRAY",
+      "marriageSpouseName": "SPOUSE B MAIDEN",
       "memberPrevMarried": "no",
       "memberPrevMarriedTimes": "",
       "spousePrevMarried": "no",
@@ -128,11 +128,11 @@
       "spouseBranch": "",
       "spouseServiceDates": "",
       "spouseBaq": "",
-      "documentsViewed": "BIRTH CERTIFICATE (JUSTIN)",
+      "documentsViewed": "BIRTH CERTIFICATE (CHILD C)",
       "swornDay": "1",
       "swornMonth": "July",
       "swornYear2Digit": "26",
-      "attestingOfficerName": "STEWART, THOMAS J",
+      "attestingOfficerName": "OFFICER, SAMPLE H",
       "reasonMode": "auto"
     }
   }

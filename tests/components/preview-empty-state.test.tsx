@@ -61,9 +61,9 @@ describe('required-field status', () => {
 describe('LivePreview empty state', () => {
   it('lists the required fields instead of rendering a blank preview', () => {
     const fields = requiredFieldStatus('basic', { documentType: 'basic', date: '5 Sep 26' });
-    render(<LivePreview previewUrl="blob:preview" emptyStateFields={fields} />);
+    render(<LivePreview previewUrl="blob:preview" documentType="basic" emptyStateFields={fields} />);
 
-    expect(screen.getByText('Fill the header and your letter appears here.')).toBeInTheDocument();
+    expect(screen.getByText('Fill the required fields and your Basic Letter appears here.')).toBeInTheDocument();
     for (const label of ['SSIC', 'Originator Code', 'Date', 'From', 'To', 'Subject']) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
@@ -79,6 +79,6 @@ describe('LivePreview empty state', () => {
   it('renders the preview once the document has been started', () => {
     render(<LivePreview previewUrl="blob:preview" emptyStateFields={null} />);
     expect(screen.getByTitle('PDF Preview')).toBeInTheDocument();
-    expect(screen.queryByText('Fill the header and your letter appears here.')).toBeNull();
+    expect(screen.queryByText(/appears here/)).toBeNull();
   });
 });

@@ -16,8 +16,8 @@
   "data": {
     "formData": {
       "documentType": "navmc10132",
-      "unit": "HQ CO, 3D BN, 5TH MARINES, 1ST MARDIV",
-      "accusedName": "MARTINEZ, LUIS A",
+      "unit": "HQ CO, TRAINING DEMO BATTALION",
+      "accusedName": "SAMPLE, ACCUSED A",
       "accusedRankGrade": "Sgt, E5",
       "accusedEdipi": "3000400005",
       "accusedPayGrade": "E5",
@@ -62,16 +62,16 @@
         },
         {
           "code": "N11",
-          "limits": "MCB Camp Pendleton",
+          "limits": "SAMPLE INSTALLATION",
           "days": "14"
         }
       ],
       "punishmentDate": "2026-08-15",
-      "punishmentImposed": "Extra du for 14 days, and restr to the limits of MCB Camp Pendleton for 14 days, w/o susp fr du, to run concurrently.",
+      "punishmentImposed": "Extra du for 14 days, and restr to the limits of SAMPLE INSTALLATION for 14 days, w/o susp fr du, to run concurrently.",
       "punishmentsConcurrent": true,
       "punishmentOverflowToItem21": false,
       "suspension": "Ten of the 14 days extra duty are suspended for 180 days from 15 Aug 2026, to be remitted without further action if not sooner vacated.",
-      "njpAuthorityName": "DONNELLY, SEAN P",
+      "njpAuthorityName": "COMMANDER, SAMPLE C",
       "njpAuthorityGrade": "Maj, O4",
       "njpAuthorityEdipi": "3000400006",
       "njpAuthorityPayGrade": "O4",
