@@ -20,6 +20,26 @@ import { BookOpen, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GUIDANCE, GuidanceEntry } from '@/lib/guidance-data';
 import { HowToVideoLinks } from '@/components/videos/HowToVideoLinks';
+import { DOCUMENT_TYPES } from '@/lib/schemas';
+
+/**
+ * A registered type with no written entry gets a note naming it, so the
+ * guide never shows a different type's guidance under the active one
+ * (host report 2026-11-10: it kept the last entry viewed).
+ */
+function noEntryNote(documentType: string): GuidanceEntry | undefined {
+  const def = DOCUMENT_TYPES[documentType];
+  if (!def) return undefined;
+  return {
+    type: documentType,
+    label: def.name,
+    what: `${def.description} The guide has no guide entry for this type yet. Pick a type on the left to compare it with the others.`,
+    whenToUse: [],
+    whenNotToUse: [],
+    example: '',
+    citation: '',
+  };
+}
 
 interface GuidanceDialogProps {
   open: boolean;
@@ -117,6 +137,7 @@ export function GuidanceDialog({ open, onOpenChange, documentType }: GuidanceDia
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Example subject</h4>
                 <p className="text-sm text-muted-foreground italic">{selected.example}</p>
               </div>
+              )}
 
               <HowToVideoLinks typeId={selected.type} heading="How-to video" />
             </div>

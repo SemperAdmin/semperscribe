@@ -10,8 +10,7 @@
  *
  * Groups 1 to 9 are the sidebar accordion items. AMHS Message renders
  * as a standalone button after the accordion and is listed as group 10
- * so every sidebar type has a group. `change-transmittal` has no
- * sidebar entry. The same-page endorsement is a picker option of the
+ * so every sidebar type has a group. The same-page endorsement is a picker option of the
  * `endorsement` type, not a type id, so it is not listed.
  *
  * Spec: docs/superpowers/specs/2026-11-13-howto-videos-design.md 4.1.
@@ -31,7 +30,7 @@ export const DOCUMENT_GROUPS: readonly DocumentGroup[] = [
   { key: 'staffing-papers', label: 'Staffing Papers', typeIds: ['information-paper', 'position-paper', 'decision-paper', 'coordination-page'] },
   { key: 'external-executive', label: 'External & Executive', typeIds: ['business-letter', 'executive-correspondence'] },
   { key: 'dla-correspondence', label: 'DLA Correspondence', typeIds: ['dla-memorandum', 'dla-business-letter'] },
-  { key: 'directives', label: 'Directives', typeIds: ['mco', 'bulletin', 'volume', 'secnav-instruction', 'secnav-notice'] },
+  { key: 'directives', label: 'Directives', typeIds: ['mco', 'bulletin', 'volume', 'secnav-instruction', 'secnav-notice', 'change-transmittal'] },
   { key: 'forms', label: 'Forms', typeIds: ['aa-form', 'page11', 'navmc10922', 'navmc10132', 'navmc11106', 'dd368', 'tla-packet'] },
   { key: 'counseling-worksheets', label: 'Counseling Worksheets', typeIds: ['counseling'] },
   { key: 'technical-publication', label: 'Technical Publication', typeIds: ['i-type'] },

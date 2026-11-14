@@ -76,7 +76,7 @@ describe('libraryGroups', () => {
     ]);
   });
 
-  it('puts Change Transmittals in Directives through secnav-instruction', () => {
+  it('puts Change Transmittals in Directives through change-transmittal', () => {
     const directives = groups.find(g => g.key === 'directives')!;
     expect(directives.videos.map(v => v.id)).toContain('change-transmittals-and-secnav-directives');
   });

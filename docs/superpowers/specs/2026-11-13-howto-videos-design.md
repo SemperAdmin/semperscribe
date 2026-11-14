@@ -52,13 +52,13 @@ Mirrors the sidebar's grouping as data, in sidebar order. Sidebar.tsx keeps its 
 | 3 | `staffing-papers` | Staffing Papers | `information-paper`, `position-paper`, `decision-paper`, `coordination-page` |
 | 4 | `external-executive` | External & Executive | `business-letter`, `executive-correspondence` |
 | 5 | `dla-correspondence` | DLA Correspondence | `dla-memorandum`, `dla-business-letter` |
-| 6 | `directives` | Directives | `mco`, `bulletin`, `volume`, `secnav-instruction`, `secnav-notice` |
+| 6 | `directives` | Directives | `mco`, `bulletin`, `volume`, `secnav-instruction`, `secnav-notice`, `change-transmittal` |
 | 7 | `forms` | Forms | `aa-form`, `page11`, `navmc10922`, `navmc10132`, `navmc11106`, `dd368`, `tla-packet` |
 | 8 | `counseling-worksheets` | Counseling Worksheets | `counseling` |
 | 9 | `technical-publication` | Technical Publication | `i-type` |
 | 10 | `amhs` | AMHS Message | `amhs` |
 
-AMHS Message renders in the sidebar as a standalone button after the accordion, not as an accordion group. It is listed here as group 10 so every sidebar type has a group. `change-transmittal` has no sidebar entry.
+AMHS Message renders in the sidebar as a standalone button after the accordion, not as an accordion group. It is listed here as group 10 so every sidebar type has a group. `change-transmittal` joined the Directives group in main PR #165 (2026-11-14).
 
 ### 4.2 src/lib/how-to-videos.ts (new)
 
@@ -178,7 +178,7 @@ Library order: Getting Started, then the document groups in sidebar order, then 
 
 Notes:
 - Your First Basic Letter carries `basic` for its header link and `group: 'getting-started'` for its library place.
-- Change Transmittals places in Directives through `secnav-instruction`, because `change-transmittal` has no sidebar entry.
+- Change Transmittals places in Directives through `change-transmittal` (sixth in that group since main PR #165).
 - Volumes and Technical Publications places in Directives through `volume`. Its `i-type` id gives the I-Type header its link. The Technical Publication group holds no video and is omitted from the library.
 - Business and Executive Correspondence places in External & Executive. Its DLA ids give both DLA headers their link. The DLA Correspondence group is omitted from the library.
 - The same-page endorsement is the `endorsement` type with a placement field, so it shows the Endorsements video.
