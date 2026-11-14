@@ -36,6 +36,7 @@ import { DecisionGridSection } from '@/components/letter/DecisionGridSection';
 import { CoordinationPageForm } from '@/components/letter/CoordinationPageForm';
 import { ITypeFormSections } from '@/components/itype/ITypeFormSections';
 import { VolumeEditor } from '@/components/volume/VolumeEditor';
+import { HowToVideoLinks } from '@/components/videos/HowToVideoLinks';
 
 interface DocumentLayoutProps {
   /** E.3: the letter a same-page endorsement is added to. */
@@ -214,6 +215,7 @@ export function DocumentLayout({
           <p className="text-muted-foreground">
             {headerDef.description || DOCUMENT_TYPES['basic'].description}
           </p>
+          <HowToVideoLinks typeId={formData.documentType} />
         </div>
       </div>
 

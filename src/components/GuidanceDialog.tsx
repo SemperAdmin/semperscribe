@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { BookOpen, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GUIDANCE, GuidanceEntry } from '@/lib/guidance-data';
+import { HowToVideoLinks } from '@/components/videos/HowToVideoLinks';
 import { DOCUMENT_TYPES } from '@/lib/schemas';
 
 /**
@@ -137,6 +138,8 @@ export function GuidanceDialog({ open, onOpenChange, documentType }: GuidanceDia
                 <p className="text-sm text-muted-foreground italic">{selected.example}</p>
               </div>
               )}
+
+              <HowToVideoLinks typeId={selected.type} heading="How-to video" />
             </div>
           </div>
         </div>

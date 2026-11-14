@@ -41,6 +41,7 @@ import { ShareLinkDialog, UnlockShareDialog, ConfirmShareDialog } from '@/compon
 import { ExportNLDPDialog } from '@/components/ExportNLDPDialog';
 import { FindReplaceDialog } from '@/components/FindReplaceDialog';
 import { GuidanceDialog } from '@/components/GuidanceDialog';
+import { HowToVideosDialog } from '@/components/videos/HowToVideosDialog';
 import { FindReplaceResult } from '@/lib/find-replace';
 import { useUndoHistory } from '@/hooks/useUndoHistory';
 import { useSyncedState } from '@/hooks/useSyncedState';
@@ -268,6 +269,7 @@ function NavalLetterGeneratorInner() {
   // P3.1 / P3.3: find-replace and guidance dialogs
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showGuidance, setShowGuidance] = useState(false);
+  const [showVideos, setShowVideos] = useState(false);
 
   // R8: Ctrl+K command palette
   const [paletteOpen, setPaletteOpen] = useCommandPalette();
@@ -1474,6 +1476,7 @@ function NavalLetterGeneratorInner() {
       onPackage={() => setShowPackage(true)}
       onFindReplace={() => setShowFindReplace(true)}
       onGuide={() => setShowGuidance(true)}
+      onVideos={() => setShowVideos(true)}
       onUndo={undo}
       onRedo={redo}
       canUndo={canUndo}
@@ -1700,6 +1703,7 @@ function NavalLetterGeneratorInner() {
         onFindReplace={() => setShowFindReplace(true)}
         onCompliance={() => setShowCompliance(true)}
         onGuide={() => setShowGuidance(true)}
+        onVideos={() => setShowVideos(true)}
         onSettings={() => setShowSettings(true)}
         onClearForm={handleClearForm}
       />
@@ -1714,6 +1718,7 @@ function NavalLetterGeneratorInner() {
         onOpenChange={setShowGuidance}
         documentType={formData.documentType}
       />
+      <HowToVideosDialog open={showVideos} onOpenChange={setShowVideos} />
       <SettingsDialog
         open={showSettings}
         onOpenChange={(open) => {

@@ -33,6 +33,7 @@ import {
   Save,
   Eraser,
   BadgeCheck,
+  Video,
 } from 'lucide-react';
 import { pickerOptions } from '@/lib/document-type-options';
 
@@ -48,6 +49,7 @@ interface CommandPaletteProps {
   onFindReplace: () => void;
   onCompliance: () => void;
   onGuide: () => void;
+  onVideos?: () => void;
   onSettings: () => void;
   onClearForm: () => void;
   /** True when a document type is active (gates document actions). */
@@ -56,7 +58,7 @@ interface CommandPaletteProps {
 
 export function CommandPalette({
   open, onOpenChange, onSelectType, onExportPdf, onExportDocx, onSave,
-  onOpenLibrary, onShareLink, onFindReplace, onCompliance, onGuide, onSettings, onClearForm,
+  onOpenLibrary, onShareLink, onFindReplace, onCompliance, onGuide, onVideos, onSettings, onClearForm,
   hasDocument,
 }: CommandPaletteProps) {
   const run = (fn: () => void) => {
@@ -114,6 +116,11 @@ export function CommandPalette({
           <CommandItem onSelect={() => run(onGuide)}>
             <BookOpen className="mr-2 h-4 w-4" /> Correspondence guide
           </CommandItem>
+          {onVideos && (
+            <CommandItem onSelect={() => run(onVideos)}>
+              <Video className="mr-2 h-4 w-4" /> How-to videos
+            </CommandItem>
+          )}
           <CommandItem onSelect={() => run(onSettings)}>
             <Settings className="mr-2 h-4 w-4" /> Settings
           </CommandItem>
