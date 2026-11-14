@@ -47,7 +47,6 @@ export function VideoLink({ video, compact = false }: VideoLinkProps) {
       href={video.url!}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`Watch ${video.title} on MarineNet, login required, opens in a new tab`}
       data-video-id={video.id}
       data-state="link"
       className={cn(
@@ -59,10 +58,14 @@ export function VideoLink({ video, compact = false }: VideoLinkProps) {
         {compact && <PlayCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
         <span className="min-w-0">
           <span className="text-sm font-medium text-primary">{title}</span>
-          {!compact && <span className="block text-xs text-muted-foreground">{video.summary}</span>}
+          {!compact && <>{' '}<span className="block text-xs text-muted-foreground">{video.summary}</span></>}
         </span>
       </span>
+      {' '}
       <LoginRequiredBadge />
+      {/* WCAG 2.5.3: the visible text, badge included, stays the start of the
+          accessible name; this finishes it for screen readers. */}
+      {' '}<span className="sr-only">required, opens in a new tab</span>
     </a>
   );
 }
