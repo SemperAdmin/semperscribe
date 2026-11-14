@@ -28,7 +28,8 @@ import {
   GitCompare,
   Layers,
   Bot,
-  MoreVertical
+  MoreVertical,
+  Video
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FEEDBACK_URL } from '@/lib/app-links';
@@ -171,6 +172,7 @@ interface HeaderActionsProps {
   // P3: find/replace, guide, undo/redo
   onFindReplace?: () => void;
   onGuide?: () => void;
+  onVideos?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
   canUndo?: boolean;
@@ -212,6 +214,7 @@ export function HeaderActions({
   onPackage,
   onFindReplace,
   onGuide,
+  onVideos,
   onUndo,
   onRedo,
   canUndo,
@@ -333,7 +336,7 @@ export function HeaderActions({
 
   // Review always offers GunnyBot Review; the document checks gate on their
   // own handlers. hasOtherReview drives the divider above GunnyBot Review.
-  const hasOtherReview = Boolean(onProofread || onCompliance || onCompare || onFindReplace || onGuide);
+  const hasOtherReview = Boolean(onProofread || onCompliance || onCompare || onFindReplace || onGuide || onVideos);
 
   return (
     <div className="flex items-center gap-1 sm:gap-2 min-w-0 overflow-x-auto md:overflow-visible">
@@ -629,6 +632,12 @@ export function HeaderActions({
             <DropdownMenuItem onClick={onGuide} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
               <BookOpen className="w-4 h-4 mr-2" />
               Correspondence Guide
+            </DropdownMenuItem>
+          )}
+          {onVideos && (
+            <DropdownMenuItem onClick={onVideos} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <Video className="w-4 h-4 mr-2" />
+              How-To Videos
             </DropdownMenuItem>
           )}
           {hasOtherReview && <DropdownMenuSeparator className="bg-border" />}

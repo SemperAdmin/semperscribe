@@ -67,6 +67,7 @@ interface ModernAppShellProps {
   /** P3.1 / P3.3 / P3.2 */
   onFindReplace?: () => void;
   onGuide?: () => void;
+  onVideos?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
   canUndo?: boolean;
@@ -119,6 +120,7 @@ export function ModernAppShell({
   onPackage,
   onFindReplace,
   onGuide,
+  onVideos,
   onUndo,
   onRedo,
   canUndo,
@@ -346,6 +348,7 @@ export function ModernAppShell({
             onPackage={onPackage}
             onFindReplace={onFindReplace}
             onGuide={onGuide}
+            onVideos={onVideos}
             onUndo={onUndo}
             onRedo={onRedo}
             canUndo={canUndo}
