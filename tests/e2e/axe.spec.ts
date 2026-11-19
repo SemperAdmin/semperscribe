@@ -168,4 +168,17 @@ test.describe('axe accessibility scan', () => {
     await expect(page.getByRole('dialog', { name: 'Command palette' })).toBeVisible();
     expect(await seriousViolations(page), 'command palette at 1280px').toEqual([]);
   });
+
+  test('collapsed sidebar persists across reload with no serious or critical violations', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await enterApp(page);
+    await page.getByRole('button', { name: 'Collapse sidebar' }).click();
+    await expect(page.getByRole('button', { name: 'Expand sidebar' })).toBeVisible();
+    expect(await seriousViolations(page), 'collapsed sidebar at 1366px').toEqual([]);
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Expand sidebar' })).toBeVisible();
+    // The landing page fades in over 700 ms; axe mid-fade reads low contrast.
+    await page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
+    expect(await seriousViolations(page), 'collapsed sidebar after reload').toEqual([]);
+  });
 });

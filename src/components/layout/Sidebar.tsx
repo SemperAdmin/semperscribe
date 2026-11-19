@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useId } from 'react';
 import {
   FileText,
   Search,
@@ -13,6 +13,8 @@ import {
   Type,
   Building2,
   Users,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ParagraphData } from '@/types';
@@ -36,6 +38,10 @@ interface SidebarProps {
    * Desktop callers omit this prop and behavior remains unchanged.
    */
   onItemSelect?: () => void;
+  /** Desktop only: render the narrow icon rail instead of the full panel. */
+  collapsed?: boolean;
+  /** When passed, the sidebar shows collapse and expand buttons. */
+  onToggleCollapsed?: () => void;
 }
 
 interface SearchResult {
@@ -182,8 +188,37 @@ function scrollToResult(result: SearchResult, query: string) {
   }
 }
 
-export function Sidebar({ className, documentType, onDocumentTypeChange, paragraphs = [], formData, onItemSelect }: SidebarProps) {
+export function Sidebar({ className, documentType, onDocumentTypeChange, paragraphs = [], formData, onItemSelect, collapsed = false, onToggleCollapsed }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const contentId = useId();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const typeRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const railToggleRef = useRef<HTMLButtonElement>(null);
+  const headerToggleRef = useRef<HTMLButtonElement>(null);
+  // Where focus goes once the next collapse or expand has rendered.
+  const pendingFocus = useRef<'rail' | 'header' | 'type' | 'search' | null>(null);
+  const collapsible = !!onToggleCollapsed;
+  const isCollapsed = collapsible && collapsed;
+
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (!target) return;
+    pendingFocus.current = null;
+    if (target === 'rail') railToggleRef.current?.focus();
+    else if (target === 'header') headerToggleRef.current?.focus();
+    else if (target === 'type') typeRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    else searchRef.current?.focus();
+  }, [isCollapsed]);
+
+  const collapse = () => {
+    pendingFocus.current = 'rail';
+    onToggleCollapsed?.();
+  };
+  const expand = (focus: 'header' | 'type' | 'search') => {
+    pendingFocus.current = focus;
+    onToggleCollapsed?.();
+  };
 
   // E.2: the endorsement's two placements (M-5216.5 9-1) are two
   // options here. The form still carries one document type, so the
@@ -230,11 +265,44 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
   }, [searchQuery, paragraphs, formData]);
 
   return (
-    <aside aria-label="Document types and search" className={cn("w-64 bg-card border-r border-border hidden md:flex flex-col h-full", className)}>
-      <div className="flex-1 min-h-0 overflow-y-auto native-scroll">
+    <aside
+      aria-label="Document types and search"
+      className={cn(
+        isCollapsed ? "w-12" : "w-64",
+        "bg-card border-r border-border hidden md:flex flex-col h-full overflow-hidden transition-[width] motion-reduce:transition-none",
+        className,
+      )}
+    >
+      {isCollapsed && (
+        <div className="flex flex-col items-center gap-1 py-2">
+          <RailButton ref={railToggleRef} label="Expand sidebar" expanded={false} controls={contentId} onClick={() => expand('header')}>
+            <PanelLeftOpen className="w-4 h-4" />
+          </RailButton>
+          <RailButton label="Document type" expanded={false} controls={contentId} onClick={() => expand('type')}>
+            <FileText className="w-4 h-4" />
+          </RailButton>
+          <RailButton label="Find in document" expanded={false} controls={contentId} onClick={() => expand('search')}>
+            <Search className="w-4 h-4" />
+          </RailButton>
+        </div>
+      )}
+      {collapsible && !isCollapsed && (
+        <div className="flex justify-end px-2 pt-2">
+          <RailButton ref={headerToggleRef} label="Collapse sidebar" expanded controls={contentId} onClick={collapse}>
+            <PanelLeftClose className="w-4 h-4" />
+          </RailButton>
+        </div>
+      )}
+      <div
+        id={contentId}
+        ref={contentRef}
+        hidden={isCollapsed}
+        className="flex-1 min-h-0 overflow-y-auto native-scroll w-64"
+      >
         {/* Document Type Selector */}
         <div className="p-4 border-b border-border">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Document Type</h2>
+          <div ref={typeRef}>
           <Accordion
             type="multiple"
             defaultValue={[]}
@@ -528,6 +596,7 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+          </div>
 
           {/* AMHS - Single Item Group */}
           <div className="border-none mt-1">
@@ -553,6 +622,7 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                 controls with no accessible name - a placeholder is not
                 one, and it disappears the moment anything is typed. */}
             <input
+              ref={searchRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -611,6 +681,29 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
     </aside>
   );
 }
+
+const RailButton = React.forwardRef<HTMLButtonElement, {
+  label: string;
+  expanded: boolean;
+  controls: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}>(function RailButton({ label, expanded, controls, onClick, children }, ref) {
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      aria-expanded={expanded}
+      aria-controls={controls}
+      className="inline-flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {children}
+    </button>
+  );
+});
 
 function DocumentTypeButton({ active, onClick, label, isSpecial }: { active: boolean, onClick: () => void, label: string, isSpecial?: boolean }) {
   return (
