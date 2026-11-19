@@ -8,6 +8,7 @@
 import { ParagraphData, AdminSubsections } from '@/types';
 import { ClassificationConfig, STANDARD_LEVELS, TRAINING_LEVELS } from '@/lib/classification';
 import { ParagraphItem } from './ParagraphItem';
+import { canIndent, canOutdent, shiftBranch } from '@/hooks/useParagraphs';
 import { 
   Indent,
   AlertTriangle,
@@ -31,6 +32,8 @@ interface ParagraphSectionProps {
   getUiCitation: (paragraph: ParagraphData, index: number, allParagraphs: ParagraphData[], options?: { fourDigitNumbering?: boolean; chapterNumber?: number }) => string;
   moveParagraphUp: (id: number) => void;
   moveParagraphDown: (id: number) => void;
+  indentParagraph?: (id: number, maxLevel?: number) => void;
+  outdentParagraph?: (id: number) => void;
   updateParagraphContent: (id: number, content: string) => void;
   toggleVoiceInput: (id: number) => void;
   addParagraph: (type: 'main' | 'sub' | 'same' | 'up', afterId: number) => void;
@@ -59,6 +62,8 @@ export function ParagraphSection({
   getUiCitation,
   moveParagraphUp,
   moveParagraphDown,
+  indentParagraph,
+  outdentParagraph,
   updateParagraphContent,
   toggleVoiceInput,
   addParagraph,
@@ -80,6 +85,8 @@ export function ParagraphSection({
     ? [...STANDARD_LEVELS, ...TRAINING_LEVELS]
     : [...STANDARD_LEVELS];
   const [focusedId, setFocusedId] = useState<number | null>(null);
+  const [levelAnnouncement, setLevelAnnouncement] = useState('');
+  const maxLevel = ['information-paper', 'position-paper'].includes(documentType) ? 4 : 8;
 
   // Options for 4-digit numbering (passed through to citation generation)
   const citationOpts = fourDigitNumbering ? { fourDigitNumbering, chapterNumber } : undefined;
@@ -116,6 +123,24 @@ export function ParagraphSection({
     }
 
     return hints;
+  };
+
+  // Citation a paragraph would have after indent (+1) or outdent (-1)
+  const citationAfterShift = (index: number, delta: number) =>
+    getUiCitation(paragraphs[index], index, shiftBranch(paragraphs, index, delta), citationOpts);
+
+  const handleIndent = (id: number) => {
+    const index = paragraphs.findIndex(p => p.id === id);
+    if (index < 0 || !canIndent(paragraphs, index, maxLevel).ok) return;
+    indentParagraph?.(id, maxLevel);
+    setLevelAnnouncement(`Paragraph is now ${citationAfterShift(index, 1)}`);
+  };
+
+  const handleOutdent = (id: number) => {
+    const index = paragraphs.findIndex(p => p.id === id);
+    if (index < 0 || !canOutdent(paragraphs, index).ok) return;
+    outdentParagraph?.(id);
+    setLevelAnnouncement(`Paragraph is now ${citationAfterShift(index, -1)}`);
   };
 
   const isDirective = documentType === 'order' || documentType === 'bulletin' || documentType === 'directive';
@@ -258,6 +283,8 @@ export function ParagraphSection({
           </div>
         )}
 
+        <div className="sr-only" role="status" aria-live="polite">{levelAnnouncement}</div>
+
         <div className="space-y-4">
           {paragraphs.map((paragraph, index) => {
             let citation = getUiCitation(paragraph, index, paragraphs, citationOpts);
@@ -331,7 +358,15 @@ export function ParagraphSection({
             onFocus={setFocusedId}
             isFocused={focusedId === paragraph.id}
             documentType={documentType}
-            nextCitations={getNextCitations(paragraph, index)}
+            nextCitations={{
+              ...getNextCitations(paragraph, index),
+              ...(indentParagraph && canIndent(paragraphs, index, maxLevel).ok ? { indent: citationAfterShift(index, 1) } : {}),
+              ...(outdentParagraph && canOutdent(paragraphs, index).ok ? { outdent: citationAfterShift(index, -1) } : {}),
+            }}
+            onIndent={indentParagraph ? handleIndent : undefined}
+            onOutdent={outdentParagraph ? handleOutdent : undefined}
+            indentState={canIndent(paragraphs, index, maxLevel)}
+            outdentState={canOutdent(paragraphs, index)}
             portionMarking={portionMarking}
             markingLevels={markingLevels}
             onUpdateMarking={onUpdateMarking}

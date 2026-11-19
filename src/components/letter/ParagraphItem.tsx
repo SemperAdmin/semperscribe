@@ -19,9 +19,12 @@ import {
   Bold,
   Italic,
   Underline,
-  Trash2
+  Trash2,
+  IndentIncrease,
+  IndentDecrease
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { LevelChange } from '@/hooks/useParagraphs';
 import { portionPrefix } from '@/lib/classification';
 import { ParagraphCommentButton } from '@/components/review/ParagraphCommentButton';
 import type { ReviewComment } from '@/lib/review-comments';
@@ -44,7 +47,12 @@ interface ParagraphItemProps {
   onFocus: (id: number) => void;
   isFocused: boolean;
   documentType?: string;
-  nextCitations?: { main?: string; sub?: string; same?: string; up?: string };
+  nextCitations?: { main?: string; sub?: string; same?: string; up?: string; indent?: string; outdent?: string };
+  /** Level change handlers; the indent/outdent buttons render when given */
+  onIndent?: (id: number) => void;
+  onOutdent?: (id: number) => void;
+  indentState?: LevelChange;
+  outdentState?: LevelChange;
   /** P2: portion marking dropdown */
   portionMarking?: boolean;
   markingLevels?: string[];
@@ -102,6 +110,10 @@ export function ParagraphItem({
   isFocused,
   documentType,
   nextCitations,
+  onIndent,
+  onOutdent,
+  indentState,
+  outdentState,
   portionMarking,
   markingLevels,
   onUpdateMarking,
@@ -112,6 +124,16 @@ export function ParagraphItem({
   onRemoveComment,
   commentAuthor
 }: ParagraphItemProps) {
+  // Alt+Shift+Right/Left change level; Tab stays free (WCAG 2.1.2)
+  const handleLevelKey = (e: React.KeyboardEvent): boolean => {
+    if (!e.altKey || !e.shiftKey) return false;
+    const handler = e.key === 'ArrowRight' ? onIndent : e.key === 'ArrowLeft' ? onOutdent : undefined;
+    if (!handler) return false;
+    e.preventDefault();
+    handler(paragraph.id);
+    return true;
+  };
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const readRef = useRef<HTMLDivElement>(null);
   const [localContent, setLocalContent] = useState(paragraph.content || '');
@@ -291,6 +313,32 @@ export function ParagraphItem({
                 authorName={commentAuthor ?? ''}
               />
             )}
+            {onIndent && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onIndent(paragraph.id)}
+                disabled={indentState?.ok === false}
+                className="h-8 w-8 p-0 max-sm:min-h-11 max-sm:min-w-11 hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                title={indentState?.ok === false ? `Cannot indent: ${indentState.reason}` : `Indent to ${nextCitations?.indent ?? 'next level'} (Alt+Shift+Right)`}
+                aria-label={`Indent paragraph ${citationLabel}${nextCitations?.indent ? ` to ${nextCitations.indent.replace(/\.$/, '')}` : ''}`}
+              >
+                <IndentIncrease className="h-4 w-4" />
+              </Button>
+            )}
+            {onOutdent && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOutdent(paragraph.id)}
+                disabled={outdentState?.ok === false}
+                className="h-8 w-8 p-0 max-sm:min-h-11 max-sm:min-w-11 hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                title={outdentState?.ok === false ? `Cannot outdent: ${outdentState.reason}` : `Outdent to ${nextCitations?.outdent ?? 'previous level'} (Alt+Shift+Left)`}
+                aria-label={`Outdent paragraph ${citationLabel}${nextCitations?.outdent ? ` to ${nextCitations.outdent.replace(/\.$/, '')}` : ''}`}
+              >
+                <IndentDecrease className="h-4 w-4" />
+              </Button>
+            )}
             {index > 0 && (
                 <Button
                 variant="ghost"
@@ -361,6 +409,7 @@ export function ParagraphItem({
               onChange={(e) => setLocalContent(e.target.value)}
               onFocus={() => onFocus(paragraph.id)}
               onKeyDown={(e) => {
+                if (handleLevelKey(e)) return;
                 // Escape leaves the body without reaching for the mouse.
                 // Blur commits the text and closes edit mode, so focus
                 // returns to the read view the blur puts back on screen.
@@ -390,6 +439,7 @@ export function ParagraphItem({
               aria-label={bodyLabel}
               onClick={startEditing}
               onKeyDown={(e) => {
+                if (handleLevelKey(e)) return;
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   startEditing();

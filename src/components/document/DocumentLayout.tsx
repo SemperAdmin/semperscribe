@@ -78,6 +78,8 @@ interface DocumentLayoutProps {
   getUiCitation: (paragraph: ParagraphData, index: number, allParagraphs: ParagraphData[]) => string;
   moveParagraphUp: (id: number) => void;
   moveParagraphDown: (id: number) => void;
+  indentParagraph?: (id: number, maxLevel?: number) => void;
+  outdentParagraph?: (id: number) => void;
   updateParagraphContent: (id: number, content: string) => void;
   updateParagraphMarking: (id: number, marking: string) => void;
   toggleVoiceInput: (id: number) => void;
@@ -142,6 +144,8 @@ export function DocumentLayout({
   getUiCitation,
   moveParagraphUp,
   moveParagraphDown,
+  indentParagraph,
+  outdentParagraph,
   updateParagraphContent,
   updateParagraphMarking,
   toggleVoiceInput,
@@ -401,6 +405,8 @@ export function DocumentLayout({
               getUiCitation={getUiCitation}
               moveParagraphUp={moveParagraphUp}
               moveParagraphDown={moveParagraphDown}
+              indentParagraph={indentParagraph}
+              outdentParagraph={outdentParagraph}
               updateParagraphContent={updateParagraphContent}
               toggleVoiceInput={toggleVoiceInput}
               addParagraph={addParagraph}
