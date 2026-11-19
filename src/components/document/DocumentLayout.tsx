@@ -75,7 +75,7 @@ interface DocumentLayoutProps {
   paragraphs: ParagraphData[];
   activeVoiceInput: number | null;
   validateParagraphNumbering: (paragraphs: ParagraphData[]) => string[];
-  getUiCitation: (paragraph: ParagraphData, index: number, allParagraphs: ParagraphData[]) => string;
+  getUiCitation: (paragraph: ParagraphData, index: number, allParagraphs: ParagraphData[], options?: { fourDigitNumbering?: boolean; chapterNumber?: number }) => string;
   moveParagraphUp: (id: number) => void;
   moveParagraphDown: (id: number) => void;
   indentParagraph?: (id: number, maxLevel?: number) => void;
