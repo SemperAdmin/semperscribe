@@ -51,3 +51,46 @@ describe('runNavmc10922Validators', () => {
     }
   });
 });
+
+describe('self-attestation with grade and title present', () => {
+  it('still blocks when the officer name matches the member', () => {
+    const data = baseline();
+    data.attestingOfficerName = String(data.nameOfMarine);
+    data.attestingOfficerGrade = 'SSgt';
+    data.attestingOfficerTitle = 'Admin Chief';
+    const hit = runNavmc10922Validators(data, NOW).find((i) => i.id === 'navmc10922-self-attestation');
+    expect(hit?.severity).toBe('block');
+  });
+
+  it('warns when unnamed even if grade and title are set', () => {
+    const data = baseline();
+    data.attestingOfficerName = '';
+    data.attestingOfficerGrade = 'SSgt';
+    data.attestingOfficerTitle = 'Admin Chief';
+    const hit = runNavmc10922Validators(data, NOW).find((i) => i.id === 'navmc10922-attesting-unverified');
+    expect(hit?.severity).toBe('warn');
+  });
+});
+
+describe('Navmc10922Schema attesting official fields', () => {
+  it('accepts grade and title alongside the name', async () => {
+    const { Navmc10922Schema } = await import('@/lib/schemas');
+    const shape = Navmc10922Schema.shape as Record<string, unknown>;
+    expect(shape.attestingOfficerGrade).toBeDefined();
+    expect(shape.attestingOfficerTitle).toBeDefined();
+    const r = Navmc10922Schema.safeParse({
+      ...baseline(),
+      attestingOfficerName: 'DOE, JANE A',
+      attestingOfficerGrade: 'SSgt',
+      attestingOfficerTitle: 'Admin Chief',
+    });
+    if (r.success) {
+      expect(r.data.attestingOfficerGrade).toBe('SSgt');
+      expect(r.data.attestingOfficerTitle).toBe('Admin Chief');
+    } else {
+      const paths = r.error.issues.map((i) => i.path.join('.'));
+      expect(paths).not.toContain('attestingOfficerGrade');
+      expect(paths).not.toContain('attestingOfficerTitle');
+    }
+  });
+});

@@ -192,7 +192,7 @@ function selfAttestation(formData: FormData): ValidationIssue[] {
       'navmc10922-attesting-unverified', 'warn',
       'Attesting officer not named - self-attestation cannot be verified',
       'MCO 1751.3 CH-1 para 3.a',
-      'Enter the attesting officer name (app-side field, never printed) so the prohibition check can run.'
+      'Enter the attesting officer name (printed under the attesting officer signature box) so the prohibition check can run.'
     )];
   }
   if (member && sameNames(officer, member)) {

@@ -77,3 +77,26 @@ describe('NAVMC 10922 prior marriages', () => {
     expect(dissolutionRows()).toHaveLength(3);
   });
 });
+
+describe('Section 7 attesting official fields', () => {
+  it('renders name, grade and title and updates formData', () => {
+    const setFormData = vi.fn();
+    render(
+      <Navmc10922FormSections formData={form()} setFormData={setFormData} onDynamicSync={vi.fn()} formKey={1} />,
+    );
+    for (const [label, key, val] of [
+      ['Name', 'attestingOfficerName', 'DOE, JANE A'],
+      ['Grade', 'attestingOfficerGrade', 'SSgt'],
+      ['Title', 'attestingOfficerTitle', 'Admin Chief'],
+    ] as const) {
+      const id = { attestingOfficerName: 'n10922-attesting', attestingOfficerGrade: 'n10922-attesting-grade', attestingOfficerTitle: 'n10922-attesting-title' }[key];
+      const input = document.getElementById(id) as HTMLInputElement;
+      expect(input, label).toBeTruthy();
+      setFormData.mockClear();
+      fireEvent.change(input, { target: { value: val } });
+      const updater = setFormData.mock.calls[0][0] as (p: FormData) => FormData;
+      expect((updater({} as FormData) as Record<string, unknown>)[key]).toBe(val);
+    }
+    expect(screen.getByText('Certifying (attesting) official')).toBeInTheDocument();
+  });
+});

@@ -967,20 +967,53 @@ function SwornDateSection({ formData, setFormData }: {
           year 20<span className="font-mono">{(formData.swornYear2Digit as string) || '——'}</span>.
           Leave unset for the attesting officer to complete in Adobe.
         </p>
-        <div className="space-y-1 md:col-span-2">
-          <Label htmlFor="n10922-attesting" className="text-sm">Attesting Officer Name (not printed)</Label>
-          <Input
-            id="n10922-attesting"
-            value={(formData.attestingOfficerName as string) ?? ''}
-            onChange={(e) => setFormData((prev) => ({ ...prev, attestingOfficerName: e.target.value }))}
-            placeholder="LAST, FIRST MI"
-          />
+        <fieldset className="md:col-span-2 space-y-3 rounded-md border p-3">
+          <legend className="px-1 text-sm font-medium">Certifying (attesting) official</legend>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-1 md:col-span-3">
+              <Label htmlFor="n10922-attesting" className="text-sm">Name</Label>
+              <Input
+                id="n10922-attesting"
+                value={(formData.attestingOfficerName as string) ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFormData((prev) => ({ ...prev, attestingOfficerName: v }));
+                }}
+                placeholder="LAST, FIRST MI"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="n10922-attesting-grade" className="text-sm">Grade</Label>
+              <Input
+                id="n10922-attesting-grade"
+                value={(formData.attestingOfficerGrade as string) ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFormData((prev) => ({ ...prev, attestingOfficerGrade: v }));
+                }}
+                placeholder="SSgt"
+              />
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <Label htmlFor="n10922-attesting-title" className="text-sm">Title</Label>
+              <Input
+                id="n10922-attesting-title"
+                value={(formData.attestingOfficerTitle as string) ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFormData((prev) => ({ ...prev, attestingOfficerTitle: v }));
+                }}
+                placeholder="Admin Chief"
+              />
+            </div>
+          </div>
           <p className="text-[11px] text-muted-foreground">
-            Administrative personnel with by-direction authority. Self attestation is prohibited
-            (MCO 1751.3 CH-1 para 3.a) — export blocks when this matches the member name. The
-            officer signs the form itself in Adobe; this field only powers that check.
+            Name, grade and title print under the attesting officer signature box; the officer
+            still signs in Adobe. Administrative personnel with by-direction authority only.
+            Self attestation is prohibited (MCO 1751.3 CH-1 para 3.a) — export blocks when the
+            name matches the member name.
           </p>
-        </div>
+        </fieldset>
       </div>
     </SectionCard>
   );
