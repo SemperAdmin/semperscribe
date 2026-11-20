@@ -75,6 +75,25 @@ describe('input fields strip on blur, not on keystroke', () => {
     expect(screen.getByRole('textbox', { name: 'Reference (a)' })).toHaveValue('MCO 1553.3B');
   });
 
+  it('reference field leaves no close timer running after unmount', () => {
+    // CI caught the 150 ms close-on-blur timer firing after the test
+    // environment was torn down ("window is not defined").
+    vi.useFakeTimers();
+    try {
+      function Host() {
+        const [refs, setRefs] = useState<string[]>(['']);
+        return <ReferencesSection references={refs} setReferences={setRefs} formData={basic} setFormData={vi.fn()} />;
+      }
+      const { unmount } = render(<Host />);
+      fireEvent.click(screen.getByRole('radio', { name: 'Yes' }));
+      fireEvent.blur(screen.getByRole('textbox', { name: 'Reference (a)' }));
+      unmount();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('enclosure field', () => {
     const onUpdateTitle = vi.fn();
     const rows: EnclosureRow[] = [{ key: 'r1', title: 'Encl (1) Unit SOP' }];

@@ -7,7 +7,7 @@
  * the library types through unchanged.
  */
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { stripCitationPrefix } from '@/lib/citation-prefix';
 import { searchReferences } from '@/lib/reference-library';
@@ -24,6 +24,11 @@ export function ReferenceSuggestInput({ value, onChange, placeholder, className,
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The close-on-blur timer must not outlive the field: firing setOpen after
+  // unmount warns in the browser and throws once a test environment is gone.
+  useEffect(() => () => {
+    if (blurTimer.current) clearTimeout(blurTimer.current);
+  }, []);
 
   const suggestions = useMemo(() => searchReferences(value), [value]);
   const show = open && suggestions.length > 0;
