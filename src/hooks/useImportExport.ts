@@ -1,5 +1,6 @@
 'use client';
 
+import { stripCitationPrefix, stripCitationPrefixes } from '@/lib/citation-prefix';
 import { useCallback } from 'react';
 import { FormData, ParagraphData, ValidationState } from '@/types';
 import { generateShareableUrl, generateEncryptedShareUrl, copyToClipboard, ShareableState } from '@/lib/url-state';
@@ -136,8 +137,11 @@ export function useImportExport(deps: ImportExportDeps) {
 
       if (incomingParagraphs) setParagraphs(incomingParagraphs);
       if (incomingVias) setVias(incomingVias);
-      if (incomingReferences) setReferences(incomingReferences);
-      if (incomingEnclosures) setEnclosures(incomingEnclosures);
+      // A hand-typed "(a) " or "Encl (1) " in a loaded or imported list
+      // would print twice beside the app's own lettering. Every load path
+      // (file, draft, template, share link, Word/PDF import) lands here.
+      if (incomingReferences) setReferences(stripCitationPrefixes(incomingReferences));
+      if (incomingEnclosures) setEnclosures(stripCitationPrefixes(incomingEnclosures));
       if (incomingCopyTos) setCopyTos(incomingCopyTos);
       // Canonical exports tuck distList inside formData; the ad-hoc
       // legacy shape carried it at the data level. Accept both.
@@ -145,7 +149,10 @@ export function useImportExport(deps: ImportExportDeps) {
       if (distListIn) setDistList(toStrings(distListIn)!);
       if ('distList' in formDataToMerge) delete formDataToMerge.distList;
       // ENC: bindings override the plain title reconcile above.
-      if (data.enclosureBindings && onEnclosureBindings) onEnclosureBindings(data.enclosureBindings);
+      if (data.enclosureBindings && onEnclosureBindings) {
+        onEnclosureBindings(data.enclosureBindings.map((b: { title?: unknown }) =>
+          typeof b?.title === 'string' ? { ...b, title: stripCitationPrefix(b.title) } : b));
+      }
 
       // 1.2: Volume travels as its own payload (see nldp-format.ts) since
       // it is authored through useVolumeStore, not the fields merged

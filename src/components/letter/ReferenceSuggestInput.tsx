@@ -9,6 +9,7 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { stripCitationPrefix } from '@/lib/citation-prefix';
 import { searchReferences } from '@/lib/reference-library';
 
 interface ReferenceSuggestInputProps {
@@ -42,7 +43,12 @@ export function ReferenceSuggestInput({ value, onChange, placeholder, className,
         aria-label={ariaLabel}
         onChange={(e) => { onChange(e.target.value); setOpen(true); setHighlight(0); }}
         onFocus={() => setOpen(true)}
-        onBlur={() => { blurTimer.current = setTimeout(() => setOpen(false), 150); }}
+        onBlur={() => {
+          // Commit, not keystroke: stripping while typing would move the cursor.
+          const clean = stripCitationPrefix(value);
+          if (clean !== value) onChange(clean);
+          blurTimer.current = setTimeout(() => setOpen(false), 150);
+        }}
         onKeyDown={(e) => {
           if (!show) return;
           if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight((h) => Math.min(h + 1, suggestions.length - 1)); }

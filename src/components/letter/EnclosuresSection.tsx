@@ -12,6 +12,7 @@ import React, { useRef } from 'react';
 import { useSyncedState } from '@/hooks/useSyncedState';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { stripCitationPrefix } from '@/lib/citation-prefix';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -203,6 +204,10 @@ export function EnclosuresSection({
                         placeholder={itemPlaceholder}
                         value={row.title}
                         onChange={(e) => onUpdateTitle(row.key, e.target.value)}
+                        onBlur={() => {
+                          const clean = stripCitationPrefix(row.title);
+                          if (clean !== row.title) onUpdateTitle(row.key, clean);
+                        }}
                         aria-label={`${itemLabel} ${getEnclosureIndicator(index, formData.startingEnclosureNumber)}`}
                       />
                       {!isPositionPaper && (
