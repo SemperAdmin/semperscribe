@@ -69,12 +69,12 @@ export const MFRTemplate: DocumentTemplate = {
     to: '',
     vias: [],
     references: [
-      '(a) MCO 1553.3B',
-      '(b) Quarterly Training Plan dtd 1 Jan 26'
+      'MCO 1553.3B',
+      'Quarterly Training Plan dtd 1 Jan 26'
     ],
     enclosures: [
-      '(1) Meeting Agenda',
-      '(2) Training Readiness Slides'
+      'Meeting Agenda',
+      'Training Readiness Slides'
     ],
     copyTos: [],
     line1: '',

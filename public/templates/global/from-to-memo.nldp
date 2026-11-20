@@ -51,10 +51,10 @@
     },
     "vias": [],
     "references": [
-      "(a) Battalion Training Plan dtd 15 Jan 26"
+      "Battalion Training Plan dtd 15 Jan 26"
     ],
     "enclosures": [
-      "(1) Revised Training Schedule"
+      "Revised Training Schedule"
     ],
     "copyTos": [
       "S-3A"
@@ -62,33 +62,33 @@
     "paragraphs": [
       {
         "id": 1,
-        "level": 0,
-        "content": "1. The training schedule for March 2026 has been revised to incorporate the new range allocation from Range Control."
+        "level": 1,
+        "content": "The training schedule for March 2026 has been revised to incorporate the new range allocation from Range Control."
       },
       {
         "id": 2,
-        "level": 0,
-        "content": "2. Key changes include the following."
+        "level": 1,
+        "content": "Key changes include the following."
       },
       {
         "id": 3,
-        "level": 1,
-        "content": "a. Live-fire exercise moved from 10-12 Mar to 17-19 Mar."
+        "level": 2,
+        "content": "Live-fire exercise moved from 10-12 Mar to 17-19 Mar."
       },
       {
         "id": 4,
-        "level": 1,
-        "content": "b. Field exercise extended by two days to accommodate additional objectives."
+        "level": 2,
+        "content": "Field exercise extended by two days to accommodate additional objectives."
       },
       {
         "id": 5,
-        "level": 2,
-        "content": "(1) Night operations added on 24 Mar."
+        "level": 3,
+        "content": "Night operations added on 24 Mar."
       },
       {
         "id": 6,
-        "level": 0,
-        "content": "3. Request acknowledgement of receipt and any conflicts NLT 20 Feb 26."
+        "level": 1,
+        "content": "Request acknowledgement of receipt and any conflicts NLT 20 Feb 26."
       }
     ]
   }

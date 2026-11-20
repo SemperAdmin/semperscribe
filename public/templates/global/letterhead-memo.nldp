@@ -51,12 +51,12 @@
     },
     "vias": [],
     "references": [
-      "(a) MCO 1553.3B",
-      "(b) MCRP 3-0A"
+      "MCO 1553.3B",
+      "MCRP 3-0A"
     ],
     "enclosures": [
-      "(1) FY26 Training Calendar",
-      "(2) Range Allocation Matrix"
+      "FY26 Training Calendar",
+      "Range Allocation Matrix"
     ],
     "copyTos": [
       "Commanding General, I MEF",
@@ -65,38 +65,38 @@
     "paragraphs": [
       {
         "id": 1,
-        "level": 0,
-        "content": "1. This memorandum provides training guidance for all units assigned to 1st Marine Division during FY26."
+        "level": 1,
+        "content": "This memorandum provides training guidance for all units assigned to 1st Marine Division during FY26."
       },
       {
         "id": 2,
-        "level": 0,
-        "content": "2. Commander's Intent. Focus training efforts on combined arms integration and expeditionary operations."
+        "level": 1,
+        "content": "Commander's Intent. Focus training efforts on combined arms integration and expeditionary operations."
       },
       {
         "id": 3,
-        "level": 1,
-        "content": "a. All infantry battalions will complete at least one battalion-level field exercise per quarter."
+        "level": 2,
+        "content": "All infantry battalions will complete at least one battalion-level field exercise per quarter."
       },
       {
         "id": 4,
-        "level": 1,
-        "content": "b. Supporting units will integrate with supported maneuver elements during all major exercises."
+        "level": 2,
+        "content": "Supporting units will integrate with supported maneuver elements during all major exercises."
       },
       {
         "id": 5,
-        "level": 2,
-        "content": "(1) Artillery batteries will conduct a minimum of two live-fire exercises per quarter."
+        "level": 3,
+        "content": "Artillery batteries will conduct a minimum of two live-fire exercises per quarter."
       },
       {
         "id": 6,
-        "level": 2,
-        "content": "(2) Combat engineer units will support breaching operations during each infantry field exercise."
+        "level": 3,
+        "content": "Combat engineer units will support breaching operations during each infantry field exercise."
       },
       {
         "id": 7,
-        "level": 0,
-        "content": "3. Report training readiness status monthly per reference (a)."
+        "level": 1,
+        "content": "Report training readiness status monthly per reference (a)."
       }
     ]
   }

@@ -90,12 +90,12 @@ export const BusinessLetterTemplate: DocumentTemplate = {
     to: '',
     vias: [],
     references: [
-      '(a) Contract N00024-26-C-1234',
-      '(b) Previous correspondence dtd 5 Jan 26'
+      'Contract N00024-26-C-1234',
+      'Previous correspondence dtd 5 Jan 26'
     ],
     enclosures: [
-      '(1) Statement of Work',
-      '(2) Cost Estimate'
+      'Statement of Work',
+      'Cost Estimate'
     ],
     copyTos: [
       'Contracting Officer, NAVSEA',

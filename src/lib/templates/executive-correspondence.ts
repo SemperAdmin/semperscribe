@@ -67,7 +67,7 @@ export const ExecutiveCorrespondenceTemplate: DocumentTemplate = {
     vias: [],
     references: [],
     enclosures: [
-      '(1) Navy Shipyard Modernization Plan'
+      'Navy Shipyard Modernization Plan'
     ],
     copyTos: [],
     line1: '',

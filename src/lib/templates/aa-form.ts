@@ -43,10 +43,10 @@ export const AAFormTemplate: DocumentTemplate = {
       'Company Commander, Alpha Company'
     ],
     references: [
-      '(a) MCO 1050.3J'
+      'MCO 1050.3J'
     ],
     enclosures: [
-      '(1) Leave and Liberty Request Form'
+      'Leave and Liberty Request Form'
     ],
     copyTos: [],
     

@@ -39,7 +39,7 @@
     },
     "vias": ["I MEF"],
     "references": ["MCO 5216.4C"],
-    "enclosures": ["Enclosure (1) – Unit SOP"],
+    "enclosures": ["Unit SOP"],
     "copyTos": ["CG, MARFORPAC"],
     "paragraphs": [
       { "id": 1, "level": 1, "content": "Purpose. Preset for unit usage." }
