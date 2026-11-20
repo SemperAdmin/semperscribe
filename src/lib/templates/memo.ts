@@ -19,21 +19,21 @@ export const FromToMemoTemplate: DocumentTemplate = {
     to: 'Maj R. L. Jones, Operations Officer',
     subj: 'UPDATED TRAINING SCHEDULE FOR MARCH 2026',
     paragraphs: [
-      { id: 1, level: 0, content: '1. The training schedule for March 2026 has been revised to incorporate the new range allocation from Range Control.' },
-      { id: 2, level: 0, content: '2. Key changes include the following.' },
-      { id: 3, level: 1, content: 'a. Live-fire exercise moved from 10-12 Mar to 17-19 Mar.' },
-      { id: 4, level: 1, content: 'b. Field exercise extended by two days to accommodate additional objectives.' },
-      { id: 5, level: 2, content: '(1) Night operations added on 24 Mar.' },
-      { id: 6, level: 0, content: '3. Request acknowledgement of receipt and any conflicts NLT 20 Feb 26.' }
+      { id: 1, level: 1, content: 'The training schedule for March 2026 has been revised to incorporate the new range allocation from Range Control.' },
+      { id: 2, level: 1, content: 'Key changes include the following.' },
+      { id: 3, level: 2, content: 'Live-fire exercise moved from 10-12 Mar to 17-19 Mar.' },
+      { id: 4, level: 2, content: 'Field exercise extended by two days to accommodate additional objectives.' },
+      { id: 5, level: 3, content: 'Night operations added on 24 Mar.' },
+      { id: 6, level: 1, content: 'Request acknowledgement of receipt and any conflicts NLT 20 Feb 26.' }
     ],
     // Defaults
     ssic: '1500', originatorCode: 'S-3', sig: 'J. M. SMITH',
     vias: [],
     references: [
-      '(a) Battalion Training Plan dtd 15 Jan 26'
+      'Battalion Training Plan dtd 15 Jan 26'
     ],
     enclosures: [
-      '(1) Revised Training Schedule'
+      'Revised Training Schedule'
     ],
     copyTos: [
       'S-3A'
@@ -60,24 +60,24 @@ export const LetterheadMemoTemplate: DocumentTemplate = {
     to: 'Distribution List',
     subj: 'ANNUAL TRAINING GUIDANCE FOR FISCAL YEAR 2026',
     paragraphs: [
-      { id: 1, level: 0, content: '1. This memorandum provides training guidance for all units assigned to 1st Marine Division during FY26.' },
-      { id: 2, level: 0, content: '2. Commander\'s Intent. Focus training efforts on combined arms integration and expeditionary operations.' },
-      { id: 3, level: 1, content: 'a. All infantry battalions will complete at least one battalion-level field exercise per quarter.' },
-      { id: 4, level: 1, content: 'b. Supporting units will integrate with supported maneuver elements during all major exercises.' },
-      { id: 5, level: 2, content: '(1) Artillery batteries will conduct a minimum of two live-fire exercises per quarter.' },
-      { id: 6, level: 2, content: '(2) Combat engineer units will support breaching operations during each infantry field exercise.' },
-      { id: 7, level: 0, content: '3. Report training readiness status monthly per reference (a).' }
+      { id: 1, level: 1, content: 'This memorandum provides training guidance for all units assigned to 1st Marine Division during FY26.' },
+      { id: 2, level: 1, content: 'Commander\'s Intent. Focus training efforts on combined arms integration and expeditionary operations.' },
+      { id: 3, level: 2, content: 'All infantry battalions will complete at least one battalion-level field exercise per quarter.' },
+      { id: 4, level: 2, content: 'Supporting units will integrate with supported maneuver elements during all major exercises.' },
+      { id: 5, level: 3, content: 'Artillery batteries will conduct a minimum of two live-fire exercises per quarter.' },
+      { id: 6, level: 3, content: 'Combat engineer units will support breaching operations during each infantry field exercise.' },
+      { id: 7, level: 1, content: 'Report training readiness status monthly per reference (a).' }
     ],
     sig: 'I. M. MARINE',
     delegationText: 'By direction',
     vias: [],
     references: [
-      '(a) MCO 1553.3B',
-      '(b) MCRP 3-0A'
+      'MCO 1553.3B',
+      'MCRP 3-0A'
     ],
     enclosures: [
-      '(1) FY26 Training Calendar',
-      '(2) Range Allocation Matrix'
+      'FY26 Training Calendar',
+      'Range Allocation Matrix'
     ],
     copyTos: [
       'Commanding General, I MEF',
@@ -141,12 +141,12 @@ export const MOATemplate: DocumentTemplate = {
       ssic: '11000', originatorCode: '', from: '', to: '', sig: '',
       vias: [],
       references: [
-        '(a) MCO 11000.25A',
-        '(b) MCIWEST Policy Letter 3-25'
+        'MCO 11000.25A',
+        'MCIWEST Policy Letter 3-25'
       ],
       enclosures: [
-        '(1) Facility Usage Schedule',
-        '(2) Maintenance Responsibility Matrix'
+        'Facility Usage Schedule',
+        'Maintenance Responsibility Matrix'
       ],
       copyTos: [],
       line1: '', line2: '', line3: '', endorsementLevel: '', basicLetterReference: '',
@@ -195,24 +195,24 @@ export const MOATemplate: DocumentTemplate = {
           }
       },
       paragraphs: [
-        { id: 1, level: 0, content: '1. Purpose. This Memorandum of Understanding establishes a mutual aid framework for emergency response between MCB Quantico and Prince William County Emergency Services.' },
-        { id: 2, level: 0, content: '2. Problem. Both organizations require supplemental emergency response capabilities during large-scale incidents that exceed organic capacity.' },
-        { id: 3, level: 0, content: '3. Scope. This MOU covers fire, rescue, and hazardous materials response within the geographic boundaries of both organizations.' },
-        { id: 4, level: 0, content: '4. Understanding. Both parties understand and acknowledge the following.' },
-        { id: 5, level: 1, content: 'a. Mutual aid will be provided on an as-available basis without degrading primary mission capabilities.' },
-        { id: 6, level: 1, content: 'b. Each party will bear its own costs incurred during mutual aid operations.' },
-        { id: 7, level: 0, content: '5. Effective Date. This MOU is effective upon signature and may be terminated by either party with 30 days written notice.' },
+        { id: 1, level: 1, content: 'Purpose. This Memorandum of Understanding establishes a mutual aid framework for emergency response between MCB Quantico and Prince William County Emergency Services.' },
+        { id: 2, level: 1, content: 'Problem. Both organizations require supplemental emergency response capabilities during large-scale incidents that exceed organic capacity.' },
+        { id: 3, level: 1, content: 'Scope. This MOU covers fire, rescue, and hazardous materials response within the geographic boundaries of both organizations.' },
+        { id: 4, level: 1, content: 'Understanding. Both parties understand and acknowledge the following.' },
+        { id: 5, level: 2, content: 'Mutual aid will be provided on an as-available basis without degrading primary mission capabilities.' },
+        { id: 6, level: 2, content: 'Each party will bear its own costs incurred during mutual aid operations.' },
+        { id: 7, level: 1, content: 'Effective Date. This MOU is effective upon signature and may be terminated by either party with 30 days written notice.' },
       ],
       // Defaults
       ssic: '3440', originatorCode: '', from: '', to: '', sig: '',
       vias: [],
       references: [
-        '(a) DoD Directive 3025.18',
-        '(b) MCO 3440.7B'
+        'DoD Directive 3025.18',
+        'MCO 3440.7B'
       ],
       enclosures: [
-        '(1) Emergency Contact Roster',
-        '(2) Resource Inventory List'
+        'Emergency Contact Roster',
+        'Resource Inventory List'
       ],
       copyTos: [],
       line1: '', line2: '', line3: '', endorsementLevel: '', basicLetterReference: '',

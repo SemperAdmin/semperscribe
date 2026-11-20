@@ -90,13 +90,13 @@
     },
     "vias": [],
     "references": [
-      "(a) MCO 3574.2L",
-      "(b) MCO 8010.13A",
-      "(c) MARADMIN 045/26"
+      "MCO 3574.2L",
+      "MCO 8010.13A",
+      "MARADMIN 045/26"
     ],
     "enclosures": [
-      "(1) FY26 Requalification Timeline",
-      "(2) Range Scheduling POC List"
+      "FY26 Requalification Timeline",
+      "Range Scheduling POC List"
     ],
     "copyTos": [],
     "paragraphs": [

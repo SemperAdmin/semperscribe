@@ -106,14 +106,14 @@ export const DecisionPaperTemplate: DocumentTemplate = {
     sig: '',
     vias: [],
     references: [
-      '(a) MCO 3120.12A',
-      '(b) MCDP 1-0',
-      '(c) II MEF CG White Letter 1-26'
+      'MCO 3120.12A',
+      'MCDP 1-0',
+      'II MEF CG White Letter 1-26'
     ],
     enclosures: [
-      '(1) COA Comparison Matrix',
-      '(2) Billet Realignment Plan',
-      '(3) Equipment Procurement Timeline'
+      'COA Comparison Matrix',
+      'Billet Realignment Plan',
+      'Equipment Procurement Timeline'
     ],
     copyTos: [],
     line1: '',

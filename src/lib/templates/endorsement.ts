@@ -57,11 +57,11 @@ export const EndorsementTemplate: DocumentTemplate = {
       'Commanding Officer, Intermediate Command'
     ],
     references: [
-      '(a) MCO 5216.20B',
-      '(b) SECNAVINST 5216.5E'
+      'MCO 5216.20B',
+      'SECNAVINST 5216.5E'
     ],
     enclosures: [
-      '(1) Original Request Package'
+      'Original Request Package'
     ],
     copyTos: [
       'Commanding General, Higher Headquarters'

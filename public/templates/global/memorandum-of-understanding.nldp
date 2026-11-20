@@ -79,49 +79,49 @@
     },
     "vias": [],
     "references": [
-      "(a) DoD Directive 3025.18",
-      "(b) MCO 3440.7B"
+      "DoD Directive 3025.18",
+      "MCO 3440.7B"
     ],
     "enclosures": [
-      "(1) Emergency Contact Roster",
-      "(2) Resource Inventory List"
+      "Emergency Contact Roster",
+      "Resource Inventory List"
     ],
     "copyTos": [],
     "paragraphs": [
       {
         "id": 1,
-        "level": 0,
-        "content": "1. Purpose. This Memorandum of Understanding establishes a mutual aid framework for emergency response between MCB Quantico and Prince William County Emergency Services."
+        "level": 1,
+        "content": "Purpose. This Memorandum of Understanding establishes a mutual aid framework for emergency response between MCB Quantico and Prince William County Emergency Services."
       },
       {
         "id": 2,
-        "level": 0,
-        "content": "2. Problem. Both organizations require supplemental emergency response capabilities during large-scale incidents that exceed organic capacity."
+        "level": 1,
+        "content": "Problem. Both organizations require supplemental emergency response capabilities during large-scale incidents that exceed organic capacity."
       },
       {
         "id": 3,
-        "level": 0,
-        "content": "3. Scope. This MOU covers fire, rescue, and hazardous materials response within the geographic boundaries of both organizations."
+        "level": 1,
+        "content": "Scope. This MOU covers fire, rescue, and hazardous materials response within the geographic boundaries of both organizations."
       },
       {
         "id": 4,
-        "level": 0,
-        "content": "4. Understanding. Both parties understand and acknowledge the following."
+        "level": 1,
+        "content": "Understanding. Both parties understand and acknowledge the following."
       },
       {
         "id": 5,
-        "level": 1,
-        "content": "a. Mutual aid will be provided on an as-available basis without degrading primary mission capabilities."
+        "level": 2,
+        "content": "Mutual aid will be provided on an as-available basis without degrading primary mission capabilities."
       },
       {
         "id": 6,
-        "level": 1,
-        "content": "b. Each party will bear its own costs incurred during mutual aid operations."
+        "level": 2,
+        "content": "Each party will bear its own costs incurred during mutual aid operations."
       },
       {
         "id": 7,
-        "level": 0,
-        "content": "5. Effective Date. This MOU is effective upon signature and may be terminated by either party with 30 days written notice."
+        "level": 1,
+        "content": "Effective Date. This MOU is effective upon signature and may be terminated by either party with 30 days written notice."
       }
     ]
   }

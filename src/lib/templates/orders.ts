@@ -40,8 +40,8 @@ export const AssumptionOfCommandTemplate: DocumentTemplate = {
     // Arrays
     vias: [],
     references: [
-      '(a) U.S. Navy Regulations, 1990, Article 0703',
-      '(b) [Appropriate reference directing assumption of command]'
+      'U.S. Navy Regulations, 1990, Article 0703',
+      '[Appropriate reference directing assumption of command]'
     ],
     enclosures: [],
     copyTos: [
@@ -410,13 +410,13 @@ export const BulletinTemplate: DocumentTemplate = {
       // Arrays
       vias: [],
       references: [
-        '(a) MCO 3574.2L',
-        '(b) MCO 8010.13A',
-        '(c) MARADMIN 045/26'
+        'MCO 3574.2L',
+        'MCO 8010.13A',
+        'MARADMIN 045/26'
       ],
       enclosures: [
-        '(1) FY26 Requalification Timeline',
-        '(2) Range Scheduling POC List'
+        'FY26 Requalification Timeline',
+        'Range Scheduling POC List'
       ],
       copyTos: [],
       line1: '', line2: '', line3: '', endorsementLevel: '', basicLetterReference: '',
@@ -461,14 +461,14 @@ export const ChangeTransmittalTemplate: DocumentTemplate = {
     },
 
     paragraphs: [
-      { id: 1, level: 0, content: '1. Situation. To transmit new page inserts to the basic order.' },
-      { id: 2, level: 0, content: '2. Mission. This change transmits updated policy and procedural guidance.' },
-      { id: 3, level: 0, content: '3. Execution.' },
-      { id: 4, level: 1, content: 'a. Remove the letterhead page and page 2, and replace with corresponding pages in the enclosure.' },
-      { id: 5, level: 1, content: 'b. Remove Table of Contents and replace with corresponding Table of Contents contained in the enclosure.' },
-      { id: 6, level: 1, content: 'c. Insert new pages 2, 4a, 4b, and 4c in the basic order.' },
-      { id: 7, level: 0, content: '4. Summary of Change. This change updates references and incorporates revised procedural guidance.' },
-      { id: 8, level: 0, content: '5. Filing Instructions. File the change transmittal page in front of the basic order.' }
+      { id: 1, level: 1, content: 'Situation. To transmit new page inserts to the basic order.' },
+      { id: 2, level: 1, content: 'Mission. This change transmits updated policy and procedural guidance.' },
+      { id: 3, level: 1, content: 'Execution.' },
+      { id: 4, level: 2, content: 'Remove the letterhead page and page 2, and replace with corresponding pages in the enclosure.' },
+      { id: 5, level: 2, content: 'Remove Table of Contents and replace with corresponding Table of Contents contained in the enclosure.' },
+      { id: 6, level: 2, content: 'Insert new pages 2, 4a, 4b, and 4c in the basic order.' },
+      { id: 7, level: 1, content: 'Summary of Change. This change updates references and incorporates revised procedural guidance.' },
+      { id: 8, level: 1, content: 'Filing Instructions. File the change transmittal page in front of the basic order.' }
     ],
     sig: 'I. M. COMMANDANT',
 
@@ -476,7 +476,7 @@ export const ChangeTransmittalTemplate: DocumentTemplate = {
     vias: [],
     references: [],
     enclosures: [
-      '(1) New page inserts to MCO 1000.1'
+      'New page inserts to MCO 1000.1'
     ],
     copyTos: [],
     line1: '', line2: '', line3: '', endorsementLevel: '', basicLetterReference: '',

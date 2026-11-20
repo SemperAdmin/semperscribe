@@ -79,12 +79,12 @@
     },
     "vias": [],
     "references": [
-      "(a) MCO 11000.25A",
-      "(b) MCIWEST Policy Letter 3-25"
+      "MCO 11000.25A",
+      "MCIWEST Policy Letter 3-25"
     ],
     "enclosures": [
-      "(1) Facility Usage Schedule",
-      "(2) Maintenance Responsibility Matrix"
+      "Facility Usage Schedule",
+      "Maintenance Responsibility Matrix"
     ],
     "copyTos": [],
     "paragraphs": [

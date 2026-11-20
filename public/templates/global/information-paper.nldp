@@ -58,13 +58,13 @@
     },
     "vias": [],
     "references": [
-      "(a) MCO 1553.3B",
-      "(b) I MEF FY26 Training Plan",
-      "(c) MCTIMS Training Readiness Report dtd 31 Jan 26"
+      "MCO 1553.3B",
+      "I MEF FY26 Training Plan",
+      "MCTIMS Training Readiness Report dtd 31 Jan 26"
     ],
     "enclosures": [
-      "(1) Q2 Training Readiness Dashboard",
-      "(2) MSC Training Completion Summary"
+      "Q2 Training Readiness Dashboard",
+      "MSC Training Completion Summary"
     ],
     "copyTos": [],
     "paragraphs": [

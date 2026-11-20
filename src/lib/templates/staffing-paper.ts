@@ -116,14 +116,14 @@ export const PositionPaperTemplate: DocumentTemplate = {
     sig: '',
     vias: [],
     references: [
-      '(a) MCO 5311.1E',
-      '(b) I MEF CG White Letter 3-25',
-      '(c) GAO Report GAO-25-1234'
+      'MCO 5311.1E',
+      'I MEF CG White Letter 3-25',
+      'GAO Report GAO-25-1234'
     ],
     enclosures: [
-      '(1) Cost-Benefit Analysis',
-      '(2) Implementation Timeline',
-      '(3) Risk Assessment Matrix'
+      'Cost-Benefit Analysis',
+      'Implementation Timeline',
+      'Risk Assessment Matrix'
     ],
     copyTos: [],
     line1: '',
@@ -226,13 +226,13 @@ export const InformationPaperTemplate: DocumentTemplate = {
       sig: '',
       vias: [],
       references: [
-        '(a) MCO 1553.3B',
-        '(b) I MEF FY26 Training Plan',
-        '(c) MCTIMS Training Readiness Report dtd 31 Jan 26'
+        'MCO 1553.3B',
+        'I MEF FY26 Training Plan',
+        'MCTIMS Training Readiness Report dtd 31 Jan 26'
       ],
       enclosures: [
-        '(1) Q2 Training Readiness Dashboard',
-        '(2) MSC Training Completion Summary'
+        'Q2 Training Readiness Dashboard',
+        'MSC Training Completion Summary'
       ],
       copyTos: [],
       line1: '',

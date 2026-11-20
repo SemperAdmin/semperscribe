@@ -76,13 +76,13 @@ export const BasicLetterTemplate: DocumentTemplate = {
       'Commanding Officer, Intermediate Unit, Camp Pendleton, CA 92055'
     ],
     references: [
-      '(a) MCO 5216.20B',
-      '(b) SECNAVINST 5216.5E',
-      '(c) CMC ltr 1000 CODE of 10 Jan 26'
+      'MCO 5216.20B',
+      'SECNAVINST 5216.5E',
+      'CMC ltr 1000 CODE of 10 Jan 26'
     ],
     enclosures: [
-      '(1) Supporting Document A',
-      '(2) Supporting Document B'
+      'Supporting Document A',
+      'Supporting Document B'
     ],
     copyTos: [
       'Commanding General, I MEF',

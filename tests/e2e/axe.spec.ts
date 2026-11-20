@@ -181,4 +181,23 @@ test.describe('axe accessibility scan', () => {
     await page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
     expect(await seriousViolations(page), 'collapsed sidebar after reload').toEqual([]);
   });
+
+  test('warning banner hides for the session after Acknowledge and the footer restores it', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await enterApp(page);
+    const banner = page.getByRole('alert').filter({ hasText: /Non-official Proof of Concept/ });
+    await expect(banner).toBeVisible();
+    await page.getByRole('button', { name: 'Acknowledge' }).click();
+    await expect(banner).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Show warning' })).toBeVisible();
+    await expect(banner).toHaveCount(0);
+    // The pointer still rests where Acknowledge was, now over a landing card
+    // whose hover transition axe would scan mid-flight.
+    await page.mouse.move(0, 0);
+    await page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
+    expect(await seriousViolations(page), 'acknowledged banner').toEqual([]);
+    await page.getByRole('button', { name: 'Show warning' }).click();
+    await expect(banner).toBeVisible();
+  });
 });
