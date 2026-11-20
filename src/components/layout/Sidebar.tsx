@@ -198,11 +198,21 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
   const headerToggleRef = useRef<HTMLButtonElement>(null);
   // Where focus goes once the next collapse or expand has rendered.
   const pendingFocus = useRef<'rail' | 'header' | 'type' | 'search' | null>(null);
+  const asideRef = useRef<HTMLElement>(null);
+  // Focus was inside the sidebar when it last moved. Ctrl+\ and the
+  // palette collapse it from outside, which hides a focused control.
+  const focusInside = useRef(false);
   const collapsible = !!onToggleCollapsed;
   const isCollapsed = collapsible && collapsed;
 
   useEffect(() => {
-    const target = pendingFocus.current;
+    let target = pendingFocus.current;
+    if (!target && isCollapsed && focusInside.current) {
+      const active = document.activeElement;
+      // A hidden control drops focus to <body>; send it to the rail instead
+      // of leaving keyboard users at the top of the page.
+      if (!active || active === document.body || asideRef.current?.contains(active)) target = 'rail';
+    }
     if (!target) return;
     pendingFocus.current = null;
     if (target === 'rail') railToggleRef.current?.focus();
@@ -266,6 +276,12 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
 
   return (
     <aside
+      ref={asideRef}
+      onFocus={() => { focusInside.current = true; }}
+      onBlur={(e) => {
+        // relatedTarget is null when the focused control was hidden: keep the flag.
+        if (e.relatedTarget && !asideRef.current?.contains(e.relatedTarget as Node)) focusInside.current = false;
+      }}
       aria-label="Document types and search"
       className={cn(
         isCollapsed ? "w-12" : "w-64",
