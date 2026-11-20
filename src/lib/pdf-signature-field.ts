@@ -333,13 +333,25 @@ async function createSignatureField(
   pdfDoc: PDFDocument,
   targetPage: PDFPage,
   position: ManualSignaturePosition,
-  fieldName: string
+  fieldName: string,
+  cue = true,
 ): Promise<PDFRef> {
   const context = pdfDoc.context;
 
-  const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const label = position.signerName ? `Sign here: ${position.signerName}` : 'Sign here (CAC)';
-  const apRef = createWidgetAppearance(pdfDoc, helvetica.ref, position.width, position.height, label);
+  let apRef: PDFRef;
+  if (cue) {
+    const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const label = position.signerName ? `Sign here: ${position.signerName}` : 'Sign here (CAC)';
+    apRef = createWidgetAppearance(pdfDoc, helvetica.ref, position.width, position.height, label);
+  } else {
+    // No cue: the form's own artwork already marks the signature line,
+    // and a drawn cue would print on a wet-signed copy.
+    apRef = context.register(context.stream('', {
+      Type: 'XObject',
+      Subtype: 'Form',
+      BBox: [0, 0, position.width, position.height],
+    }));
+  }
 
   // Create the signature field dictionary
   const sigFieldDict = context.obj({
@@ -394,6 +406,23 @@ async function createSignatureField(
   }
 
   return sigFieldRef;
+}
+
+/**
+ * Adds an empty signature field to a document being built in memory,
+ * for generators that lay out a form's own signature blocks (NAVMC
+ * 10922 fillable rebuild). `cue: false` leaves the widget's appearance
+ * blank so only the form's own artwork shows until it is signed.
+ */
+export async function addSignatureFieldToDocument(
+  pdfDoc: PDFDocument,
+  page: PDFPage,
+  position: Omit<ManualSignaturePosition, 'page'>,
+  fieldName: string,
+  options: { cue?: boolean } = {},
+): Promise<PDFRef> {
+  const pageIndex = pdfDoc.getPages().indexOf(page);
+  return createSignatureField(pdfDoc, page, { ...position, page: pageIndex + 1 }, fieldName, options.cue ?? true);
 }
 
 /**

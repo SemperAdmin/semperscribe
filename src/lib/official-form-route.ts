@@ -8,6 +8,10 @@
  * bound enclosure file forces the flattened redraw on both surfaces: the
  * dynamic-XFA renderer ignores drawn annotations and appended pages, so
  * they would vanish in silence.
+ *
+ * NAVMC 10922 left this route on 2026-11-20 (owner decision,
+ * docs/NAVMC_10922_SPEC.md section 11): it always renders as its fillable
+ * AcroForm rebuild on both surfaces, like the 10132 and 11106.
  */
 import type { SignaturePosition } from '@/types';
 import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-rows';
@@ -38,4 +42,12 @@ export function aaFormUsesOfficialForm(
   return formData.documentType === 'aa-form'
     && signatureFieldCount(formData) === 0
     && !hasBoundEnclosureFiles(rows, files);
+}
+
+/** Document types whose unsigned PDF export goes onto the official dynamic-XFA blank. */
+export const OFFICIAL_XFA_EXPORT_TYPES: readonly string[] = ['aa-form', 'page11'];
+
+/** True when this document type can export onto the official XFA blank (useDocumentExport.ts). */
+export function exportsOfficialXfa(documentType: string | undefined): boolean {
+  return OFFICIAL_XFA_EXPORT_TYPES.includes(documentType ?? '');
 }

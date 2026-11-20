@@ -33,6 +33,9 @@ import { resolvePublicPath } from '@/lib/path-utils';
 import { loadAssetBytes } from '@/lib/assets';
 // NAVMC 10922 needs a POSITIONAL emitter - 77 of its 102 datasets
 // nodes share one name, so the tag() helper above cannot address them.
+// Since 2026-11-20 the app no longer routes the 10922 here (it exports
+// the fillable AcroForm rebuild, navmc10922Generator.ts); the branch
+// below stays so the official-blank fill remains tested and available.
 import { buildNavmc10922Xml } from '@/lib/navmc10922-xfa';
 
 /** XML-escape plus XFA's CR line separator (&#xD;). */
