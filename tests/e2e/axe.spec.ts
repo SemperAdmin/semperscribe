@@ -182,6 +182,38 @@ test.describe('axe accessibility scan', () => {
     expect(await seriousViolations(page), 'collapsed sidebar after reload').toEqual([]);
   });
 
+  for (const theme of ['light', 'dark'] as const) {
+    test(`hovered how-to video link keeps readable text (${theme})`, async ({ page }) => {
+      await page.setViewportSize(DESKTOP);
+      await enterApp(page, theme);
+      await page.getByRole('button', { name: /Standard Naval Letter/ }).click();
+      const link = page.locator('a[data-state="link"]').first();
+      await link.scrollIntoViewIfNeeded();
+      await link.hover();
+      // Hover fills the row with the same gold as the title. Axe skips a
+      // 1:1 pair as possibly hidden on purpose, so measure it here.
+      const ratios = await link.evaluate((a) => {
+        const rgb = (c: string) => (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+        const lum = (c: string) => {
+          const [r, g, b] = rgb(c).map((v) => {
+            const x = v / 255;
+            return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+          });
+          return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        };
+        const bg = lum(getComputedStyle(a).backgroundColor);
+        return Array.from(a.querySelectorAll('span'))
+          .filter((el) => el.childElementCount === 0 && el.textContent?.trim() && !el.classList.contains('sr-only') && !el.closest('[data-testid="login-required-badge"]'))
+          .map((el) => {
+            const fg = lum(getComputedStyle(el).color);
+            return { text: el.textContent!.trim().slice(0, 30), ratio: (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05) };
+          });
+      });
+      expect(ratios.length, 'text spans found').toBeGreaterThan(0);
+      for (const { text, ratio } of ratios) expect(ratio, `${theme}: "${text}"`).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+
   test('warning banner hides for the session after Acknowledge and the footer restores it', async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await enterApp(page);

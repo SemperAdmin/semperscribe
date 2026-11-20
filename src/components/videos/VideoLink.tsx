@@ -42,6 +42,8 @@ export function VideoLink({ video, compact = false }: VideoLinkProps) {
     );
   }
 
+  // Hover fills the row with --accent (the same gold as text-primary), so
+  // every child with its own color inverts to --accent-foreground.
   return (
     <a
       href={video.url!}
@@ -50,15 +52,15 @@ export function VideoLink({ video, compact = false }: VideoLinkProps) {
       data-video-id={video.id}
       data-state="link"
       className={cn(
-        'flex items-start justify-between gap-2 rounded px-1 py-1.5 text-foreground',
+        'group flex items-start justify-between gap-2 rounded px-1 py-1.5 text-foreground',
         'hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       )}
     >
       <span className="flex min-w-0 items-start gap-1.5">
-        {compact && <PlayCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
+        {compact && <PlayCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary group-hover:text-accent-foreground" />}
         <span className="min-w-0">
-          <span className="text-sm font-medium text-primary">{title}</span>
-          {!compact && <>{' '}<span className="block text-xs text-muted-foreground">{video.summary}</span></>}
+          <span className="text-sm font-medium text-primary group-hover:text-accent-foreground">{title}</span>
+          {!compact && <>{' '}<span className="block text-xs text-muted-foreground group-hover:text-accent-foreground">{video.summary}</span></>}
         </span>
       </span>
       {' '}
