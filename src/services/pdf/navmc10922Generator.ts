@@ -407,15 +407,18 @@ export async function generateNavmc10922(
       const value = SECTION8_INDICES.has(cell.index) ? '' : values[cell.index];
 
       if (cell.kind === 'radio') {
-        const group = form.createRadioGroup(name);
-        group.enableOffToggling();
+        // Get-or-create, like addTextField: a group whose index appears on
+        // two pages gains widgets instead of throwing on a duplicate name.
+        const existing = form.getFieldMaybe(name);
+        const group = existing ? form.getRadioGroup(name) : form.createRadioGroup(name);
+        if (!existing) group.enableOffToggling();
         for (const opt of cell.options ?? []) {
           if (opt.value === null) continue;
           const sq = squareRect({ ...opt, x: cell.x + opt.x, y: cell.y + opt.y }, !opt.caption, onBackground);
           group.addOptionToPage(opt.value, page, { x: sq.x, y: sq.y, width: sq.w, height: sq.h, ...NO_CHROME });
         }
         if (value && group.getOptions().includes(value)) group.select(value);
-        xWidgets.push(group);
+        if (!existing) xWidgets.push(group);
         continue;
       }
 
