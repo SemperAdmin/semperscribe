@@ -34,11 +34,33 @@ function todayLocal(): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate())
 }
 
+/** Earliest month the dropdown offers. Enlistment dates reach decades back. */
+const FIRST_YEAR = 1950
+/** Appointments and EAS dates look ahead; this many years past today. */
+const YEARS_AHEAD = 10
+
 export function DatePicker({ date, setDate, placeholder = "Pick a date", className }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
+  // Browsed month, held locally so the year/month dropdowns and the arrows
+  // actually move the calendar. Re-seeded on every open so it starts on the
+  // selected date (or today) rather than wherever it was left.
+  const [month, setMonth] = React.useState<Date>(() => date ?? todayLocal())
+  const today = todayLocal()
+  const startMonth = new Date(
+    Math.min(FIRST_YEAR, date ? date.getFullYear() : FIRST_YEAR), 0, 1
+  )
+  const endMonth = new Date(
+    Math.max(today.getFullYear() + YEARS_AHEAD, date ? date.getFullYear() : 0), 11, 1
+  )
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (next) setMonth(date ?? todayLocal())
+        setOpen(next)
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}
@@ -63,7 +85,11 @@ export function DatePicker({ date, setDate, placeholder = "Pick a date", classNa
             // in, which is half of why picking a date felt awkward.
             if (d) setOpen(false)
           }}
-          month={date}
+          month={month}
+          onMonthChange={setMonth}
+          captionLayout="dropdown"
+          startMonth={startMonth}
+          endMonth={endMonth}
           autoFocus
         />
         {/* TODAY, asked for by Stephen 2026-08-26. Most dates on this form

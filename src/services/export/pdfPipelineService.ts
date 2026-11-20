@@ -173,11 +173,11 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
   standard: generateStandardPdf,
   navmc10274: generateNavmc10274Pdf,
   navmc11811: generateNavmc11811Pdf,
-  // NAVMC 10922 flattened redraw (build plan Phase 5, programmatic
-  // variant). Serves the live preview, the START reason (unbindable in
-  // the XFA datasets), and signature/enclosure exports. Plain PDF
-  // exports still route through xfa-form-fill onto the official
-  // editable form before this map is consulted.
+  // NAVMC 10922 fillable rebuild: the layout-faithful redraw as a
+  // standard AcroForm (owner decision 2026-11-20, spec section 11). It is
+  // the 10922's only PDF, for the live preview and every export, START
+  // and signature/enclosure exports included; the official-XFA route is
+  // retired for this form.
   navmc10922: async (ctx) => {
     const { generateNavmc10922 } = await import('@/services/pdf/navmc10922Generator');
     const bytes = await generateNavmc10922(ctx.formData);

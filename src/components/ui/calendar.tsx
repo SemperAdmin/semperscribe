@@ -48,6 +48,18 @@ function Calendar({
         month: "space-y-4",
         month_caption: "flex justify-center pt-1 relative items-center h-7",
         caption_label: "text-sm font-medium",
+        // captionLayout="dropdown" (year/month pickers). v9 renders each as
+        // dropdown_root > native <select class=dropdown> + a visible
+        // caption_label. The select is stretched invisibly over the label,
+        // so the label is what shows and the native select (keyboard and
+        // screen-reader friendly, aria-labelled by react-day-picker) is what
+        // opens. bg-popover/text-popover-foreground keep the option list
+        // legible in dark mode.
+        dropdowns: "flex items-center justify-center gap-1.5 text-sm font-medium",
+        dropdown_root:
+          "relative inline-flex items-center rounded-md border border-input px-2 h-7 has-[select:focus-visible]:ring-2 has-[select:focus-visible]:ring-ring",
+        dropdown:
+          "absolute inset-0 w-full cursor-pointer opacity-0 bg-popover text-popover-foreground",
         nav: "absolute inset-x-0 top-1 flex items-center justify-between px-1 z-10",
         button_previous: cn(
           buttonVariants({ variant: "outline" }),

@@ -1155,6 +1155,8 @@ export const Navmc10922Schema = z.object({
   swornMonth: z.string().optional(),
   swornYear2Digit: z.string().optional(),
   attestingOfficerName: z.string().optional(),
+  attestingOfficerGrade: z.string().optional(),
+  attestingOfficerTitle: z.string().optional(),
 });
 
 const YES_NO_OPTIONS: FieldOption[] = [
@@ -1404,7 +1406,8 @@ export const Navmc10922Definition: DocumentTypeDefinition = {
     // meter). Fields written from outside DynamicForm must not live
     // inside one - the debounced sync would clobber them. Zod keeps
     // documentsViewed, swornDay, swornMonth, swornYear2Digit, and
-    // attestingOfficerName for validation and import.
+    // attestingOfficerName, attestingOfficerGrade, and attestingOfficerTitle
+    // for validation and import.
   ],
 };
 

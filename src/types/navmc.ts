@@ -196,10 +196,14 @@ export interface Navmc10922Data {
   swornDay: string;
   swornMonth: string;
   swornYear2Digit: string;
-  /** App-side, never printed. The form has no typed attesting-officer
-   *  name field (signature widget only), so self-attestation detection
-   *  requires this (spec decision 8, MCO 1751.3 CH-1 para 3.a). */
+  /** Printed under the attesting officer signature box, together with
+   *  grade and title. Also drives self-attestation detection (spec
+   *  decision 8, MCO 1751.3 CH-1 para 3.a). */
   attestingOfficerName: string;
+  /** Printed under the attesting officer signature box. Optional. */
+  attestingOfficerGrade?: string;
+  /** Printed under the attesting officer signature box. Optional. */
+  attestingOfficerTitle?: string;
 
   // Section 8 approving-authority blocks are intentionally absent:
   // the app never populates them (spec section 5). Indices 86-92
@@ -263,6 +267,8 @@ export function createEmptyNavmc10922Data(): Navmc10922Data {
     swornMonth: '',
     swornYear2Digit: '',
     attestingOfficerName: '',
+    attestingOfficerGrade: '',
+    attestingOfficerTitle: '',
   };
 }
 

@@ -130,20 +130,16 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
       // redraw. Signature fields or bound enclosure files force the
       // flattened path: the dynamic-XFA renderer ignores drawn
       // annotations and appended pages, so they would silently vanish.
-      if (
-        format === 'pdf' &&
-        (formData.documentType === 'aa-form' || formData.documentType === 'page11' || formData.documentType === 'navmc10922')
-      ) {
+      // NAVMC 10922 left this route on 2026-11-20 (owner decision; spec
+      // section 11): it always exports the fillable AcroForm rebuild
+      // through the standard path below, like the 10132 and 11106.
+      const { exportsOfficialXfa } = await import('@/lib/official-form-route');
+      if (format === 'pdf' && exportsOfficialXfa(formData.documentType)) {
         // The same two facts route the live preview (useLivePreview.ts), so
         // what the pane shows is what this delivers.
         const { signatureFieldCount, hasBoundEnclosureFiles } = await import('@/lib/official-form-route');
         const signatureFields = { length: signatureFieldCount(formData) };
         const hasBoundFiles = hasBoundEnclosureFiles(enclosureRows, enclosureFiles);
-        // START (10922): the checkbox is unbindable in the XFA datasets,
-        // so a START application routes to the flattened redraw where
-        // the box CAN be checked (build plan Phase 5 routing).
-        const startNeedsFlattened =
-          formData.documentType === 'navmc10922' && formData.reason === 'start';
         // Page 11: the official NAVMC 118(11) is one page of two
         // columns. An entry which flows past them exports as the redraw,
         // which adds continuation pages (src/lib/page11-flow.ts).
@@ -167,7 +163,7 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
           const notes = describeAaFit(navmc10274FitReport({ formData, vias, references, enclosures, copyTos, paragraphs }));
           if (notes.length > 0) aaNotes = notes.join(' ') + ' The preview marks every clipped line.';
         }
-        const officialRoute = signatureFields.length === 0 && !hasBoundFiles && !startNeedsFlattened && page11Pages === 1;
+        const officialRoute = signatureFields.length === 0 && !hasBoundFiles && page11Pages === 1;
         // The toaster shows one toast at a time, so on the official route
         // the notes ride the export toast below; the redraw has no toast
         // of its own and takes them here.
@@ -178,20 +174,11 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
           const { exportOfficialForm } = await import('@/lib/xfa-form-fill');
           const formBlob = await exportOfficialForm({ formData, vias, references, enclosures, copyTos, paragraphs });
           deliver(formBlob, format);
-          // The CUI line reports the FORM'S OWN artwork - the app adds
-          // no markings (spec constraint 5; the blank carries
-          // "CUI (when filled in)" / PRVCY in its template). START
-          // applications never reach this branch - they route to the
-          // flattened redraw above.
-          const startNote =
-            formData.documentType === 'navmc10922'
-              ? ' The official form\'s own artwork marks it CUI (when filled in) - handle the filled file accordingly.'
-              : '';
           toast?.({
             title: 'Official Form Exported',
             description:
               'This is the fillable NAVMC form - open it in Adobe Acrobat or Reader. Browsers show a placeholder page. Add signature fields to export a flattened print PDF instead.' +
-              startNote + (aaNotes ? ` ${aaNotes}` : ''),
+              (aaNotes ? ` ${aaNotes}` : ''),
           });
           return;
         }
@@ -322,6 +309,21 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
               + 'and an invalid signature reads as tampering. Filling and signing are unaffected.',
           });
         }
+      }
+      // NAVMC 10922: the fillable rebuild (owner decision 2026-11-20). The
+      // CUI line reports the FORM'S OWN artwork - the app adds no markings
+      // (spec constraint 5; the form carries "CUI (when filled in)" / PRVCY
+      // in its template, and the rebuild reproduces it).
+      if (format === 'pdf' && formData.documentType === 'navmc10922') {
+        toast?.({
+          title: 'Fillable Form Exported',
+          description:
+            'This is a fillable rebuild of the NAVMC 10922, not the official XFA file. It opens and stays '
+            + 'editable in any PDF viewer (Adobe, Edge, Chrome), so boxes and text can be adjusted before '
+            + 'printing. Section 8 is left blank for the approving authority, and the three signature '
+            + 'blocks are open for a CAC signature. The form\'s own artwork marks it CUI (when filled in) - '
+            + 'handle the filled file accordingly.',
+        });
       }
       if (format === 'pdf' && formData.documentType === 'navmc11106') {
         toast?.({

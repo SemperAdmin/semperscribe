@@ -2,8 +2,9 @@
  * NAVMC 10132 official-form export.
  *
  * Deliberately NOT part of xfa-form-fill.ts. That module replaces the datasets
- * stream inside a dynamic LiveCycle XFA document, which is how NAVMC 10274,
- * 118(11), and 10922 work. NAVMC 10132 is a plain AcroForm addressed by field
+ * stream inside a dynamic LiveCycle XFA document, which is how NAVMC 10274
+ * and 118(11) work (the 10922 did too until 2026-11-20; it now exports a
+ * fillable AcroForm rebuild, src/services/pdf/navmc10922Generator.ts). NAVMC 10132 is a plain AcroForm addressed by field
  * NAME, with no XFA array at all, so it shares nothing with that path except
  * the idea of filling a bundled blank.
  *
