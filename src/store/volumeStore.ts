@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { applyLevelChange } from './volumeLevels';
 import type { Appendix, Block, Chapter, Figure, GlossaryEntry, Paragraph, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
 
 type ChapterChangeRow = Chapter['changeLog'][number];
@@ -125,6 +126,10 @@ interface VolumeState {
   updateNodeTitle: (path: VolumePath, title: string) => void;
   moveNode: (path: VolumePath, dir: -1 | 1) => void;
   removeNode: (path: VolumePath) => void;
+  /** One level deeper: becomes the last child of the previous sibling. No-op when blocked. */
+  indentNode: (path: VolumePath) => void;
+  /** One level higher: becomes the next sibling of its parent. No-op when blocked. */
+  outdentNode: (path: VolumePath) => void;
   // Finding 11: per-chapter change log rows (MetaPanel only ever handled
   // the volume-level changeLog, so a chapter's own change log - the
   // chapter-divider table's data source, layout.ts's layoutChapterDivider -
@@ -235,6 +240,18 @@ export const useVolumeStore = create<VolumeState>((set) => ({
     const chapters = structuredClone(s.doc.chapters);
     const { list, index } = resolveParent(chapters, path);
     list.splice(index, 1);
+    normalizeNumbering(chapters);
+    return { doc: { ...s.doc, chapters } };
+  }),
+  indentNode: (path) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    if (!applyLevelChange(chapters, path, 'indent')) return s;
+    normalizeNumbering(chapters);
+    return { doc: { ...s.doc, chapters } };
+  }),
+  outdentNode: (path) => set((s) => {
+    const chapters = structuredClone(s.doc.chapters);
+    if (!applyLevelChange(chapters, path, 'outdent')) return s;
     normalizeNumbering(chapters);
     return { doc: { ...s.doc, chapters } };
   }),

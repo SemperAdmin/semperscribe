@@ -7,8 +7,9 @@
  * the library types through unchanged.
  */
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { stripCitationPrefix } from '@/lib/citation-prefix';
 import { searchReferences } from '@/lib/reference-library';
 
 interface ReferenceSuggestInputProps {
@@ -23,6 +24,11 @@ export function ReferenceSuggestInput({ value, onChange, placeholder, className,
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The close-on-blur timer must not outlive the field: firing setOpen after
+  // unmount warns in the browser and throws once a test environment is gone.
+  useEffect(() => () => {
+    if (blurTimer.current) clearTimeout(blurTimer.current);
+  }, []);
 
   const suggestions = useMemo(() => searchReferences(value), [value]);
   const show = open && suggestions.length > 0;
@@ -42,7 +48,12 @@ export function ReferenceSuggestInput({ value, onChange, placeholder, className,
         aria-label={ariaLabel}
         onChange={(e) => { onChange(e.target.value); setOpen(true); setHighlight(0); }}
         onFocus={() => setOpen(true)}
-        onBlur={() => { blurTimer.current = setTimeout(() => setOpen(false), 150); }}
+        onBlur={() => {
+          // Commit, not keystroke: stripping while typing would move the cursor.
+          const clean = stripCitationPrefix(value);
+          if (clean !== value) onChange(clean);
+          blurTimer.current = setTimeout(() => setOpen(false), 150);
+        }}
         onKeyDown={(e) => {
           if (!show) return;
           if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight((h) => Math.min(h + 1, suggestions.length - 1)); }

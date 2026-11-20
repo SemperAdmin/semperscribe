@@ -19,7 +19,42 @@ function Harness({ initial = false }: { initial?: boolean }) {
   );
 }
 
+/** Collapses from outside the sidebar, as Ctrl+\\ and the palette do. */
+function ExternalHarness() {
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setCollapsed((c) => !c)}>external toggle</button>
+      <Sidebar
+        documentType="basic"
+        onDocumentTypeChange={vi.fn()}
+        formData={{ documentType: 'basic' }}
+        collapsed={collapsed}
+        onToggleCollapsed={() => setCollapsed((c) => !c)}
+      />
+    </>
+  );
+}
+
 describe('sidebar collapse', () => {
+  it('an outside collapse moves focus from a hidden sidebar control to the rail', () => {
+    render(<ExternalHarness />);
+    const search = screen.getByRole('textbox', { name: 'Find in document' });
+    search.focus();
+    expect(search).toHaveFocus();
+    // Fire the toggle without moving focus, the way a keyboard shortcut does.
+    fireEvent.click(screen.getByRole('button', { name: 'external toggle' }));
+    expect(screen.getByRole('button', { name: 'Expand sidebar' })).toHaveFocus();
+  });
+
+  it('an outside collapse leaves focus alone when it was not in the sidebar', () => {
+    render(<ExternalHarness />);
+    const outside = screen.getByRole('button', { name: 'external toggle' });
+    outside.focus();
+    fireEvent.click(outside);
+    expect(outside).toHaveFocus();
+  });
+
   it('flips aria-expanded and moves focus to the expand button', () => {
     render(<Harness />);
     const collapse = screen.getByRole('button', { name: 'Collapse sidebar' });

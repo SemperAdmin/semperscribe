@@ -1,5 +1,6 @@
 'use client';
 
+import { stripCitationPrefix, stripCitationPrefixes } from '@/lib/citation-prefix';
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { ParagraphData, SavedLetter, ValidationState, FormData, ReportData, SamePageHost } from '@/types';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
@@ -196,7 +197,7 @@ function NavalLetterGeneratorInner() {
   // a missing file strips its binding and reports, never silently.
   const hydrateEnclosureBindings = useCallback((bindings: { key: string; title: string; fileId?: string }[]) => {
     const rows: EnclosureRow[] = bindings.length > 0
-      ? bindings.map(b => ({ key: b.key, title: b.title, fileId: b.fileId }))
+      ? bindings.map(b => ({ key: b.key, title: stripCitationPrefix(b.title), fileId: b.fileId }))
       : [newRow()];
     setEnclosureRows(rows);
     setEnclosureFiles(new Map());
@@ -460,12 +461,12 @@ function NavalLetterGeneratorInner() {
     setFormData(copy.formData);
     setParagraphs(copy.paragraphs);
     setVias(copy.vias);
-    setReferences(copy.references);
+    setReferences(stripCitationPrefixes(copy.references));
     // ENC: bindings restore rows AND files; older copies carry titles only.
     if (copy.enclosureBindings) {
       hydrateEnclosureBindings(copy.enclosureBindings);
     } else {
-      setEnclosures(copy.enclosures);
+      setEnclosures(stripCitationPrefixes(copy.enclosures));
     }
     setCopyTos(copy.copyTos);
     setDistList(copy.distList);

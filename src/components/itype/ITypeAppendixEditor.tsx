@@ -5,10 +5,11 @@ import {
   Plus,
   ChevronUp,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
+  IndentIncrease,
+  IndentDecrease,
   Table2,
 } from 'lucide-react';
+import { canIndent, canOutdent, shiftBranch } from '@/hooks/useParagraphs';
 import { ITypeRowTable } from './ITypeRowTable';
 import {
   appendixCitation,
@@ -20,6 +21,8 @@ import {
   type AppendixLead,
   type AppendixParagraph,
 } from '@/lib/i-type/appendix-paragraphs';
+
+const MAX_LEVEL = 8;
 
 interface ITypeAppendixEditorProps {
   paragraphs: AppendixParagraph[];
@@ -41,7 +44,7 @@ export const ITypeAppendixEditor: React.FC<ITypeAppendixEditorProps> = ({
     const idx = paragraphs.findIndex((p) => p.id === id);
     if (idx === -1) return;
     const level =
-      type === 'sub' ? Math.min(paragraphs[idx].level + 1, 8) : paragraphs[idx].level;
+      type === 'sub' ? Math.min(paragraphs[idx].level + 1, MAX_LEVEL) : paragraphs[idx].level;
     const next = [...paragraphs];
     next.splice(idx + 1, 0, { id: nextId(), level, content: '' });
     onChange(next);
@@ -55,12 +58,25 @@ export const ITypeAppendixEditor: React.FC<ITypeAppendixEditorProps> = ({
     onChange(paragraphs.filter((p) => p.id !== id));
   };
 
-  const setLevel = (id: number, delta: number) =>
-    onChange(
-      paragraphs.map((p) =>
-        p.id === id ? { ...p, level: Math.min(8, Math.max(1, p.level + delta)) } : p
-      )
-    );
+  // Indent/outdent move the whole branch and follow the same rules as the main
+  // letter editor (see canIndent/canOutdent in useParagraphs).
+  const [announcement, setAnnouncement] = React.useState('');
+  const changeLevel = (id: number, delta: 1 | -1) => {
+    const idx = paragraphs.findIndex((p) => p.id === id);
+    if (idx === -1) return;
+    const ok = (delta === 1 ? canIndent(paragraphs, idx, MAX_LEVEL) : canOutdent(paragraphs, idx)).ok;
+    if (!ok) return;
+    const next = shiftBranch(paragraphs, idx, delta);
+    onChange(next);
+    setAnnouncement(`Paragraph is now ${appendixCitation(next, idx)}`);
+  };
+
+  // Alt+Shift+Right/Left on the paragraph's textarea (Tab stays free for focus).
+  const onLevelKey = (e: React.KeyboardEvent, id: number) => {
+    if (!e.altKey || !e.shiftKey) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); changeLevel(id, 1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); changeLevel(id, -1); }
+  };
 
   const move = (id: number, dir: -1 | 1) => {
     const idx = paragraphs.findIndex((p) => p.id === id);
@@ -109,8 +125,11 @@ export const ITypeAppendixEditor: React.FC<ITypeAppendixEditorProps> = ({
 
   return (
     <div className="space-y-3">
+      <div role="status" aria-live="polite" className="sr-only">{announcement}</div>
       {paragraphs.map((p, i) => {
         const citation = appendixCitation(paragraphs, i);
+        const indentState = canIndent(paragraphs, i, MAX_LEVEL);
+        const outdentState = canOutdent(paragraphs, i);
         return (
           <div
             key={p.id}
@@ -127,11 +146,23 @@ export const ITypeAppendixEditor: React.FC<ITypeAppendixEditorProps> = ({
                 </span>
               ) : null}
               <div className="ml-auto flex gap-1">
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Outdent" onClick={() => setLevel(p.id, -1)}>
-                  <ChevronLeft className="w-4 h-4" />
+                <Button
+                  variant="ghost" size="sm" className="h-7 w-7 p-0"
+                  disabled={!outdentState.ok}
+                  title={outdentState.ok ? 'Outdent' : outdentState.reason}
+                  aria-label={`Outdent paragraph ${citation}`}
+                  onClick={() => changeLevel(p.id, -1)}
+                >
+                  <IndentDecrease className="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Indent" onClick={() => setLevel(p.id, 1)}>
-                  <ChevronRight className="w-4 h-4" />
+                <Button
+                  variant="ghost" size="sm" className="h-7 w-7 p-0"
+                  disabled={!indentState.ok}
+                  title={indentState.ok ? 'Indent' : indentState.reason}
+                  aria-label={`Indent paragraph ${citation}`}
+                  onClick={() => changeLevel(p.id, 1)}
+                >
+                  <IndentIncrease className="w-4 h-4" />
                 </Button>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Move up" onClick={() => move(p.id, -1)}>
                   <ChevronUp className="w-4 h-4" />
@@ -148,6 +179,7 @@ export const ITypeAppendixEditor: React.FC<ITypeAppendixEditorProps> = ({
             <textarea
               value={p.content}
               onChange={(e) => patch(p.id, { content: e.target.value })}
+              onKeyDown={(e) => onLevelKey(e, p.id)}
               placeholder="Enter paragraph content..."
               className="w-full min-h-[60px] rounded-md border border-border bg-background p-2 text-sm"
             />
