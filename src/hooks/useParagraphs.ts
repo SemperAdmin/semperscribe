@@ -142,6 +142,52 @@ export function validateParagraphNumbering(allParagraphs: ParagraphData[]): stri
   return errors;
 }
 
+/** Result of a level-change check: ok, or the reason it is blocked. */
+export type LevelChange = { ok: true } | { ok: false; reason: string };
+
+/** Exclusive end index of the branch at `index`: it plus deeper followers. */
+export function getBranchEnd(list: ParagraphData[], index: number): number {
+  const level = list[index].level;
+  let end = index + 1;
+  while (end < list.length && list[end].level > level) end++;
+  return end;
+}
+
+function lockedReason(p: ParagraphData): string | null {
+  return p.isMandatory || p.title ? 'Required by the document template' : null;
+}
+
+/** Whether the paragraph at `index` can move one level deeper. */
+export function canIndent(list: ParagraphData[], index: number, maxLevel = 8): LevelChange {
+  const p = list[index];
+  if (!p) return { ok: false, reason: 'Paragraph not found' };
+  const locked = lockedReason(p);
+  if (locked) return { ok: false, reason: locked };
+  if (index === 0) return { ok: false, reason: 'No paragraph above to nest under' };
+  if (p.level > list[index - 1].level) return { ok: false, reason: 'Already one level below the paragraph above' };
+  const end = getBranchEnd(list, index);
+  for (let i = index; i < end; i++) {
+    if (list[i].level + 1 > maxLevel) return { ok: false, reason: `Maximum level (${maxLevel}) reached` };
+  }
+  return { ok: true };
+}
+
+/** Whether the paragraph at `index` can move one level higher. */
+export function canOutdent(list: ParagraphData[], index: number): LevelChange {
+  const p = list[index];
+  if (!p) return { ok: false, reason: 'Paragraph not found' };
+  const locked = lockedReason(p);
+  if (locked) return { ok: false, reason: locked };
+  if (p.level <= 1) return { ok: false, reason: 'Already at the top level' };
+  return { ok: true };
+}
+
+/** Shifts the branch at `index` by `delta` levels. */
+export function shiftBranch(list: ParagraphData[], index: number, delta: number): ParagraphData[] {
+  const end = getBranchEnd(list, index);
+  return list.map((p, i) => (i >= index && i < end ? { ...p, level: p.level + delta } : p));
+}
+
 /**
  * Legacy data migration: level 0 paragraphs become level 1. Returns the
  * same array when nothing needs changing, so identity is preserved.
@@ -256,6 +302,22 @@ export function useParagraphs(initialParagraphs?: ParagraphData[]) {
     });
   }, []);
 
+  const indentParagraph = useCallback((id: number, maxLevel = 8) => {
+    setParagraphs(prev => {
+      const index = prev.findIndex(p => p.id === id);
+      if (index < 0 || !canIndent(prev, index, maxLevel).ok) return prev;
+      return shiftBranch(prev, index, 1);
+    });
+  }, []);
+
+  const outdentParagraph = useCallback((id: number) => {
+    setParagraphs(prev => {
+      const index = prev.findIndex(p => p.id === id);
+      if (index < 0 || !canOutdent(prev, index).ok) return prev;
+      return shiftBranch(prev, index, -1);
+    });
+  }, []);
+
   return {
     paragraphs,
     setParagraphs,
@@ -265,6 +327,8 @@ export function useParagraphs(initialParagraphs?: ParagraphData[]) {
     updateParagraphMarking,
     moveParagraphUp,
     moveParagraphDown,
+    indentParagraph,
+    outdentParagraph,
     getUiCitation,
     validateParagraphNumbering,
   };

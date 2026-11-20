@@ -34,6 +34,7 @@ import {
   Eraser,
   BadgeCheck,
   Video,
+  PanelLeft,
 } from 'lucide-react';
 import { pickerOptions } from '@/lib/document-type-options';
 
@@ -121,6 +122,9 @@ export function CommandPalette({
               <Video className="mr-2 h-4 w-4" /> How-to videos
             </CommandItem>
           )}
+          <CommandItem onSelect={() => run(() => window.dispatchEvent(new CustomEvent('semperscribe:toggle-sidebar')))}>
+            <PanelLeft className="mr-2 h-4 w-4" /> Toggle sidebar
+          </CommandItem>
           <CommandItem onSelect={() => run(onSettings)}>
             <Settings className="mr-2 h-4 w-4" /> Settings
           </CommandItem>

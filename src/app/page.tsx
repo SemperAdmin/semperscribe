@@ -238,7 +238,7 @@ function NavalLetterGeneratorInner() {
   const {
     paragraphs, setParagraphs,
     addParagraph, removeParagraph, updateParagraphContent, updateParagraphMarking,
-    moveParagraphUp, moveParagraphDown,
+    moveParagraphUp, moveParagraphDown, indentParagraph, outdentParagraph,
     getUiCitation, validateParagraphNumbering,
   } = useParagraphs();
 
@@ -1541,6 +1541,8 @@ function NavalLetterGeneratorInner() {
         getUiCitation={getUiCitation}
         moveParagraphUp={moveParagraphUp}
         moveParagraphDown={moveParagraphDown}
+        indentParagraph={indentParagraph}
+        outdentParagraph={outdentParagraph}
         updateParagraphContent={updateParagraphContent}
         updateParagraphMarking={updateParagraphMarking}
         toggleVoiceInput={toggleVoiceInput}

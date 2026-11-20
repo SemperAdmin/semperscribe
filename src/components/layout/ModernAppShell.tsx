@@ -14,6 +14,7 @@ import { FEEDBACK_URL, PORTAL_URL } from '@/lib/app-links';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useCommandPaletteHint } from '@/hooks/useCommandPaletteHint';
 import { pickerTypeFor } from '@/lib/document-type-options';
+import { useSidebarCollapsed } from '@/hooks/useSidebarCollapsed';
 
 interface ModernAppShellProps {
   children: React.ReactNode;
@@ -140,6 +141,24 @@ export function ModernAppShell({
   // the e2e smoke test's zero-console-error assertion).
   const logoSrc = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/logo.png`;
   const paletteShortcut = useCommandPaletteHint();
+  const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebarCollapsed();
+
+  // Ctrl/Cmd+\ and the palette's "Toggle sidebar" (a window event, so the
+  // palette needs no callback from the page).
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('semperscribe:toggle-sidebar', toggleSidebar);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('semperscribe:toggle-sidebar', toggleSidebar);
+    };
+  }, [toggleSidebar]);
 
   // E.2/E.4: the option on screen. A same-page endorsement is the
   // endorsement type with its placement set, and the header badge and
@@ -365,6 +384,8 @@ export function ModernAppShell({
           onDocumentTypeChange={onDocumentTypeChange}
           paragraphs={paragraphs}
           formData={formData as Record<string, any>}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={toggleSidebar}
         />
 
         {/* Mobile slide-out drawer hosting the same Sidebar. Closes automatically on selection. */}

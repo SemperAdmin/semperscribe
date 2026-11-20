@@ -169,6 +169,8 @@ export function SamePageEndorsementSection({ formData, setFormData, vias, refere
           getUiCitation={getUiCitation}
           moveParagraphUp={body.moveParagraphUp}
           moveParagraphDown={body.moveParagraphDown}
+          indentParagraph={body.indentParagraph}
+          outdentParagraph={body.outdentParagraph}
           updateParagraphContent={body.updateParagraphContent}
           toggleVoiceInput={() => {}}
           addParagraph={body.addParagraph}
