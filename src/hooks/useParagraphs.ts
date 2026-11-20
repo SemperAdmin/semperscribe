@@ -142,23 +142,26 @@ export function validateParagraphNumbering(allParagraphs: ParagraphData[]): stri
   return errors;
 }
 
+/** The fields the level helpers read, so other paragraph models can reuse them. */
+export type LeveledItem = Pick<ParagraphData, 'level' | 'title' | 'isMandatory'>;
+
 /** Result of a level-change check: ok, or the reason it is blocked. */
 export type LevelChange = { ok: true } | { ok: false; reason: string };
 
 /** Exclusive end index of the branch at `index`: it plus deeper followers. */
-export function getBranchEnd(list: ParagraphData[], index: number): number {
+export function getBranchEnd(list: LeveledItem[], index: number): number {
   const level = list[index].level;
   let end = index + 1;
   while (end < list.length && list[end].level > level) end++;
   return end;
 }
 
-function lockedReason(p: ParagraphData): string | null {
+function lockedReason(p: LeveledItem): string | null {
   return p.isMandatory || p.title ? 'Required by the document template' : null;
 }
 
 /** Whether the paragraph at `index` can move one level deeper. */
-export function canIndent(list: ParagraphData[], index: number, maxLevel = 8): LevelChange {
+export function canIndent(list: LeveledItem[], index: number, maxLevel = 8): LevelChange {
   const p = list[index];
   if (!p) return { ok: false, reason: 'Paragraph not found' };
   const locked = lockedReason(p);
@@ -173,7 +176,7 @@ export function canIndent(list: ParagraphData[], index: number, maxLevel = 8): L
 }
 
 /** Whether the paragraph at `index` can move one level higher. */
-export function canOutdent(list: ParagraphData[], index: number): LevelChange {
+export function canOutdent(list: LeveledItem[], index: number): LevelChange {
   const p = list[index];
   if (!p) return { ok: false, reason: 'Paragraph not found' };
   const locked = lockedReason(p);
@@ -183,7 +186,7 @@ export function canOutdent(list: ParagraphData[], index: number): LevelChange {
 }
 
 /** Shifts the branch at `index` by `delta` levels. */
-export function shiftBranch(list: ParagraphData[], index: number, delta: number): ParagraphData[] {
+export function shiftBranch<T extends LeveledItem>(list: T[], index: number, delta: number): T[] {
   const end = getBranchEnd(list, index);
   return list.map((p, i) => (i >= index && i < end ? { ...p, level: p.level + delta } : p));
 }

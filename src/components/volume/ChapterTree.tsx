@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 import { useVolumeStore, type VolumePath } from '@/store/volumeStore';
 import { sectionDesignator, paragraphDesignator, subParaDesignator } from '@/lib/volume/designators';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button';
 import { BlockEditor } from './BlockEditor';
 import { ChapterChangeLog } from './ChapterChangeLog';
 import { FigurePanel } from './FigurePanel';
-import { ChevronUp, ChevronDown, Trash2, Plus, ListTree } from 'lucide-react';
+import { ChevronUp, ChevronDown, Trash2, Plus, ListTree, IndentIncrease, IndentDecrease } from 'lucide-react';
+import { canIndentNode, canOutdentNode, targetDesignator } from '@/store/volumeLevels';
+import type { KeyboardEvent } from 'react';
 import type { Block, Chapter, Paragraph, Section, SubPara } from '@/lib/schemas/volume-schema';
 
 /** Appends `idx` to a path's `sub` array (or starts a new one). */
@@ -15,11 +17,52 @@ function subPathFor(base: VolumePath, idx: number): VolumePath {
   return { ...base, sub: [...(base.sub ?? []), idx] };
 }
 
+/** Receives the polite live-region message after an indent/outdent. */
+const LevelAnnounceContext = createContext<(msg: string) => void>(() => {});
+
 function MoveRemoveControls({
-  onUp, onDown, onRemove, removeLabel,
-}: { onUp: () => void; onDown: () => void; onRemove: () => void; removeLabel: string }) {
+  onUp, onDown, onRemove, removeLabel, level,
+}: {
+  onUp: () => void; onDown: () => void; onRemove: () => void; removeLabel: string;
+  /** Indent/outdent for tree nodes (paragraphs and sub-paragraphs). */
+  level?: { designator: string; path: VolumePath };
+}) {
+  const chapters = useVolumeStore((s) => s.doc.chapters);
+  const indentNode = useVolumeStore((s) => s.indentNode);
+  const outdentNode = useVolumeStore((s) => s.outdentNode);
+  const announce = useContext(LevelAnnounceContext);
+  const indentState = level ? canIndentNode(chapters, level.path) : null;
+  const outdentState = level ? canOutdentNode(chapters, level.path) : null;
+  const run = (dir: 'indent' | 'outdent') => {
+    if (!level) return;
+    const target = targetDesignator(chapters, level.path, dir);
+    (dir === 'indent' ? indentNode : outdentNode)(level.path);
+    if (target) announce(`${level.designator} is now ${target}`);
+  };
   return (
     <div className="flex gap-1 ml-auto">
+      {level && indentState && outdentState ? (
+        <>
+          <Button
+            type="button" variant="ghost" size="sm" className="h-7 w-7 p-0"
+            disabled={!outdentState.ok}
+            title={outdentState.ok ? `Outdent to ${targetDesignator(chapters, level.path, 'outdent')}` : outdentState.reason}
+            aria-label={`Outdent ${level.designator}${outdentState.ok ? ` to ${targetDesignator(chapters, level.path, 'outdent')}` : ''}`}
+            onClick={() => run('outdent')}
+          >
+            <IndentDecrease className="w-4 h-4" />
+          </Button>
+          <Button
+            type="button" variant="ghost" size="sm" className="h-7 w-7 p-0"
+            disabled={!indentState.ok}
+            title={indentState.ok ? `Indent to ${targetDesignator(chapters, level.path, 'indent')}` : indentState.reason}
+            aria-label={`Indent ${level.designator}${indentState.ok ? ` to ${targetDesignator(chapters, level.path, 'indent')}` : ''}`}
+            onClick={() => run('indent')}
+          >
+            <IndentIncrease className="w-4 h-4" />
+          </Button>
+        </>
+      ) : null}
       <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Move up" aria-label="Move up" onClick={onUp}>
         <ChevronUp className="w-4 h-4" />
       </Button>
@@ -33,6 +76,20 @@ function MoveRemoveControls({
   );
 }
 
+/** Alt+Shift+Right indents, Alt+Shift+Left outdents the node whose header or body has focus. */
+function useLevelKeys(path: VolumePath) {
+  const indentNode = useVolumeStore((s) => s.indentNode);
+  const outdentNode = useVolumeStore((s) => s.outdentNode);
+  return (e: KeyboardEvent<HTMLElement>) => {
+    if (!e.altKey || !e.shiftKey) return;
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    // Nested nodes sit inside their parent's wrapper; act only for the innermost.
+    if ((e.target as HTMLElement).closest('[data-level-node]') !== e.currentTarget) return;
+    e.preventDefault();
+    (e.key === 'ArrowRight' ? indentNode : outdentNode)(path);
+  };
+}
+
 function SubParaNode({ node, path, index }: { node: SubPara; path: VolumePath; index: number }) {
   const updateNodeTitle = useVolumeStore((s) => s.updateNodeTitle);
   const updateBlock = useVolumeStore((s) => s.updateBlock);
@@ -41,9 +98,10 @@ function SubParaNode({ node, path, index }: { node: SubPara; path: VolumePath; i
   const addSubPara = useVolumeStore((s) => s.addSubPara);
 
   const designator = subParaDesignator(node.style, index + 1);
+  const onLevelKey = useLevelKeys(path);
 
   return (
-    <div className="ml-4 border-l border-border pl-3 space-y-2 py-2">
+    <div className="ml-4 border-l border-border pl-3 space-y-2 py-2" data-level-node onKeyDown={onLevelKey}>
       <div className="flex items-center gap-2">
         <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-secondary/40 whitespace-nowrap">{designator}</span>
         <Input
@@ -58,6 +116,7 @@ function SubParaNode({ node, path, index }: { node: SubPara; path: VolumePath; i
           onDown={() => moveNode(path, 1)}
           onRemove={() => removeNode(path)}
           removeLabel={`Remove ${designator}`}
+          level={{ designator, path }}
         />
       </div>
 
@@ -96,9 +155,10 @@ function ParagraphNode({ paragraph, path, index }: { paragraph: Paragraph; path:
   const addSubPara = useVolumeStore((s) => s.addSubPara);
 
   const designator = paragraphDesignator(chapterNumber, sectionSeq, index + 1);
+  const onLevelKey = useLevelKeys(path);
 
   return (
-    <div className="ml-3 border-l-2 border-border pl-3 space-y-2 py-2">
+    <div className="ml-3 border-l-2 border-border pl-3 space-y-2 py-2" data-level-node onKeyDown={onLevelKey}>
       <div className="flex items-center gap-2">
         <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-secondary/50 whitespace-nowrap">{designator}</span>
         <Input
@@ -113,6 +173,7 @@ function ParagraphNode({ paragraph, path, index }: { paragraph: Paragraph; path:
           onDown={() => moveNode(path, 1)}
           onRemove={() => removeNode(path)}
           removeLabel={`Remove paragraph ${designator}`}
+          level={{ designator, path }}
         />
       </div>
 
@@ -260,15 +321,19 @@ function ChapterNode({ chapter, chapterIdx }: { chapter: Chapter; chapterIdx: nu
 export function ChapterTree() {
   const chapters = useVolumeStore((s) => s.doc.chapters);
   const addChapter = useVolumeStore((s) => s.addChapter);
+  const [announcement, setAnnouncement] = React.useState('');
 
   return (
-    <div className="space-y-4">
-      {chapters.map((chapter, ci) => (
-        <ChapterNode key={ci} chapter={chapter} chapterIdx={ci} />
-      ))}
-      <Button type="button" onClick={addChapter}>
-        <Plus className="w-4 h-4 mr-1" /> Add Chapter
-      </Button>
-    </div>
+    <LevelAnnounceContext.Provider value={setAnnouncement}>
+      <div className="space-y-4">
+        {chapters.map((chapter, ci) => (
+          <ChapterNode key={ci} chapter={chapter} chapterIdx={ci} />
+        ))}
+        <Button type="button" onClick={addChapter}>
+          <Plus className="w-4 h-4 mr-1" /> Add Chapter
+        </Button>
+        <div role="status" aria-live="polite" className="sr-only">{announcement}</div>
+      </div>
+    </LevelAnnounceContext.Provider>
   );
 }
