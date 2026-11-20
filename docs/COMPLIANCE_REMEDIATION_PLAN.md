@@ -162,6 +162,7 @@ P4-1. Add a persistent CUI banner.
 - Insert a top banner reading: "Warning. Non-official Proof of Concept. Do not enter CUI, PII, or other sensitive information. Outputs constitute Federal records under 44 USC 3301 when used in official business. Route through your CDRM." Framing emphasizes user responsibility, not system CUI handling capability.
 - Banner must be visible on every route.
 - Acceptance. Visual test on every page shows the banner.
+- Amended 2026-11-20 (owner decision, laptop screen space). The banner shows on every route at the start of each browser session. An Acknowledge button hides it for the rest of that session (sessionStorage), and a footer "Show warning" control restores it. The full notice also remains on the startup disclaimer and the /privacy route, which the footer links on every page.
 
 P4-2. Add a Privacy and Security Notice route.
 

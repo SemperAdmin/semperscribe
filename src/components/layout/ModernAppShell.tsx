@@ -15,6 +15,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useCommandPaletteHint } from '@/hooks/useCommandPaletteHint';
 import { pickerTypeFor } from '@/lib/document-type-options';
 import { useSidebarCollapsed } from '@/hooks/useSidebarCollapsed';
+import { useWarningBannerAcknowledged } from '@/hooks/useWarningBannerAcknowledged';
 
 interface ModernAppShellProps {
   children: React.ReactNode;
@@ -141,6 +142,7 @@ export function ModernAppShell({
   // the e2e smoke test's zero-console-error assertion).
   const logoSrc = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/logo.png`;
   const paletteShortcut = useCommandPaletteHint();
+  const { acknowledged: bannerAcknowledged, acknowledge: acknowledgeBanner, restore: restoreBanner } = useWarningBannerAcknowledged();
   const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebarCollapsed();
 
   // Ctrl/Cmd+\ and the palette's "Toggle sidebar" (a window event, so the
@@ -184,7 +186,11 @@ export function ModernAppShell({
         Skip to document form
       </a>
 
-      {/* Persistent compliance banner. Maps to COMPLIANCE_REMEDIATION_PLAN.md Phase 4 P4-1. */}
+      {/* Compliance banner. Maps to COMPLIANCE_REMEDIATION_PLAN.md Phase 4 P4-1,
+          as amended 2026-11-20: Acknowledge hides it for this browser
+          session (laptop screen space). It returns in every new session,
+          and the footer's "Show warning" brings it back at once. */}
+      {!bannerAcknowledged && (
       <div
         role="alert"
         aria-live="polite"
@@ -227,7 +233,15 @@ export function ModernAppShell({
         <strong className="font-bold uppercase mr-2">Warning</strong>
         Non-official Proof of Concept with no CUI authorization of its own. No server and no transmission: your documents are saved in this browser on this computer and stay there until you clear them. Never enter classified information. Enter CUI only if your authorizing official has approved this application for it on your system. PII is at your discretion and risk and is scanned before export. Outputs constitute Federal records under 44 USC 3301 when used in official business. Route through your CDRM.
         <Link href="/privacy" className="ml-2 underline font-semibold hover:no-underline">Privacy and Security Notice</Link>
+        <button
+          type="button"
+          onClick={acknowledgeBanner}
+          className="ml-3 inline-flex items-center rounded border border-black/60 px-2 py-0.5 font-semibold hover:bg-black/10 focus:outline-none focus:ring-2 focus:ring-black max-sm:min-h-11"
+        >
+          Acknowledge
+        </button>
       </div>
+      )}
       {/* Top Header / Toolbar */}
       <header className="h-16 bg-secondary text-primary-foreground border-b border-secondary-foreground/10 flex items-center justify-between gap-2 px-2 sm:px-4 z-20 shrink-0 shadow-md">
         <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
@@ -468,6 +482,11 @@ export function ModernAppShell({
       {/* P8-11: muted-foreground on this ground measured 4.49:1; foreground/70 is 6:1. */}
       <footer className="shrink-0 border-t bg-muted/40 text-foreground/70 text-xs px-4 py-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
         <span>SemperScribe non-official Proof of Concept.</span>
+        {bannerAcknowledged && (
+          <button type="button" onClick={restoreBanner} className="underline hover:no-underline">
+            Show warning
+          </button>
+        )}
         <Link href="/privacy" className="underline hover:no-underline">Privacy and Security Notice</Link>
         <a href="https://github.com/SemperAdmin/semperscribe/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Security disclosure</a>
         <a href="https://github.com/SemperAdmin/semperscribe/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">License (MIT)</a>
