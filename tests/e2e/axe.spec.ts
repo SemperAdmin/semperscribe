@@ -192,6 +192,9 @@ test.describe('axe accessibility scan', () => {
     await page.reload();
     await expect(page.getByRole('button', { name: 'Show warning' })).toBeVisible();
     await expect(banner).toHaveCount(0);
+    // The pointer still rests where Acknowledge was, now over a landing card
+    // whose hover transition axe would scan mid-flight.
+    await page.mouse.move(0, 0);
     await page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
     expect(await seriousViolations(page), 'acknowledged banner').toEqual([]);
     await page.getByRole('button', { name: 'Show warning' }).click();

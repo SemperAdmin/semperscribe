@@ -167,7 +167,9 @@ export function LandingPage({ onSelectType, onLoadExample }: LandingPageProps) {
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-foreground">Start from a filled example</span>
-              <span className="mt-1 block text-xs text-muted-foreground">
+              {/* muted-foreground on bg-primary/5 measured 4.45:1 once the
+                  acknowledged banner lifted this card into view. */}
+              <span className="mt-1 block text-xs text-foreground/70">
                 Opens a complete standard naval letter, header to signature, with every compliance check already passing. Edit it or clear it and start your own.
               </span>
             </span>
