@@ -15,6 +15,7 @@ import type { DictionaryEntry } from '@/lib/military-dictionary';
 import { runNavmc10922Validators } from '@/lib/navmc10922-validators';
 import { runNavmc10132Validators } from '@/lib/navmc10132-validators';
 import { runNavmc11106Validators } from '@/lib/navmc11106-validators';
+import { runDd1561Validators } from '@/lib/dd1561-validators';
 import { runDd368Validators } from '@/lib/dd368-validators';
 import { runCounselingValidators } from '@/lib/counseling';
 import { runTlaValidators } from '@/lib/tla';
@@ -1125,6 +1126,9 @@ export function runLetterValidators(
     // NAVMC 11106 COLA application rules, a no-op for every other
     // documentType (docs/NAVMC_11106_SPEC.md section 10).
     ...runNavmc11106Validators(formData),
+    // DD Form 1561 FSA rules, a no-op for every other documentType
+    // (docs/DD1561_FSA_SPEC.md P3; DoD FMR Vol 7A Ch 27).
+    ...runDd1561Validators(formData),
     // DD Form 368 rules, a no-op for every other documentType.
     ...runDd368Validators(formData),
     // Counseling Worksheet: suggestions only, every one a warning, a
