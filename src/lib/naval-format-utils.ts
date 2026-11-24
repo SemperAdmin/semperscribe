@@ -453,6 +453,12 @@ export function getExportFilename(formData: FormData, extension: 'pdf' | 'docx' 
     return `NAVMC 11106 - ${name}.${extension}`;
   }
 
+  // DD Form 1561 (FSA). The member's name identifies the statement.
+  if (formData.documentType === 'dd1561') {
+    const name = sanitize(formData.dd1561MemberName ?? '') || 'Member';
+    return `DD 1561 - ${name}.${extension}`;
+  }
+
   // DD Form 368. The member's name identifies the request.
   if (formData.documentType === 'dd368') {
     const name = sanitize(formData.dd368MemberName ?? '') || 'Member';

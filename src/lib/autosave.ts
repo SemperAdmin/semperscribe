@@ -376,6 +376,11 @@ export function isRecoverable(copy: WorkingCopy | null): copy is WorkingCopy {
       || [spouseRow(copy.formData), ...dependentRows(copy.formData)].some(rowHasContent),
     );
   }
+  // A DD 1561 likewise: the member, the FSA type or a dependent address is its content.
+  if (copy.formData.documentType === 'dd1561') {
+    const { dd1561MemberName, dd1561Edipi, dd1561FsaType, dd1561DependentAddresses } = copy.formData;
+    return [dd1561MemberName, dd1561Edipi, dd1561FsaType, dd1561DependentAddresses].some((v) => String(v ?? '').trim() !== '');
+  }
   const hasSubject = Boolean((copy.formData.subj ?? '').trim());
   const hasBody = (copy.paragraphs ?? []).some((p) => p.content.trim());
   const hasParties = Boolean((copy.formData.from ?? '').trim() || (copy.formData.to ?? '').trim());

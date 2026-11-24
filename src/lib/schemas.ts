@@ -13,6 +13,13 @@ import {
   NAVMC_10132_STAGE_VALUES,
   NAVMC_11106_SPONSORSHIP_BASES,
 } from '@/types/navmc';
+import {
+  DD1561_CHILD_CUSTODY,
+  DD1561_FSA_TYPES,
+  DD1561_MARITAL_STATUSES,
+  DD1561_SHIP_SEGMENT_STATUSES,
+  DD1561_WAS_WAS_NOT,
+} from '@/types/dd1561';
 
 // --- UI Schema Definitions ---
 
@@ -74,7 +81,7 @@ export interface SectionDefinition {
   className?: string; // Optional override for the grid layout (e.g. "grid-cols-1")
 }
 
-export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'navmc11106' | 'dd368' | 'counseling' | 'tla-packet' | 'amhs' | 'coordination-page' | 'volume';
+export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'navmc11106' | 'dd1561' | 'dd368' | 'counseling' | 'tla-packet' | 'amhs' | 'coordination-page' | 'volume';
 export type ExportFormat = 'pdf' | 'docx' | 'amhs-text';
 export type DocumentCategory =
   | 'standard-letter'
@@ -1939,6 +1946,90 @@ export const Navmc11106Definition: DocumentTypeDefinition = {
   ],
 };
 
+// 7d. DD Form 1561 (Statement to Substantiate Payment of FSA)
+// Rule source: docs/DD1561_FSA_SPEC.md; types and key meanings in
+// src/types/dd1561.ts. Zod stays permissive (every key optional); the rules
+// live in dd1561-rules.ts and dd1561-validators.ts. Not yet registered in
+// DOCUMENT_TYPES: the sidebar, guidance and template registration is Phase 3
+// (a registered type must have a sidebar button, see
+// tests/components/sidebar-registry-coverage.test.tsx).
+const dd1561Iso = z.string().optional();
+const dd1561Pick = <T extends readonly [string, ...string[]]>(values: T) =>
+  z.union([z.literal(''), z.enum(values)]).optional();
+
+export const Dd1561FsaTRowSchema = z.object({
+  location: z.string(),
+  from: z.string(),
+  to: z.string(),
+  interruptedBefore: z.boolean().optional(),
+});
+
+export const Dd1561ShipSegmentSchema = z.object({
+  status: z.enum(DD1561_SHIP_SEGMENT_STATUSES),
+  from: z.string(),
+  to: z.string(),
+  shipUnit: z.string().optional(),
+});
+
+export const Dd1561Schema = z.object({
+  documentType: z.literal('dd1561'),
+  dd1561MemberName: z.string().optional(),
+  dd1561Grade: z.string().optional(),
+  dd1561Edipi: z.string().optional(),
+  dd1561BranchOrganization: z.string().optional(),
+  dd1561FsaType: dd1561Pick(DD1561_FSA_TYPES),
+  dd1561Mobilized: z.boolean().optional(),
+  dd1561MobilizedDepartureDate: dd1561Iso,
+  dd1561DependentAddresses: z.string().optional(),
+  dd1561MaritalStatus: dd1561Pick(DD1561_MARITAL_STATUSES),
+  dd1561HasChildren: z.boolean().optional(),
+  dd1561ChildCustody: dd1561Pick(DD1561_CHILD_CUSTODY),
+  dd1561ClaimsParent: z.boolean().optional(),
+  dd1561ParentDependencyApproved: z.boolean().optional(),
+  dd1561ParentResidesWithMember: z.boolean().optional(),
+  dd1561DependentOnActiveDuty: z.boolean().optional(),
+  dd1561SoleDependentInstitutionalized: z.boolean().optional(),
+  dd1561AllDependentsNear: z.boolean().optional(),
+  dd1561DualMilitary: z.boolean().optional(),
+  dd1561SpouseEdipi: z.string().optional(),
+  dd1561SpouseBranchComponent: z.string().optional(),
+  dd1561SpouseResidingTogether: dd1561Pick(DD1561_WAS_WAS_NOT),
+  dd1561SpouseReceivingFsa: z.boolean().optional(),
+  dd1561PermissiveOrders: z.boolean().optional(),
+  dd1561FsaRTransportAuthorized: z.boolean().optional(),
+  dd1561FsaRElectedUnaccompanied: z.boolean().optional(),
+  dd1561FsaRCertifiedMedical: z.boolean().optional(),
+  dd1561FsaRSecretarialWaiver: z.boolean().optional(),
+  dd1561LastTdyWithin30: dd1561Pick(DD1561_WAS_WAS_NOT),
+  dd1561PriorPeriodType: dd1561Pick(['T', 'S'] as const),
+  dd1561PriorPeriodFrom: dd1561Iso,
+  dd1561PriorPeriodTo: dd1561Iso,
+  dd1561MemberSignedDate: dd1561Iso,
+  dd1561FsaTRows: z.array(Dd1561FsaTRowSchema).optional(),
+  dd1561FsaTLeaveBeforeDays: z.number().int().min(0).optional(),
+  dd1561FsaTLeaveAfterDays: z.number().int().min(0).optional(),
+  dd1561FsaTFirstTravelDate: dd1561Iso,
+  dd1561FsaRLastPds: z.string().optional(),
+  dd1561FsaRDetachDate: dd1561Iso,
+  dd1561FsaRLeaveFrom: dd1561Iso,
+  dd1561FsaRLeaveTo: dd1561Iso,
+  dd1561FsaRProceedFrom: dd1561Iso,
+  dd1561FsaRProceedTo: dd1561Iso,
+  dd1561FsaRFirstTravelDate: dd1561Iso,
+  dd1561FsaRNewPds: z.string().optional(),
+  dd1561FsaRReportDate: dd1561Iso,
+  dd1561FsaSSegments: z.array(Dd1561ShipSegmentSchema).optional(),
+  dd1561FsaSShipUnit: z.string().optional(),
+  dd1561FsaSHomeport: z.string().optional(),
+  dd1561OrdersAuthority: z.string().optional(),
+  dd1561OrdersDate: dd1561Iso,
+  dd1561BahWithDependentsConfirmed: z.boolean().optional(),
+  dd1561CertifierName: z.string().optional(),
+  dd1561CertifierTitle: z.string().optional(),
+  dd1561CertifierOrganization: z.string().optional(),
+  dd1561CertifiedDate: dd1561Iso,
+});
+
 // 8. AMHS Message
 export const AMHSSchema = z.object({
   documentType: z.literal('amhs'),
@@ -3375,6 +3466,7 @@ export const DocumentSchema = z.union([
   Navmc10922Schema,
   Navmc10132Schema,
   Navmc11106Schema,
+  Dd1561Schema,
   AMHSSchema,
   MFRSchema,
   FromToMemoSchema,
