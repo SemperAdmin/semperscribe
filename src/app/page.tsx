@@ -46,6 +46,9 @@ import { GuidanceDialog } from '@/components/GuidanceDialog';
 import { HowToVideosDialog } from '@/components/videos/HowToVideosDialog';
 import { FindReplaceResult } from '@/lib/find-replace';
 import { useUndoHistory } from '@/hooks/useUndoHistory';
+import { useUndoShortcuts } from '@/hooks/useUndoShortcuts';
+import { routeUndo } from '@/lib/undo-routing';
+import { useVolumeStore } from '@/store/volumeStore';
 import { useSyncedState } from '@/hooks/useSyncedState';
 import { EnclosureAttachment, EnclosureRow, newRow, reconcileRows } from '@/lib/enclosure-rows';
 import { useAutosave } from '@/hooks/useAutosave';
@@ -1246,11 +1249,21 @@ function NavalLetterGeneratorInner() {
   };
 
   // P3.2: undo/redo over the seven document slices (snapshot history)
-  const { undo, redo, canUndo, canRedo } = useUndoHistory({
+  const letterHistory = useUndoHistory({
     formData, paragraphs, vias, references, enclosures, copyTos, distList,
     setFormData, setParagraphs, setVias, setReferences, setEnclosures, setCopyTos, setDistList,
     setFormKey,
   });
+  // A Volume keeps its own document and history in useVolumeStore; route the
+  // header Undo/Redo and Ctrl+Z / Ctrl+Y there while a Volume is open.
+  const volumeHistory = {
+    undo: useVolumeStore((s) => s.undo),
+    redo: useVolumeStore((s) => s.redo),
+    canUndo: useVolumeStore((s) => s.canUndo),
+    canRedo: useVolumeStore((s) => s.canRedo),
+  };
+  const { undo, redo, canUndo, canRedo } = routeUndo(formData.documentType, letterHistory, volumeHistory);
+  useUndoShortcuts(undo, redo);
 
 
   // P3.1: apply a replace-all through the normal setters (one undo step)

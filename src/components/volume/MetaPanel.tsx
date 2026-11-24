@@ -21,7 +21,8 @@ export function MetaPanel() {
   const updateMeta = useVolumeStore((s) => s.updateMeta);
 
   const patchOrder = useCallback(
-    (patch: Partial<VolumeDoc['order']>) => setDoc({ ...doc, order: { ...doc.order, ...patch } }),
+    (patch: Partial<VolumeDoc['order']>) =>
+      setDoc({ ...doc, order: { ...doc.order, ...patch } }, { coalesceKey: `order:${Object.keys(patch).join(',')}` }),
     [doc, setDoc],
   );
 
@@ -35,7 +36,10 @@ export function MetaPanel() {
   );
   const updateChangeRow = useCallback(
     (i: number, patch: Partial<VolumeDoc['changeLog'][number]>) =>
-      setDoc({ ...doc, changeLog: doc.changeLog.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) }),
+      setDoc(
+        { ...doc, changeLog: doc.changeLog.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) },
+        { coalesceKey: `changeLog:${i}:${Object.keys(patch).join(',')}` },
+      ),
     [doc, setDoc],
   );
 
@@ -48,7 +52,8 @@ export function MetaPanel() {
     [doc, setDoc],
   );
   const updateReferenceText = useCallback(
-    (i: number, text: string) => setDoc({ ...doc, references: doc.references.map((r, idx) => (idx === i ? { ...r, text } : r)) }),
+    (i: number, text: string) =>
+      setDoc({ ...doc, references: doc.references.map((r, idx) => (idx === i ? { ...r, text } : r)) }, { coalesceKey: `reference:${i}` }),
     [doc, setDoc],
   );
 

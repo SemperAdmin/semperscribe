@@ -115,26 +115,8 @@ export function useUndoHistory({
     syncFlags();
   }, [applySnapshot]);
 
-  // Ctrl+Z / Ctrl+Y (and Ctrl+Shift+Z). Skipped while typing in text
-  // fields - the browser's native text undo owns those until blur.
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey)) return;
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
-      const key = event.key.toLowerCase();
-      if (key === 'z' && !event.shiftKey) {
-        event.preventDefault();
-        undo();
-      } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
-        event.preventDefault();
-        redo();
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [undo, redo]);
+  // Keyboard shortcuts are bound by the page (useUndoShortcuts) so they can
+  // route to the Volume history when a Volume is open (lib/undo-routing.ts).
 
   return { undo, redo, canUndo, canRedo };
 }

@@ -637,6 +637,48 @@
     "url": "/templates/global/dd1561-fsa-t-sample.nldp"
   },
   {
+    "id": "dd1561-fsa-r-okinawa-unaccompanied",
+    "title": "DD 1561 - FSA-R, Unaccompanied PCS to Okinawa",
+    "description": "FSA-R for a married sergeant with a child ordered PCS to Okinawa where dependent travel is not authorized (command sponsorship denied): detached 1 Jun 26 with 10 days of leave and 4 days of proceed time, so FSA-R starts 15 Jun 26 (DoD FMR Vol 7A Ch 27 par 2.3.1.1.1, 4.1.1.1; Table 27-1 rule 2). Sample data - replace before use.",
+    "documentType": "dd1561",
+    "url": "/templates/global/dd1561-fsa-r-okinawa-unaccompanied.nldp"
+  },
+  {
+    "id": "dd1561-fsa-s-arg-meu-deployment",
+    "title": "DD 1561 - FSA-S, ARG/MEU Ship Deployment",
+    "description": "FSA-S for a married sergeant with a child embarked with an ARG/MEU: away from homeport 2 Mar to 20 May 26, 80 qualifying days; the period qualifies on its 31st day (1 Apr 26) and credit counts back to 2 Mar 26, not from day 31 (DoD FMR Vol 7A Ch 27 par 2.3.1.2, 4.4.3). Sample data - replace before use.",
+    "documentType": "dd1561",
+    "url": "/templates/global/dd1561-fsa-s-arg-meu-deployment.nldp"
+  },
+  {
+    "id": "dd1561-fsa-t-back-to-back",
+    "title": "DD 1561 - FSA-T, Back-to-Back TAD (8g Was)",
+    "description": "FSA-T for a married sergeant with a child redeploying on TAD after a 45-day TAD (5 Jan to 18 Feb 26) and 27 days at home station: the 44-day redeployment from 18 Mar to 30 Apr 26 continues the earlier period, 71 days in all (DoD FMR Vol 7A Ch 27 par 4.4.2). Sample data - replace before use.",
+    "documentType": "dd1561",
+    "url": "/templates/global/dd1561-fsa-t-back-to-back.nldp"
+  },
+  {
+    "id": "dd1561-fsa-t-dual-military",
+    "title": "DD 1561 - FSA-T, Dual-Military Couple",
+    "description": "FSA-T for a sergeant married to a Navy member, no other dependents, residing together before the orders and the spouse not drawing FSA: TAD 2 Mar to 15 Apr 26, 45 qualifying days (DoD FMR Vol 7A Ch 27 par 2.3.4.1). Sample data - replace before use.",
+    "documentType": "dd1561",
+    "url": "/templates/global/dd1561-fsa-t-dual-military.nldp"
+  },
+  {
+    "id": "dd1561-fsa-t-mobilized-reservist",
+    "title": "DD 1561 - FSA-T, Mobilized Reservist",
+    "description": "FSA-T for a mobilized Reserve sergeant with a spouse: block 6 departure 2 Feb 26, then TAD 9 Feb to 15 May 26 from the place ordered to active duty, 96 qualifying days (DoD FMR Vol 7A Ch 27 par 2.3.1.3 NOTE, 4.4.1). Sample data - replace before use.",
+    "documentType": "dd1561",
+    "url": "/templates/global/dd1561-fsa-t-mobilized-reservist.nldp"
+  },
+  {
+    "id": "dd1561-fsa-t-dependent-parent",
+    "title": "DD 1561 - FSA-T, Dependent Parent",
+    "description": "FSA-T for a single sergeant claiming a parent with an approved dependency determination who lives in the sergeant's maintained home (block 8e): TAD 6 Apr to 12 Jun 26, 68 qualifying days (DoD FMR Vol 7A Ch 27 par 3.1.4, 4.4.1). Sample data - replace before use.",
+    "documentType": "dd1561",
+    "url": "/templates/global/dd1561-fsa-t-dependent-parent.nldp"
+  },
+  {
     "id": "dd368-sample",
     "title": "Conditional Release (DD 368), sample",
     "description": "DD Form 368 with Section I filled for a Marine sergeant requesting release to the Navy Reserve. Sample data - replace before use.",

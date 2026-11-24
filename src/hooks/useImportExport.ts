@@ -161,7 +161,7 @@ export function useImportExport(deps: ImportExportDeps) {
       if (data.volume) {
         try {
           const parsedVolume = VolumeSchema.parse(data.volume);
-          useVolumeStore.getState().setDoc(parsedVolume);
+          useVolumeStore.getState().loadDoc(parsedVolume);
         } catch (error) {
           console.error('Volume import failed validation', error);
         }
