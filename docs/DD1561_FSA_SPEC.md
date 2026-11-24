@@ -357,10 +357,15 @@ All date fields print **"(DDMMYY)"** on the form: blocks 7, 9a, 11, 12 and 15. B
 - BLOCKER: the NOV 2006 edition is reportedly obsolete (section G). The field map must be rebuilt from the
   DEC 2017 blank before build.
 
-### P1a. SSN rule
-- Do not build SSN collection, storage or output. The NOV 2006 field map above lists `mbr_ssn` and `spouse_ssn`
-  for reference only. The field map is rebuilt from the DEC 2017 blank, which reportedly prints DoD ID, and any
-  SSN field that survives needs an explicit owner decision first. Exports pass the existing PII scan.
+### P1a. Identifier rule - EDIPI, never SSN (owner decision 2026-11-24)
+- The app never collects, stores or prints an SSN for the DD 1561.
+- Block 3 (member) and block 8f (spouse) take the **10-digit EDIPI (DoD ID)** instead. Validation `^\d{10}$`,
+  matching the existing EDIPI checks (navmc10132-validators-identity.ts `checkEdipiFormat`,
+  navmc11106-validators.ts, navmc10922-validators.ts). The spouse EDIPI is required only when 8f is checked.
+- Field mapping: on the DEC 2017 edition the EDIPI goes in its DoD ID fields. If the build ever has to use the
+  NOV 2006 blank, the EDIPI goes in `mbr_ssn` / `spouse_ssn`, whose printed captions still read "SOCIAL SECURITY
+  NUMBER" / "Spouse's SSN"; the app must then cover those captions with "DoD ID (EDIPI)" so the form does not
+  mislabel the value. Exports pass the existing PII scan.
 
 ### P2. Guided flow (member-facing questions, then the form)
 1. Eligibility screen: dependents? (spouse / child / parent with approved dependency), dual-military?, active or
@@ -385,8 +390,7 @@ All date fields print **"(DDMMYY)"** on the form: blocks 7, 9a, 11, 12 and 15. B
 
 ### P4. Decisions needed from the owner
 1. Obtain the DEC 2017 DD 1561 blank (esd.whs.mil, blocked in this environment) and confirm it replaces NOV 2006.
-2. SSN handling: NOV 2006 asks for member and spouse SSN; DEC 2017 reportedly uses DoD ID. Collect only what the
-   current edition prints.
+2. ~~SSN handling~~ DECIDED 2026-11-24: 10-digit EDIPI for member and spouse, never SSN (P1a).
 3. Show an estimated FSA amount ($300/month, $10/day per MARADMIN 150/26 [WS]) or only eligibility and day counts?
 4. Who signs Part II in the Marine Corps (CO, By Direction, IPAC certifying officer) and whether the app prefills it.
 5. Allow the network hosts in section 0 so the [WS] facts can be verified from primary pages.
