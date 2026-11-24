@@ -263,3 +263,17 @@ export function createDd1561Defaults(): Dd1561Data {
     dd1561CertifiedDate: '',
   };
 }
+
+/**
+ * The DD 1561 defaults for keys `data` does not already carry, for a type
+ * switch onto the DD 1561 (src/app/page.tsx). Values already entered, for
+ * example on a switch back to the DD 1561, are kept.
+ */
+export function missingDd1561Defaults(data: Record<string, unknown>): Partial<Dd1561Data> {
+  const defaults = createDd1561Defaults() as unknown as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(defaults)) {
+    if (k !== 'documentType' && data[k] === undefined) out[k] = v;
+  }
+  return out as Partial<Dd1561Data>;
+}

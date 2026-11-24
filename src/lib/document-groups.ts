@@ -31,7 +31,7 @@ export const DOCUMENT_GROUPS: readonly DocumentGroup[] = [
   { key: 'external-executive', label: 'External & Executive', typeIds: ['business-letter', 'executive-correspondence'] },
   { key: 'dla-correspondence', label: 'DLA Correspondence', typeIds: ['dla-memorandum', 'dla-business-letter'] },
   { key: 'directives', label: 'Directives', typeIds: ['mco', 'bulletin', 'volume', 'secnav-instruction', 'secnav-notice', 'change-transmittal'] },
-  { key: 'forms', label: 'Forms', typeIds: ['aa-form', 'page11', 'navmc10922', 'navmc10132', 'navmc11106', 'dd368', 'tla-packet'] },
+  { key: 'forms', label: 'Forms', typeIds: ['aa-form', 'page11', 'navmc10922', 'navmc10132', 'navmc11106', 'dd1561', 'dd368', 'tla-packet'] },
   { key: 'counseling-worksheets', label: 'Counseling Worksheets', typeIds: ['counseling'] },
   { key: 'technical-publication', label: 'Technical Publication', typeIds: ['i-type'] },
   { key: 'amhs', label: 'AMHS Message', typeIds: ['amhs'] },
