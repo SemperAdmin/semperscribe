@@ -232,6 +232,8 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
       return generateFillPlaceholder('NAVMC 11106 (Cost-of-Living Allowances)');
     }
   },
+  // DD 1561 AcroForm fill lands in Phase 4 (docs/DD1561_FSA_SPEC.md section Q).
+  dd1561: async () => generateFillPlaceholder('DD 1561 (Family Separation Allowance)'),
   amhs: async () => new Blob([], { type: 'text/plain' }), // AMHS doesn't use PDF
   'coordination-page': generateCoordinationPagePdf,
   // Volume documents don't live in the letter formData - the Volume editor

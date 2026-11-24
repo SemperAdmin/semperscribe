@@ -81,7 +81,7 @@ export interface SectionDefinition {
   className?: string; // Optional override for the grid layout (e.g. "grid-cols-1")
 }
 
-export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'navmc11106' | 'dd368' | 'counseling' | 'tla-packet' | 'amhs' | 'coordination-page' | 'volume';
+export type PdfPipeline = 'standard' | 'navmc10274' | 'navmc11811' | 'navmc10922' | 'navmc10132' | 'navmc11106' | 'dd1561' | 'dd368' | 'counseling' | 'tla-packet' | 'amhs' | 'coordination-page' | 'volume';
 export type ExportFormat = 'pdf' | 'docx' | 'amhs-text';
 export type DocumentCategory =
   | 'standard-letter'
