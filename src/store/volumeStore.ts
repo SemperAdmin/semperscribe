@@ -1,5 +1,9 @@
 import { create } from 'zustand';
 import { applyLevelChange } from './volumeLevels';
+import {
+  HISTORY_META, emptyStacks, recordStep,
+  type HistoryStacks, type VolumeFocusRequest, type VolumeFocusTarget,
+} from './volumeHistory';
 import type { Appendix, Block, Chapter, Figure, GlossaryEntry, Paragraph, SubPara, VolumeDoc } from '@/lib/schemas/volume-schema';
 
 type ChapterChangeRow = Chapter['changeLog'][number];
@@ -112,9 +116,37 @@ export function blankVolume(): VolumeDoc {
   };
 }
 
-interface VolumeState {
+/** Options for an edit made through `setDoc`. */
+export interface SetDocOptions {
+  /** Edits sharing a key within the coalescing window undo as one step (e.g. 'order.designator'). */
+  coalesceKey?: string;
+}
+
+/** Options for indent/outdent: which control of the node to refocus after it moves. */
+export interface LevelChangeOptions {
+  control?: string;
+}
+
+interface VolumeHistoryState {
+  canUndo: boolean;
+  canRedo: boolean;
+  /** Set by indent/outdent/undo/redo; ChapterTree focuses the named control after commit. */
+  focusRequest: VolumeFocusRequest | null;
+  undo: () => void;
+  redo: () => void;
+  clearHistory: () => void;
+  /**
+   * Replaces the whole document as a NEW document (import, template load):
+   * same normalization as setDoc, and the undo history is cleared. Edits
+   * use setDoc (recorded) instead.
+   */
+  loadDoc: (doc: VolumeDoc) => void;
+}
+
+interface VolumeActions {
   doc: VolumeDoc;
-  setDoc: (doc: VolumeDoc) => void;
+  /** Replaces the doc as an undoable edit (MetaPanel). Loading a different Volume is `loadDoc`. */
+  setDoc: (doc: VolumeDoc, opts?: SetDocOptions) => void;
   updateMeta: (patch: Partial<VolumeDoc['volume']>) => void;
   addChapter: () => void;
   addSection: (chapterIdx: number) => void;
@@ -127,9 +159,9 @@ interface VolumeState {
   moveNode: (path: VolumePath, dir: -1 | 1) => void;
   removeNode: (path: VolumePath) => void;
   /** One level deeper: becomes the last child of the previous sibling. No-op when blocked. */
-  indentNode: (path: VolumePath) => void;
+  indentNode: (path: VolumePath, opts?: LevelChangeOptions) => void;
   /** One level higher: becomes the next sibling of its parent. No-op when blocked. */
-  outdentNode: (path: VolumePath) => void;
+  outdentNode: (path: VolumePath, opts?: LevelChangeOptions) => void;
   // Finding 11: per-chapter change log rows (MetaPanel only ever handled
   // the volume-level changeLog, so a chapter's own change log - the
   // chapter-divider table's data source, layout.ts's layoutChapterDivider -
@@ -159,7 +191,78 @@ interface VolumeState {
   removeGlossaryRow: (appendixIdx: number, rowIdx: number) => void;
 }
 
-export const useVolumeStore = create<VolumeState>((set) => ({
+type VolumeState = VolumeActions & VolumeHistoryState;
+type SetState = (partial: Partial<VolumeState> | ((s: VolumeState) => Partial<VolumeState>)) => void;
+
+let focusNonce = 0;
+const focusRequestFor = (target: VolumeFocusTarget | null): VolumeFocusRequest | null =>
+  target ? { ...target, nonce: ++focusNonce } : null;
+
+/**
+ * The single history choke point: wraps every action listed in HISTORY_META
+ * so that a call which replaces `doc` records the previous doc as an undo
+ * step (see volumeHistory.ts for the coalescing rule), and adds
+ * undo/redo/clearHistory/loadDoc. Actions stay history-unaware.
+ */
+function withHistory(set: SetState, get: () => VolumeState, base: VolumeActions): VolumeState {
+  const history: HistoryStacks = emptyStacks();
+  const flags = () => ({ canUndo: history.past.length > 0, canRedo: history.future.length > 0 });
+  const syncFlags = () => {
+    const next = flags();
+    const s = get();
+    if (s.canUndo !== next.canUndo || s.canRedo !== next.canRedo) set(next);
+  };
+
+  const wrapped = { ...base } as Record<string, unknown>;
+  for (const [name, metaFor] of Object.entries(HISTORY_META)) {
+    const action = (base as unknown as Record<string, (...a: unknown[]) => void>)[name];
+    wrapped[name] = (...args: unknown[]) => {
+      const before = get().doc;
+      const requestBefore = get().focusRequest;
+      const meta = metaFor(args as never[], before);
+      action(...args);
+      const after = get();
+      if (after.doc === before) return; // no-op (blocked indent, move at an edge)
+      const request = after.focusRequest !== requestBefore ? after.focusRequest : null;
+      const focusAfter = request ? { path: request.path, control: request.control } : meta.focusAfter;
+      recordStep(history, before, meta, focusAfter, Date.now());
+      syncFlags();
+    };
+  }
+
+  const clearHistory = () => {
+    Object.assign(history, emptyStacks());
+    syncFlags();
+  };
+
+  return {
+    ...(wrapped as unknown as VolumeActions),
+    ...flags(),
+    focusRequest: null,
+    undo: () => {
+      const step = history.past.pop();
+      if (!step) return;
+      history.future.push({ ...step, doc: get().doc });
+      history.lastKey = null;
+      set({ doc: step.doc, focusRequest: focusRequestFor(step.focusBefore), ...flags() });
+    },
+    redo: () => {
+      const step = history.future.pop();
+      if (!step) return;
+      history.past.push({ ...step, doc: get().doc });
+      history.lastKey = null;
+      set({ doc: step.doc, focusRequest: focusRequestFor(step.focusAfter), ...flags() });
+    },
+    clearHistory,
+    loadDoc: (doc) => {
+      base.setDoc(doc); // the unwrapped setter: not recorded
+      set({ focusRequest: null });
+      clearHistory();
+    },
+  };
+}
+
+export const useVolumeStore = create<VolumeState>((set, get) => withHistory(set, get, {
   doc: blankVolume(),
   // Finding 6: import (useImportExport.ts) and template-load both hand a
   // whole doc straight to setDoc, bypassing the same renumbering every
@@ -243,17 +346,21 @@ export const useVolumeStore = create<VolumeState>((set) => ({
     normalizeNumbering(chapters);
     return { doc: { ...s.doc, chapters } };
   }),
-  indentNode: (path) => set((s) => {
+  // The moved node remounts at its new path (the tree is keyed by index), so
+  // ask the editor to refocus the same control there.
+  indentNode: (path, opts) => set((s) => {
     const chapters = structuredClone(s.doc.chapters);
-    if (!applyLevelChange(chapters, path, 'indent')) return s;
+    const moved = applyLevelChange(chapters, path, 'indent');
+    if (!moved) return s;
     normalizeNumbering(chapters);
-    return { doc: { ...s.doc, chapters } };
+    return { doc: { ...s.doc, chapters }, focusRequest: focusRequestFor({ path: moved, control: opts?.control ?? 'title' }) };
   }),
-  outdentNode: (path) => set((s) => {
+  outdentNode: (path, opts) => set((s) => {
     const chapters = structuredClone(s.doc.chapters);
-    if (!applyLevelChange(chapters, path, 'outdent')) return s;
+    const moved = applyLevelChange(chapters, path, 'outdent');
+    if (!moved) return s;
     normalizeNumbering(chapters);
-    return { doc: { ...s.doc, chapters } };
+    return { doc: { ...s.doc, chapters }, focusRequest: focusRequestFor({ path: moved, control: opts?.control ?? 'title' }) };
   }),
   addChapterChangeRow: (chapterIdx) => set((s) => {
     const chapters = structuredClone(s.doc.chapters);

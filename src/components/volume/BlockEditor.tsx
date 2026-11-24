@@ -10,6 +10,8 @@ interface BlockEditorProps {
   onChange: (block: Block) => void;
   /** Accessible label for the textarea, e.g. "010101. text". */
   label?: string;
+  /** data-volume-control on the textarea, so focus can be restored after undo/indent. */
+  control?: string;
 }
 
 /**
@@ -28,7 +30,7 @@ interface BlockEditorProps {
  * every run's text joined, so nothing is hidden) instead of a lossy,
  * writable single-run view.
  */
-export function BlockEditor({ block, onChange, label }: BlockEditorProps) {
+export function BlockEditor({ block, onChange, label, control }: BlockEditorProps) {
   const [linkOpen, setLinkOpen] = useState(false);
   const isMultiRun = block.runs.length > 1;
   const run: Run = block.runs[0] ?? { text: '' };
@@ -52,6 +54,7 @@ export function BlockEditor({ block, onChange, label }: BlockEditorProps) {
         <Textarea
           value={fullText}
           readOnly
+          data-volume-control={control}
           aria-label={label ?? 'Block text'}
           className="min-h-[60px] text-sm bg-muted/40 cursor-not-allowed"
         />
@@ -67,6 +70,7 @@ export function BlockEditor({ block, onChange, label }: BlockEditorProps) {
       <Textarea
         value={run.text}
         onChange={(e) => setText(e.target.value)}
+        data-volume-control={control}
         aria-label={label ?? 'Block text'}
         className="min-h-[60px] text-sm"
       />

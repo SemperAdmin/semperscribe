@@ -1,5 +1,6 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useVolumeStore, type VolumePath } from '@/store/volumeStore';
+import { volumePathKey, type VolumeFocusTarget } from '@/store/volumeHistory';
 import { sectionDesignator, paragraphDesignator, subParaDesignator } from '@/lib/volume/designators';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,33 @@ import type { Block, Chapter, Paragraph, Section, SubPara } from '@/lib/schemas/
 /** Appends `idx` to a path's `sub` array (or starts a new one). */
 function subPathFor(base: VolumePath, idx: number): VolumePath {
   return { ...base, sub: [...(base.sub ?? []), idx] };
+}
+
+/**
+ * Focus restoration. Tree nodes are keyed by index, so after indent/outdent
+ * (or undo/redo) the edited node can render in a different component
+ * instance and focus would be lost or land on whatever now sits at the old
+ * index. Each node carries `data-volume-path` and its controls carry
+ * `data-volume-control`; the store publishes a focusRequest and ChapterTree
+ * focuses the matching control after commit (falling back to the node's
+ * title when that control is gone or disabled).
+ */
+export function focusVolumeControl(root: HTMLElement | null, target: VolumeFocusTarget): boolean {
+  const node = root?.querySelector<HTMLElement>(`[data-volume-path="${volumePathKey(target.path)}"]`);
+  if (!node) return false;
+  const own = (control: string) => Array.from(node.querySelectorAll<HTMLElement>(`[data-volume-control="${control}"]`))
+    .find((el) => el.closest('[data-volume-path]') === node && !(el as HTMLButtonElement).disabled);
+  const el = own(target.control ?? 'title') ?? own('title');
+  if (!el) return false;
+  el.focus();
+  return true;
+}
+
+/** The data-volume-control of the focused element when it belongs to `node` itself. */
+function focusedControl(node: HTMLElement): string | undefined {
+  const active = document.activeElement as HTMLElement | null;
+  if (!active || active.closest('[data-volume-path]') !== node) return undefined;
+  return active.dataset.volumeControl;
 }
 
 /** Receives the polite live-region message after an indent/outdent. */
@@ -36,7 +64,7 @@ function MoveRemoveControls({
   const run = (dir: 'indent' | 'outdent') => {
     if (!level) return;
     const target = targetDesignator(chapters, level.path, dir);
-    (dir === 'indent' ? indentNode : outdentNode)(level.path);
+    (dir === 'indent' ? indentNode : outdentNode)(level.path, { control: dir });
     if (target) announce(`${level.designator} is now ${target}`);
   };
   return (
@@ -46,6 +74,7 @@ function MoveRemoveControls({
           <Button
             type="button" variant="ghost" size="sm" className="h-7 w-7 p-0"
             disabled={!outdentState.ok}
+            data-volume-control="outdent"
             title={outdentState.ok ? `Outdent to ${targetDesignator(chapters, level.path, 'outdent')}` : outdentState.reason}
             aria-label={`Outdent ${level.designator}${outdentState.ok ? ` to ${targetDesignator(chapters, level.path, 'outdent')}` : ''}`}
             onClick={() => run('outdent')}
@@ -55,6 +84,7 @@ function MoveRemoveControls({
           <Button
             type="button" variant="ghost" size="sm" className="h-7 w-7 p-0"
             disabled={!indentState.ok}
+            data-volume-control="indent"
             title={indentState.ok ? `Indent to ${targetDesignator(chapters, level.path, 'indent')}` : indentState.reason}
             aria-label={`Indent ${level.designator}${indentState.ok ? ` to ${targetDesignator(chapters, level.path, 'indent')}` : ''}`}
             onClick={() => run('indent')}
@@ -63,10 +93,10 @@ function MoveRemoveControls({
           </Button>
         </>
       ) : null}
-      <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Move up" aria-label="Move up" onClick={onUp}>
+      <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Move up" aria-label="Move up" data-volume-control="up" onClick={onUp}>
         <ChevronUp className="w-4 h-4" />
       </Button>
-      <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Move down" aria-label="Move down" onClick={onDown}>
+      <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Move down" aria-label="Move down" data-volume-control="down" onClick={onDown}>
         <ChevronDown className="w-4 h-4" />
       </Button>
       <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title={removeLabel} aria-label={removeLabel} onClick={onRemove}>
@@ -86,7 +116,7 @@ function useLevelKeys(path: VolumePath) {
     // Nested nodes sit inside their parent's wrapper; act only for the innermost.
     if ((e.target as HTMLElement).closest('[data-level-node]') !== e.currentTarget) return;
     e.preventDefault();
-    (e.key === 'ArrowRight' ? indentNode : outdentNode)(path);
+    (e.key === 'ArrowRight' ? indentNode : outdentNode)(path, { control: focusedControl(e.currentTarget) });
   };
 }
 
@@ -101,12 +131,13 @@ function SubParaNode({ node, path, index }: { node: SubPara; path: VolumePath; i
   const onLevelKey = useLevelKeys(path);
 
   return (
-    <div className="ml-4 border-l border-border pl-3 space-y-2 py-2" data-level-node onKeyDown={onLevelKey}>
+    <div className="ml-4 border-l border-border pl-3 space-y-2 py-2" data-level-node data-volume-path={volumePathKey(path)} onKeyDown={onLevelKey}>
       <div className="flex items-center gap-2">
         <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-secondary/40 whitespace-nowrap">{designator}</span>
         <Input
           value={node.title ?? ''}
           onChange={(e) => updateNodeTitle(path, e.target.value)}
+          data-volume-control="title"
           placeholder="Title (optional)"
           className="h-8 flex-1"
           aria-label={`${designator} title`}
@@ -126,6 +157,7 @@ function SubParaNode({ node, path, index }: { node: SubPara; path: VolumePath; i
           block={block}
           onChange={(b: Block) => updateBlock(path, bi, b)}
           label={`${designator} text`}
+          control={`block-${bi}`}
         />
       ))}
 
@@ -158,12 +190,13 @@ function ParagraphNode({ paragraph, path, index }: { paragraph: Paragraph; path:
   const onLevelKey = useLevelKeys(path);
 
   return (
-    <div className="ml-3 border-l-2 border-border pl-3 space-y-2 py-2" data-level-node onKeyDown={onLevelKey}>
+    <div className="ml-3 border-l-2 border-border pl-3 space-y-2 py-2" data-level-node data-volume-path={volumePathKey(path)} onKeyDown={onLevelKey}>
       <div className="flex items-center gap-2">
         <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-secondary/50 whitespace-nowrap">{designator}</span>
         <Input
           value={paragraph.title}
           onChange={(e) => updateNodeTitle(path, e.target.value)}
+          data-volume-control="title"
           placeholder="Paragraph title"
           className="h-8 flex-1"
           aria-label={`${designator} title`}
@@ -183,6 +216,7 @@ function ParagraphNode({ paragraph, path, index }: { paragraph: Paragraph; path:
           block={block}
           onChange={(b: Block) => updateBlock(path, bi, b)}
           label={`${designator} text`}
+          control={`block-${bi}`}
         />
       ))}
 
@@ -222,7 +256,7 @@ function SectionNode({ section, path, index }: { section: Section; path: VolumeP
   const body = section.body ?? [];
 
   return (
-    <div className="ml-2 border-l-2 border-primary/30 pl-3 space-y-2 py-2">
+    <div className="ml-2 border-l-2 border-primary/30 pl-3 space-y-2 py-2" data-volume-path={volumePathKey(path)}>
       <div className="flex items-center gap-2">
         <span className="font-mono text-sm font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary whitespace-nowrap">
           {designator}
@@ -230,6 +264,7 @@ function SectionNode({ section, path, index }: { section: Section; path: VolumeP
         <Input
           value={section.title}
           onChange={(e) => updateNodeTitle(path, e.target.value)}
+          data-volume-control="title"
           placeholder="Section title"
           className="h-8 flex-1"
           aria-label={`${designator} title`}
@@ -248,6 +283,7 @@ function SectionNode({ section, path, index }: { section: Section; path: VolumeP
           block={block}
           onChange={(b: Block) => updateBlock(path, bi, b)}
           label={`${designator} text`}
+          control={`block-${bi}`}
         />
       ))}
 
@@ -280,13 +316,14 @@ function ChapterNode({ chapter, chapterIdx }: { chapter: Chapter; chapterIdx: nu
   const addSection = useVolumeStore((s) => s.addSection);
 
   return (
-    <Card className="shadow-sm border-border border-l-4 border-l-primary">
+    <Card className="shadow-sm border-border border-l-4 border-l-primary" data-volume-path={volumePathKey(path)}>
       <CardHeader className="pb-3 bg-secondary text-secondary-foreground rounded-t-lg">
         <CardTitle as="h3" className="flex items-center gap-2 text-lg font-semibold">
           <span className="font-mono">Chapter {chapter.number}</span>
           <Input
             value={chapter.title}
             onChange={(e) => updateNodeTitle(path, e.target.value)}
+            data-volume-control="title"
             placeholder="Chapter title"
             className="h-8 flex-1 bg-background text-foreground"
             aria-label={`Chapter ${chapter.number} title`}
@@ -321,11 +358,21 @@ function ChapterNode({ chapter, chapterIdx }: { chapter: Chapter; chapterIdx: nu
 export function ChapterTree() {
   const chapters = useVolumeStore((s) => s.doc.chapters);
   const addChapter = useVolumeStore((s) => s.addChapter);
+  const focusRequest = useVolumeStore((s) => s.focusRequest);
   const [announcement, setAnnouncement] = React.useState('');
+  const rootRef = useRef<HTMLDivElement>(null);
+  // A request made before this tree mounted is stale; only act on new ones.
+  const handledNonce = useRef(focusRequest?.nonce);
+
+  useEffect(() => {
+    if (!focusRequest || focusRequest.nonce === handledNonce.current) return;
+    handledNonce.current = focusRequest.nonce;
+    focusVolumeControl(rootRef.current, focusRequest);
+  }, [focusRequest]);
 
   return (
     <LevelAnnounceContext.Provider value={setAnnouncement}>
-      <div className="space-y-4">
+      <div className="space-y-4" ref={rootRef}>
         {chapters.map((chapter, ci) => (
           <ChapterNode key={ci} chapter={chapter} chapterIdx={ci} />
         ))}

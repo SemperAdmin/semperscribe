@@ -48,7 +48,7 @@ export interface TemplatePackage {
      * the same way a live Volume document travels as `data.volume` in an
      * exported .nldp (see nldp-format.ts's NLDPData.volume and
      * useImportExport.ts's handleImport, which already reads this field
-     * and calls `useVolumeStore.getState().setDoc()` with it). Absent for
+     * and calls `useVolumeStore.getState().loadDoc()` with it). Absent for
      * every non-Volume template.
      */
     volume?: unknown;
