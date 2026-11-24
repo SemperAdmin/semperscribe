@@ -354,8 +354,19 @@ All date fields print **"(DDMMYY)"** on the form: blocks 7, 9a, 11, 12 and 15. B
   `homeport`, `orders`, `orders_dated`, `cert_date`, `cert_name`, `cert_title`, `cert_org`, `cert_sign`.
 - Signatures (`mbr_sign`, `cert_sign`) are plain text fields, not signature widgets.
 - Rendering follows the UPB / COLA pattern: fill the official AcroForm, preview it in-app, export it unflattened.
-- BLOCKER: the NOV 2006 edition is reportedly obsolete (section G). The field map must be rebuilt from the
-  DEC 2017 blank before build.
+- RESOLVED 2026-11-24: the owner supplied the DEC 2017 blank ("Updated 20241204"), confirming section G. The
+  NOV 2006 map above is historical. The build uses the DEC 2017 map in P1b.
+
+### P1b. DEC 2017 blank and field map (Phase 1, built)
+- Official file: static XFA / AcroForm hybrid, owner-password encrypted with an empty user password.
+  `tools/forms/prepare_dd1561.py` decrypts it and removes the AcroForm `/XFA` entry so every viewer uses the
+  AcroForm widgets. Output: `public/forms/dd-1561-blank.pdf`. pdf.js renders it as the full form.
+- 50 fields: 33 text, 14 checkboxes, 2 signature (`/Sig`), 1 reset button. `src/lib/dd1561-fields.ts` maps the 49
+  the app uses; `tests/dd1561-fields.test.ts` pins the map against the blank.
+- Renumbered vs NOV 2006: block 6 = mobilized departure date, block 7 = dependent address(es), block 15 =
+  certifying officer, block 16 = certified date. Block 3 and the 8f spouse field are DoD ID (EDIPI).
+- Quirks: block 5 types and the 8f / 8g was / was-not pairs are separate checkboxes, so the app enforces exactly
+  one per group. Block 7 text is auto-sized by the form, so the filler must set a fixed font size.
 
 ### P1a. Identifier rule - EDIPI, never SSN (owner decision 2026-11-24)
 - The app never collects, stores or prints an SSN for the DD 1561.
@@ -375,8 +386,8 @@ All date fields print **"(DDMMYY)"** on the form: blocks 7, 9a, 11, 12 and 15. B
 3. Type-specific dates with a live day counter implementing FMR 4.4.1 (inclusive count, constructive dates for
    leave/proceed, 31st day counted for qualification only, never paid; paid days use the 30-day month) and the 8g interim/redeployment rule (4.4.2). Shows "qualifies: N days > 30".
 4. Certifications 8a-8g as plain-language yes/no questions mapped to the boxes; 8f/8g reveal their follow-ups.
-5. Part II (certifying officer) prefilled from the orders data the clerk already entered; certifying officer
-   name, title, organization collected like the 10922 attesting official.
+5. Part II (certifying officer): the 15d signature is always left blank for whoever certifies the entitlement
+   (owner decision 2026-11-24). The 9b member signature is also a blank `/Sig` field.
 6. Output: filled DD 1561 (unflattened), dates in the form's DDMMYY order.
 
 ### P3. Validation the app can enforce
@@ -389,9 +400,20 @@ All date fields print **"(DDMMYY)"** on the form: blocks 7, 9a, 11, 12 and 15. B
   FSA-S and FSA-T 30 days).
 
 ### P4. Decisions needed from the owner
-1. Obtain the DEC 2017 DD 1561 blank (esd.whs.mil, blocked in this environment) and confirm it replaces NOV 2006.
+1. ~~DEC 2017 blank~~ DONE 2026-11-24 (P1b).
 2. ~~SSN handling~~ DECIDED 2026-11-24: 10-digit EDIPI for member and spouse, never SSN (P1a).
-3. Show an estimated FSA amount ($300/month, $10/day per MARADMIN 150/26 [WS]) or only eligibility and day counts?
-4. Who signs Part II in the Marine Corps (CO, By Direction, IPAC certifying officer) and whether the app prefills it.
+3. ~~FSA amount~~ DECIDED 2026-11-24: no dollar amount anywhere. The app shows eligibility and qualifying day counts only; the form has no amount block.
+4. Part II signature: DECIDED 2026-11-24, left blank for the certifier. Still open: whether the app prefills Part II typed fields (blocks 10-15c) or leaves them for the certifier.
 5. Allow the network hosts in section 0 so the [WS] facts can be verified from primary pages.
 6. Correct the "commences on the 31st day" statement found on semper-admin-portal.app.cloud.gov (H4).
+
+## Q. Build phases
+
+| Phase | Scope | Status |
+|---|---|---|
+| 0 | Research and spec (this document) | Done |
+| 1 | DEC 2017 blank prepared, field map, map tests (P1b) | Done |
+| 2 | Rules engine, pure and tested: eligibility and disqualifiers (section C), type selection, the FMR 4.4.1 / 4.4.2 / 4.4.3 day counter (qualifying days only, no amount), EDIPI and DDMMYY formatting, field validators. Every FMR worked example becomes a test. | Next |
+| 3 | Guided UI: eligibility screen, situation-based type choice, type-specific dates with live day count, 8a-8g as plain questions, Part II typed fields; sidebar, guidance and template registration. | Needs decision 4 (Part II prefill) |
+| 4 | Fill and export on the AcroForm (UPB / COLA pattern): live preview, unflattened export, both signatures blank, PII scan, FSA-T continuation page past 3 rows, fixed font sizes. | After 1-3 |
+| 5 | Verification: render checks, axe and smoke e2e, sample filled form for owner review, spec re-audit; verify [WS] facts against primary sources. | After 4 |
