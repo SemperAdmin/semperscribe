@@ -16,6 +16,17 @@ import { aaFormUsesOfficialForm } from '@/lib/official-form-route';
  */
 export type PreviewKind = 'pdf' | 'official-xfa';
 
+/**
+ * Official AcroForms whose PDF is the record as filled: the signature-field
+ * pass and the enclosure merge are skipped for them, in the preview and in
+ * the export (useDocumentExport.ts). They have no signature-field or
+ * enclosure editor, so any rows are left over from a type switch, and their
+ * signature blocks are the form's own /Sig fields (NAVMC 11106; DD 1561
+ * blocks 9b and 15d). The DD 1561's only attachment, the block 10
+ * continuation page, is part of its fill.
+ */
+export const SKIPS_LETTER_PASSES: ReadonlySet<string> = new Set(['navmc11106', 'dd1561']);
+
 /** E.3: the bytes of the letter a same-page endorsement is added to, or null. */
 export type SamePageHostResolver = () => Promise<Uint8Array | null>;
 
@@ -98,8 +109,9 @@ export function useLivePreview(
   // box ready). Annotation-only (S1), so layout and pagination are
   // untouched.
   const applySignatureFields = useCallback(async (blob: Blob): Promise<Blob> => {
-    // Left over from a type switch; the NAVMC 11106 has no signature-field editor.
-    if (formData.documentType === 'navmc11106') return blob;
+    // Left over from a type switch; the NAVMC 11106 and DD 1561 have no
+    // signature-field editor and carry their own /Sig fields.
+    if (SKIPS_LETTER_PASSES.has(formData.documentType)) return blob;
     const fields = (formData.signatureFields as SignaturePosition[] | undefined) ?? [];
     if (fields.length === 0) return blob;
     const { addMultipleSignatureFields } = await import('@/lib/pdf-signature-field');
@@ -155,7 +167,7 @@ export function useLivePreview(
       // ENC: merge bound enclosure files behind the letter - the SAME
       // order and options as export (signature fields first, merge
       // after), so the preview IS the export.
-      if (formData.documentType !== 'navmc11106' && enclosureRows && enclosureFiles) {
+      if (!SKIPS_LETTER_PASSES.has(formData.documentType) && enclosureRows && enclosureFiles) {
         const { mergeAttachmentsIntoPdf, computeMergeItems } = await import('@/lib/enclosure-attachments');
         const startingNumber = parseInt(formData.startingEnclosureNumber || '1', 10);
         const items = computeMergeItems(enclosureRows, enclosureFiles, startingNumber);

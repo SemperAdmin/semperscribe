@@ -6,7 +6,7 @@ import type { ValidationIssue } from '@/lib/letter-validators';
 import { getExportFilename, mergeAdminSubsections } from '@/lib/naval-format-utils';
 import { generatePdfForDocType } from '@/services/export/pdfPipelineService';
 import { downloadDocument } from '@/services/export/index';
-import { resolveSamePageRender, type DocumentDataSlices, type SamePageHostResolver } from './useLivePreview';
+import { resolveSamePageRender, SKIPS_LETTER_PASSES, type DocumentDataSlices, type SamePageHostResolver } from './useLivePreview';
 import { isSamePageEndorsement } from '@/lib/same-page-endorsement';
 import type { EnclosureAttachment, EnclosureRow } from '@/lib/enclosure-rows';
 import { getClassification, bannerText } from '@/lib/classification';
@@ -214,7 +214,8 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
           });
           // A type switch keeps formData.signatureFields while the NAVMC 11106's
           // editors are hidden. Its signature blocks are the form's own.
-          blob = formData.documentType === 'navmc11106' ? rendered : await applySignatureFields(rendered);
+          // The DD 1561 likewise: blocks 9b and 15d are its own /Sig fields.
+          blob = SKIPS_LETTER_PASSES.has(formData.documentType) ? rendered : await applySignatureFields(rendered);
         }
       } else {
         // E.5 in Word. Written from scratch, the two halves go into one
@@ -250,7 +251,7 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
       // ENC: merge bound enclosure files into the export (PDF only; the
       // panel states DOCX exports exclude them). Numbers derive from
       // row position - computeMergeItems is the single source.
-      if (format === 'pdf' && formData.documentType !== 'navmc11106' && enclosureRows && enclosureFiles) {
+      if (format === 'pdf' && !SKIPS_LETTER_PASSES.has(formData.documentType) && enclosureRows && enclosureFiles) {
         const { mergeAttachmentsIntoPdf, computeMergeItems } = await import('@/lib/enclosure-attachments');
         const startingNumber = parseInt(formData.startingEnclosureNumber || '1', 10);
         const items = computeMergeItems(enclosureRows, enclosureFiles, startingNumber);
@@ -335,12 +336,28 @@ export function useDocumentExport({ data, applySignatureFields, enclosureRows, e
             + 'OMPF Field Folder and keep a local copy (MARADMIN 015/20 par 4.b.3).',
         });
       }
+      if (format === 'pdf' && formData.documentType === 'dd1561') {
+        const { dd1561ContinuationRows } = await import('@/lib/dd1561-export');
+        const extra = dd1561ContinuationRows(formData).length;
+        toast?.({
+          title: 'Official Form Exported',
+          description:
+            'This is the fillable DD 1561, still editable in any PDF viewer (Adobe, Edge, Chrome). Both '
+            + 'signature blocks are left blank for a CAC signature: the member signs 9b and the certifying '
+            + 'official signs 15d.'
+            + (extra > 0
+              ? ` Block 10 holds three rows, so a continuation page with the other ${extra} `
+                + `row${extra === 1 ? '' : 's'} is attached behind the form.`
+              : ''),
+        });
+      }
     } catch (error) {
       console.error(`Error generating ${format.toUpperCase()}:`, error);
       toast?.({
         title: `${format.toUpperCase()} export failed`,
         description:
-          (formData.documentType === 'navmc10132' || formData.documentType === 'navmc11106') && error instanceof Error && error.message
+          (formData.documentType === 'navmc10132' || formData.documentType === 'navmc11106' || formData.documentType === 'dd1561')
+            && error instanceof Error && error.message
             ? `Nothing was downloaded. ${error.message}`
             : 'The document did not render. The browser console carries the detail.',
       });
