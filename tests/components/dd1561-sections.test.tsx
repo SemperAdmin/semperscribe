@@ -232,6 +232,18 @@ describe('Dd1561FormSections', () => {
     expect(screen.getByDisplayValue('OFFICIAL, SAMPLE C')).toBeInTheDocument();
   });
 
+  it.each([['T'], ['S'], ['R']])('describes every date field for FSA-%s (where the date comes from)', (t) => {
+    const base = t === 'T' ? FSA_T : t === 'S' ? FSA_S : { ...FSA_T, dd1561FsaType: 'R' };
+    render(<Harness initial={{ ...base, dd1561Mobilized: true, dd1561LastTdyWithin30: 'was', dd1561CertifierName: 'OFFICIAL, SAMPLE C' }} />);
+    const dateButtons = document.querySelectorAll('button[aria-labelledby]');
+    expect(dateButtons.length).toBeGreaterThan(3);
+    for (const b of Array.from(dateButtons)) {
+      const ids = (b.getAttribute('aria-describedby') ?? '').split(' ').filter(Boolean);
+      const text = ids.map((id) => document.getElementById(id)?.textContent ?? '').join(' ').trim();
+      expect(text.length, `date field ${b.id} has no description`).toBeGreaterThan(20);
+    }
+  });
+
   it('keeps the certifying official optional, collapsed, and out of the export blockers', () => {
     render(<Harness initial={FSA_T} />);
     const toggle = screen.getByRole('button', { name: /Certifying official \(optional, can be left for the certifier\)/ });

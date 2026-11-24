@@ -485,6 +485,7 @@ function QualifyStep({ formData, set }: StepProps) {
         <YesNoQuestion
           name="dd1561DependentOnActiveDuty"
           legend="Is any dependent other than your spouse on active duty?"
+          hint="A dependent who draws active-duty basic pay is not counted for FSA. Your other dependents still count."
           value={yesNo(formData, 'dd1561DependentOnActiveDuty')}
           onChange={(v) => set('dd1561DependentOnActiveDuty', v)}
         />
@@ -568,6 +569,7 @@ function QualifyStep({ formData, set }: StepProps) {
           <DateField
             name="dd1561MobilizedDepartureDate"
             label="6. Date you left home for the unit home station"
+            hint="Reserve members only. The day you left your home of residence to report to your unit's home station on your mobilization orders."
             value={text(formData, 'dd1561MobilizedDepartureDate')}
             onChange={(v) => set('dd1561MobilizedDepartureDate', v)}
           />
@@ -767,8 +769,24 @@ function FsaTRows({ formData, set }: StepProps) {
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <TextField name={id('location')} label={`Row ${n} location`} value={r.location} onChange={(v) => patch(i, { location: v })} placeholder="CITY, STATE" className="sm:col-span-2" />
-                <DateField name={id('from')} label={`Row ${n} from`} value={r.from} onChange={(v) => patch(i, { from: v })} />
-                <DateField name={id('to')} label={`Row ${n} to`} value={r.to} onChange={(v) => patch(i, { to: v })} />
+                <DateField
+                  name={id('from')}
+                  label={`Row ${n} from`}
+                  hint={i === 0
+                    ? 'The day you actually left your permanent duty station for the TDY, from your endorsed orders or travel voucher. Enter it as it happened; leave and travel are applied below.'
+                    : 'The day you started at this location, for example the day you arrived after moving from the previous TDY site.'}
+                  value={r.from}
+                  onChange={(v) => patch(i, { from: v })}
+                />
+                <DateField
+                  name={id('to')}
+                  label={`Row ${n} to`}
+                  hint={i === rows.length - 1
+                    ? 'The day you actually got back to your permanent duty station, from your endorsed orders or travel voucher.'
+                    : 'The last day at this location before moving to the next one.'}
+                  value={r.to}
+                  onChange={(v) => patch(i, { to: v })}
+                />
               </div>
               {i > 0 && (
                 <CheckField
@@ -799,20 +817,21 @@ function FsaTRows({ formData, set }: StepProps) {
         <CountField
           name="dd1561FsaTLeaveBeforeDays"
           label="Days of leave or proceed time before traveling to the TDY"
-          hint="Days used after you left your duty station and before you started travel."
+          hint="Leave, proceed or permissive days you used after checking out of your duty station and before you started travel to the TDY. Those days come off the start of the count."
           value={formData.dd1561FsaTLeaveBeforeDays}
           onChange={(n) => set('dd1561FsaTLeaveBeforeDays', n)}
         />
         <CountField
           name="dd1561FsaTLeaveAfterDays"
           label="Days of leave before getting back to your duty station"
+          hint="Leave you took after the TDY ended and before you reported back. Those days come off the end of the count."
           value={formData.dd1561FsaTLeaveAfterDays}
           onChange={(n) => set('dd1561FsaTLeaveAfterDays', n)}
         />
         <DateField
           name="dd1561FsaTFirstTravelDate"
           label="First day of authorized travel (optional)"
-          hint="Only if your orders name one. The count never starts before it."
+          hint="Only if your orders say travel may not begin before a certain date. The count never starts before it. Leave empty if your orders do not say."
           value={text(formData, 'dd1561FsaTFirstTravelDate')}
           onChange={(v) => set('dd1561FsaTFirstTravelDate', v)}
         />
@@ -903,11 +922,23 @@ function FsaSSegments({ formData, set }: StepProps) {
                   </Select>
                 </Field>
                 <TextField name={id('ship')} label={`Stretch ${n} ship or unit`} value={s.shipUnit ?? ''} onChange={(v) => patch(i, { shipUnit: v })} />
-                <DateField name={id('from')} label={`Stretch ${n} from`} value={s.from} onChange={(v) => patch(i, { from: v })} />
+                <DateField
+                  name={id('from')}
+                  label={`Stretch ${n} from`}
+                  hint="The day the ship left homeport with you aboard, or the day you joined the ship if it was already away from homeport."
+                  value={s.from}
+                  onChange={(v) => patch(i, { from: v })}
+                />
                 {open ? (
                   <p className="self-end pb-2 text-sm text-muted-foreground">No return date: still deployed.</p>
                 ) : (
-                  <DateField name={id('to')} label={`Stretch ${n} to`} value={s.to} onChange={(v) => patch(i, { to: v })} />
+                  <DateField
+                    name={id('to')}
+                    label={`Stretch ${n} to`}
+                    hint="The day the ship returned to homeport, or the day you were detached from the ship."
+                    value={s.to}
+                    onChange={(v) => patch(i, { to: v })}
+                  />
                 )}
               </div>
               <CheckField
@@ -938,17 +969,17 @@ function FsaRDetails({ formData, set }: StepProps) {
       <p className="text-sm font-medium">Block 11. Your PCS</p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <TextField name="dd1561FsaRLastPds" label="Last permanent duty station" value={text(formData, 'dd1561FsaRLastPds')} onChange={(v) => set('dd1561FsaRLastPds', v)} placeholder="CAMP SAMPLE, NC" />
-        <DateField name="dd1561FsaRDetachDate" label="Date you departed (detached)" value={text(formData, 'dd1561FsaRDetachDate')} onChange={(v) => set('dd1561FsaRDetachDate', v)} />
-        <DateField name="dd1561FsaRLeaveFrom" label="Leave en route, from" value={text(formData, 'dd1561FsaRLeaveFrom')} onChange={(v) => set('dd1561FsaRLeaveFrom', v)} />
-        <DateField name="dd1561FsaRLeaveTo" label="Leave en route, to" value={text(formData, 'dd1561FsaRLeaveTo')} onChange={(v) => set('dd1561FsaRLeaveTo', v)} />
-        <DateField name="dd1561FsaRProceedFrom" label="Proceed time, from" value={text(formData, 'dd1561FsaRProceedFrom')} onChange={(v) => set('dd1561FsaRProceedFrom', v)} />
-        <DateField name="dd1561FsaRProceedTo" label="Proceed time, to" value={text(formData, 'dd1561FsaRProceedTo')} onChange={(v) => set('dd1561FsaRProceedTo', v)} />
+        <DateField name="dd1561FsaRDetachDate" label="Date you departed (detached)" hint="The day you checked out of your last duty station, from the detaching endorsement on your PCS orders." value={text(formData, 'dd1561FsaRDetachDate')} onChange={(v) => set('dd1561FsaRDetachDate', v)} />
+        <DateField name="dd1561FsaRLeaveFrom" label="Leave en route, from" hint="First day of leave taken on the way to the new station, from your orders endorsements or leave record. Leave empty if you took none." value={text(formData, 'dd1561FsaRLeaveFrom')} onChange={(v) => set('dd1561FsaRLeaveFrom', v)} />
+        <DateField name="dd1561FsaRLeaveTo" label="Leave en route, to" hint="Last day of that leave." value={text(formData, 'dd1561FsaRLeaveTo')} onChange={(v) => set('dd1561FsaRLeaveTo', v)} />
+        <DateField name="dd1561FsaRProceedFrom" label="Proceed time, from" hint="First day of proceed time authorized on your orders. Leave empty if you used none." value={text(formData, 'dd1561FsaRProceedFrom')} onChange={(v) => set('dd1561FsaRProceedFrom', v)} />
+        <DateField name="dd1561FsaRProceedTo" label="Proceed time, to" hint="Last day of proceed time." value={text(formData, 'dd1561FsaRProceedTo')} onChange={(v) => set('dd1561FsaRProceedTo', v)} />
         <TextField name="dd1561FsaRNewPds" label="New permanent duty station" value={text(formData, 'dd1561FsaRNewPds')} onChange={(v) => set('dd1561FsaRNewPds', v)} placeholder="CAMP SAMPLE, JAPAN" />
-        <DateField name="dd1561FsaRReportDate" label="Date you reported" value={text(formData, 'dd1561FsaRReportDate')} onChange={(v) => set('dd1561FsaRReportDate', v)} />
+        <DateField name="dd1561FsaRReportDate" label="Date you reported" hint="The day you checked in at the new duty station, from the reporting endorsement on your orders." value={text(formData, 'dd1561FsaRReportDate')} onChange={(v) => set('dd1561FsaRReportDate', v)} />
         <DateField
           name="dd1561FsaRFirstTravelDate"
           label="First day of authorized travel (optional)"
-          hint="Only if your orders name one. FSA-R never starts before it."
+          hint="Only if your orders say travel may not begin before a certain date. FSA-R never starts before it. Leave empty if your orders do not say."
           value={text(formData, 'dd1561FsaRFirstTravelDate')}
           onChange={(v) => set('dd1561FsaRFirstTravelDate', v)}
         />
@@ -998,8 +1029,8 @@ function RedeploymentQuestion({ formData, set, count }: StepProps & { count: Dd1
             onChange={(v) => set('dd1561PriorPeriodType', v)}
           />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <DateField name="dd1561PriorPeriodFrom" label="Earlier period, first counted day" value={text(formData, 'dd1561PriorPeriodFrom')} onChange={(v) => set('dd1561PriorPeriodFrom', v)} />
-            <DateField name="dd1561PriorPeriodTo" label="Earlier period, day you got back" value={text(formData, 'dd1561PriorPeriodTo')} onChange={(v) => set('dd1561PriorPeriodTo', v)} />
+            <DateField name="dd1561PriorPeriodFrom" label="Earlier period, first counted day" hint="The day you left your duty station (or homeport) for the earlier TDY or deployment, after any leave or proceed days." value={text(formData, 'dd1561PriorPeriodFrom')} onChange={(v) => set('dd1561PriorPeriodFrom', v)} />
+            <DateField name="dd1561PriorPeriodTo" label="Earlier period, day you got back" hint="The day you returned to your duty station (or the ship returned to homeport) from that earlier period." value={text(formData, 'dd1561PriorPeriodTo')} onChange={(v) => set('dd1561PriorPeriodTo', v)} />
           </div>
           <div role="status" aria-live="polite" className="text-sm" data-testid="dd1561-redeployment">
             {r?.evaluated ? (
@@ -1218,7 +1249,7 @@ function CertificationStep({ formData, set }: StepProps) {
         <DateField
           name="dd1561MemberSignedDate"
           label="9a. Date you sign (optional)"
-          hint="Leave it empty to date the form when you sign it."
+          hint="The day you sign block 9b. Leave it empty to write the date by hand when you sign."
           value={text(formData, 'dd1561MemberSignedDate')}
           onChange={(v) => set('dd1561MemberSignedDate', v)}
         />
@@ -1258,6 +1289,7 @@ function OrdersStep({ formData, set }: StepProps) {
         <DateField
           name="dd1561OrdersDate"
           label="13. Date of the orders"
+          hint="The date printed on the orders themselves (the issue date), not the date you left or reported."
           value={text(formData, 'dd1561OrdersDate')}
           onChange={(v) => set('dd1561OrdersDate', v)}
         />
@@ -1290,7 +1322,7 @@ function OrdersStep({ formData, set }: StepProps) {
               <TextField name="dd1561CertifierName" label="15a. Typed name" value={text(formData, 'dd1561CertifierName')} onChange={(v) => set('dd1561CertifierName', v)} />
               <TextField name="dd1561CertifierTitle" label="15b. Title" value={text(formData, 'dd1561CertifierTitle')} onChange={(v) => set('dd1561CertifierTitle', v)} />
               <TextField name="dd1561CertifierOrganization" label="15c. Organization" value={text(formData, 'dd1561CertifierOrganization')} onChange={(v) => set('dd1561CertifierOrganization', v)} />
-              <DateField name="dd1561CertifiedDate" label="16. Date certified" value={text(formData, 'dd1561CertifiedDate')} onChange={(v) => set('dd1561CertifiedDate', v)} />
+              <DateField name="dd1561CertifiedDate" label="16. Date certified" hint="The day the certifying official signs block 15d. Usually left for the certifier." value={text(formData, 'dd1561CertifiedDate')} onChange={(v) => set('dd1561CertifiedDate', v)} />
             </div>
           </div>
         )}
