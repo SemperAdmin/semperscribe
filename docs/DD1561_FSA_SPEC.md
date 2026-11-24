@@ -424,3 +424,13 @@ All date fields print **"(DDMMYY)"** on the form: blocks 7, 9a, 11, 12 and 15. B
 2. SSN refusal on export stays strict: dashed, spaced, and nine bare digits not part of a longer number.
 3. Orders: manual entry first, with a plain-language description on every date field saying which date it is and
    where to find it. Uploading orders is a later phase.
+
+## S. Married en route (owner decisions, 2026-11-24)
+Research: docs/DD1561_MARRIED_EN_ROUTE.md.
+1. Step-1 wording fixed now: answer for the period claimed and include dependents gained after the orders were
+   issued (Table 27-1 rules 8-13), with the note 5 CONUS exception. The old wording ("answer for the day you
+   received the orders") turned away Marines who married after the orders.
+2. Married-en-route rules are NOT built until the governing policy is confirmed from primary sources: JTR Ch 5
+   (dependents acquired after the effective date of orders), JTR Appendix A (Effective Date of PCS Order), MCO
+   1300.8 ch 6. Table 27-1 notes 4 and 5 are verified verbatim.
+3. Effective date follows policy only (JTR Appendix A, quoted in Table 27-1 note 4), not local IPAC practice.

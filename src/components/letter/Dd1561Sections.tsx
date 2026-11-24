@@ -427,7 +427,7 @@ function QualifyStep({ formData, set }: StepProps) {
     <SectionCard
       icon={<Users className="mr-2 h-5 w-5" aria-hidden="true" />}
       title="1. Do you qualify?"
-      intro="FSA is for a Marine with dependents, or married to another service member, whose orders keep the family apart. Answer for the day you received the orders."
+      intro="FSA is for a Marine with dependents, or married to another service member, whose orders keep the family apart. Answer for the period you are claiming. If you married or gained a dependent after your orders were issued, include them: FSA can start on the date you gained the dependent (DoD FMR Vol 7A Ch 27, Table 27-1). Exception: a dependent gained during a PCS within the United States, before the date you had to start travel, is entitled to travel with you, so FSA-R does not apply (Table 27-1 note 5). The certifying official confirms the start date."
       testId="dd1561-step-qualify"
     >
       <ChoiceQuestion

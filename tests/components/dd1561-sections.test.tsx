@@ -244,6 +244,13 @@ describe('Dd1561FormSections', () => {
     }
   });
 
+  it('tells a Marine who married after the orders to include the new dependent (FMR Table 27-1)', () => {
+    render(<Harness initial={FSA_T} />);
+    expect(screen.queryByText(/Answer for the day you received the orders/)).toBeNull();
+    expect(screen.getByText(/If you married or gained a dependent after your orders were issued, include them/)).toBeInTheDocument();
+    expect(screen.getByText(/Table 27-1 note 5/)).toBeInTheDocument();
+  });
+
   it('keeps the certifying official optional, collapsed, and out of the export blockers', () => {
     render(<Harness initial={FSA_T} />);
     const toggle = screen.getByRole('button', { name: /Certifying official \(optional, can be left for the certifier\)/ });
