@@ -434,3 +434,8 @@ Research: docs/DD1561_MARRIED_EN_ROUTE.md.
    (dependents acquired after the effective date of orders), JTR Appendix A (Effective Date of PCS Order), MCO
    1300.8 ch 6. Table 27-1 notes 4 and 5 are verified verbatim.
 3. Effective date follows policy only (JTR Appendix A, quoted in Table 27-1 note 4), not local IPAC practice.
+4. HOLD (owner decision, 2026-11-24): the married-en-route rules are not built until HQMC answers the three questions
+   in docs/DD1561_MARRIED_EN_ROUTE.md section V3: (1) whether a Marine single at orders who does not request tour
+   conversion is "electing" unaccompanied (no FSA-R) or "not authorized" an accompanied tour (FSA-R); (2) FSA-R between
+   the effective date and the CMC conversion decision; (3) the FSA-R start when sponsorship is denied after arrival.
+   Verified so far against FMR Vol 7A Ch 27, MCO 1300.8 Admin CH-2 and the JTR (1 Nov 2026).
