@@ -1,0 +1,102 @@
+{
+  "metadata": {
+    "packageId": "nldp_1795000000002_dd1561_fsa_r_okinawa",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-11-24T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "DD 1561 - FSA-R, Unaccompanied PCS to Okinawa",
+      "description": "FSA-R for a married sergeant with a child ordered PCS to Okinawa where dependent travel is not authorized (command sponsorship denied): detached 1 Jun 26 with 10 days of leave and 4 days of proceed time, so FSA-R starts 15 Jun 26 (DoD FMR Vol 7A Ch 27 par 2.3.1.1.1, 4.1.1.1; Table 27-1 rule 2). Sample data - replace before use.",
+      "subject": "",
+      "documentType": "dd1561",
+      "tags": [
+        "template",
+        "forms",
+        "dd1561"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "dd1561",
+      "dd1561MemberName": "SAMPLE, MARINE A",
+      "dd1561Grade": "SGT",
+      "dd1561Edipi": "1234567890",
+      "dd1561BranchOrganization": "USMC, TRAINING DEMO COMMAND",
+      "dd1561FsaType": "R",
+      "dd1561Mobilized": false,
+      "dd1561MobilizedDepartureDate": "",
+      "dd1561DependentAddresses": "100 SAMPLE STREET, JACKSONVILLE, NC 28540",
+      "dd1561MaritalStatus": "married",
+      "dd1561HasChildren": true,
+      "dd1561ChildCustody": "member",
+      "dd1561ClaimsParent": false,
+      "dd1561DependentOnActiveDuty": false,
+      "dd1561SoleDependentInstitutionalized": false,
+      "dd1561AllDependentsNear": false,
+      "dd1561DualMilitary": false,
+      "dd1561SpouseEdipi": "",
+      "dd1561SpouseBranchComponent": "",
+      "dd1561SpouseResidingTogether": "",
+      "dd1561PermissiveOrders": false,
+      "dd1561LastTdyWithin30": "",
+      "dd1561PriorPeriodType": "",
+      "dd1561PriorPeriodFrom": "",
+      "dd1561PriorPeriodTo": "",
+      "dd1561MemberSignedDate": "",
+      "dd1561FsaTRows": [
+        {
+          "location": "MCAGCC TWENTYNINE PALMS, CA",
+          "from": "2026-05-25",
+          "to": "2026-06-30",
+          "interruptedBefore": false
+        }
+      ],
+      "dd1561FsaTLeaveBeforeDays": 0,
+      "dd1561FsaTLeaveAfterDays": 0,
+      "dd1561FsaTFirstTravelDate": "",
+      "dd1561FsaRLastPds": "MCB CAMP LEJEUNE, NC",
+      "dd1561FsaRDetachDate": "2026-06-01",
+      "dd1561FsaRLeaveFrom": "2026-06-02",
+      "dd1561FsaRLeaveTo": "2026-06-11",
+      "dd1561FsaRProceedFrom": "2026-06-12",
+      "dd1561FsaRProceedTo": "2026-06-15",
+      "dd1561FsaRFirstTravelDate": "",
+      "dd1561FsaRNewPds": "MCB CAMP BUTLER, OKINAWA, JA",
+      "dd1561FsaRReportDate": "2026-06-17",
+      "dd1561FsaSSegments": [
+        {
+          "status": "away",
+          "from": "",
+          "to": "",
+          "shipUnit": ""
+        }
+      ],
+      "dd1561FsaSShipUnit": "",
+      "dd1561FsaSHomeport": "",
+      "dd1561OrdersAuthority": "PCS ORDERS 0101-26",
+      "dd1561OrdersDate": "2026-04-10",
+      "dd1561BahWithDependentsConfirmed": true,
+      "dd1561CertifierName": "",
+      "dd1561CertifierTitle": "",
+      "dd1561CertifierOrganization": "",
+      "dd1561CertifiedDate": "",
+      "dd1561FsaRTransportAuthorized": false,
+      "dd1561FsaRElectedUnaccompanied": false,
+      "dd1561FsaRCertifiedMedical": false,
+      "dd1561FsaRSecretarialWaiver": false
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}

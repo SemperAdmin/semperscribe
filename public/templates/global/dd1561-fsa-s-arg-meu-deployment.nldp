@@ -1,0 +1,98 @@
+{
+  "metadata": {
+    "packageId": "nldp_1795000000003_dd1561_fsa_s_arg_meu",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-11-24T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "DD 1561 - FSA-S, ARG/MEU Ship Deployment",
+      "description": "FSA-S for a married sergeant with a child embarked with an ARG/MEU: away from homeport 2 Mar to 20 May 26, 80 qualifying days; the period qualifies on its 31st day (1 Apr 26) and credit counts back to 2 Mar 26, not from day 31 (DoD FMR Vol 7A Ch 27 par 2.3.1.2, 4.4.3). Sample data - replace before use.",
+      "subject": "",
+      "documentType": "dd1561",
+      "tags": [
+        "template",
+        "forms",
+        "dd1561"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "dd1561",
+      "dd1561MemberName": "SAMPLE, MARINE A",
+      "dd1561Grade": "SGT",
+      "dd1561Edipi": "1234567890",
+      "dd1561BranchOrganization": "USMC, TRAINING DEMO COMMAND",
+      "dd1561FsaType": "S",
+      "dd1561Mobilized": false,
+      "dd1561MobilizedDepartureDate": "",
+      "dd1561DependentAddresses": "100 SAMPLE STREET, SAN DIEGO, CA 92101",
+      "dd1561MaritalStatus": "married",
+      "dd1561HasChildren": true,
+      "dd1561ChildCustody": "member",
+      "dd1561ClaimsParent": false,
+      "dd1561DependentOnActiveDuty": false,
+      "dd1561SoleDependentInstitutionalized": false,
+      "dd1561AllDependentsNear": false,
+      "dd1561DualMilitary": false,
+      "dd1561SpouseEdipi": "",
+      "dd1561SpouseBranchComponent": "",
+      "dd1561SpouseResidingTogether": "",
+      "dd1561PermissiveOrders": false,
+      "dd1561LastTdyWithin30": "was-not",
+      "dd1561PriorPeriodType": "",
+      "dd1561PriorPeriodFrom": "",
+      "dd1561PriorPeriodTo": "",
+      "dd1561MemberSignedDate": "",
+      "dd1561FsaTRows": [
+        {
+          "location": "MCAGCC TWENTYNINE PALMS, CA",
+          "from": "2026-05-25",
+          "to": "2026-06-30",
+          "interruptedBefore": false
+        }
+      ],
+      "dd1561FsaTLeaveBeforeDays": 0,
+      "dd1561FsaTLeaveAfterDays": 0,
+      "dd1561FsaTFirstTravelDate": "",
+      "dd1561FsaRLastPds": "",
+      "dd1561FsaRDetachDate": "",
+      "dd1561FsaRLeaveFrom": "",
+      "dd1561FsaRLeaveTo": "",
+      "dd1561FsaRProceedFrom": "",
+      "dd1561FsaRProceedTo": "",
+      "dd1561FsaRFirstTravelDate": "",
+      "dd1561FsaRNewPds": "",
+      "dd1561FsaRReportDate": "",
+      "dd1561FsaSSegments": [
+        {
+          "status": "away",
+          "from": "2026-03-02",
+          "to": "2026-05-20",
+          "shipUnit": "USS SAMPLE (LHD 0) / SAMPLE MEU"
+        }
+      ],
+      "dd1561FsaSShipUnit": "USS SAMPLE (LHD 0) / SAMPLE MEU",
+      "dd1561FsaSHomeport": "SAN DIEGO, CA",
+      "dd1561OrdersAuthority": "DEPLOYMENT ORDERS 0202-26",
+      "dd1561OrdersDate": "2026-02-01",
+      "dd1561BahWithDependentsConfirmed": true,
+      "dd1561CertifierName": "",
+      "dd1561CertifierTitle": "",
+      "dd1561CertifierOrganization": "",
+      "dd1561CertifiedDate": ""
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "metadata": {
+    "packageId": "nldp_1795000000006_dd1561_fsa_t_mobilized",
+    "formatVersion": "1.0.0",
+    "createdAt": "2026-11-24T00:00:00.000Z",
+    "author": {
+      "name": "System Template",
+      "unit": "HQMC"
+    },
+    "package": {
+      "title": "DD 1561 - FSA-T, Mobilized Reservist",
+      "description": "FSA-T for a mobilized Reserve sergeant with a spouse: block 6 departure 2 Feb 26, then TAD 9 Feb to 15 May 26 from the place ordered to active duty, 96 qualifying days (DoD FMR Vol 7A Ch 27 par 2.3.1.3 NOTE, 4.4.1). Sample data - replace before use.",
+      "subject": "",
+      "documentType": "dd1561",
+      "tags": [
+        "template",
+        "forms",
+        "dd1561"
+      ]
+    },
+    "checksums": {
+      "dataHash": "",
+      "crc32": ""
+    }
+  },
+  "data": {
+    "formData": {
+      "documentType": "dd1561",
+      "dd1561MemberName": "SAMPLE, MARINE A",
+      "dd1561Grade": "SGT",
+      "dd1561Edipi": "1234567890",
+      "dd1561BranchOrganization": "USMCR, TRAINING DEMO BATTALION",
+      "dd1561FsaType": "T",
+      "dd1561Mobilized": true,
+      "dd1561MobilizedDepartureDate": "2026-02-02",
+      "dd1561DependentAddresses": "100 SAMPLE STREET, COLUMBUS, OH 43215",
+      "dd1561MaritalStatus": "married",
+      "dd1561HasChildren": false,
+      "dd1561ChildCustody": "",
+      "dd1561ClaimsParent": false,
+      "dd1561DependentOnActiveDuty": false,
+      "dd1561SoleDependentInstitutionalized": false,
+      "dd1561AllDependentsNear": false,
+      "dd1561DualMilitary": false,
+      "dd1561SpouseEdipi": "",
+      "dd1561SpouseBranchComponent": "",
+      "dd1561SpouseResidingTogether": "",
+      "dd1561PermissiveOrders": false,
+      "dd1561LastTdyWithin30": "was-not",
+      "dd1561PriorPeriodType": "",
+      "dd1561PriorPeriodFrom": "",
+      "dd1561PriorPeriodTo": "",
+      "dd1561MemberSignedDate": "",
+      "dd1561FsaTRows": [
+        {
+          "location": "MCAGCC TWENTYNINE PALMS, CA",
+          "from": "2026-02-09",
+          "to": "2026-05-15",
+          "interruptedBefore": false
+        }
+      ],
+      "dd1561FsaTLeaveBeforeDays": 0,
+      "dd1561FsaTLeaveAfterDays": 0,
+      "dd1561FsaTFirstTravelDate": "",
+      "dd1561FsaRLastPds": "",
+      "dd1561FsaRDetachDate": "",
+      "dd1561FsaRLeaveFrom": "",
+      "dd1561FsaRLeaveTo": "",
+      "dd1561FsaRProceedFrom": "",
+      "dd1561FsaRProceedTo": "",
+      "dd1561FsaRFirstTravelDate": "",
+      "dd1561FsaRNewPds": "",
+      "dd1561FsaRReportDate": "",
+      "dd1561FsaSSegments": [
+        {
+          "status": "away",
+          "from": "",
+          "to": "",
+          "shipUnit": ""
+        }
+      ],
+      "dd1561FsaSShipUnit": "",
+      "dd1561FsaSHomeport": "",
+      "dd1561OrdersAuthority": "MOBILIZATION ORDERS 0505-26",
+      "dd1561OrdersDate": "2026-01-20",
+      "dd1561BahWithDependentsConfirmed": true,
+      "dd1561CertifierName": "",
+      "dd1561CertifierTitle": "",
+      "dd1561CertifierOrganization": "",
+      "dd1561CertifiedDate": ""
+    },
+    "vias": [],
+    "references": [],
+    "enclosures": [],
+    "copyTos": [],
+    "paragraphs": []
+  }
+}
