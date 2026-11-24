@@ -630,6 +630,13 @@
     "url": "/templates/global/navmc11106-active-duty-spouse.nldp"
   },
   {
+    "id": "dd1561-fsa-t-sample",
+    "title": "DD 1561 - FSA-T, TAD Over 30 Days",
+    "description": "FSA-T for a married sergeant with a child: TAD 25 May to 30 Jun 26 with 5 days of leave first, so the count runs from 30 May and 32 days qualify (DoD FMR Vol 7A Ch 27 par 4.4.1 Ex. 1). Certifying official and both signatures left blank. Sample data - replace before use.",
+    "documentType": "dd1561",
+    "url": "/templates/global/dd1561-fsa-t-sample.nldp"
+  },
+  {
     "id": "dd368-sample",
     "title": "Conditional Release (DD 368), sample",
     "description": "DD Form 368 with Section I filled for a Marine sergeant requesting release to the Navy Reserve. Sample data - replace before use.",
@@ -695,7 +702,7 @@
   {
     "id": "mco-5800-16-volume-17-verification",
     "title": "MCO 5800.16 Volume 17 (Verification)",
-    "description": "Judge Advocate Division Awards Program \u2014 a faithful transcription of the published Volume, for placement verification against the source PDF.",
+    "description": "Judge Advocate Division Awards Program — a faithful transcription of the published Volume, for placement verification against the source PDF.",
     "documentType": "volume",
     "url": "/templates/global/mco-5800-16-volume-17-verification.nldp"
   }

@@ -1949,10 +1949,10 @@ export const Navmc11106Definition: DocumentTypeDefinition = {
 // 7d. DD Form 1561 (Statement to Substantiate Payment of FSA)
 // Rule source: docs/DD1561_FSA_SPEC.md; types and key meanings in
 // src/types/dd1561.ts. Zod stays permissive (every key optional); the rules
-// live in dd1561-rules.ts and dd1561-validators.ts. Not yet registered in
-// DOCUMENT_TYPES: the sidebar, guidance and template registration is Phase 3
-// (a registered type must have a sidebar button, see
-// tests/components/sidebar-registry-coverage.test.tsx).
+// live in dd1561-rules.ts and dd1561-validators.ts. The editor is
+// src/components/letter/Dd1561Sections.tsx, which binds every input to
+// formData directly (no DynamicForm), so `sections` below is metadata only:
+// it names the required member fields for the empty preview state.
 const dd1561Iso = z.string().optional();
 const dd1561Pick = <T extends readonly [string, ...string[]]>(values: T) =>
   z.union([z.literal(''), z.enum(values)]).optional();
@@ -2029,6 +2029,43 @@ export const Dd1561Schema = z.object({
   dd1561CertifierOrganization: z.string().optional(),
   dd1561CertifiedDate: dd1561Iso,
 });
+
+export const Dd1561Definition: DocumentTypeDefinition = {
+  id: 'dd1561',
+  name: 'DD 1561 - Family Separation Allowance (FSA)',
+  description:
+    'Statement to Substantiate Payment of Family Separation Allowance (DD Form 1561, DEC 2017) per DoD FMR Vol 7A Ch 27. Qualifying days only; the certifying official decides the entitlement.',
+  icon: '🏠',
+  schema: Dd1561Schema,
+  features: {
+    ...STANDARD_LETTER_FEATURES,
+    showHeaderSettings: false,
+    showUnitInfo: false,
+    showVia: false,
+    showReferences: false,
+    showEnclosures: false,
+    showParagraphs: false,
+    showClosingBlock: false,
+    showClassification: false,
+    // The form carries its own two signature fields (9b, 15d), always left blank.
+    showSignature: false,
+    category: 'forms',
+    pdfPipeline: 'dd1561',
+    exportFormats: ['pdf'],
+  },
+  sections: [
+    {
+      id: 'dd1561-member',
+      title: 'Member (blocks 1-4)',
+      fields: [
+        { name: 'dd1561MemberName', label: '1. Name (Last, First, MI)', type: 'text', required: true },
+        { name: 'dd1561Grade', label: '2. Grade', type: 'text', required: true },
+        { name: 'dd1561Edipi', label: '3. DoD ID number (EDIPI)', type: 'text', required: true, maxLength: 10, digitsOnly: true, inputMode: 'numeric' },
+        { name: 'dd1561BranchOrganization', label: '4. Branch and organization', type: 'text', required: true },
+      ],
+    },
+  ],
+};
 
 // 8. AMHS Message
 export const AMHSSchema = z.object({
@@ -3879,6 +3916,7 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDefinition> = {
   navmc10922: Navmc10922Definition,
   navmc10132: Navmc10132Definition,
   navmc11106: Navmc11106Definition,
+  dd1561: Dd1561Definition,
   dd368: Dd368Definition,
   counseling: CounselingDefinition,
   'tla-packet': TlaPacketDefinition,

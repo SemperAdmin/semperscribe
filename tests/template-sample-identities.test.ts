@@ -10,14 +10,15 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
-const PERSONAL_FORMS = new Set(['navmc10922', 'navmc11106', 'navmc10132', 'dd368', 'aa-form']);
+const PERSONAL_FORMS = new Set(['navmc10922', 'navmc11106', 'navmc10132', 'dd368', 'dd1561', 'aa-form']);
 // Sample values, or the fill-in placeholders the AA templates carry.
 const SAMPLE_PERSON = /SAMPLE|FORMER|MAIDEN|RECRUITER|SAME AS ABOVE|Rank First MI/i;
 const SAMPLE_UNIT = /SAMPLE|TRAINING DEMO|SAME AS ABOVE|Unit Name|HOME (COMMAND )?ADDRESS/i;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PERSON_KEY = /(^|[a-z])(name|Name)$|SpouseName$|^sig$|^from$/;
 // The To line names an office (CMC, a commanding general), not a person
 // or a unit's street address, so it is not checked.
-const UNIT_KEY = /^(unit|orgStation|organizationStation|dutyStation|dd368CurrentUnit|coNameGradeActivity|address)$/;
+const UNIT_KEY = /^(unit|orgStation|organizationStation|dutyStation|dd368CurrentUnit|dd1561BranchOrganization|dd1561CertifierOrganization|dd1561DependentAddresses|coNameGradeActivity|address)$/;
 
 function files(): { file: string; formData: Record<string, unknown> }[] {
   const out: { file: string; formData: Record<string, unknown> }[] = [];
@@ -38,7 +39,8 @@ function offenders(formData: Record<string, unknown>): string[] {
     if (Array.isArray(o)) return o.forEach((v) => walk(v, key));
     if (o && typeof o === 'object') return Object.entries(o).forEach(([k, v]) => walk(v, k));
     if (typeof o !== 'string' || !o.trim() || key === 'documentType') return;
-    if (PERSON_KEY.test(key) && !SAMPLE_PERSON.test(o)) bad.push(`${key}: ${o}`);
+    // A DD 1561 row's `from` is an ISO date, not the letter's From line.
+    if (PERSON_KEY.test(key) && !ISO_DATE.test(o) && !SAMPLE_PERSON.test(o)) bad.push(`${key}: ${o}`);
     if (UNIT_KEY.test(key) && !SAMPLE_UNIT.test(o)) bad.push(`${key}: ${o}`);
   };
   walk(formData, '');

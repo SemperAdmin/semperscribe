@@ -559,6 +559,11 @@ export function Sidebar({ className, documentType, onDocumentTypeChange, paragra
                     label="COLA Application (NAVMC 11106)"
                   />
                   <DocumentTypeButton
+                    active={documentType === 'dd1561'}
+                    onClick={() => handleSelect('dd1561')}
+                    label="Family Separation Allowance (DD 1561)"
+                  />
+                  <DocumentTypeButton
                     active={documentType === 'dd368'}
                     onClick={() => handleSelect('dd368')}
                     label="Conditional Release (DD 368)"

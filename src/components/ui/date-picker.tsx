@@ -18,6 +18,11 @@ interface DatePickerProps {
   setDate: (date: Date | undefined) => void
   placeholder?: string
   className?: string
+  /** Id of the trigger button, so a <label htmlFor> can point at it. */
+  id?: string
+  /** Ids that name the trigger, e.g. "<labelId> <id>" for the label plus the shown date. */
+  "aria-labelledby"?: string
+  "aria-describedby"?: string
 }
 
 /**
@@ -39,7 +44,7 @@ const FIRST_YEAR = 1950
 /** Appointments and EAS dates look ahead; this many years past today. */
 const YEARS_AHEAD = 10
 
-export function DatePicker({ date, setDate, placeholder = "Pick a date", className }: DatePickerProps) {
+export function DatePicker({ date, setDate, placeholder = "Pick a date", className, id, "aria-labelledby": ariaLabelledBy, "aria-describedby": ariaDescribedBy }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
   // Browsed month, held locally so the year/month dropdowns and the arrows
   // actually move the calendar. Re-seeded on every open so it starts on the
@@ -63,6 +68,9 @@ export function DatePicker({ date, setDate, placeholder = "Pick a date", classNa
     >
       <PopoverTrigger asChild>
         <Button
+          id={id}
+          aria-labelledby={ariaLabelledBy}
+          aria-describedby={ariaDescribedBy}
           variant={"outline"}
           className={cn(
             "w-full justify-start text-left font-normal",

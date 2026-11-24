@@ -564,9 +564,17 @@ export function evaluateDd1561Eligibility(data: FormData): Dd1561Eligibility {
   }
 
   // --- Disqualifiers that apply whatever the basis ---
+  // Owner decision 2026-11-24: read FMR 3.1.5 as excluding the dependent who
+  // draws active-duty basic pay, not the whole claim. FSA stands on the other
+  // dependents; block 8c is left blank because its sentence would be untrue.
   if (data.dd1561DependentOnActiveDuty === true) {
-    if (couple) warn('dependent-on-active-duty', 'A dependent on active duty does not count, but a member married to a member remains entitled.', `${FMR} par 3.1.5; DD 1561 block 8c`);
-    else block('dependent-on-active-duty', 'A member is not a "member with dependents" when a dependent is entitled to active-duty basic pay.', `${FMR} par 3.1.5; DD 1561 block 8c`);
+    warn(
+      'dependent-on-active-duty',
+      couple
+        ? 'A dependent on active duty does not count, but a member married to a member remains entitled.'
+        : 'A dependent on active duty does not count for FSA. The claim stands on your other dependents; if that dependent was the only one, FSA does not apply.',
+      `${FMR} par 3.1.5; DD 1561 block 8c`,
+    );
   }
   if (data.dd1561SoleDependentInstitutionalized === true) {
     block('sole-dependent-institutionalized', 'Not entitled when the sole dependent is in an institution for a known or expected period over 1 year.', `${FMR} par 3.1.1; Table 27-3 rule 5; DD 1561 block 8d`);

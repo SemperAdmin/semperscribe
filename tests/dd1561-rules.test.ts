@@ -286,6 +286,17 @@ describe('eligibility', () => {
     expect(e.basis.spouse).toBe(true);
   });
 
+  it('does not count a dependent on active duty, without blocking the claim (owner decision, FMR 3.1.5)', () => {
+    const e = evaluateDd1561Eligibility(eligibleT({ dd1561HasChildren: true, dd1561ChildCustody: 'member', dd1561DependentOnActiveDuty: true }));
+    expect(e.blockers.map((b) => b.code)).not.toContain('dependent-on-active-duty');
+    const w = e.warnings.find((x) => x.code === 'dependent-on-active-duty');
+    expect(w?.citation).toContain('3.1.5');
+    expect(w?.message).toMatch(/does not count/);
+    expect(e.eligible).toBe(true);
+    // Block 8c stays blank: its sentence would be untrue.
+    expect(dd1561CheckBoxes(eligibleT({ dd1561HasChildren: true, dd1561ChildCustody: 'member', dd1561DependentOnActiveDuty: true })).cert8c).toBe(false);
+  });
+
   it.each([
     ['type-missing', { dd1561FsaType: '' }, '2.1'],
     ['no-dependents', { dd1561MaritalStatus: 'never-married' }, '2.1'],
@@ -296,7 +307,6 @@ describe('eligibility', () => {
     ['custody-unanswered', { dd1561MaritalStatus: 'divorced', dd1561HasChildren: true, dd1561ChildCustody: '' }, '2.2.1.1'],
     ['parent-dependency-not-approved', { dd1561MaritalStatus: 'never-married', dd1561ClaimsParent: true, dd1561ParentResidesWithMember: true }, '8e'],
     ['parent-not-in-member-home', { dd1561MaritalStatus: 'never-married', dd1561ClaimsParent: true, dd1561ParentDependencyApproved: true, dd1561ParentResidesWithMember: false }, '3.1.4'],
-    ['dependent-on-active-duty', { dd1561DependentOnActiveDuty: true }, '3.1.5'],
     ['sole-dependent-institutionalized', { dd1561SoleDependentInstitutionalized: true }, '3.1.1'],
     ['dual-mil-not-residing-together', { dd1561DualMilitary: true, dd1561SpouseResidingTogether: 'was-not' }, '2.3.4.1'],
     ['dual-mil-residing-unanswered', { dd1561DualMilitary: true, dd1561SpouseResidingTogether: '' }, '2.3.4.1'],

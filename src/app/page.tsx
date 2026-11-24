@@ -3,6 +3,7 @@
 import { stripCitationPrefix, stripCitationPrefixes } from '@/lib/citation-prefix';
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { ParagraphData, SavedLetter, ValidationState, FormData, ReportData, SamePageHost } from '@/types';
+import { missingDd1561Defaults } from '@/types/dd1561';
 import { ModernAppShell } from '@/components/layout/ModernAppShell';
 import { EXAMPLE_DOCUMENT_URL } from '@/components/layout/LandingPage';
 import { DocumentLayout } from '@/components/document/DocumentLayout';
@@ -649,6 +650,9 @@ function NavalLetterGeneratorInner() {
 
     setFormData(prev => ({
       ...prev,
+      // A fresh DD 1561 starts from createDd1561Defaults (one empty TDY row,
+      // one empty ship segment, nothing answered); keys already entered stay.
+      ...(newType === 'dd1561' ? missingDd1561Defaults(prev as Record<string, unknown>) : {}),
       documentType: newType as FormData['documentType'],
       // SEED THE NAVMC 10132 STAGE ON FIRST SWITCH. The export gate reads an
       // ABSENT `stage` as `'complete'` on purpose (see

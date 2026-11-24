@@ -413,7 +413,14 @@ All date fields print **"(DDMMYY)"** on the form: blocks 7, 9a, 11, 12 and 15. B
 |---|---|---|
 | 0 | Research and spec (this document) | Done |
 | 1 | DEC 2017 blank prepared, field map, map tests (P1b) | Done |
-| 2 | Rules engine, pure and tested: eligibility and disqualifiers (section C), type selection, the FMR 4.4.1 / 4.4.2 / 4.4.3 day counter (qualifying days only, no amount), EDIPI and DDMMYY formatting, field validators. Every FMR worked example becomes a test. | Next |
-| 3 | Guided UI: eligibility screen, situation-based type choice, type-specific dates with live day count, 8a-8g as plain questions, Part II blocks 10-14 from orders data; sidebar, guidance and template registration. | Decided |
-| 4 | Fill and export on the AcroForm (UPB / COLA pattern): live preview, unflattened export, both signatures blank, PII scan, FSA-T continuation page past 3 rows, fixed font sizes. | After 1-3 |
+| 2 | Rules engine, pure and tested: eligibility and disqualifiers (section C), type selection, the FMR 4.4.1 / 4.4.2 / 4.4.3 day counter (qualifying days only, no amount), EDIPI and DDMMYY formatting, field validators. Every FMR worked example becomes a test. | Done |
+| 3 | Guided UI: eligibility screen, situation-based type choice, type-specific dates with live day count, 8a-8g as plain questions, Part II blocks 10-14 from orders data; sidebar, guidance and template registration. | Done |
+| 4 | Fill and export on the AcroForm (UPB / COLA pattern): live preview, unflattened export, both signatures blank, PII scan, FSA-T continuation page past 3 rows, fixed font sizes. | Done |
 | 5 | Verification: render checks, axe and smoke e2e, sample filled form for owner review, spec re-audit; verify [WS] facts against primary sources. | After 4 |
+
+## R. Owner decisions, 2026-11-24 (after build)
+1. Dependent on active duty (FMR 3.1.5): that dependent is NOT COUNTED; it does not block the claim. The claim
+   stands on the other dependents. Block 8c is left blank. (Rules: `dependent-on-active-duty` is a warning.)
+2. SSN refusal on export stays strict: dashed, spaced, and nine bare digits not part of a longer number.
+3. Orders: manual entry first, with a plain-language description on every date field saying which date it is and
+   where to find it. Uploading orders is a later phase.

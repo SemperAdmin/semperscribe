@@ -336,6 +336,20 @@ export const GUIDANCE: GuidanceEntry[] = [
     citation: 'MCTFS PRIUM par 80102; DoD FMR Vol 7A Ch 68',
   },
   {
+    type: 'dd1561',
+    label: 'Family Separation Allowance (DD 1561)',
+    what: 'The statement a Marine with dependents signs to start Family Separation Allowance when orders keep the family apart: PCS where the family cannot come, duty aboard ship away from homeport, or TDY/TAD over 30 days. The app checks the dependency answers, counts qualifying days and fills the form. The certifying official decides the entitlement and signs.',
+    whenToUse: [
+      'Starting FSA-R, FSA-S or FSA-T for a member with dependents, or a member married to a member',
+    ],
+    whenNotToUse: [
+      'Adding or removing a dependent - use NAVMC 10922',
+      'Overseas cost of living - use NAVMC 11106',
+    ],
+    example: 'FSA-T: TAD 25 May to 30 Jun 26, 5 days of leave first, 32 qualifying days',
+    citation: 'DoD FMR Vol 7A Ch 27',
+  },
+  {
     type: 'dd368',
     label: 'Conditional Release (DD 368)',
     what: 'A member of one Service or component asks to be released to enter another. The member and recruiter, the authorizing official, and the enlisting or appointing official each complete a section.',

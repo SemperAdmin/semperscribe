@@ -232,8 +232,19 @@ const PIPELINE_MAP: Record<PdfPipeline, (ctx: PdfBuildContext) => Promise<Blob>>
       return generateFillPlaceholder('NAVMC 11106 (Cost-of-Living Allowances)');
     }
   },
-  // DD 1561 AcroForm fill lands in Phase 4 (docs/DD1561_FSA_SPEC.md section Q).
-  dd1561: async () => generateFillPlaceholder('DD 1561 (Family Separation Allowance)'),
+  // DD 1561 fills the prepared AcroForm blank, unflattened, with a block 10
+  // continuation page past three FSA-T rows. Same failure contract as the
+  // 11106: the preview degrades to the notice page, an export gets the error.
+  dd1561: async (ctx) => {
+    const { exportDd1561Form } = await import('@/lib/dd1561-export');
+    try {
+      return await exportDd1561Form(ctx.formData);
+    } catch (error) {
+      if (ctx.mode !== 'preview') throw error;
+      console.error('DD 1561 AcroForm fill failed, previewing the notice page instead:', error);
+      return generateFillPlaceholder('DD 1561 (Family Separation Allowance)');
+    }
+  },
   amhs: async () => new Blob([], { type: 'text/plain' }), // AMHS doesn't use PDF
   'coordination-page': generateCoordinationPagePdf,
   // Volume documents don't live in the letter formData - the Volume editor
