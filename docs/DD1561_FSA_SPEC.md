@@ -13,8 +13,8 @@ a 32-day absence earns 30 days of FSA-T from the constructive departure date, no
 
 Read in full:
 
-- **[FMR]** DoD 7000.14-R, Financial Management Regulation (FMR), Volume 7A, Chapter 27, "Family Separation Allowance (FSA)", **edition dated October 2025** (supersedes the October 2023 edition). I read the user-supplied 36-page copy at `/root/.claude/uploads/288b8248-176d-583d-bbae-dd3c7f3ed593/4563eeeb-Vol07a_Ch27_Family_Separation_Allowance_FSA.pdf`. The official URL is https://comptroller.war.gov/Portals/45/documents/fmr/current/07a/07a_27.pdf. The comptroller site moved from comptroller.defense.gov to comptroller.war.gov. Paragraph and table citations below refer to this copy.
-- **[FORM]** DD Form 1561, **NOV 2006** edition, read in full. I used the user-supplied copy at `/root/.claude/uploads/288b8248-176d-583d-bbae-dd3c7f3ed593/c966ccc1-dd1561.pdf`, which matches https://www.dfas.mil/Portals/98/dd1561.pdf.
+- **[FMR]** DoD 7000.14-R, Financial Management Regulation (FMR), Volume 7A, Chapter 27, "Family Separation Allowance (FSA)", **edition dated October 2025** (supersedes the October 2023 edition). Read from a 36-page copy supplied by the owner. The official URL is https://comptroller.war.gov/Portals/45/documents/fmr/current/07a/07a_27.pdf. The comptroller site moved from comptroller.defense.gov to comptroller.war.gov. Paragraph and table citations below refer to this copy.
+- **[FORM]** DD Form 1561, **NOV 2006** edition, read in full. Read from a copy supplied by the owner, which matches https://www.dfas.mil/Portals/98/dd1561.pdf.
 
 Could not fetch. The session network blocks these hosts:
 
@@ -156,6 +156,7 @@ All items in this section are [WS] only. I could not open uscode.house.gov or Co
 - **Start:** The date of departure [Table 27-1 rule 3], or the first day the member boards a ship away from homeport [rule 4]. Pay only after more than 30 continuous days [Table 27-1 note 1].
   - INFERENCE: Credit then runs retroactively from day 1, as Ex. 1 shows. It does not start on day 31.
 - **Stop:** The day before the ship returns to homeport, or the date of detachment, whichever is earlier [Table 27-3 rule 6].
+  - **Qualifying count vs paid days** (same split as FSA-T): the qualifying count includes the departure day, the return day and the 31st [4.4.3]; the paid period runs from the start date to the day before return, on a 30-day month, so the return day and the 31st are never paid (Ex. 1: 31 qualifying days, 30 paid).
   - Same-day detach/attach to another ship away from homeport continues FSA-S (note 6).
   - Table 27-4 rules 13–19 cover TAD, hospitalization, leave and confinement while assigned to a ship away from homeport.
   - **Note 6:** If the dependents' residence is within commuting distance of where the member is in such a status, FSA-S continues 30 days only.
@@ -204,6 +205,7 @@ All items in this section are [WS] only. I could not open uscode.house.gov or Co
   - Then FSA-T continues for the interim **plus** the redeployment.
   - **Ex. 1:** 45-day TDY, 30-day interim, then 35 days. Paid for 65 more days, including the interim.
   - **Ex. 2:** Interim of 31 days. No interim pay; the 40-day redeployment is paid by itself.
+  - The redeployment must itself exceed 30 days in every case [4.4.2.3.2]. A redeployment of 30 days or fewer earns no FSA-T, whatever the interim.
   - **Ex. 3:** Interim of 0 days. Continues.
   - The ship equivalent is 4.4.4 / Table 27-4 rule 21.
   - **Restriction** [4.4.5]:
@@ -355,13 +357,18 @@ All date fields print **"(DDMMYY)"** on the form: blocks 7, 9a, 11, 12 and 15. B
 - BLOCKER: the NOV 2006 edition is reportedly obsolete (section G). The field map must be rebuilt from the
   DEC 2017 blank before build.
 
+### P1a. SSN rule
+- Do not build SSN collection, storage or output. The NOV 2006 field map above lists `mbr_ssn` and `spouse_ssn`
+  for reference only. The field map is rebuilt from the DEC 2017 blank, which reportedly prints DoD ID, and any
+  SSN field that survives needs an explicit owner decision first. Exports pass the existing PII scan.
+
 ### P2. Guided flow (member-facing questions, then the form)
 1. Eligibility screen: dependents? (spouse / child / parent with approved dependency), dual-military?, active or
    mobilized reserve? Hard-stop with the cited reason when a disqualifier applies (section C).
 2. Type selection by situation, not by code: "PCS where dependents can't come" -> FSA-R; "aboard ship away from
    homeport" -> FSA-S; "TDY/TAD over 30 days" -> FSA-T. One type per period (FMR 2.1).
 3. Type-specific dates with a live day counter implementing FMR 4.4.1 (inclusive count, constructive dates for
-   leave/proceed, 31st day counted) and the 8g interim/redeployment rule (4.4.2). Shows "qualifies: N days > 30".
+   leave/proceed, 31st day counted for qualification only, never paid; paid days use the 30-day month) and the 8g interim/redeployment rule (4.4.2). Shows "qualifies: N days > 30".
 4. Certifications 8a-8g as plain-language yes/no questions mapped to the boxes; 8f/8g reveal their follow-ups.
 5. Part II (certifying officer) prefilled from the orders data the clerk already entered; certifying officer
    name, title, organization collected like the 10922 attesting official.
