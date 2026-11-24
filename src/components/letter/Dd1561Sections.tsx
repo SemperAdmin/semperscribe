@@ -870,7 +870,25 @@ function FsaSSegments({ formData, set }: StepProps) {
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">Stretch {n}</p>
                 {segs.length > 1 && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setSegs(segs.filter((_, j) => j !== i))} aria-label={`Remove stretch ${n}`}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSegs(segs.filter((_, j) => j !== i));
+                      // Keyed by index: shift the later stretches' choices down one.
+                      setStillDeployed((prev) => {
+                        const next: Record<number, boolean> = {};
+                        for (const [k, v] of Object.entries(prev)) {
+                          const idx = Number(k);
+                          if (idx < i) next[idx] = v;
+                          else if (idx > i) next[idx - 1] = v;
+                        }
+                        return next;
+                      });
+                    }}
+                    aria-label={`Remove stretch ${n}`}
+                  >
                     <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" /> Remove
                   </Button>
                 )}
@@ -1217,7 +1235,10 @@ function CertificationStep({ formData, set }: StepProps) {
 function OrdersStep({ formData, set }: StepProps) {
   const certifierKeys = ['dd1561CertifierName', 'dd1561CertifierTitle', 'dd1561CertifierOrganization', 'dd1561CertifiedDate'];
   const hasCertifier = certifierKeys.some((k) => text(formData, k).trim() !== '');
-  const [open, setOpen] = useState(hasCertifier);
+  // Follows the data until the user toggles, so details that load after
+  // mount (import, template) still open the panel.
+  const [toggled, setToggled] = useState<boolean | null>(null);
+  const open = toggled ?? hasCertifier;
   const panelId = useId();
   return (
     <SectionCard
@@ -1255,7 +1276,7 @@ function OrdersStep({ formData, set }: StepProps) {
           className="flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-4 py-3 text-left text-sm font-semibold hover:bg-muted/50"
           aria-expanded={open}
           aria-controls={panelId}
-          onClick={() => setOpen(!open)}
+          onClick={() => setToggled(!open)}
         >
           <span>Certifying official (optional, can be left for the certifier)</span>
           {open ? <ChevronUp className="h-4 w-4" aria-hidden="true" /> : <ChevronDown className="h-4 w-4" aria-hidden="true" />}

@@ -194,6 +194,44 @@ describe('Dd1561FormSections', () => {
     expect(screen.queryByText('Enter all 10 digits of the DoD ID (EDIPI).')).toBeNull();
   });
 
+  it('keeps each stretch\'s "still deployed" choice with its stretch when an earlier one is removed', () => {
+    render(<Harness initial={{
+      ...FSA_S,
+      dd1561FsaSSegments: [
+        { status: 'away', from: '2026-06-01', to: '2026-06-10', shipUnit: 'USS ONE' },
+        { status: 'away', from: '2026-06-11', to: '', shipUnit: 'USS TWO' },
+        { status: 'away', from: '2026-07-01', to: '2026-07-20', shipUnit: 'USS THREE' },
+      ],
+    }} />);
+    // Stretch 2 has no return date, so it reads as still deployed until the user says otherwise.
+    const seg2 = screen.getByTestId('dd1561-fsa-s-seg-2');
+    expect(within(seg2).getByText(/still deployed\./i)).toBeInTheDocument();
+    fireEvent.click(within(seg2).getByRole('checkbox', { name: 'Still deployed' }));
+    expect(within(seg2).queryByText(/still deployed\./i)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove stretch 1' }));
+    // The former stretch 2 is now stretch 1 and keeps the user's "not still deployed" choice.
+    const first = screen.getByTestId('dd1561-fsa-s-seg-1');
+    expect(within(first).queryByText(/still deployed\./i)).toBeNull();
+    expect(within(first).getByRole('checkbox', { name: 'Still deployed' })).not.toBeChecked();
+    expect(within(screen.getByTestId('dd1561-fsa-s-seg-2')).getByRole('checkbox', { name: 'Still deployed' })).not.toBeChecked();
+  });
+
+  it('opens the certifying-official panel when its details arrive after the screen mounted', () => {
+    function LateHarness() {
+      const [formData, setFormData] = useState<FormData>({ ...createDd1561Defaults(), ...FSA_T } as unknown as FormData);
+      return (
+        <>
+          <Dd1561FormSections formData={formData} setFormData={setFormData} />
+          <button type="button" onClick={() => setFormData((f) => ({ ...f, dd1561CertifierName: 'OFFICIAL, SAMPLE C' } as FormData))}>load</button>
+        </>
+      );
+    }
+    render(<LateHarness />);
+    expect(screen.queryByDisplayValue('OFFICIAL, SAMPLE C')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'load' }));
+    expect(screen.getByDisplayValue('OFFICIAL, SAMPLE C')).toBeInTheDocument();
+  });
+
   it('keeps the certifying official optional, collapsed, and out of the export blockers', () => {
     render(<Harness initial={FSA_T} />);
     const toggle = screen.getByRole('button', { name: /Certifying official \(optional, can be left for the certifier\)/ });
