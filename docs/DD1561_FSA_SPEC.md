@@ -403,7 +403,7 @@ All date fields print **"(DDMMYY)"** on the form: blocks 7, 9a, 11, 12 and 15. B
 1. ~~DEC 2017 blank~~ DONE 2026-11-24 (P1b).
 2. ~~SSN handling~~ DECIDED 2026-11-24: 10-digit EDIPI for member and spouse, never SSN (P1a).
 3. ~~FSA amount~~ DECIDED 2026-11-24: no dollar amount anywhere. The app shows eligibility and qualifying day counts only; the form has no amount block.
-4. Part II signature: DECIDED 2026-11-24, left blank for the certifier. Still open: whether the app prefills Part II typed fields (blocks 10-15c) or leaves them for the certifier.
+4. Part II: DECIDED 2026-11-24. The app prefills blocks 10-14 from the orders data (FSA-T table, FSA-R line, FSA-S line, orders authority and date). Blocks 15a-c (certifier name, title, organization), 16 (date) and both signatures (9b, 15d) are left blank and editable for whoever certifies the entitlement.
 5. Allow the network hosts in section 0 so the [WS] facts can be verified from primary pages.
 6. Correct the "commences on the 31st day" statement found on semper-admin-portal.app.cloud.gov (H4).
 
@@ -414,6 +414,6 @@ All date fields print **"(DDMMYY)"** on the form: blocks 7, 9a, 11, 12 and 15. B
 | 0 | Research and spec (this document) | Done |
 | 1 | DEC 2017 blank prepared, field map, map tests (P1b) | Done |
 | 2 | Rules engine, pure and tested: eligibility and disqualifiers (section C), type selection, the FMR 4.4.1 / 4.4.2 / 4.4.3 day counter (qualifying days only, no amount), EDIPI and DDMMYY formatting, field validators. Every FMR worked example becomes a test. | Next |
-| 3 | Guided UI: eligibility screen, situation-based type choice, type-specific dates with live day count, 8a-8g as plain questions, Part II typed fields; sidebar, guidance and template registration. | Needs decision 4 (Part II prefill) |
+| 3 | Guided UI: eligibility screen, situation-based type choice, type-specific dates with live day count, 8a-8g as plain questions, Part II blocks 10-14 from orders data; sidebar, guidance and template registration. | Decided |
 | 4 | Fill and export on the AcroForm (UPB / COLA pattern): live preview, unflattened export, both signatures blank, PII scan, FSA-T continuation page past 3 rows, fixed font sizes. | After 1-3 |
 | 5 | Verification: render checks, axe and smoke e2e, sample filled form for owner review, spec re-audit; verify [WS] facts against primary sources. | After 4 |
