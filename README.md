@@ -1,370 +1,89 @@
-<div align="center">
+# SemperScribe
 
-<img src="public/logo.png" alt="Semper Scribe logo" width="110" />
+Formats USMC correspondence and administrative documents to SECNAV M-5216.5 and MCO 5215.1K in the browser, for Marines who draft letters, memorandums, directives, forms and messages.
 
-# Semper Scribe
+**Live:** https://semperscribe.app.cloud.gov
+**Also on GitHub Pages:** https://semperadmin.github.io/semperscribe/
 
-**USMC correspondence, formatted right — entirely in your browser.**
+## What it does
 
-[![Tests](https://github.com/SemperAdmin/semperscribe/actions/workflows/test.yml/badge.svg)](https://github.com/SemperAdmin/semperscribe/actions/workflows/test.yml)
-[![CodeQL](https://github.com/SemperAdmin/semperscribe/actions/workflows/codeql.yml/badge.svg)](https://github.com/SemperAdmin/semperscribe/actions/workflows/codeql.yml)
-[![Deploy](https://github.com/SemperAdmin/semperscribe/actions/workflows/deploy.yml/badge.svg)](https://github.com/SemperAdmin/semperscribe/actions/workflows/deploy.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Local First](https://img.shields.io/badge/architecture-local--first%20%C2%B7%20no%20backend-2ea44f)](#security--privacy)
+- Provides 33 document types in 10 groups: standard letters, memorandums, staffing papers, external and executive correspondence, DLA correspondence, directives, forms, a counseling worksheet, technical publications and AMHS messages. The full list is in [docs/DOCUMENT-TYPES.md](docs/DOCUMENT-TYPES.md).
+- Shows a live PDF preview as you type, with a compliance-issue banner and a proofread checklist.
+- Exports PDF, DOCX and AMHS plain text, generates batches from a CSV (mail merge), and saves or loads NLDP data packages and shareable links.
+- Imports an existing Word or PDF file, extracts its fields in the browser, and lets you review them before re-exporting in the correct format.
+- Keeps drafts in an on-device document library, with profile defaults and bundled templates.
+- Offers an optional AI assistant, GunnyBot, that is off until you add your own provider key.
 
-[**Live App**](https://semperadmin.github.io/semperscribe) · [Report an Issue](https://github.com/SemperAdmin/semperscribe/issues) · [Security Policy](SECURITY.md)
+Detail on each of these is in [docs/FEATURES.md](docs/FEATURES.md).
 
-</div>
+## Using it
 
-> [!WARNING]
-> **Not Official USMC Software.** Semper Scribe is a non-official Proof of Concept maintained on a personal basis. It is not USMC, DON, or DoD software and carries no Authority to Operate. Use is at the user's discretion and risk. All processing happens in the browser. **Never enter classified information. Whether CUI is permitted depends on the system you run it on and on your authorizing official's approval of this application for that use (DoDI 5200.48 paragraphs 3.3.c and 3.10.b). Until your command has granted that approval, do not enter CUI.** PII such as names and EDIPI is accepted at the user's discretion and risk: the formatter never transmits it, and every export is scanned for SSN and EDIPI patterns before the file is written. A name or an EDIPI is not CUI on its own. Whether a completed record about a real Marine is CUI (Privacy, marking PRVCY) is determined by your command's guidance, not by this application; where it is, the CUI condition above applies to it. See the [Privacy and Security Notice](https://semperadmin.github.io/semperscribe/privacy) and [SECURITY.md](SECURITY.md) for full details.
+Open the live site in a current browser. No account is needed. Choose a document type in the sidebar, fill in the form, check the preview, and export. You are responsible for the content: verify references and administrative details against the current governing directives.
 
-A professional-grade, local-first web application for creating, formatting, and exporting USMC correspondence and administrative documents. Built with Next.js, Semper Scribe helps users produce properly formatted documents aligned with **SECNAV M-5216.5** and **MCO 5215.1K** — entirely in the browser, with no server-side processing.
+## Privacy and security
 
-## Highlights
+- **Data flow.** Formatting, import, export and storage happen in your browser, and nothing you type is sent to a SemperScribe server (there is none). The one exception is GunnyBot, which sends data off the device only when you use it, and only after you enter a provider key:
+  - **Google Gemini** (`generativelanguage.googleapis.com`): the browser sends the request directly, with your key, to Google. The request is what you submit to GunnyBot: the question you type in the panel and the conversation so far; the paragraph you ask it to draft or rewrite; or, for a Review in the proofread checklist, the document type, subject line and paragraphs. Counseling Worksheets and TLA Packets are not sent. A scan prompts you before anything containing SSN or EDIPI patterns is sent.
+  - **GenAI.mil** (`api.genai.mil`): the same content, but GenAI.mil does not accept direct browser calls, so GunnyBot sends to a proxy you run on your own machine (`127.0.0.1`) and refuses any proxy that is not on the local machine.
+  - The key is held in memory only and is forgotten when the tab closes. Do not send CUI to a commercial provider through GunnyBot.
+- Three other actions leave the browser only when you choose them: **Feedback** opens an external form in a new tab (it needs a .mil network), the signature return option can open your own mail program with a pre-filled message, and the browser's dictation feature, where available, may send audio to its vendor.
+- The document library is stored in the browser's IndexedDB, and the profile and settings in browser storage, on that device only. An optional backup folder is written only where you pick it. There are no analytics or cookies.
+- On cloud.gov the Content Security Policy limits connections to the site itself, the two AI hosts above and local addresses, and blocks scripts, fonts and images from other sites. GitHub Pages cannot set response headers, so the policy applies to the cloud.gov deployment only.
+- Before each export, the file content is scanned for SSN and EDIPI patterns and PHI keyword clusters, and you are asked to confirm. It does not certify a document free of sensitive content.
+- The local companion server (`npm run companion`) binds `127.0.0.1` with no authentication and is started only by an operator; it is not part of the website.
+- CUI markings on output are a reminder for the user. This site is not an authorized system for CUI or PII; do not enter such information unless your command has approved this use.
+- The hosting platforms (cloud.gov and GitHub Pages) keep standard web server access logs, such as IP address, time, requested page and browser type, for operations and security. Semper Admin does not add tracking of its own.
 
-- 📄 **32 document types** across 10 sidebar groups — from Basic Letters to Marine Corps Orders, AMHS messages, NJP forms, counseling worksheets, and technical publications
-- 📥 **Word/PDF import** — upload an existing `.docx` or PDF (even a badly formatted one), review the extracted fields, and export it compliant
-- 👀 **Live PDF preview** as you type, with a compliance-issue banner
-- 📦 **Export anywhere** — PDF, DOCX, AMHS plain text, batch mail-merge ZIPs, shareable links
-- 🔒 **Local-first** — no backend, no telemetry. Document formatting never leaves the browser. The one exception is the optional GunnyBot assistant, off until you add your own provider key, which sends only the text you submit to it.
-- 🛡️ **Sensitive-data check before export** — every download (PDF, DOCX, official form, batch, data package, AMHS text, the NAVMC 10132 sheets and the package merge) and the backup-folder copy is scanned for SSN and EDIPI patterns and PHI keyword clusters, and asks before the file is written. It asks; it never blocks and never rewrites your text
+See the in-app [Privacy and Security Notice](https://semperscribe.app.cloud.gov/privacy/) and [Security](SECURITY.md). Third-party licenses are listed in [LICENSES.md](LICENSES.md).
 
-## Document Types
+## Development
 
-<details>
-<summary><strong>Standard Letters</strong> (3)</summary>
-
-| Type | Description |
-|------|-------------|
-| **Basic Letter** | Standard format for routine correspondence and official communications |
-| **Multiple-Address Letter** | Letter addressed to two or more commands/activities |
-| **Endorsement** | Forwards correspondence on a new page with automatic routing, or on the same page below the basic letter's signature when it fits (Same-Page Endorsement, SECNAV M-5216.5 Figure 9-1) |
-
-</details>
-
-<details>
-<summary><strong>Memorandums</strong> (5)</summary>
-
-| Type | Description |
-|------|-------------|
-| **Memorandum for the Record** | Internal document to record events or decisions (no "To" line) |
-| **From-To Memorandum** | Informal internal correspondence on plain paper |
-| **Letterhead Memorandum** | Formal memo for correspondence within the activity or with other federal agencies |
-| **Memorandum of Agreement** | Agreement between two or more parties (conditional) |
-| **Memorandum of Understanding** | General understanding between two or more parties (non-binding) |
-
-</details>
-
-<details>
-<summary><strong>Staffing Papers</strong> (4)</summary>
-
-| Type | Description |
-|------|-------------|
-| **Information Paper** | Provides factual information in concise terms |
-| **Position Paper** | Advocates a specific position or solution |
-| **Decision Paper** | Requests a decision from a senior official |
-| **Coordination Page** | Mandatory staffing table for routing packages per MCO 5216.20B |
-
-</details>
-
-<details>
-<summary><strong>External &amp; Executive</strong> (2)</summary>
-
-| Type | Description |
-|------|-------------|
-| **Business Letter** | Correspondence with non-DoD entities or personal approach |
-| **Executive Correspondence** | Letters and memorandums for HqDON, Congress, OSD, and senior officials |
-
-</details>
-
-<details>
-<summary><strong>DLA Correspondence</strong> (2)</summary>
-
-| Type | Description |
-|------|-------------|
-| **DLA Memorandum** | Defense Logistics Agency internal memorandum format |
-| **DLA Business Letter** | DLA correspondence with external entities |
-
-</details>
-
-<details>
-<summary><strong>Directives</strong> (6)</summary>
-
-| Type | Description |
-|------|-------------|
-| **Marine Corps Order (MCO)** | Permanent directives that establish policy or procedures |
-| **Marine Corps Bulletin (MCBul)** | Directives of a temporary nature (expire after 12 months) |
-| **Change Transmittal** | Transmits amendments (page replacements) to an existing order per MCO 5215.1K |
-| **SECNAV Instruction** | Secretary of the Navy permanent directives per SECNAV M-5215.1 |
-| **SECNAV Notice** | Secretary of the Navy directives of a temporary nature |
-| **Volume** | Paginated, multi-chapter policy volume with chapter tree, appendices, and figures |
-
-</details>
-
-<details>
-<summary><strong>Forms</strong> (7)</summary>
-
-| Type | Description |
-|------|-------------|
-| **AA Form (NAVMC 10274)** | Administrative Action form for personnel requests |
-| **Page 11 (NAVMC 118-11)** | Administrative Remarks for service record entries |
-| **COLA Application (NAVMC 11106)** | Cost-of-Living Allowance application, filled onto the official form |
-| **Dependency Application (NAVMC 10922)** | Dependency application for BAH and travel/transportation entitlements per MCO 1751.3 W/CH-1 |
-| **Unit Punishment Book (NAVMC 10132)** | Nonjudicial punishment record under Article 15, UCMJ, per MCO 5800.16 Vol 14, with the NJP package documents generated from its data |
-| **Conditional Release (DD 368)** | Request for Conditional Release from one Service or component to enter another |
-| **TLA Packet** | Temporary Lodging Allowance request: the facts finance needs, the housing search statement, certifications, and a routing checklist |
-
-</details>
-
-<details>
-<summary><strong>Counseling Worksheets</strong> (1)</summary>
-
-| Type | Description |
-|------|-------------|
-| **Counseling Worksheet** | Guided counseling session under MCO 1500.61 and NAVMC 2795, with targets for the coming period and a record for two signers |
-
-</details>
-
-<details>
-<summary><strong>Technical Publications</strong> (1)</summary>
-
-| Type | Description |
-|------|-------------|
-| **I-Type Publication** | Technical manual cover and administrative pages with End Items table |
-
-</details>
-
-<details>
-<summary><strong>Messages</strong> (1)</summary>
-
-| Type | Description |
-|------|-------------|
-| **AMHS Message** | Automated Message Handling System (GENADMIN/MARADMIN/ALMAR) with DTG, references, NARR, and POC sections |
-
-</details>
-
-## Features
-
-### ✍️ Document Editing
-
-- **Dynamic Forms** — Conditional field display and validation per document type
-- **Multi-Level Paragraphs** — Supports 1., 1.a., 1.a.(1), etc. with add, remove, and reorder
-- **Voice Input** — Browser Speech Recognition API for dictating paragraph content
-- **Spell Check** — Client-side spell checking with military-specific dictionary and acronym detection
-- **References & Enclosures** — Lettered references and numbered enclosures with structured input
-- **Via Chain & Distribution** — Routing through intermediate commands, copy-to and distribution statement management
-
-### 📥 Import
-
-- **Word/PDF Document Import** — Upload an existing `.docx` or PDF (even a badly formatted one); fields, references, enclosures, and paragraphs are extracted in the browser with rule-based parsing, presented in a review-and-confirm modal, then dropped into the normal editing flow for a compliant re-export
-- **NLDP Import** — Naval Letter Data Package format for portable document data
-- **Shareable Links** — Load a full document state from a compressed URL
-
-### 📤 Export & Output
-
-- **PDF Export** — Multi-pipeline PDF generation with proper formatting per document type
-- **DOCX Export** — Microsoft Word format via the docx library
-- **AMHS Text Export** — Plain text export formatted for AMHS message systems
-- **Batch Generation (Mail Merge)** — Import a CSV, substitute `{{TOKEN}}` fields, generate a ZIP of PDFs
-- **Signature Placement** — Interactive signature field positioning on generated PDF pages
-- **NLDP Export** — Save the full document as a portable data package
-
-### 👀 Preview & Proofread
-
-- **Live Preview** — Real-time PDF rendering as you type (desktop side panel or mobile modal)
-- **Proofread Checklist** — Four-category compliance check per SECNAV M-5216.5, Ch 2, Para 19: Format, Framework, Typography & Grammar, and Content, with Pass/Fail/Warn/Manual statuses
-
-### ⚙️ Settings & Profile
-
-- **User Profile** — Store your unit (searchable RUC database), signature name, from title, originator code, rank, and title
-- **Auto-Fill** — Profile fields automatically populate new documents
-- **Formatting Defaults** — Header type (USMC/DON/DLA), body font, header color, AMHS classification and precedence
-- **Appearance** — Light, dark, and system theme support
-- **Data** — Auto backup of every library save to a folder you pick (Chrome and Edge)
-- **Assistant** — Optional GunnyBot provider and key, off by default
-
-### 🗂️ Templates & Drafts
-
-- **Template Browser** — Pre-built global and unit-specific document templates
-- **Document Library** — Every save goes to an on-device IndexedDB library (search, rename, duplicate, no cap), opened from the File menu, with crash recovery and revision compare
-
-### 📡 AMHS Message Features
-
-- Auto-generated Date-Time Group (DTG) in Zulu time, reference management with letter designators, NARR auto-generation, POC manager, message validation, and a terminal-style preview
-
-### 📱 Responsive Design
-
-- Desktop three-pane layout (sidebar, editor, preview); mobile-friendly forms with a slide-up preview modal
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 22+ (the active LTS; Node 20 reached end of life in April 2026)
-- npm
-
-### Installation
+Requires the Node version in [`.nvmrc`](.nvmrc) (22) and npm.
 
 ```bash
-git clone https://github.com/SemperAdmin/semperscribe.git
-cd semperscribe
-npm install
-npm run dev
+npm ci
+npm run dev          # http://localhost:3000
+npm test             # full suite, including the golden tests
+npm run test:nogolden
+npm run typecheck
+npm run lint
+npm run build        # static export to out/
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+The golden tests render DOCX files with LibreOffice (CI installs it); `npm run test:nogolden` skips them for a machine without it. The headless companion is described in [docs/COMPANION.md](docs/COMPANION.md).
 
-### Production Build
+## Deployment
 
-```bash
-npm run build
-```
+| Environment | URL | How |
+|---|---|---|
+| cloud.gov | https://semperscribe.app.cloud.gov | `manifest.yml` (route `semperscribe.app.cloud.gov`); manual **Deploy to cloud.gov** workflow (`.github/workflows/deploy-cloudgov.yml`); sandbox managed by the private cloudgov-redeploy repository |
+| GitHub Pages | https://semperadmin.github.io/semperscribe/ | `.github/workflows/deploy.yml` on push to `main`, served under `/semperscribe` |
 
-Static output is written to the `out/` directory, ready for deployment to any static hosting provider.
+## Documentation
 
-### Deploy to GitHub Pages
+- [docs/FEATURES.md](docs/FEATURES.md): editing, import, export, settings and the headless companion.
+- [docs/DOCUMENT-TYPES.md](docs/DOCUMENT-TYPES.md): the 33 document types by group.
+- [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md): source layout and technology stack.
+- [docs/COMPLIANCE-POSTURE.md](docs/COMPLIANCE-POSTURE.md): what the repository does and does not claim.
+- [docs/COMPANION.md](docs/COMPANION.md): HTTP and MCP companion.
+- [docs/NLDP_FEATURE_GUIDE.md](docs/NLDP_FEATURE_GUIDE.md): the NLDP data package format.
+- [CHANGELOG.md](CHANGELOG.md): version history.
 
-The repository includes a GitHub Actions workflow ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)) that automatically builds and deploys to GitHub Pages on pushes to `main`. Manual deployment is also available via `workflow_dispatch`.
+## Feedback and support
 
-## Headless companion
+[Open an issue](https://github.com/SemperAdmin/semperscribe/issues), or use **Feedback** in the app from a .mil network. Report security problems as described in [SECURITY.md](SECURITY.md).
 
-SemperScribe also runs without a browser. The `companion/` directory holds
-an HTTP server and an MCP stdio server which share one set of operations:
-list the document types, describe the fields a type takes, validate an
-NLDP package, and render it to PDF or DOCX. It is meant for an EDMS, a
-script, or an agent, and it renders the same file the editor downloads.
+## License and disclaimer
 
-```bash
-npm run companion          # HTTP on http://127.0.0.1:7719
-npm run companion:mcp      # MCP over stdio
-```
+MIT (see [LICENSE](LICENSE); third-party notices in [LICENSES.md](LICENSES.md)).
 
-The HTTP server binds loopback and carries no authentication. The export
-sensitive-data gate is mirrored: findings refuse the render until the
-caller acknowledges them. Routes, request and response examples, the MCP
-client configuration, and the full security posture are in
-[`docs/COMPANION.md`](docs/COMPANION.md).
+> This is an independent tool built to help Marines with administrative
+> work. It is not an official Department of the Navy or U.S. Marine Corps
+> system and is not endorsed by, affiliated with, or approved by either.
+> Always confirm requirements against the current governing orders.
 
-## Project Structure
+## Part of Semper Admin
 
-<details>
-<summary>Expand the source tree overview</summary>
-
-```
-src/
-├── app/                        # Next.js App Router pages
-│   ├── page.tsx                # Main application entry point
-│   └── dynamic-forms/          # Developer demo of the schema-driven form
-├── components/
-│   ├── ui/                     # Base UI library (shadcn/ui + Radix)
-│   ├── layout/                 # App shell, sidebar, header, preview, theme
-│   ├── letter/                 # Letter section components (references, enclosures, etc.)
-│   ├── document/               # Document layout, header settings, signature fields
-│   ├── import/                 # Word/PDF import review modal
-│   ├── amhs/                   # AMHS editor, preview, POC manager
-│   ├── pdf/                    # PDF rendering components
-│   ├── counseling/             # Counseling Worksheet sections
-│   ├── gunnybot/               # Opt-in GunnyBot assistant panel and settings
-│   ├── itype/                  # I-Type publication editor and preview
-│   ├── review/                 # Review comments panel
-│   ├── signature/              # Guided signing ceremony
-│   ├── tla/                    # TLA Packet sections
-│   ├── volume/                 # Volume chapter tree, appendices, figures
-│   ├── SettingsDialog.tsx      # User profile and app settings
-│   ├── BatchGenerateModal.tsx  # Mail merge / batch generation
-│   └── ProofreadModal.tsx      # Proofreading checklist
-├── hooks/                      # React hooks
-│   ├── useUserProfile.ts       # Profile persistence and form defaults
-│   ├── useParagraphs.ts        # Paragraph CRUD and citation generation
-│   ├── useDocumentImport.ts    # Word/PDF import orchestration
-│   ├── useImportExport.ts      # Document import/export and sharing
-│   ├── useBatchGenerate.ts     # Mail merge engine
-│   └── ...
-├── lib/                        # Utilities and configuration
-│   ├── schemas.ts              # Document type definitions and field schemas
-│   ├── units.ts                # USMC unit database (RUC/MCC lookup)
-│   ├── url-state.ts            # Shareable link encoding/decoding
-│   └── ...
-├── services/
-│   ├── export/                 # Central PDF orchestrator
-│   ├── import/                 # Word/PDF text extraction and correspondence parsing
-│   ├── pdf/                    # Per-document-type PDF generators
-│   ├── docx/                   # Per-document-type DOCX generators
-│   └── amhs/                   # AMHS message formatting
-└── types/                      # TypeScript type definitions
-```
-
-</details>
-
-## Security & Privacy
-
-> [!IMPORTANT]
-> This tool is for **UNCLASSIFIED** information only. Never input, process, or store classified data. CUI is permitted only on a DoD information system authorized at the moderate confidentiality level and only once your authorizing official has approved this application for that use (DoDI 5200.48 paragraphs 3.3.c and 3.10.b). This project holds no such authorization of its own. PII (names, EDIPI, similar identifiers) is entered at the user's discretion and risk. The formatter never transmits it, and every export is scanned before the file is written. Never send CUI to GunnyBot through a commercial provider.
-
-- **Local-First Architecture** — All document formatting, import, and export happens entirely in the browser. The formatter transmits nothing to any server.
-- **GunnyBot Is the One Egress Path** — The optional GunnyBot assistant stays off until you supply a personal provider API key. When you use it, the text you submit goes directly from your browser to the provider you chose (Google Gemini or GenAI.mil) under your key. A pre-send scan prompts on SSN and EDIPI patterns. See [`SECURITY.md`](SECURITY.md) for the full data-flow statement.
-- **Pre-Export Scan** — Before any PDF, DOCX, official-form, or batch ZIP download, the document is scanned for SSN and EDIPI patterns and PHI keyword clusters. A hit prompts for acknowledgement. It does not certify a document free of CUI, PII, or classified material.
-- **No Backend** — Static site deployment. No server-side code, no database, no API calls.
-- **Browser Storage Only** — Drafts are stored in the browser's IndexedDB document library and the user profile in localStorage, on this device only.
-- **Verification Required** — While Semper Scribe automates formatting, the final content is the responsibility of the originator. Always verify references and administrative details against current directives.
-
-## Compliance Posture
-
-Semper Scribe undergoes voluntary alignment with DoD adoption-readiness standards. This is not an authorized DoD system and carries no Authority to Operate.
-
-<details>
-<summary><strong>What the alignment covers</strong></summary>
-
-- **Software Supply Chain (SCRM)** — SBOM generated on every deploy via CycloneDX, and the deploy waits on it. `npm audit` at high severity over the production tree gates every CI run, so a new high or critical advisory fails the build rather than shipping. Maps to Executive Order 14028 SBOM requirements and the DoD CIO SWFT Initiative memo.
-- **Secure Software Development Framework (SSDF)** — Aligned with NIST SP 800-218 practices PO.3.3 (toolchain configuration), PW.4.1 and PW.4.4 (third-party component management), PW.7 (review and analyze code), and PS.1 (source protection). CodeQL static analysis runs on every push and weekly.
-- **Open Source Software** — Project license is MIT. Dual-license elections documented in [`LICENSES.md`](LICENSES.md). All transitive licenses are approved per DoD CIO OSS Guidance dated 24 January 2022, Attachment 2 paragraph 3G.
-- **Privacy** — No PII collection by the project, no telemetry, no backend at runtime. PII a user types stays in that user's browser and is scanned before export; any Privacy Act obligation for it is the user's. The opt-in GunnyBot data flow is the documented exception. User responsibility framing applied throughout the UI. See the in-app Privacy and Security Notice and [`SECURITY.md`](SECURITY.md).
-- **Records Management** — Tool outputs become Federal records under 44 USC 3301 when used in official business. Routing through a Command Designated Records Manager per MCO 5210.11F is the user's responsibility, not the application's.
-
-</details>
-
-<details>
-<summary><strong>What the alignment does not cover</strong></summary>
-
-- This is not under the Risk Management Framework. DoDI 8510.01 does not apply to a personal PoC.
-- This is not registered as an Electronic Information System under MCO 5210.11F. Tool outputs are records; the tool itself is not an EIS.
-- This project carries no CUI authorization of its own. CUI processing is a decision for the authorizing official of the system the application runs on, and until a command has made it, users must not enter CUI. Classified material is never permitted. PII and PHI are accepted at the user's discretion and risk, with the user carrying any Privacy Act or HIPAA obligation that follows.
-
-</details>
-
-See [`docs/COMPLIANCE_REMEDIATION_PLAN.md`](docs/COMPLIANCE_REMEDIATION_PLAN.md) for the full audit trail of the alignment work.
-
-### Reporting Security Issues
-
-Vulnerabilities should be reported through GitHub's Private Vulnerability Reporting. See [`SECURITY.md`](SECURITY.md) for the disclosure channel and response expectations.
-
-## Tech Stack
-
-| Category | Technology |
-|----------|------------|
-| **Framework** | Next.js 16, React 18, TypeScript 5 |
-| **UI** | Tailwind CSS, shadcn/ui, Radix UI, Lucide icons |
-| **Forms** | React Hook Form, Zod validation |
-| **State** | React hooks, Zustand |
-| **PDF** | @react-pdf/renderer, pdf-lib, pdfjs-dist |
-| **DOCX** | docx (generation), mammoth (import) |
-| **Theming** | next-themes (light/dark/system) |
-| **Compression** | lz-string |
-| **Testing** | Vitest, Testing Library, Playwright |
-
-## Contributing
-
-Contributions are welcome. Please submit [issues](https://github.com/SemperAdmin/semperscribe/issues) and pull requests on GitHub.
-
-## License
-
-MIT License. See [LICENSE](LICENSE) for the legal text and [LICENSES.md](LICENSES.md) for the third-party license inventory, dual-license elections, and LGPL transitive documentation. The license election is recorded per DoD CIO OSS Guidance paragraph 3G.
-
----
-
-<div align="center">
-
-*Semper Fidelis* 🦅
-
-</div>
+One of the tools in the Semper Admin suite. Start at the
+[Semper Admin Portal](https://semper-admin-portal.app.cloud.gov) for the
+full set.
