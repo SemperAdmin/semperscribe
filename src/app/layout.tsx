@@ -39,6 +39,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${bebasNeue.variable} ${roboto.variable}`}>
+      <head>
+        {/* Reloads once when a chunk from a previous deploy is gone. A plain
+            synchronous <script> in <head> runs before the app hydrates;
+            next/script beforeInteractive in the App Router queues the file
+            behind the Next runtime instead, which is too late. basePath is the
+            value next.config.ts computes. */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/chunk-reload-guard.js`} />
+      </head>
       <body className="font-body antialiased flex flex-col min-h-screen">
         <ThemeProvider>
           <main className="flex-1">
